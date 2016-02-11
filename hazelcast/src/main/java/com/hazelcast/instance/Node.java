@@ -54,6 +54,7 @@ import com.hazelcast.nio.ClassLoaderUtil;
 import com.hazelcast.nio.ConnectionManager;
 import com.hazelcast.nio.Packet;
 import com.hazelcast.partition.PartitionLostListener;
+import com.hazelcast.partition.impl.InternalMigrationListener;
 import com.hazelcast.security.Credentials;
 import com.hazelcast.security.SecurityContext;
 import com.hazelcast.spi.discovery.SimpleDiscoveryNode;
@@ -257,6 +258,12 @@ public class Node {
                 String serviceName = ClientEngineImpl.SERVICE_NAME;
                 nodeEngine.getEventService().registerLocalListener(serviceName, serviceName, listener);
                 known = true;
+            }
+
+            if (listener instanceof InternalMigrationListener) {
+                final InternalPartitionServiceImpl partitionService =
+                        (InternalPartitionServiceImpl) nodeEngine.getPartitionService();
+                partitionService.setInternalMigrationListener((InternalMigrationListener) listener);
             }
 
             if (nodeExtension.registerListener(listener)) {
