@@ -2063,6 +2063,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
             try {
                 addCompletedMigration(migrationInfo);
                 finalizeActiveMigration(migrationInfo);
+                migrationListener.onMigrationRollback(MigrationParticipant.MASTER, migrationInfo);
                 publishPartitionRuntimeState();
             } finally {
                 lock.unlock();
@@ -2089,6 +2090,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
                 partition.setReplicaAddresses(addresses);
                 addCompletedMigration(migrationInfo);
                 finalizeActiveMigration(migrationInfo);
+                migrationListener.onMigrationCommit(MigrationParticipant.MASTER, migrationInfo);
                 syncPartitionRuntimeState();
             } finally {
                 lock.unlock();
