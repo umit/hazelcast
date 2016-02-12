@@ -2059,6 +2059,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         }
 
         private void migrationOperationFailed() {
+            internalMigrationListener.onMigrationComplete(MigrationParticipant.MASTER, migrationInfo, false);
             lock.lock();
             try {
                 addCompletedMigration(migrationInfo);
@@ -2068,7 +2069,6 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
             } finally {
                 lock.unlock();
             }
-            internalMigrationListener.onMigrationComplete(MigrationParticipant.MASTER, migrationInfo, false);
             sendMigrationEvent(migrationInfo, MigrationStatus.FAILED);
 
             // Migration failed.
@@ -2083,6 +2083,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         }
 
         private void migrationOperationSucceeded() {
+            internalMigrationListener.onMigrationComplete(MigrationParticipant.MASTER, migrationInfo, true);
             lock.lock();
             try {
                 final int partitionId = migrationInfo.getPartitionId();
@@ -2095,7 +2096,6 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
             } finally {
                 lock.unlock();
             }
-            internalMigrationListener.onMigrationComplete(MigrationParticipant.MASTER, migrationInfo, true);
             sendMigrationEvent(migrationInfo, MigrationStatus.COMPLETED);
         }
 
