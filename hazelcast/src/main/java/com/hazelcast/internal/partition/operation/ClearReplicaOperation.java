@@ -19,6 +19,10 @@ package com.hazelcast.internal.partition.operation;
 import com.hazelcast.internal.partition.InternalPartition;
 import com.hazelcast.internal.partition.MigrationCycleOperation;
 import com.hazelcast.internal.partition.impl.InternalPartitionServiceImpl;
+import com.hazelcast.internal.partition.MigrationCycleOperation;
+import com.hazelcast.internal.partition.impl.InternalPartitionImpl;
+import com.hazelcast.internal.partition.impl.InternalPartitionServiceImpl;
+import com.hazelcast.internal.partition.impl.PartitionStateManager;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
@@ -45,7 +49,8 @@ public final class ClearReplicaOperation extends AbstractOperation
     public void run() throws Exception {
         int partitionId = getPartitionId();
         InternalPartitionServiceImpl partitionService = getService();
-        InternalPartition partition = partitionService.getPartitionImpl(partitionId);
+        PartitionStateManager partitionStateManager = partitionService.getPartitionStateManager();
+        InternalPartitionImpl partition = partitionStateManager.getPartitionImpl(partitionId);
         Address thisAddress = getNodeEngine().getThisAddress();
 
         // currentReplicaIndex == -1;               not owner/backup then clear data
