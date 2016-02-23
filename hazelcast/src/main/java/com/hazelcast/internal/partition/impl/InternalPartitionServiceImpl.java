@@ -953,7 +953,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         }
 
         @Override
-        public void invalidate() {
+        public void invalidate(Address address) {
 
         }
 
@@ -1047,7 +1047,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         }
 
         @Override
-        public void invalidate() {
+        public void invalidate(Address address) {
 
         }
 
