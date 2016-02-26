@@ -328,6 +328,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
             boolean isThisNodeNewMaster = node.isMaster() && !thisAddress.equals(lastMaster);
             if (isThisNodeNewMaster) {
+                logger.info("Scheduling " + FetchMostRecentPartitionTableTask.class.getSimpleName());
                 migrationManager.schedule(new FetchMostRecentPartitionTableTask());
             }
             lastMaster = node.getMasterAddress();
@@ -973,6 +974,11 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         public boolean isValid() {
             return true;
         }
+
+        @Override
+        public boolean isPauseable() {
+            return true;
+        }
     }
 
     private class FetchMostRecentPartitionTableTask implements MigrationRunnable {
@@ -1057,6 +1063,11 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         @Override
         public boolean isValid() {
             return true;
+        }
+
+        @Override
+        public boolean isPauseable() {
+            return false;
         }
     }
 
