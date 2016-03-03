@@ -574,6 +574,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         }
 
         updateAllPartitions(partitions);
+        migrationManager.retainCompletedMigrations(completedMigrations);
     }
 
     private void updateAllPartitions(PartitionInfo[] state) {
@@ -824,10 +825,6 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         }
 
         return false;
-    }
-
-    void incrementPartitionStateVersion(int delta) {
-        partitionStateManager.incrementVersion(delta);
     }
 
     @Override
