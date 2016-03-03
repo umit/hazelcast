@@ -974,6 +974,11 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         }
 
         @Override
+        public void invalidate(int partitionId) {
+
+        }
+
+        @Override
         public boolean isValid() {
             return true;
         }
@@ -1078,6 +1083,11 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
         @Override
         public void invalidate(Address address) {
+
+        }
+
+        @Override
+        public void invalidate(int partitionId) {
 
         }
 
