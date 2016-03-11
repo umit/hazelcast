@@ -24,7 +24,7 @@ import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.internal.properties.GroupProperties;
 import com.hazelcast.internal.properties.GroupProperty;
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.partition.MigrationEndpoint;
+import com.hazelcast.spi.partition.MigrationEndpoint;
 import com.hazelcast.spi.ClientAwareService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.MemberAttributeServiceEvent;
