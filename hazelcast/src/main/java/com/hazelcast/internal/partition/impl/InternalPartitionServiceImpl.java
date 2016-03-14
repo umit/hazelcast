@@ -1011,9 +1011,9 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
                 if (!migrations.isEmpty()) {
                     logger.info("Scheduling " + migrations.size() + " migrations to fix missing backups");
                     for (MigrationInfo migrationInfo : migrations) {
-    //                    if (logger.isFinestEnabled()) {
-                            logger.info("Scheduling repair migration: " + migrationInfo + " removed address: " + deadAddress);
-    //                    }
+                        if (logger.isFinestEnabled()) {
+                            logger.finest("Scheduling repair migration: " + migrationInfo + " for removed address: " + deadAddress);
+                        }
                         migrationManager.scheduleMigration(migrationInfo, MigrateTaskReason.REPAIR_PARTITION_TABLE);
                     }
                 }
@@ -1101,8 +1101,6 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
                     allActiveMigrations.add(migrationManager.getActiveMigration());
                 }
 
-                System.out.println("All active migrations: " + allActiveMigrations);
-
                 for (MigrationInfo activeMigration : allActiveMigrations) {
                     activeMigration.setStatus(MigrationStatus.FAILED);
                     if (allCompletedMigrations.add(activeMigration)) {
@@ -1110,12 +1108,6 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
                     }
                 }
 
-                System.out.println("All completed migrations: " + allCompletedMigrations);
-
-
-
-                // TODO: if we get the same migration-info once as completed and once as active
-                // then we will throw the active one and mark the migration as completed.
                 if (newState != null) {
                     newState.setCompletedMigrations(allCompletedMigrations);
                     version = Math.max(version, getPartitionStateVersion()) + 1;
@@ -1133,8 +1125,6 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
                 lock.unlock();
             }
 
-            // TODO: ptable will be sync'ed by repair task
-//            syncPartitionRuntimeState();
             migrationManager.resumeMigration();
         }
 
