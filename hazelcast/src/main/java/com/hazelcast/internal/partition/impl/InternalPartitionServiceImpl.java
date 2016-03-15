@@ -747,8 +747,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
     @Override
     public boolean isPartitionReplicaVersionStale(int partitionId, long[] versions, int replicaIndex) {
-        PartitionReplicaVersions partitionVersion = replicaVersions[partitionId];
-        return partitionVersion.isStale(versions, replicaIndex);
+        return replicaManager.isPartitionReplicaVersionStale(partitionId, versions, replicaIndex);
     }
 
     // called in operation threads
