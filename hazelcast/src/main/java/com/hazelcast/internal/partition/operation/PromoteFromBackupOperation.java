@@ -20,7 +20,6 @@ import com.hazelcast.core.Member;
 import com.hazelcast.core.MigrationEvent;
 import com.hazelcast.core.MigrationEvent.MigrationStatus;
 import com.hazelcast.instance.MemberImpl;
-import com.hazelcast.internal.partition.InternalPartition;
 import com.hazelcast.internal.partition.InternalPartitionService;
 import com.hazelcast.internal.partition.MigrationCycleOperation;
 import com.hazelcast.internal.partition.impl.InternalPartitionImpl;
@@ -114,15 +113,15 @@ public final class PromoteFromBackupOperation
             // returns the internal array itself, not the copy
             final long[] versions = partitionService.getPartitionReplicaVersions(partitionId);
 
-
                 if ( currentReplicaIndex > 1 ) {
                     final long[] versionsCopy = Arrays.copyOf(versions, versions.length);
 
-                    for (int i = currentReplicaIndex; i < InternalPartition.MAX_REPLICA_COUNT; i++) {
-                        versions[i - currentReplicaIndex] = versions[i - 1];
-                    }
+//                    System.arraycopy(versions, currentReplicaIndex - 1, versions, 0,
+//                            InternalPartition.MAX_REPLICA_COUNT - currentReplicaIndex);
+//                    Arrays.fill(versions, (versions.length - (currentReplicaIndex - 1)), versions.length, 0);
 
-                    Arrays.fill(versions , (versions.length - (currentReplicaIndex - 1)), versions.length, 0);
+                    long version = versions[currentReplicaIndex];
+                    Arrays.fill(versions, 0, currentReplicaIndex, version);
 
                     if (logger.isFinestEnabled()) {
                         logger.finest("Partition replica is lost! partitionId=" + partitionId + " lost replicaIndex="
