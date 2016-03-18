@@ -376,13 +376,13 @@ public class MigrationAwareServiceTest extends HazelcastTestSupport {
 
                                 long[] backupReplicaVersions = getReplicaVersions(backupNode, partitionId);
                                 for (int i = replica - 1; i < actualBackupCount; i++) {
-                                    assertEquals("Owner: " + thisAddress + ", Backup: " + address
-                                            + ", PartitionId: " + partition + ", Replica: " + (i + 1),
+                                    assertEquals("Replica version mismatch! Owner: " + thisAddress + ", Backup: " + address
+                                            + ", Partition: " + partition + ", Replica: " + (i + 1),
                                             replicaVersions[i], backupReplicaVersions[i]);
                                 }
 
                                 SampleMigrationAwareService backupService = getService(backupInstance);
-                                assertEquals("Partition: " + partitionId + ", replica: " + replica + " on "
+                                assertEquals("Wrong data! Partition: " + partitionId + ", replica: " + replica + " on "
                                         + address + " has stale value! " + Arrays.toString(backupReplicaVersions),
                                         service.data.get(partitionId), backupService.data.get(partitionId));
                             }

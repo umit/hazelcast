@@ -30,7 +30,6 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.spi.AbstractOperation;
 import com.hazelcast.spi.ExceptionAction;
 import com.hazelcast.spi.PartitionAwareOperation;
-import com.hazelcast.spi.exception.RetryableHazelcastException;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 
 import java.io.IOException;
@@ -67,16 +66,13 @@ public abstract class BaseMigrationOperation extends AbstractOperation
         InternalPartitionService partitionService = getService();
         int localPartitionStateVersion = partitionService.getPartitionStateVersion();
         if (partitionStateVersion != localPartitionStateVersion) {
-
             if (getNodeEngine().getThisAddress().equals(migrationInfo.getMaster())) {
                 return;
             }
 
-            if (partitionStateVersion < localPartitionStateVersion) {
-                throw new IllegalStateException("Local state version cannot be greater than master's version!"
-                        + " Local: " + localPartitionStateVersion + ", Master: " + partitionStateVersion);
-            }
-            throw new RetryableHazelcastException("Local partition state version is behind master!"
+            // TODO: this is expected when cluster member list changes during migration
+            // we can define a special exception type
+            throw new IllegalStateException("Local partition state version is not equal to master's version!"
                     + " Local: " + localPartitionStateVersion + ", Master: " + partitionStateVersion);
         }
     }

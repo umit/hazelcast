@@ -540,17 +540,6 @@ public class MigrationManager {
         }
 
         private void processNewPartitionState(Address[][] newState) {
-            System.out.println("");
-            for (int i = 0; i < newState.length; i++) {
-                Address[] addresses = newState[i];
-                System.out.print("partitionId: " + i + " -> ");
-                for (Address address : addresses) {
-                    System.out.print(address + ", ");
-                }
-                System.out.println();
-            }
-            System.out.println("");
-
             final MutableInteger lostCount = new MutableInteger();
             final MutableInteger migrationCount = new MutableInteger();
 
@@ -689,10 +678,8 @@ public class MigrationManager {
                     logger.fine("Starting Migration: " + migrationInfo);
                 }
 
-                MigrationRequestOperation migrationRequestOp = new MigrationRequestOperation(migrationInfo,
-                            partitionService.getPartitionStateVersion());
                 long start = Clock.currentTimeMillis();
-                Boolean result = executeMigrateOperation(migrationRequestOp, partitionOwner);
+                Boolean result = executeMigrateOperation(partitionOwner);
                 long end = Clock.currentTimeMillis();
 
                 if (end - start > 1000) {
@@ -726,6 +713,8 @@ public class MigrationManager {
 
         private void processMigrationResult(Boolean result) {
             if (!migrationInfo.isValid()) {
+                // TODO: is this valid check needed?
+                assert !result : "Unexpected result SUCCESS" ;
                 migrationOperationFailed();
             } else if (Boolean.TRUE.equals(result)) {
 //                if (logger.isFineEnabled()) {
@@ -739,7 +728,10 @@ public class MigrationManager {
             }
         }
 
-        private Boolean executeMigrateOperation(MigrationRequestOperation migrationRequestOp, MemberImpl fromMember) {
+        private Boolean executeMigrateOperation(MemberImpl fromMember) {
+            MigrationRequestOperation migrationRequestOp = new MigrationRequestOperation(migrationInfo,
+                    partitionService.getPartitionStateVersion());
+
             Future future = nodeEngine.getOperationService().createInvocationBuilder(SERVICE_NAME, migrationRequestOp,
                     fromMember.getAddress())
                     .setCallTimeout(partitionMigrationTimeout)
@@ -749,7 +741,7 @@ public class MigrationManager {
                 Object response = future.get();
                 return (Boolean) nodeEngine.toObject(response);
             } catch (Throwable e) {
-                final Level level = nodeEngine.isRunning() && migrationInfo.isValid() ? Level.WARNING : Level.FINEST;
+                Level level = nodeEngine.isRunning() && migrationInfo.isValid() ? Level.WARNING : Level.FINEST;
                 logger.log(level, "Failed migration from " + fromMember + " for " + migrationRequestOp.getMigrationInfo(), e);
             }
             return Boolean.FALSE;
@@ -915,7 +907,6 @@ public class MigrationManager {
                 partitionServiceLock.unlock();
             }
         }
-
     }
 
 }
