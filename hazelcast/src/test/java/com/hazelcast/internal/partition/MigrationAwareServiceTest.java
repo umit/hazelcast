@@ -414,8 +414,6 @@ public class MigrationAwareServiceTest extends HazelcastTestSupport {
         config.setProperty(GroupProperty.MIGRATION_MIN_DELAY_ON_MEMBER_REMOVED_SECONDS.getName(), String.valueOf(1));
         config.setProperty(GroupProperty.PARTITION_BACKUP_SYNC_INTERVAL.getName(), String.valueOf(BACKUP_SYNC_INTERVAL));
 
-        config.setProperty("hazelcast.logging.type", "log4j");
-
         int parallelReplications = antiEntropyEnabled ? PARALLEL_REPLICATIONS : 0;
         config.setProperty(GroupProperty.PARTITION_MAX_PARALLEL_REPLICATIONS.getName(), String.valueOf(parallelReplications));
         return config;
