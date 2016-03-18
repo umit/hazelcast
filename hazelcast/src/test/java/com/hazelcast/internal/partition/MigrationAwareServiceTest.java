@@ -91,11 +91,11 @@ public class MigrationAwareServiceTest extends HazelcastTestSupport {
     @Parameterized.Parameters(name = "backups:{0},nodes:{1}")
     public static Collection<Object[]> parameters() {
         return Arrays.asList(new Object[][] {
-//                {1, 2},
-//                {1, InternalPartition.MAX_REPLICA_COUNT},
-//                {2, 3},
-//                {2, InternalPartition.MAX_REPLICA_COUNT},
-//                {3, 4},
+                {1, 2},
+                {1, InternalPartition.MAX_REPLICA_COUNT},
+                {2, 3},
+                {2, InternalPartition.MAX_REPLICA_COUNT},
+                {3, 4},
                 {3, InternalPartition.MAX_REPLICA_COUNT},
         });
     }
