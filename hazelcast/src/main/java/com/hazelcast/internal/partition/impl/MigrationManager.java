@@ -599,12 +599,16 @@ public class MigrationManager {
 
                 if (source == null && destinationNewReplicaIndex == 0) {
                     assert destination != null;
-                    assert sourceCurrentReplicaIndex == -1;
-                    assert sourceNewReplicaIndex == -1;
-                    assert destinationCurrentReplicaIndex == -1;
+                    assert sourceCurrentReplicaIndex == -1 : "invalid index: " + sourceCurrentReplicaIndex;;
+                    assert sourceNewReplicaIndex == -1 : "invalid index: " + sourceNewReplicaIndex;;
 
-                    lostCount.value++;
-                    assignNewPartitionOwner(partitionId, partition, destination);
+                    if (destinationCurrentReplicaIndex == -1) {
+                        lostCount.value++;
+                        assignNewPartitionOwner(partitionId, partition, destination);
+                    } else {
+                        // shift-up
+                        schedule(null, -1, -1, destination, destinationCurrentReplicaIndex, 0);
+                    }
                 } else if (destination == null && sourceNewReplicaIndex == -1) {
                     assert source != null;
                     assert sourceCurrentReplicaIndex != -1;
@@ -612,14 +616,21 @@ public class MigrationManager {
 
                     partition.setReplicaAddress(sourceCurrentReplicaIndex, null);
                 } else {
-                    migrationCount.value++;
-                    MigrationInfo migration = new MigrationInfo(partitionId, source, destination, sourceCurrentReplicaIndex,
-                            sourceNewReplicaIndex, destinationCurrentReplicaIndex, destinationNewReplicaIndex);
-                    if (sourceNewReplicaIndex > 0) {
-                        migration.setOldReplicaOwner(partition.getReplicaAddress(sourceNewReplicaIndex));
-                    }
-                    scheduleMigration(migration, MigrateTaskReason.REPARTITIONING);
+                    schedule(source, sourceCurrentReplicaIndex, sourceNewReplicaIndex, destination,
+                            destinationCurrentReplicaIndex, destinationNewReplicaIndex);
                 }
+            }
+
+            private void schedule(Address source, int sourceCurrentReplicaIndex, int sourceNewReplicaIndex,
+                    Address destination, int destinationCurrentReplicaIndex, int destinationNewReplicaIndex) {
+
+                migrationCount.value++;
+                MigrationInfo migration = new MigrationInfo(partitionId, source, destination, sourceCurrentReplicaIndex,
+                        sourceNewReplicaIndex, destinationCurrentReplicaIndex, destinationNewReplicaIndex);
+                if (sourceNewReplicaIndex > 0) {
+                    migration.setOldReplicaOwner(partition.getReplicaAddress(sourceNewReplicaIndex));
+                }
+                scheduleMigration(migration, MigrateTaskReason.REPARTITIONING);
             }
         }
     }
