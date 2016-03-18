@@ -434,11 +434,6 @@ public class MigrationManager {
         migrationThread.stopNow();
     }
 
-    public void setCompletedMigrations(Collection<MigrationInfo> migrationInfos) {
-        completedMigrations.clear();
-        completedMigrations.addAll(migrationInfos);
-    }
-
     void scheduleMigration(MigrationInfo migrationInfo, MigrateTaskReason reason) {
         migrationQueue.add(new MigrateTask(migrationInfo, reason));
     }
