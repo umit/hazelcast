@@ -455,7 +455,6 @@ public class MigrationManager {
 
             if (logger.isFinestEnabled()) {
                 if (destination != null) {
-                    // TODO BASRI partition lost
                     logger.finest("partitionId=" + partition.getPartitionId() + " owner is removed. replicaIndex=" + index
                             + " is shifted up to 0. " + partition);
                 } else {

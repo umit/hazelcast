@@ -113,25 +113,24 @@ public final class PromoteFromBackupOperation
             // returns the internal array itself, not the copy
             final long[] versions = partitionService.getPartitionReplicaVersions(partitionId);
 
-                if ( currentReplicaIndex > 1 ) {
-                    final long[] versionsCopy = Arrays.copyOf(versions, versions.length);
+            final int lostReplicaIndex = currentReplicaIndex - 1;
 
-//                    System.arraycopy(versions, currentReplicaIndex - 1, versions, 0,
-//                            InternalPartition.MAX_REPLICA_COUNT - currentReplicaIndex);
-//                    Arrays.fill(versions, (versions.length - (currentReplicaIndex - 1)), versions.length, 0);
+            if (currentReplicaIndex > 1) {
+                final long[] versionsCopy = Arrays.copyOf(versions, versions.length);
+                final long version = versions[currentReplicaIndex];
+                Arrays.fill(versions, 0, currentReplicaIndex, version);
 
-                    long version = versions[currentReplicaIndex];
-                    Arrays.fill(versions, 0, currentReplicaIndex, version);
-
-                    if (logger.isFinestEnabled()) {
-                        logger.finest("Partition replica is lost! partitionId=" + partitionId + " lost replicaIndex="
-                                + currentReplicaIndex + " replica versions before shift up=" + Arrays.toString(versionsCopy)
-                                + " replica versions after shift up=" + Arrays.toString(versions));
-                    }
-                } else if (logger.isFinestEnabled()) {
-                    logger.finest("PROMOTE partitionId=" + getPartitionId() + " from currentReplicaIndex=" + currentReplicaIndex);
+                if (logger.isFinestEnabled()) {
+                    logger.finest(
+                            "Partition replica is lost! partitionId=" + partitionId + " lost replicaIndex=" + lostReplicaIndex
+                                    + " replica versions before shift up=" + Arrays.toString(versionsCopy)
+                                    + " replica versions after shift up=" + Arrays.toString(versions));
                 }
+            } else if (logger.isFinestEnabled()) {
+                logger.finest("PROMOTE partitionId=" + getPartitionId() + " from currentReplicaIndex=" + currentReplicaIndex);
+            }
 
+            sendPartitionLostEvent(partitionId, lostReplicaIndex);
         } catch (Throwable e) {
             logger.warning("Promotion failed. partitionId=" + partitionId + " replicaIndex=" + currentReplicaIndex, e);
         }
