@@ -20,15 +20,17 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Address;
 import com.hazelcast.partition.AbstractPartitionLostListenerTest;
-import com.hazelcast.test.HazelcastSerialClassRunner;
+import com.hazelcast.test.HazelcastParametersRunnerFactory;
 import com.hazelcast.test.TestPartitionUtils;
 import com.hazelcast.test.annotation.SlowTest;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -37,13 +39,19 @@ import static com.hazelcast.test.TestPartitionUtils.getReplicaVersions;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.fail;
 
-@RunWith(HazelcastSerialClassRunner.class)
+@RunWith(Parameterized.class)
+@Parameterized.UseParametersRunnerFactory(HazelcastParametersRunnerFactory.class)
 @Category(SlowTest.class)
 public class PartitionReplicaVersionsCorrectnessStressTest extends AbstractPartitionLostListenerTest {
 
     private static final int NODE_COUNT = 5;
 
     private static final int ITEM_COUNT_PER_MAP = 10000;
+
+    @Parameterized.Parameters(name = "numberOfNodesToCrash:{0}")
+    public static Collection<Object[]> parameters() {
+        return Arrays.asList(new Object[][]{{1}, {2}, {3}, {4}});
+    }
 
     @Override
     public int getNodeCount() {
@@ -54,27 +62,11 @@ public class PartitionReplicaVersionsCorrectnessStressTest extends AbstractParti
         return ITEM_COUNT_PER_MAP;
     }
 
-    @Test
-    public void testReplicaVersions_when1NodeCrashes() throws InterruptedException {
-        testReplicaVersionsWhenNodesCrashSimultaneously(1);
-    }
+    @Parameterized.Parameter(0)
+    public int numberOfNodesToCrash;
 
     @Test
-    public void testReplicaVersions_when2NodesCrashSimultaneously() throws InterruptedException {
-        testReplicaVersionsWhenNodesCrashSimultaneously(2);
-    }
-
-    @Test
-    public void testReplicaVersions_when3NodesCrashSimultaneously() throws InterruptedException {
-        testReplicaVersionsWhenNodesCrashSimultaneously(3);
-    }
-
-    @Test
-    public void testReplicaVersions_when4NodesCrashSimultaneously() throws InterruptedException {
-        testReplicaVersionsWhenNodesCrashSimultaneously(4);
-    }
-
-    private void testReplicaVersionsWhenNodesCrashSimultaneously(int numberOfNodesToCrash) throws InterruptedException {
+    public void testReplicaVersionsWhenNodesCrashSimultaneously() throws InterruptedException {
         List<HazelcastInstance> instances = getCreatedInstancesShuffledAfterWarmedUp();
 
         List<HazelcastInstance> instancesCopy = new ArrayList<HazelcastInstance>(instances);
@@ -127,11 +119,11 @@ public class PartitionReplicaVersionsCorrectnessStressTest extends AbstractParti
                         final long[] expected = Arrays.copyOf(initialReplicaVersions, initialReplicaVersions.length);
 
                         boolean verified;
-                        int i = 0;
+                        int i = 1;
                         do {
-                            shiftLeft(expected);
+                            shiftLeft(expected, i, replicaVersions[i]);
                             verified = Arrays.equals(expected, replicaVersions);
-                        } while (i < minSurvivingReplicaIndex && !verified);
+                        } while (i++ <= minSurvivingReplicaIndex && !verified);
 
                         if (!verified) {
                             fail(message);
@@ -144,13 +136,8 @@ public class PartitionReplicaVersionsCorrectnessStressTest extends AbstractParti
         }
     }
 
-    private void shiftLeft(final long[] versions) {
-        final int r = versions.length - 1;
-        for (int i = 0; i < r; i++) {
-            versions[i] = versions[i + 1];
-        }
-
-        versions[r] = 0;
+    private void shiftLeft(final long[] versions, final int toIndex, final long version) {
+        Arrays.fill(versions, 0, toIndex, version);
     }
 
 }
