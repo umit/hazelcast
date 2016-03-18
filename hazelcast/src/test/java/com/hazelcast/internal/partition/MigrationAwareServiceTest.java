@@ -91,9 +91,12 @@ public class MigrationAwareServiceTest extends HazelcastTestSupport {
     @Parameterized.Parameters(name = "backups:{0},nodes:{1}")
     public static Collection<Object[]> parameters() {
         return Arrays.asList(new Object[][] {
-                {1, 2}, {1, InternalPartition.MAX_REPLICA_COUNT},
-                {2, 3}, {2, InternalPartition.MAX_REPLICA_COUNT},
-                {3, 4}, {3, InternalPartition.MAX_REPLICA_COUNT},
+                {1, 2},
+                {1, InternalPartition.MAX_REPLICA_COUNT},
+                {2, 3},
+                {2, InternalPartition.MAX_REPLICA_COUNT},
+                {3, 4},
+                {3, InternalPartition.MAX_REPLICA_COUNT},
         });
     }
 
@@ -410,6 +413,8 @@ public class MigrationAwareServiceTest extends HazelcastTestSupport {
         config.setProperty(GroupProperty.PARTITION_COUNT.getName(), String.valueOf(PARTITION_COUNT));
         config.setProperty(GroupProperty.MIGRATION_MIN_DELAY_ON_MEMBER_REMOVED_SECONDS.getName(), String.valueOf(1));
         config.setProperty(GroupProperty.PARTITION_BACKUP_SYNC_INTERVAL.getName(), String.valueOf(BACKUP_SYNC_INTERVAL));
+
+        config.setProperty("hazelcast.logging.type", "log4j");
 
         int parallelReplications = antiEntropyEnabled ? PARALLEL_REPLICATIONS : 0;
         config.setProperty(GroupProperty.PARTITION_MAX_PARALLEL_REPLICATIONS.getName(), String.valueOf(parallelReplications));
