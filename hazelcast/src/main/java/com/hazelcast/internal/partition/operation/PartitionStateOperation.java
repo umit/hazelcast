@@ -32,6 +32,7 @@ public final class PartitionStateOperation extends AbstractOperation
 
     private PartitionRuntimeState partitionState;
     private boolean sync;
+    private boolean returnValue;
 
     public PartitionStateOperation() {
     }
@@ -49,7 +50,7 @@ public final class PartitionStateOperation extends AbstractOperation
     public void run() {
         partitionState.setEndpoint(getCallerAddress());
         InternalPartitionServiceImpl partitionService = getService();
-        partitionService.processPartitionRuntimeState(partitionState);
+        returnValue = partitionService.processPartitionRuntimeState(partitionState);
     }
 
     @Override
@@ -59,7 +60,7 @@ public final class PartitionStateOperation extends AbstractOperation
 
     @Override
     public Object getResponse() {
-        return Boolean.TRUE;
+        return returnValue;
     }
 
     @Override
