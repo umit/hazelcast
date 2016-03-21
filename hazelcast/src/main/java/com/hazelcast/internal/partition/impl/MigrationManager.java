@@ -67,11 +67,6 @@ public class MigrationManager {
 
     private static final int PARTITION_STATE_VERSION_INCREMENT_DELTA_ON_MIGRATION_FAILURE = 2;
 
-    enum MigrateTaskReason {
-        REPAIR_PARTITION_TABLE,
-        REPARTITIONING
-    }
-
     private final Node node;
     private final NodeEngineImpl nodeEngine;
     private final InternalPartitionServiceImpl partitionService;
@@ -372,6 +367,9 @@ public class MigrationManager {
     void triggerControlTask() {
         migrationQueue.clear();
         migrationQueue.add(new ControlTask());
+        if (logger.isFinestEnabled()) {
+            logger.finest("Migration queue is cleared and control task is scheduled");
+        }
     }
 
     public InternalMigrationListener getInternalMigrationListener() {
@@ -434,8 +432,8 @@ public class MigrationManager {
         migrationThread.stopNow();
     }
 
-    void scheduleMigration(MigrationInfo migrationInfo, MigrateTaskReason reason) {
-        migrationQueue.add(new MigrateTask(migrationInfo, reason));
+    void scheduleMigration(MigrationInfo migrationInfo) {
+        migrationQueue.add(new MigrateTask(migrationInfo));
     }
 
     void repairPartition(int partitionId) {
@@ -475,6 +473,7 @@ public class MigrationManager {
         }
 
         if (partition.getOwnerOrNull() == null) {
+            logger.warning("partitionId=" + partitionId + " is completely lost!");
             // we lost the partition!
             // TODO BASRI partition lost
             return;
@@ -493,7 +492,10 @@ public class MigrationManager {
                 if (destination != null) {
                     MigrationInfo migration = new MigrationInfo(partition.getPartitionId(), null, destination,
                             -1, -1, i, index);
-                    scheduleMigration(migration, MigrateTaskReason.REPAIR_PARTITION_TABLE);
+                    if (logger.isFinestEnabled()) {
+                        logger.finest("Repair shift up migration is scheduled: " + migration);
+                    }
+                    scheduleMigration(migration);
                     lastIndex = i - 1;
                     break;
                 }
@@ -527,7 +529,9 @@ public class MigrationManager {
                 lastRepartitionTime.set(Clock.currentTimeMillis());
 
                 processNewPartitionState(newState);
-                partitionService.syncPartitionRuntimeState();
+                if (!partitionService.syncPartitionRuntimeState() && logger.isFinestEnabled()) {
+                    logger.finest("All members not synced partition table after repartitioning");
+                }
             } finally {
                 partitionServiceLock.unlock();
             }
@@ -597,40 +601,34 @@ public class MigrationManager {
             public void migrate(Address source, int sourceCurrentReplicaIndex, int sourceNewReplicaIndex,
                     Address destination, int destinationCurrentReplicaIndex, int destinationNewReplicaIndex) {
 
-                if (source == null && destinationNewReplicaIndex == 0) {
+                if (source == null && destinationCurrentReplicaIndex == -1 && destinationNewReplicaIndex == 0) {
                     assert destination != null;
                     assert sourceCurrentReplicaIndex == -1 : "invalid index: " + sourceCurrentReplicaIndex;;
                     assert sourceNewReplicaIndex == -1 : "invalid index: " + sourceNewReplicaIndex;;
 
-                    if (destinationCurrentReplicaIndex == -1) {
-                        lostCount.value++;
-                        assignNewPartitionOwner(partitionId, partition, destination);
-                    } else {
-                        // shift-up
-                        schedule(null, -1, -1, destination, destinationCurrentReplicaIndex, 0);
-                    }
+                    lostCount.value++;
+                    assignNewPartitionOwner(partitionId, partition, destination);
+
                 } else if (destination == null && sourceNewReplicaIndex == -1) {
                     assert source != null;
-                    assert sourceCurrentReplicaIndex != -1;
+                    assert sourceCurrentReplicaIndex != -1 : "invalid index: " + sourceCurrentReplicaIndex;
+                    assert sourceCurrentReplicaIndex != 0 : "invalid index: " + sourceCurrentReplicaIndex;
                     assert source.equals(partition.getReplicaAddress(sourceCurrentReplicaIndex));
 
                     partition.setReplicaAddress(sourceCurrentReplicaIndex, null);
                 } else {
-                    schedule(source, sourceCurrentReplicaIndex, sourceNewReplicaIndex, destination,
-                            destinationCurrentReplicaIndex, destinationNewReplicaIndex);
-                }
-            }
+                    MigrationInfo migration = new MigrationInfo(partitionId, source, destination, sourceCurrentReplicaIndex,
+                            sourceNewReplicaIndex, destinationCurrentReplicaIndex, destinationNewReplicaIndex);
 
-            private void schedule(Address source, int sourceCurrentReplicaIndex, int sourceNewReplicaIndex,
-                    Address destination, int destinationCurrentReplicaIndex, int destinationNewReplicaIndex) {
+                    // Shift up to replica 0 should be handled by repair task
+                    assert !(source == null && destinationNewReplicaIndex == 0) : "ILLEGAL! -> " + migration;
 
-                migrationCount.value++;
-                MigrationInfo migration = new MigrationInfo(partitionId, source, destination, sourceCurrentReplicaIndex,
-                        sourceNewReplicaIndex, destinationCurrentReplicaIndex, destinationNewReplicaIndex);
-                if (sourceNewReplicaIndex > 0) {
-                    migration.setOldReplicaOwner(partition.getReplicaAddress(sourceNewReplicaIndex));
+                    migrationCount.value++;
+                    if (sourceNewReplicaIndex > 0) {
+                        migration.setOldReplicaOwner(partition.getReplicaAddress(sourceNewReplicaIndex));
+                    }
+                    scheduleMigration(migration);
                 }
-                scheduleMigration(migration, MigrateTaskReason.REPARTITIONING);
             }
         }
     }
@@ -639,12 +637,9 @@ public class MigrationManager {
 
         final MigrationInfo migrationInfo;
 
-        final MigrateTaskReason reason;
-
-        public MigrateTask(MigrationInfo migrationInfo, MigrateTaskReason reason) {
+        public MigrateTask(MigrationInfo migrationInfo) {
             this.migrationInfo = migrationInfo;
             migrationInfo.setMaster(node.getThisAddress());
-            this.reason = reason;
         }
 
         @Override
@@ -656,21 +651,21 @@ public class MigrationManager {
             try {
                 MemberImpl partitionOwner = getPartitionOwner();
                 if (partitionOwner == null) {
-                    logger.fine("Partition owner is null. Ignoring migration task.");
+                    logger.fine("Partition owner is null. Ignoring " + migrationInfo);
 //                    triggerRepartitioningAfterMigrationFailure();
                     return;
                 }
 
                 if (migrationInfo.getSource() != null) {
                     if (node.getClusterService().getMember(migrationInfo.getSource()) == null) {
-                        logger.fine("Source is not member anymore. Ignoring migration task.");
+                        logger.fine("Source is not member anymore. Ignoring " + migrationInfo);
                         triggerRepartitioningAfterMigrationFailure();
                         return;
                     }
                 }
 
                 if (node.getClusterService().getMember(migrationInfo.getDestination()) == null) {
-                    logger.fine("Destination is not member anymore. Ignoring migration task.");
+                    logger.fine("Destination is not member anymore. Ignoring " + migrationInfo);
                     triggerRepartitioningAfterMigrationFailure();
                     return;
                 }
@@ -869,20 +864,22 @@ public class MigrationManager {
                     }
                 }
 
-                Collection<Integer> partitionIdSet = new HashSet<Integer>();
                 for (Address address : addresses) {
-                    partitionStateManager.removeDeadAddress(partitionIdSet, address);
+                    partitionStateManager.removeDeadAddress(address);
                 }
 
-                if (!partitionIdSet.isEmpty()) {
-                    for (Integer partitionId : partitionIdSet) {
-                        repairPartition(partitionId);
-                    }
+                for (int partitionId = 0; partitionId < partitionService.getPartitionCount(); partitionId++) {
+                    repairPartition(partitionId);
                 }
 
-                partitionService.syncPartitionRuntimeState();
+                if (!partitionService.syncPartitionRuntimeState() && logger.isFinestEnabled()) {
+                    logger.finest("All members not synced partition table after repair");
+                }
 
-                logger.severe("Scheduling RepartitioningTask");
+                if (logger.isFinestEnabled()) {
+                    logger.finest("RepartitioningTask scheduled");
+                }
+
                 migrationQueue.add(new RepartitioningTask());
 
             } finally {
@@ -901,12 +898,17 @@ public class MigrationManager {
                 migrationQueue.clear();
 
                 if (partitionService.scheduleFetchFetchMostRecentPartitionTableTaskIfRequired()) {
-                    logger.severe("FetchTask scheduled");
+                    if (logger.isFinestEnabled()) {
+                        logger.finest("FetchMostRecentPartitionTableTask scheduled");
+                    }
                     migrationQueue.add(new ControlTask());
                     return;
                 }
 
-                logger.severe("RepairTask scheduled");
+                if (logger.isFinestEnabled()) {
+                    logger.finest("RepairPartitionTableTask scheduled");
+                }
+
                 migrationQueue.add(new RepairPartitionTableTask());
             } finally {
                 partitionServiceLock.unlock();

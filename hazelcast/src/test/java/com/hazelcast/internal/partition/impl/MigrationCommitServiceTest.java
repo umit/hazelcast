@@ -42,7 +42,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
 import static com.hazelcast.internal.partition.impl.MigrationCommitTest.resetInternalMigrationListener;
-import static com.hazelcast.internal.partition.impl.MigrationManager.MigrateTaskReason.REPARTITIONING;
 import static com.hazelcast.spi.partition.MigrationEndpoint.DESTINATION;
 import static com.hazelcast.spi.partition.MigrationEndpoint.SOURCE;
 import static com.hazelcast.test.TestPartitionUtils.getReplicaVersions;
@@ -414,7 +413,7 @@ public class MigrationCommitServiceTest
 
     private void migrateWithSuccess(final MigrationInfo migration) {
         final InternalPartitionServiceImpl partitionService = (InternalPartitionServiceImpl) getPartitionService(instances[0]);
-        partitionService.getMigrationManager().scheduleMigration(migration, REPARTITIONING);
+        partitionService.getMigrationManager().scheduleMigration(migration);
         waitAllForSafeState(instances);
     }
 
@@ -431,7 +430,7 @@ public class MigrationCommitServiceTest
 
         final CountDownMigrationRollbackOnMaster masterListener = new CountDownMigrationRollbackOnMaster(instances[0], migration);
         partitionService.getMigrationManager().setInternalMigrationListener(masterListener);
-        partitionService.getMigrationManager().scheduleMigration(migration, REPARTITIONING);
+        partitionService.getMigrationManager().scheduleMigration(migration);
         assertOpenEventually(masterListener.latch);
     }
 

@@ -177,17 +177,16 @@ public class PartitionStateManager {
         return node.isLiteMember() ? 0 : 1;
     }
 
-    void removeDeadAddress(Collection<Integer> partitionIdSet, Address address) {
-
+    void removeDeadAddress(Address address) {
         for (InternalPartitionImpl partition : partitions) {
             int index = partition.removeAddress(address);
 
             // address is not replica of this partition
             if (index == -1) {
                 continue;
+            } else if (logger.isFinestEnabled()) {
+                logger.finest("partitionId=" + partition.getPartitionId() + " " + address + " is removed from replica index: " + index + " partition: " + partition);
             }
-
-            partitionIdSet.add(partition.getPartitionId());
         }
     }
 
@@ -234,22 +233,8 @@ public class PartitionStateManager {
     }
 
     // called under partition service lock
-    boolean setVersion(int version) {
-        if (version < stateVersion.get()) {
-            logger.warning("Master version should be greater than ours! Current: " + stateVersion.get()
-                    + ", Master: " + version);
-            return false;
-        } else if (version == stateVersion.get()) {
-            if (logger.isFineEnabled()) {
-                logger.fine("Master version should be greater than ours! Current: " + stateVersion.get()
-                        + ", Master: " + version);
-            }
-
-            return false;
-        }
-
+    void setVersion(int version) {
         stateVersion.set(version);
-        return true;
     }
 
     public int getVersion() {

@@ -117,8 +117,8 @@ public final class PromoteFromBackupOperation
 
             if (currentReplicaIndex > 1) {
                 final long[] versionsCopy = Arrays.copyOf(versions, versions.length);
-                final long version = versions[currentReplicaIndex];
-                Arrays.fill(versions, 0, currentReplicaIndex, version);
+                final long version = versions[lostReplicaIndex];
+                Arrays.fill(versions, 0, lostReplicaIndex, version);
 
                 if (logger.isFinestEnabled()) {
                     logger.finest(

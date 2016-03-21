@@ -515,47 +515,61 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         return calls;
     }
 
-    public void processPartitionRuntimeState(final PartitionRuntimeState partitionState) {
+    public boolean processPartitionRuntimeState(final PartitionRuntimeState partitionState) {
         final Address sender = partitionState.getEndpoint();
         if (!node.getNodeExtension().isStartCompleted()) {
             logger.warning("Ignoring received partition table, startup is not completed yet. Sender: " + sender);
-            return;
+            return false;
         }
 
         final Address master = node.getMasterAddress();
         if (node.isMaster()) {
             logger.warning("This is the master node and received a PartitionRuntimeState from "
                     + sender + ". Ignoring incoming state! ");
-            return;
+            return false;
         } else {
             if (sender == null || !sender.equals(master)) {
                 if (node.clusterService.getMember(sender) == null) {
                     logger.severe("Received a ClusterRuntimeState from an unknown member!"
                             + " => Sender: " + sender + ", Master: " + master + "! ");
-                    return;
+                    return false;
                 } else {
                     logger.warning("Received a ClusterRuntimeState, but its sender doesn't seem to be master!"
                             + " => Sender: " + sender + ", Master: " + master + "! "
                             + "(Ignore if master node has changed recently.)");
-                    return;
+                    return false;
                 }
             }
         }
 
-        applyNewState(partitionState, sender);
+        return applyNewState(partitionState, sender);
     }
 
-    private void applyNewState(PartitionRuntimeState partitionState, Address sender) {
+    private boolean applyNewState(PartitionRuntimeState partitionState, Address sender) {
         lock.lock();
         try {
-            if (!partitionStateManager.setVersion(partitionState.getVersion())) {
-                return;
+            final int newVersion = partitionState.getVersion();
+            final int currentVersion = partitionStateManager.getVersion();
+
+            if (newVersion < currentVersion) {
+                logger.warning("Master version should be greater than ours! Current: " + currentVersion
+                        + ", Master: " + newVersion);
+                return false;
+            } else if (newVersion == currentVersion) {
+                if (logger.isFineEnabled()) {
+                    logger.fine("Master version should be greater than ours! Current: " + currentVersion
+                            + ", Master: " + newVersion);
+                }
+
+                return true;
             }
 
+            partitionStateManager.setVersion(newVersion);
             partitionStateManager.setInitialized();
 
             filterAndLogUnknownAddressesInPartitionTable(sender, partitionState.getPartitions());
             finalizeOrRollbackMigration(partitionState);
+            return true;
         } finally {
             lock.unlock();
         }
@@ -990,8 +1004,9 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
             logger.info("Most recent partition table version: " + maxVersion);
             processNewState(allCompletedMigrations, allActiveMigrations);
 
-            fetchPartitionTablesAfterVersion = null;
-            syncPartitionRuntimeState();
+            if (!syncPartitionRuntimeState() && logger.isFinestEnabled()) {
+                logger.finest("All members not synced partition table after master fetch");
+            }
         }
 
         private Collection<Future<PartitionRuntimeState>> invokeFetchPartitionStateOps() {
@@ -1082,6 +1097,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
                     }
                 }
 
+                fetchPartitionTablesAfterVersion = null;
             } finally {
                 lock.unlock();
             }
