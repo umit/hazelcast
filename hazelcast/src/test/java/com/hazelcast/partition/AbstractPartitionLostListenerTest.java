@@ -3,6 +3,7 @@ package com.hazelcast.partition;
 import com.hazelcast.config.Config;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.instance.Node;
+import com.hazelcast.internal.partition.InternalPartition;
 import com.hazelcast.internal.partition.impl.ReplicaSyncInfo;
 import com.hazelcast.nio.Address;
 import com.hazelcast.spi.partition.IPartition;
@@ -79,7 +80,7 @@ public abstract class AbstractPartitionLostListenerTest extends HazelcastTestSup
         Config config = getConfig();
         config.setProperty("hazelcast.partition.max.parallel.replications", Integer.toString(getMaxParallelReplicaSyncCount()));
         for (int i = 0; i < nodeCount; i++) {
-            config.getMapConfig(getIthMapName(i)).setBackupCount(i);
+            config.getMapConfig(getIthMapName(i)).setBackupCount(Math.min(i, InternalPartition.MAX_BACKUP_COUNT));
         }
         return config;
     }

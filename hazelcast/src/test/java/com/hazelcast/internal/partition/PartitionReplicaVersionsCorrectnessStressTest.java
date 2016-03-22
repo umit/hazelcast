@@ -44,18 +44,16 @@ import static org.junit.Assert.fail;
 @Category(SlowTest.class)
 public class PartitionReplicaVersionsCorrectnessStressTest extends AbstractPartitionLostListenerTest {
 
-    private static final int NODE_COUNT = 5;
-
     private static final int ITEM_COUNT_PER_MAP = 10000;
 
-    @Parameterized.Parameters(name = "numberOfNodesToCrash:{0}")
+    @Parameterized.Parameters(name = "numberOfNodesToCrash:{0},nodeCount:{1}")
     public static Collection<Object[]> parameters() {
-        return Arrays.asList(new Object[][]{{1}, {2}, {3}, {4}});
+        return Arrays.asList(new Object[][]{{1, 7}, {3, 7}, {6, 7}, {1, 10}, {3, 10}, {6, 10}});
     }
 
     @Override
     public int getNodeCount() {
-        return NODE_COUNT;
+        return nodeCount;
     }
 
     protected int getMapEntryCount() {
@@ -64,6 +62,9 @@ public class PartitionReplicaVersionsCorrectnessStressTest extends AbstractParti
 
     @Parameterized.Parameter(0)
     public int numberOfNodesToCrash;
+
+    @Parameterized.Parameter(1)
+    public int nodeCount;
 
     @Test
     public void testReplicaVersionsWhenNodesCrashSimultaneously() throws InterruptedException {
