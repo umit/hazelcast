@@ -479,7 +479,7 @@ public class MigrationManager {
             return;
         }
 
-        // TODO: retink these shift-up migrations. repartitioning algorithm can do a better job.
+        // TODO: rethink these shift-up migrations. repartitioning algorithm can do a better job.
         int lastIndex = InternalPartition.MAX_REPLICA_COUNT - 1;
         for (int index = 1; index < InternalPartition.MAX_REPLICA_COUNT; index++) {
             if (partition.getReplicaAddress(index) != null) {
@@ -498,6 +498,7 @@ public class MigrationManager {
                     }
                     scheduleMigration(migration);
                     lastIndex = i - 1;
+                    break;
                 }
             }
         }
