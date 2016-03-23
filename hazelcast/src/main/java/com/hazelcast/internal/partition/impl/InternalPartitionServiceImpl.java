@@ -552,13 +552,13 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
             final int currentVersion = partitionStateManager.getVersion();
 
             if (newVersion < currentVersion) {
-                logger.warning("Master version should be greater than ours! Current: " + currentVersion
-                        + ", Master: " + newVersion);
+                logger.warning("Master version should be greater than ours! Local version: " + currentVersion
+                        + ", Master version: " + newVersion + " Master: " + nodeEngine.getMasterAddress());
                 return false;
             } else if (newVersion == currentVersion) {
                 if (logger.isFineEnabled()) {
-                    logger.fine("Master version should be greater than ours! Current: " + currentVersion
-                            + ", Master: " + newVersion);
+                    logger.fine("Master version should be greater than ours! Local version: " + currentVersion
+                            + ", Master version: " + newVersion + " Master: " + nodeEngine.getMasterAddress());
                 }
 
                 return true;

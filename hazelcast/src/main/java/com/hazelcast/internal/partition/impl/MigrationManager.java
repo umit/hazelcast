@@ -497,7 +497,6 @@ public class MigrationManager {
                     }
                     scheduleMigration(migration);
                     lastIndex = i - 1;
-                    break;
                 }
             }
         }
@@ -652,7 +651,7 @@ public class MigrationManager {
                 MemberImpl partitionOwner = getPartitionOwner();
                 if (partitionOwner == null) {
                     logger.fine("Partition owner is null. Ignoring " + migrationInfo);
-//                    triggerRepartitioningAfterMigrationFailure();
+                    triggerRepartitioningAfterMigrationFailure();
                     return;
                 }
 
@@ -821,6 +820,8 @@ public class MigrationManager {
                 } else {
                     migrationInfo.setStatus(MigrationStatus.FAILED);
                     internalMigrationListener.onMigrationRollback(MigrationParticipant.MASTER, migrationInfo);
+                    int delta = PARTITION_STATE_VERSION_INCREMENT_DELTA_ON_MIGRATION_FAILURE;
+                    partitionService.getPartitionStateManager().incrementVersion(delta);
                     triggerRepartitioningAfterMigrationFailure();
                 }
 
