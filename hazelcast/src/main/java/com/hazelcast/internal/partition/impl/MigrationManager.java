@@ -43,6 +43,7 @@ import com.hazelcast.util.MutableInteger;
 import com.hazelcast.util.Preconditions;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -217,7 +218,7 @@ public class MigrationManager {
         return activeMigrationInfo;
     }
 
-    public boolean removeActiveMigration(int partitionId) {
+    boolean removeActiveMigration(int partitionId) {
         partitionServiceLock.lock();
         try {
             if (activeMigrationInfo != null) {
@@ -372,7 +373,7 @@ public class MigrationManager {
         }
     }
 
-    public InternalMigrationListener getInternalMigrationListener() {
+    InternalMigrationListener getInternalMigrationListener() {
         return internalMigrationListener;
     }
 
@@ -396,11 +397,11 @@ public class MigrationManager {
         }
     }
 
-    public void schedule(MigrationRunnable runnable) {
+    void schedule(MigrationRunnable runnable) {
         migrationQueue.add(runnable);
     }
 
-    public List<MigrationInfo> getCompletedMigrations() {
+    List<MigrationInfo> getCompletedMigrations() {
         partitionServiceLock.lock();
         try {
             return new ArrayList<MigrationInfo>(completedMigrations);
@@ -409,16 +410,16 @@ public class MigrationManager {
         }
     }
 
-    public boolean hasOnGoingMigration() {
+    boolean hasOnGoingMigration() {
         return activeMigrationInfo != null || migrationQueue.isNonEmpty()
                 || migrationQueue.hasMigrationTasks();
     }
 
-    public int getMigrationQueueSize() {
+    int getMigrationQueueSize() {
         return migrationQueue.size();
     }
 
-    public void reset() {
+    void reset() {
         migrationQueue.clear();
         activeMigrationInfo = null;
         completedMigrations.clear();
@@ -436,7 +437,7 @@ public class MigrationManager {
         migrationQueue.add(new MigrateTask(migrationInfo));
     }
 
-    void repairPartition(int partitionId) {
+    private void repairPartition(int partitionId) {
         InternalPartitionImpl partition = partitionStateManager.getPartitionImpl(partitionId);
 
         if (partition.getOwnerOrNull() == null) {
@@ -461,8 +462,7 @@ public class MigrationManager {
             }
 
             if (destination != null) {
-                // TODO: how do we inform the services about promotion?
-                // run promotion when you get this completed migration?
+                // Promotion will be executed when new partition owner gets this completed migration.
                 MigrationInfo migration =
                         new MigrationInfo(partition.getPartitionId(), null, destination, -1, -1, index, 0);
                 migration.setMaster(node.getThisAddress());
@@ -479,6 +479,7 @@ public class MigrationManager {
             return;
         }
 
+        // TODO: retink these shift-up migrations. repartitioning algorithm can do a better job.
         int lastIndex = InternalPartition.MAX_REPLICA_COUNT - 1;
         for (int index = 1; index < InternalPartition.MAX_REPLICA_COUNT; index++) {
             if (partition.getReplicaAddress(index) != null) {
@@ -549,6 +550,17 @@ public class MigrationManager {
             }
 
             logMigrationStatistics(migrationCount.value, lostCount.value);
+
+            // TODO: debug
+            final int backupCount = partitionService.getMaxAllowedBackupCount();
+            for (int p = 0; p < newState.length; p++) {
+                Address[] addresses = newState[p];
+                for (int i = 0; i <= backupCount; i++) {
+                    assert addresses[i] != null : "Backups: " + backupCount + ", Partition: " + p + " -> "
+                            + Arrays.toString(addresses);
+                }
+            }
+            // -----------
         }
 
         private void logMigrationStatistics(int migrationCount, int lostCount) {
@@ -577,7 +589,6 @@ public class MigrationManager {
             if (migrationAllowed && !hasMigrationTasks) {
                 return true;
             }
-            logger.severe("Scheduling ControlTask");
             triggerControlTask();
             return false;
         }
@@ -588,7 +599,7 @@ public class MigrationManager {
             private final MutableInteger migrationCount;
             private final MutableInteger lostCount;
 
-            public MigrationTaskScheduler(InternalPartitionImpl partition, MutableInteger migrationCount,
+            MigrationTaskScheduler(InternalPartitionImpl partition, MutableInteger migrationCount,
                     MutableInteger lostCount) {
                 partitionId = partition.getPartitionId();
                 this.partition = partition;
@@ -620,7 +631,7 @@ public class MigrationManager {
                             sourceNewReplicaIndex, destinationCurrentReplicaIndex, destinationNewReplicaIndex);
 
                     // Shift up to replica 0 should be handled by repair task
-                    assert !(source == null && destinationNewReplicaIndex == 0) : "ILLEGAL! -> " + migration;
+                    assert !(source == null && destinationNewReplicaIndex == 0) : "ILLEGAL! -> " + migration + ", " + partition;
 
                     migrationCount.value++;
                     if (sourceNewReplicaIndex > 0) {
@@ -636,7 +647,7 @@ public class MigrationManager {
 
         final MigrationInfo migrationInfo;
 
-        public MigrateTask(MigrationInfo migrationInfo) {
+        MigrateTask(MigrationInfo migrationInfo) {
             this.migrationInfo = migrationInfo;
             migrationInfo.setMaster(node.getThisAddress());
         }
@@ -701,7 +712,7 @@ public class MigrationManager {
             Address owner = partition.getOwnerOrNull();
             if (owner == null) {
                 if (migrationInfo.isValid()) {
-                    logger.severe("Partition owner is not set! -> partitionId=" + migrationInfo.getPartitionId()
+                    logger.severe("Skipping migration! Partition owner is not set! -> partitionId=" + migrationInfo.getPartitionId()
                             + " , " + partition + " -VS- " + migrationInfo);
                 }
                 return null;
@@ -898,7 +909,7 @@ public class MigrationManager {
             try {
                 migrationQueue.clear();
 
-                if (partitionService.scheduleFetchFetchMostRecentPartitionTableTaskIfRequired()) {
+                if (partitionService.scheduleFetchMostRecentPartitionTableTaskIfRequired()) {
                     if (logger.isFinestEnabled()) {
                         logger.finest("FetchMostRecentPartitionTableTask scheduled");
                     }

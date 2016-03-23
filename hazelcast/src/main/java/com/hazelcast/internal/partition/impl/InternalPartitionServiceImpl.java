@@ -121,7 +121,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
     private volatile Address lastMaster;
 
-    private volatile Integer fetchPartitionTablesAfterVersion;
+    private volatile int fetchPartitionTablesAfterVersion = -1;
 
     public InternalPartitionServiceImpl(Node node) {
         this.partitionCount = node.groupProperties.getInteger(GroupProperty.PARTITION_COUNT);
@@ -331,12 +331,10 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
             boolean isThisNodeNewMaster = node.isMaster() && !thisAddress.equals(lastMaster);
             if (isThisNodeNewMaster) {
-                if (fetchPartitionTablesAfterVersion != null) {
-                    throw new IllegalStateException("SOMETHING IS WRONG " + fetchPartitionTablesAfterVersion
-                            + " currently removed member: " + member);
-                } else {
-                    fetchPartitionTablesAfterVersion = partitionStateVersionBeforeMemberRemove;
-                }
+                assert fetchPartitionTablesAfterVersion < 0 : "SOMETHING IS WRONG "
+                        + fetchPartitionTablesAfterVersion + " currently removed member: " + member;
+
+                fetchPartitionTablesAfterVersion = partitionStateVersionBeforeMemberRemove;
             }
 
             lastMaster = node.getMasterAddress();
@@ -956,19 +954,14 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         return partitionEventManager;
     }
 
-    public boolean isFetchFetchMostRecentPartitionTableTaskIfRequired() {
-        lock.lock();
-        try {
-            return fetchPartitionTablesAfterVersion != null;
-        } finally {
-            lock.unlock();
-        }
+    public boolean isFetchMostRecentPartitionTableTaskRequired() {
+        return fetchPartitionTablesAfterVersion > -1;
     }
 
-   boolean scheduleFetchFetchMostRecentPartitionTableTaskIfRequired() {
+   boolean scheduleFetchMostRecentPartitionTableTaskIfRequired() {
        lock.lock();
        try {
-           if (fetchPartitionTablesAfterVersion != null) {
+           if (isFetchMostRecentPartitionTableTaskRequired()) {
                migrationManager.schedule(new FetchMostRecentPartitionTableTask(fetchPartitionTablesAfterVersion));
                return true;
            }
@@ -987,7 +980,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
         private PartitionRuntimeState newState;
 
-        public FetchMostRecentPartitionTableTask(int version) {
+        FetchMostRecentPartitionTableTask(int version) {
             maxVersion = version;
         }
 
@@ -1097,7 +1090,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
                     }
                 }
 
-                fetchPartitionTablesAfterVersion = null;
+                fetchPartitionTablesAfterVersion = -1;
             } finally {
                 lock.unlock();
             }
