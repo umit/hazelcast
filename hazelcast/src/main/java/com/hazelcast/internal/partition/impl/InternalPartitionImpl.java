@@ -209,7 +209,7 @@ public class InternalPartitionImpl implements InternalPartition {
             return -1;
         }
 
-        for (int i = 0; i < addresses.length; i++) {
+        for (int i = 0; i < MAX_REPLICA_COUNT; i++) {
             if (address.equals(addresses[i])) {
                 return i;
             }
