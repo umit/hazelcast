@@ -49,6 +49,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -479,29 +480,28 @@ public class MigrationManager {
             return;
         }
 
-        // TODO: rethink these shift-up migrations. repartitioning algorithm can do a better job.
-        int lastIndex = InternalPartition.MAX_REPLICA_COUNT - 1;
-        for (int index = 1; index < InternalPartition.MAX_REPLICA_COUNT; index++) {
-            if (partition.getReplicaAddress(index) != null) {
-                continue;
-            }
-
-            // search for a destination to assign empty index
-            Address destination;
-            for (int i = lastIndex; i > index; i--) {
-                destination = partition.getReplicaAddress(i);
-                if (destination != null) {
-                    MigrationInfo migration = new MigrationInfo(partition.getPartitionId(), null, destination,
-                            -1, -1, i, index);
-                    if (logger.isFinestEnabled()) {
-                        logger.finest("Repair shift up migration is scheduled: " + migration);
-                    }
-                    scheduleMigration(migration);
-                    lastIndex = i - 1;
-                    break;
-                }
-            }
-        }
+        // TODO: retink these shift-up migrations. repartitioning algorithm can do a better job.
+//        int lastIndex = InternalPartition.MAX_REPLICA_COUNT - 1;
+//        for (int index = 1; index < InternalPartition.MAX_REPLICA_COUNT; index++) {
+//            if (partition.getReplicaAddress(index) != null) {
+//                continue;
+//            }
+//
+//            // search for a destination to assign empty index
+//            Address destination;
+//            for (int i = lastIndex; i > index; i--) {
+//                destination = partition.getReplicaAddress(i);
+//                if (destination != null) {
+//                    MigrationInfo migration = new MigrationInfo(partition.getPartitionId(), null, destination,
+//                            -1, -1, i, index);
+//                    if (logger.isFinestEnabled()) {
+//                        logger.finest("Repair shift up migration is scheduled: " + migration);
+//                    }
+//                    scheduleMigration(migration);
+//                    lastIndex = i - 1;
+//                }
+//            }
+//        }
     }
 
     private class RepartitioningTask implements MigrationRunnable {
@@ -522,6 +522,31 @@ public class MigrationManager {
                 if (newState == null) {
                     return;
                 }
+                boolean failed = false;
+                for (int partitionId = 0; partitionId < partitionService.getPartitionCount(); partitionId++) {
+                    boolean nulled = false;
+                    for (Address address : newState[partitionId]) {
+                        if (nulled) {
+                            if (address != null) {
+                                failed = true;
+                                System.err.println(">>> Repartitioning problem:" + Arrays.toString(newState[partitionId]));
+                                break;
+                            }
+                        } else {
+                            if (address == null) {
+                                nulled = true;
+                            }
+                        }
+                    }
+
+                    if (failed) {
+                        break;
+                    }
+                }
+
+                if (failed) {
+                    System.err.println("Repartitioning problem:" + Arrays.deepToString(newState));
+                }
 
                 if (!isAllowed()) {
                     return;
@@ -530,6 +555,7 @@ public class MigrationManager {
                 lastRepartitionTime.set(Clock.currentTimeMillis());
 
                 processNewPartitionState(newState);
+                migrationQueue.add(new CheckPartitionTableTask());
                 if (!partitionService.syncPartitionRuntimeState() && logger.isFinestEnabled()) {
                     logger.finest("All members not synced partition table after repartitioning");
                 }
@@ -640,6 +666,42 @@ public class MigrationManager {
                     }
                     scheduleMigration(migration);
                 }
+            }
+        }
+    }
+
+    class CheckPartitionTableTask implements MigrationRunnable {
+
+        @Override
+        public void run() {
+            partitionServiceLock.lock();
+            try {
+                final InternalPartition[] partitions = partitionStateManager.getPartitions();
+                for (InternalPartition partition : partitions) {
+                    final Set<Address> replicas = new HashSet<Address>();
+                    boolean nulled = false;
+                    for (int i = 0; i < InternalPartition.MAX_REPLICA_COUNT; i++) {
+                        final Address address = partition.getReplicaAddress(i);
+                        if (nulled) {
+                            if (address != null) {
+                                System.err.println("############# " + nodeEngine.getThisAddress() +  " Repartitioning problem: " + partition);
+                                break;
+                            }
+                        } else {
+                            if (address == null) {
+                                nulled = true;
+                            } else if (!replicas.add(address)) {
+                                System.err.println("############# " + nodeEngine.getThisAddress() +  " Duplicate: " + partition);
+                                break;
+                            }
+                        }
+
+                    }
+                }
+
+                System.out.println(nodeEngine.getThisAddress() +  " CheckPartitionTable done");
+            } finally {
+                partitionServiceLock.unlock();
             }
         }
     }
@@ -814,20 +876,9 @@ public class MigrationManager {
                     // updates partition table after successful commit
                     InternalPartitionImpl partition = partitionStateManager.getPartitionImpl(migrationInfo.getPartitionId());
 
-                    // TODO: set replica addresses in a batch, instead of setting individually
-                    if (migrationInfo.getSourceCurrentReplicaIndex() > -1) {
-                        partition.setReplicaAddress(migrationInfo.getSourceCurrentReplicaIndex(), null);
-                    }
+                    partition.apply(migrationInfo);
 
-                    if (migrationInfo.getDestinationCurrentReplicaIndex() > -1) {
-                        partition.setReplicaAddress(migrationInfo.getDestinationCurrentReplicaIndex(), null);
-                    }
-
-                    partition.setReplicaAddress(migrationInfo.getDestinationNewReplicaIndex(), migrationInfo.getDestination());
-
-                    if (migrationInfo.getSourceNewReplicaIndex() > -1) {
-                        partition.setReplicaAddress(migrationInfo.getSourceNewReplicaIndex(), migrationInfo.getSource());
-                    }
+                    System.out.println("############# " + nodeEngine.getThisAddress() +  " Partition: " + partition.getPartitionId() + " Replicas: " + Arrays.toString(partition.getReplicaAddresses()) + " Committed Migration: " + migrationInfo);
 
                 } else {
                     migrationInfo.setStatus(MigrationStatus.FAILED);

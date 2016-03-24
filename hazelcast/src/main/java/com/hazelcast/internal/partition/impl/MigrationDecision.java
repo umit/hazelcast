@@ -47,6 +47,7 @@ class MigrationDecision {
 
         log("INITIAL STATE: " + Arrays.toString(state));
         log("FINAL STATE: " + Arrays.toString(newAddresses));
+        verifyState(oldAddresses, newAddresses, state);
         if (fixCycle(oldAddresses, newAddresses)) {
             log("cycle fixed");
         }

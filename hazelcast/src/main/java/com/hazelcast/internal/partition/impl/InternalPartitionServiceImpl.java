@@ -412,7 +412,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
             int partitionId = migrationInfo.getPartitionId();
             InternalPartitionImpl partition = (InternalPartitionImpl) partitions[partitionId];
-            partition.setReplicaAddress(migrationInfo.getDestinationNewReplicaIndex(), migrationInfo.getDestination());
+            partition.apply(migrationInfo);
 
             return new PartitionRuntimeState(logger, memberInfos, partitions, completedMigrations, getPartitionStateVersion() + 1);
         } finally {
