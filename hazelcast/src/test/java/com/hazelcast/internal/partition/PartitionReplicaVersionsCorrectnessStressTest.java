@@ -122,8 +122,8 @@ public class PartitionReplicaVersionsCorrectnessStressTest extends AbstractParti
                         boolean verified;
                         int i = 1;
                         do {
-                            shiftLeft(expected, i, replicaVersions[i]);
                             verified = Arrays.equals(expected, replicaVersions);
+                            shiftLeft(expected, i, replicaVersions[i - 1]);
                         } while (i++ <= minSurvivingReplicaIndex && !verified);
 
                         if (!verified) {
