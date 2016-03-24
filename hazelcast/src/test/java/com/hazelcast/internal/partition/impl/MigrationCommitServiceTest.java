@@ -26,6 +26,7 @@ import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.TestPartitionUtils;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -64,6 +65,9 @@ public class MigrationCommitServiceTest
 
     private static final int PARTITION_ID_TO_MIGRATE = 0;
 
+
+    private volatile CountDownLatch blockMigrationStartLatch;
+
     private TestHazelcastInstanceFactory factory;
 
     private HazelcastInstance[] instances;
@@ -71,6 +75,7 @@ public class MigrationCommitServiceTest
     @Before
     public void setup()
             throws ExecutionException, InterruptedException {
+        blockMigrationStartLatch = new CountDownLatch(1);
         factory = createHazelcastInstanceFactory(NODE_COUNT);
         instances = factory.newInstances(createConfig(), NODE_COUNT);
         warmUpPartitions(instances);
@@ -105,6 +110,11 @@ public class MigrationCommitServiceTest
 
             service.clearEvents();
         }
+    }
+
+    @After
+    public void after() {
+        blockMigrationStartLatch.countDown();
     }
 
     @Test
@@ -428,7 +438,7 @@ public class MigrationCommitServiceTest
 
         final InternalPartitionServiceImpl partitionService = (InternalPartitionServiceImpl) getPartitionService(instances[0]);
 
-        final CountDownMigrationRollbackOnMaster masterListener = new CountDownMigrationRollbackOnMaster(instances[0], migration);
+        final CountDownMigrationRollbackOnMaster masterListener = new CountDownMigrationRollbackOnMaster(migration);
         partitionService.getMigrationManager().setInternalMigrationListener(masterListener);
         partitionService.getMigrationManager().scheduleMigration(migration);
         assertOpenEventually(masterListener.latch);
@@ -572,10 +582,9 @@ public class MigrationCommitServiceTest
                                                                .setName(MigrationEventCollectingService.SERVICE_NAME)
                                                                .setClassName(MigrationEventCollectingService.class.getName());
         config.getServicesConfig().addServiceConfig(serviceConfig);
-
         config.setProperty(GroupProperty.PARTITION_MAX_PARALLEL_REPLICATIONS, "0");
         config.setProperty(GroupProperty.PARTITION_COUNT, String.valueOf(PARTITION_COUNT));
-        config.setProperty("hazelcast.logging.type", "log4j");
+
         return config;
     }
 
@@ -784,7 +793,7 @@ public class MigrationCommitServiceTest
 
         private final HazelcastInstance instance;
 
-        public RejectMigrationOnComplete(HazelcastInstance instance) {
+        RejectMigrationOnComplete(HazelcastInstance instance) {
             this.instance = instance;
         }
 
@@ -796,18 +805,27 @@ public class MigrationCommitServiceTest
 
     }
 
-    private static class CountDownMigrationRollbackOnMaster
+    private class CountDownMigrationRollbackOnMaster
             extends InternalMigrationListener {
 
         private final CountDownLatch latch = new CountDownLatch(1);
 
-        private final HazelcastInstance instance;
+
 
         private final MigrationInfo expected;
 
-        public CountDownMigrationRollbackOnMaster(HazelcastInstance instance, MigrationInfo expected) {
-            this.instance = instance;
+        private volatile boolean blockMigrations;
+
+        CountDownMigrationRollbackOnMaster(MigrationInfo expected) {
             this.expected = expected;
+        }
+
+        public void onMigrationStart(MigrationParticipant participant, MigrationInfo migrationInfo) {
+            if (participant == MigrationParticipant.MASTER && blockMigrations) {
+                System.out.println("AWAIT");
+                assertOpenEventually(blockMigrationStartLatch);
+                System.out.println("AWAIT DONE");
+            }
         }
 
         @Override
@@ -820,9 +838,7 @@ public class MigrationCommitServiceTest
         @Override
         public void onMigrationRollback(MigrationParticipant participant, MigrationInfo migrationInfo) {
             if (participant == MigrationParticipant.MASTER && expected.equals(migrationInfo)) {
-                final InternalPartitionServiceImpl partitionService = (InternalPartitionServiceImpl) getPartitionService(
-                        instance);
-                partitionService.getMigrationManager().pauseMigration();
+                blockMigrations = true;
                 latch.countDown();
             }
         }
