@@ -21,13 +21,13 @@ import org.junit.Test;
 
 import java.net.UnknownHostException;
 
-import static com.hazelcast.internal.partition.impl.MigrationDecision.fixCycle;
-import static com.hazelcast.internal.partition.impl.MigrationDecision.isCyclic;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class MigrationDecisionCycleTest {
+public class MigrationPlannerCycleTest {
+
+    private MigrationPlanner migrationPlanner = new MigrationPlanner();
 
     @Test
     public void testCycle1()
@@ -38,7 +38,7 @@ public class MigrationDecisionCycleTest {
         final Address[] newReplicas = new Address[]{new Address("localhost", 5702), new Address("localhost",
                 5701), null, null, null, null, null};
 
-        assertTrue(isCyclic(oldReplicas, newReplicas));
+        assertTrue(migrationPlanner.isCyclic(oldReplicas, newReplicas));
     }
 
     @Test
@@ -50,7 +50,7 @@ public class MigrationDecisionCycleTest {
         final Address[] newReplicas = new Address[]{new Address("localhost", 5702), new Address("localhost",
                 5701), null, null, null, null, null};
 
-        assertTrue(fixCycle(oldReplicas, newReplicas));
+        assertTrue(migrationPlanner.fixCycle(oldReplicas, newReplicas));
         assertArrayEquals(oldReplicas, newReplicas);
     }
 
@@ -63,7 +63,7 @@ public class MigrationDecisionCycleTest {
         final Address[] newReplicas = new Address[]{new Address("localhost", 5703), new Address("localhost", 5701), new Address(
                 "localhost", 5702), null, null, null, null};
 
-        assertTrue(isCyclic(oldReplicas, newReplicas));
+        assertTrue(migrationPlanner.isCyclic(oldReplicas, newReplicas));
     }
 
     @Test
@@ -75,7 +75,7 @@ public class MigrationDecisionCycleTest {
         final Address[] newReplicas = new Address[]{new Address("localhost", 5703), new Address("localhost", 5701), new Address(
                 "localhost", 5702), null, null, null, null};
 
-        assertTrue(fixCycle(oldReplicas, newReplicas));
+        assertTrue(migrationPlanner.fixCycle(oldReplicas, newReplicas));
         assertArrayEquals(oldReplicas, newReplicas);
     }
 
@@ -88,7 +88,7 @@ public class MigrationDecisionCycleTest {
         final Address[] newReplicas = new Address[]{new Address("localhost", 5705), new Address("localhost", 5702), new Address(
                 "localhost", 5701), new Address("localhost", 5704), new Address("localhost", 5703), null, null};
 
-        assertTrue(isCyclic(oldReplicas, newReplicas));
+        assertTrue(migrationPlanner.isCyclic(oldReplicas, newReplicas));
     }
 
     @Test
@@ -100,7 +100,7 @@ public class MigrationDecisionCycleTest {
         final Address[] newReplicas = new Address[]{new Address("localhost", 5705), new Address("localhost", 5702), new Address(
                 "localhost", 5701), new Address("localhost", 5704), new Address("localhost", 5703), null, null};
 
-        assertTrue(fixCycle(oldReplicas, newReplicas));
+        assertTrue(migrationPlanner.fixCycle(oldReplicas, newReplicas));
         assertArrayEquals(oldReplicas, newReplicas);
     }
 
@@ -115,7 +115,7 @@ public class MigrationDecisionCycleTest {
                 "localhost", 5701), new Address("localhost", 5704), new Address("localhost", 5703), new Address("localhost",
                 5707), new Address("localhost", 5706)};
 
-        assertTrue(isCyclic(oldReplicas, newReplicas));
+        assertTrue(migrationPlanner.isCyclic(oldReplicas, newReplicas));
     }
 
     @Test
@@ -129,7 +129,7 @@ public class MigrationDecisionCycleTest {
                 "localhost", 5701), new Address("localhost", 5704), new Address("localhost", 5703), new Address("localhost",
                 5707), new Address("localhost", 5706)};
 
-        assertTrue(fixCycle(oldReplicas, newReplicas));
+        assertTrue(migrationPlanner.fixCycle(oldReplicas, newReplicas));
         assertArrayEquals(oldReplicas, newReplicas);
     }
 
@@ -142,7 +142,7 @@ public class MigrationDecisionCycleTest {
         final Address[] newReplicas = new Address[]{new Address("localhost", 5702), new Address("localhost",
                 5703), null, null, null, null, null};
 
-        assertFalse(isCyclic(oldReplicas, newReplicas));
+        assertFalse(migrationPlanner.isCyclic(oldReplicas, newReplicas));
     }
 
     @Test
@@ -154,7 +154,7 @@ public class MigrationDecisionCycleTest {
         final Address[] newReplicas = new Address[]{new Address("localhost", 5706), new Address("localhost", 5702), new Address(
                 "localhost", 5701), new Address("localhost", 5704), new Address("localhost", 5703), null, null};
 
-        assertFalse(isCyclic(oldReplicas, newReplicas));
+        assertFalse(migrationPlanner.isCyclic(oldReplicas, newReplicas));
     }
 
 }

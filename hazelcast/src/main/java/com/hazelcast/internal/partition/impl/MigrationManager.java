@@ -108,6 +108,8 @@ public class MigrationManager {
 
     private final Lock partitionServiceLock;
 
+    private final MigrationPlanner migrationPlanner = new MigrationPlanner();
+
     public MigrationManager(Node node, InternalPartitionServiceImpl service, Lock partitionServiceLock) {
         this.node = node;
         this.nodeEngine = node.nodeEngine;
@@ -195,11 +197,8 @@ public class MigrationManager {
                 if (node.getThisAddress().equals(partitionOwner)) {
                     removeActiveMigration(partitionId);
                 } else {
-                    // TODO: remove "new IllegalStateException()"
                     logger.severe("Failed to finalize migration because this member " + thisAddress
-                            + " is not a participant of the migration: " + migrationInfo,
-                            new IllegalStateException(activeMigrationInfo + "\n"
-                                    + partitionStateManager.getPartitionImpl(partitionId).toString()));
+                            + " is not a participant of the migration: " + migrationInfo);
                 }
             }
         } catch (Exception e) {
@@ -584,8 +583,8 @@ public class MigrationManager {
                 InternalPartitionImpl currentPartition = partitionStateManager.getPartitionImpl(partitionId);
                 Address[] newReplicas = newState[partitionId];
 
-                MigrationDecision.migrate(currentPartition.getReplicaAddresses(), newReplicas,
-                        new MigrationTaskScheduler(currentPartition, migrationCount, lostCount));
+                migrationPlanner.planMigrations(currentPartition.getReplicaAddresses(), newReplicas,
+                        new MigrationScheduler(currentPartition, migrationCount, lostCount));
             }
 
             logMigrationStatistics(migrationCount.value, lostCount.value);
@@ -632,13 +631,13 @@ public class MigrationManager {
             return false;
         }
 
-        private class MigrationTaskScheduler implements MigrationDecision.MigrationCallback {
+        private class MigrationScheduler implements MigrationPlanner.MigrationDecisionCallback {
             private final int partitionId;
             private final InternalPartitionImpl partition;
             private final MutableInteger migrationCount;
             private final MutableInteger lostCount;
 
-            MigrationTaskScheduler(InternalPartitionImpl partition, MutableInteger migrationCount,
+            MigrationScheduler(InternalPartitionImpl partition, MutableInteger migrationCount,
                     MutableInteger lostCount) {
                 partitionId = partition.getPartitionId();
                 this.partition = partition;
@@ -652,8 +651,8 @@ public class MigrationManager {
 
                 if (source == null && destinationCurrentReplicaIndex == -1 && destinationNewReplicaIndex == 0) {
                     assert destination != null;
-                    assert sourceCurrentReplicaIndex == -1 : "invalid index: " + sourceCurrentReplicaIndex;;
-                    assert sourceNewReplicaIndex == -1 : "invalid index: " + sourceNewReplicaIndex;;
+                    assert sourceCurrentReplicaIndex == -1 : "invalid index: " + sourceCurrentReplicaIndex;
+                    assert sourceNewReplicaIndex == -1 : "invalid index: " + sourceNewReplicaIndex;
 
                     lostCount.value++;
                     assignNewPartitionOwner(partitionId, partition, destination);

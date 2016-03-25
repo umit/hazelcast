@@ -97,6 +97,7 @@ public class MigrationAwareServiceTest extends HazelcastTestSupport {
                 {2, InternalPartition.MAX_REPLICA_COUNT},
                 {3, 4},
                 {3, InternalPartition.MAX_REPLICA_COUNT},
+                {6, 10}
         });
     }
 
@@ -165,9 +166,14 @@ public class MigrationAwareServiceTest extends HazelcastTestSupport {
         HazelcastInstance hz = factory.newHazelcastInstance(config);
         warmUpPartitions(hz);
 
-        while (factory.getAllHazelcastInstances().size() < (nodeCount + 1)) {
+        int size = 1;
+        while (size < (nodeCount + 1)) {
             startNodes(config, backupCount + 1);
+            size += (backupCount + 1);
+
             terminateNodes(backupCount);
+            size -= backupCount;
+
             assertPartitionAssignments();
         }
     }
@@ -182,12 +188,16 @@ public class MigrationAwareServiceTest extends HazelcastTestSupport {
 
         Collection<Address> addresses = Collections.emptySet();
 
-        while (factory.getAllHazelcastInstances().size() < (nodeCount + 1)) {
+        int size = 1;
+        while (size < (nodeCount + 1)) {
             int startCount = (backupCount + 1) - addresses.size();
             startNodes(config, addresses);
             startNodes(config, startCount);
+            size += (backupCount + 1);
 
             addresses = terminateNodes(backupCount);
+            size -= backupCount;
+
             assertPartitionAssignments();
         }
     }
@@ -200,11 +210,16 @@ public class MigrationAwareServiceTest extends HazelcastTestSupport {
         fill(hz);
         assertSizeAndData();
 
-        while (factory.getAllHazelcastInstances().size() < (nodeCount + 1)) {
+        int size = 1;
+        while (size < (nodeCount + 1)) {
             startNodes(config, backupCount + 1);
+            size += (backupCount + 1);
+
             assertSizeAndData();
 
             terminateNodes(backupCount);
+            size -= backupCount;
+
             assertSizeAndData();
         }
     }

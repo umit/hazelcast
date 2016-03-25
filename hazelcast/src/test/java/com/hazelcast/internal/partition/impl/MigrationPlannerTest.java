@@ -17,7 +17,7 @@
 package com.hazelcast.internal.partition.impl;
 
 import com.hazelcast.internal.partition.InternalPartition;
-import com.hazelcast.internal.partition.impl.MigrationDecision.MigrationCallback;
+import com.hazelcast.internal.partition.impl.MigrationPlanner.MigrationDecisionCallback;
 import com.hazelcast.nio.Address;
 import org.junit.Test;
 
@@ -25,13 +25,13 @@ import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Random;
 
-import static com.hazelcast.internal.partition.impl.MigrationDecision.migrate;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-public class MigrationDecisionTest {
+public class MigrationPlannerTest {
 
-    private MigrationCallback callback = mock(MigrationCallback.class);
+    private MigrationDecisionCallback callback = mock(MigrationDecisionCallback.class);
+    private MigrationPlanner migrationPlanner = new MigrationPlanner();
 
     @Test
     public void test_MOVE()
@@ -42,7 +42,7 @@ public class MigrationDecisionTest {
         final Address[] newAddresses = new Address[]{new Address("localhost", 5704), new Address("localhost", 5702), new Address(
                 "localhost", 5705), null, null, null, null};
 
-        migrate(oldAddresses, newAddresses, callback);
+        migrationPlanner.planMigrations(oldAddresses, newAddresses, callback);
         verify(callback).migrate(new Address("localhost", 5701), 0, -1, new Address("localhost", 5704), -1, 0);
         verify(callback).migrate(new Address("localhost", 5703), 2, -1, new Address("localhost", 5705), -1, 2);
     }
@@ -56,7 +56,7 @@ public class MigrationDecisionTest {
         final Address[] newAddresses = new Address[]{new Address("localhost", 5701), new Address("localhost", 5704), new Address(
                 "localhost", 5703), null, null, null, null};
 
-        migrate(oldAddresses, newAddresses, callback);
+        migrationPlanner.planMigrations(oldAddresses, newAddresses, callback);
         verify(callback).migrate(null, -1, -1, new Address("localhost", 5704), -1, 1);
     }
 
@@ -69,7 +69,7 @@ public class MigrationDecisionTest {
         final Address[] newAddresses = new Address[]{new Address("localhost", 5704), new Address("localhost", 5701), new Address(
                 "localhost", 5703), null, null, null, null};
 
-        migrate(oldAddresses, newAddresses, callback);
+        migrationPlanner.planMigrations(oldAddresses, newAddresses, callback);
         verify(callback).migrate(new Address("localhost", 5701), 0, 1, new Address("localhost", 5704), -1, 0);
     }
 
@@ -82,7 +82,7 @@ public class MigrationDecisionTest {
         final Address[] newAddresses = new Address[]{new Address("localhost", 5704), new Address("localhost", 5701), new Address(
                 "localhost", 5703), null, null, null, null};
 
-        migrate(oldAddresses, newAddresses, callback);
+        migrationPlanner.planMigrations(oldAddresses, newAddresses, callback);
         verify(callback).migrate(new Address("localhost", 5701), 0, 1, new Address("localhost", 5704), -1, 0);
     }
 
@@ -95,7 +95,7 @@ public class MigrationDecisionTest {
         final Address[] newAddresses = new Address[]{new Address("localhost", 5704), new Address("localhost", 5701), new Address(
                 "localhost", 5702), null, null, null, null};
 
-        migrate(oldAddresses, newAddresses, callback);
+        migrationPlanner.planMigrations(oldAddresses, newAddresses, callback);
         verify(callback).migrate(new Address("localhost", 5701), 0, 1, new Address("localhost", 5704), -1, 0);
         verify(callback).migrate(new Address("localhost", 5703), 2, -1, new Address("localhost", 5702), -1, 2);
     }
@@ -109,7 +109,7 @@ public class MigrationDecisionTest {
         final Address[] newAddresses = new Address[]{new Address("localhost", 5701), new Address("localhost", 5703), new Address(
                 "localhost", 5704), null, null, null, null};
 
-        migrate(oldAddresses, newAddresses, callback);
+        migrationPlanner.planMigrations(oldAddresses, newAddresses, callback);
 
         verify(callback).migrate(null, -1, -1, new Address("localhost", 5703), 2, 1);
         verify(callback).migrate(null, -1, -1, new Address("localhost", 5704), 3, 2);
@@ -124,7 +124,7 @@ public class MigrationDecisionTest {
         final Address[] newAddresses = new Address[]{new Address("localhost", 5701), new Address("localhost", 5703), new Address(
                 "localhost", 5704), new Address("localhost", 5705), null, null, null};
 
-        migrate(oldAddresses, newAddresses, callback);
+        migrationPlanner.planMigrations(oldAddresses, newAddresses, callback);
 
         verify(callback).migrate(new Address("localhost", 5704), 3, -1, new Address("localhost", 5705), -1, 3);
         verify(callback).migrate(new Address("localhost", 5703), 2, -1, new Address("localhost", 5704), -1, 2);
@@ -142,7 +142,7 @@ public class MigrationDecisionTest {
                 "localhost", 5705), new Address("localhost", 5706), new Address("localhost", 5702), new Address("localhost",
                 5701), null};
 
-        migrate(oldAddresses, newAddresses, callback);
+        migrationPlanner.planMigrations(oldAddresses, newAddresses, callback);
         verify(callback).migrate(new Address("localhost", 5701), 0, 5, new Address("localhost", 5704), -1, 0);
         verify(callback).migrate(new Address("localhost", 5705), 3, -1, new Address("localhost", 5706), -1, 3);
         verify(callback).migrate(new Address("localhost", 5703), 2, -1, new Address("localhost", 5705), -1, 2);
@@ -158,7 +158,7 @@ public class MigrationDecisionTest {
         final Address[] newAddresses = new Address[]{new Address("localhost", 5704), new Address("localhost", 5703), new Address(
                 "localhost", 5705), new Address("localhost", 5706), new Address("localhost", 5701), null, null};
 
-        migrate(oldAddresses, newAddresses, callback);
+        migrationPlanner.planMigrations(oldAddresses, newAddresses, callback);
         verify(callback).migrate(new Address("localhost", 5701), 0, 4, new Address("localhost", 5704), -1, 0);
         verify(callback).migrate(new Address("localhost", 5705), 3, -1, new Address("localhost", 5706), -1, 3);
         verify(callback).migrate(new Address("localhost", 5703), 2, -1, new Address("localhost", 5705), -1, 2);
@@ -173,7 +173,7 @@ public class MigrationDecisionTest {
         final Address[] newAddresses = new Address[]{new Address("localhost", 5701), new Address("localhost", 5702), new Address(
                 "localhost", 5703), null, null, null, null};
 
-        migrate(oldAddresses, newAddresses, callback);
+        migrationPlanner.planMigrations(oldAddresses, newAddresses, callback);
         verify(callback).migrate(new Address("localhost", 5705), 3, -1, null, -1, -1);
     }
 
@@ -186,7 +186,7 @@ public class MigrationDecisionTest {
         final Address[] newAddresses = new Address[]{new Address("localhost", 5701), new Address("localhost", 5704), new Address(
                 "localhost", 5703), null, null, null, null};
 
-        migrate(oldAddresses, newAddresses, callback);
+        migrationPlanner.planMigrations(oldAddresses, newAddresses, callback);
         verify(callback).migrate(new Address("localhost", 5702), 1, -1, new Address("localhost", 5704), 3, 1);
     }
 
@@ -199,7 +199,7 @@ public class MigrationDecisionTest {
         final Address[] newAddresses = new Address[]{new Address("localhost", 5702), new Address("localhost", 5704), new Address(
                 "localhost", 5703), null, null, null, null};
 
-        migrate(oldAddresses, newAddresses, callback);
+        migrationPlanner.planMigrations(oldAddresses, newAddresses, callback);
         verify(callback).migrate(new Address("localhost", 5702), 1, -1, new Address("localhost", 5704), 3, 1);
         verify(callback).migrate(new Address("localhost", 5701), 0, -1, new Address("localhost", 5702), -1, 0);
     }
@@ -213,7 +213,7 @@ public class MigrationDecisionTest {
         final Address[] newAddresses = new Address[]{new Address("localhost", 5702), new Address("localhost", 5703), new Address(
                 "localhost", 5704), null, null, null, null};
 
-        migrate(oldAddresses, newAddresses, callback);
+        migrationPlanner.planMigrations(oldAddresses, newAddresses, callback);
         verify(callback).migrate(null, -1, -1, new Address("localhost", 5703), 2, 1);
         verify(callback).migrate(null, -1, -1, new Address("localhost", 5704), 3, 2);
     }
@@ -243,7 +243,7 @@ public class MigrationDecisionTest {
 
         shuffle(newAddresses, initialLen + newLen);
 
-        migrate(oldAddresses, newAddresses, callback);
+        migrationPlanner.planMigrations(oldAddresses, newAddresses, callback);
     }
 
     private void shuffle(Address[] array, int len) {
