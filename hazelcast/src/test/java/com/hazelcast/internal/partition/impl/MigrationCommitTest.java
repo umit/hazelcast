@@ -353,7 +353,7 @@ public class MigrationCommitTest
             @Override
             public void run()
                     throws Exception {
-                assertTrue(masterListener.commit);
+                assertTrue(masterListener.failed);
             }
         });
 
@@ -464,7 +464,7 @@ public class MigrationCommitTest
 
         private final AtomicReference<MigrationInfo> migrationInfoRef = new AtomicReference<MigrationInfo>();
 
-        private volatile boolean commit;
+        private volatile boolean failed;
 
         private HazelcastInstance instance;
 
@@ -474,7 +474,7 @@ public class MigrationCommitTest
 
         @Override
         public void onMigrationStart(MigrationParticipant participant, MigrationInfo migrationInfo) {
-            if (commit) {
+            if (failed) {
                 System.err.println("Ignoring new migration start: " + migrationInfo + " as participant: " + participant
                         + " since expected migration is already committed");
                 return;
@@ -493,21 +493,21 @@ public class MigrationCommitTest
         }
 
         @Override
-        public void onMigrationCommit(MigrationParticipant participant, MigrationInfo migrationInfo) {
-            if (commit) {
-                System.err.println("Ignoring new migration commit: " + migrationInfo + " as participant: " + participant
-                        + " since expected migration is already committed");
+        public void onMigrationComplete(MigrationParticipant participant, MigrationInfo migrationInfo, boolean success) {
+            if (failed) {
+                System.err.println("Ignoring new migration complete: " + migrationInfo + " as participant: " + participant
+                        + " since expected migration is already completed");
                 return;
             }
 
             MigrationInfo collected = migrationInfoRef.get();
-            commit = migrationInfo.equals(collected);
-            if (commit) {
+            failed = !success && migrationInfo.equals(collected);
+            if (failed) {
                 resetInternalMigrationListener(instance);
             } else {
                 System.err.println(
-                        "collect commit failed! collected migration: " + collected + " rollback migration: " + migrationInfo
-                                + " participant: " + participant);
+                        "collect complete failed! collected migration: " + collected + " rollback migration: " + migrationInfo
+                                + " participant: " + participant + " success: " + success);
             }
         }
 
