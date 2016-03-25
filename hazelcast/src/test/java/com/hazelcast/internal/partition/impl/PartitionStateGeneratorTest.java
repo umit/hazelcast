@@ -225,7 +225,6 @@ public class PartitionStateGeneratorTest {
                     }
                     groups = memberGroupFactory.createMemberGroups(memberList);
                     println("PARTITION-COUNT= " + partitionCount + ", MEMBER-COUNT= " + memberCount + ", GROUP-COUNT= " + groups.size());
-                    //todo
                     state = generator.reArrange(memberGroupFactory.createMemberGroups(memberList), toPartitionView(state));
                     checkTestResult(state, groups, partitionCount);
                     previousMemberCount = memberCount;

@@ -22,7 +22,12 @@ import com.hazelcast.internal.partition.PartitionListener;
 import com.hazelcast.logging.ILogger;
 
 /**
- * TODO: Javadoc Pending...
+ * PartitionListener used to listen partition change events internally.
+ * Most significant responsibility of this listener is to increment
+ * partition-state version on each change.
+ * <p>
+ * Also this listener delegates the partition change events to its child
+ * listeners.
  */
 final class InternalPartitionListener implements PartitionListener {
     private final Node node;
@@ -67,5 +72,15 @@ final class InternalPartitionListener implements PartitionListener {
     void addChildListener(PartitionListener listener) {
         PartitionListenerNode head = listenerHead;
         listenerHead = new PartitionListenerNode(listener, head);
+    }
+
+    private static final class PartitionListenerNode {
+        final PartitionListener listener;
+        final PartitionListenerNode next;
+
+        PartitionListenerNode(PartitionListener listener, PartitionListenerNode next) {
+            this.listener = listener;
+            this.next = next;
+        }
     }
 }

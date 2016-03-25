@@ -234,7 +234,7 @@ public class MigrationCommitServiceTest
         assertMigrationSourceCommit(migration);
         assertMigrationDestinationCommit(migration);
 
-        final Address oldReplicaOwner = migration.getOldReplicaOwner();
+        final Address oldReplicaOwner = migration.getOldBackupReplicaOwner();
         if (oldReplicaOwner != null) {
             assertTrueEventually(new AssertTask() {
                 @Override
@@ -261,7 +261,7 @@ public class MigrationCommitServiceTest
         assertMigrationSourceRollback(migration);
         assertMigrationDestinationRollback(migration);
 
-        final Address oldReplicaOwner = migration.getOldReplicaOwner();
+        final Address oldReplicaOwner = migration.getOldBackupReplicaOwner();
         if (oldReplicaOwner != null) {
             assertTrueAllTheTime(new AssertTask() {
                 @Override
@@ -360,7 +360,7 @@ public class MigrationCommitServiceTest
 
         final MigrationInfo migration = new MigrationInfo(partitionId, source, destination, oldReplicaIndex, newReplicaIndex, -1,
                 oldReplicaIndex);
-        migration.setOldReplicaOwner(oldReplicaOwner);
+        migration.setOldBackupReplicaOwner(oldReplicaOwner);
 
         return migration;
     }
@@ -385,7 +385,7 @@ public class MigrationCommitServiceTest
 
         final MigrationInfo migration = new MigrationInfo(0, oldReplicaOwner, null, replicaIndexToClear, -1, -1, -1);
         migration.setMaster(getAddress(instances[0]));
-        migration.setOldReplicaOwner(oldReplicaOwner);
+        migration.setOldBackupReplicaOwner(oldReplicaOwner);
         migration.setStatus(MigrationStatus.SUCCESS);
         partitionService.getMigrationManager().addCompletedMigration(migration);
         partitionService.getMigrationManager().scheduleActiveMigrationFinalization(migration);

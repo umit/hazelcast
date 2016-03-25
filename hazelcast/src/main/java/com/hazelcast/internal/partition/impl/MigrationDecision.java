@@ -160,6 +160,7 @@ class MigrationDecision {
         }
     }
 
+    // TODO: assert
     private static void verifyState(Address[] oldAddresses, Address[] newAddresses, Address[] state) {
         Set<Address> verify = new HashSet<Address>();
         for (Address s : state) {
@@ -209,17 +210,37 @@ class MigrationDecision {
         return cyclic;
     }
 
-    private static boolean isCyclic(Address[] oldReplicas, Address[] newReplicas, int index) {
+    private static boolean isCyclic(Address[] oldReplicas, Address[] newReplicas, final int index) {
         final Address newOwner = newReplicas[index];
+        int firstIndex = index;
+
+        int k = 0;
         while (true) {
-            int nextIndex = InternalPartitionImpl.getReplicaIndex(newReplicas, oldReplicas[index]);
+            int nextIndex = InternalPartitionImpl.getReplicaIndex(newReplicas, oldReplicas[firstIndex]);
             if (nextIndex == -1) {
                 return false;
-            } else if (newOwner.equals(oldReplicas[nextIndex])) {
-                return true;
-            } else {
-                index = nextIndex;
             }
+
+            if (firstIndex == nextIndex) {
+                return false;
+            }
+
+            if (newOwner.equals(oldReplicas[nextIndex])) {
+                return true;
+            }
+
+            // TODO: assert
+            if (k++ > 1000) {
+                System.err.println("**************** Old: " + Arrays.toString(oldReplicas) + ", new: " + Arrays.toString(newReplicas) + ", index: " + index
+                    + ", firstIndex: " + firstIndex + ", nextIndex: " + nextIndex);
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            firstIndex = nextIndex;
         }
     }
 

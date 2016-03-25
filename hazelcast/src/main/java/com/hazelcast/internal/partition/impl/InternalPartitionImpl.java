@@ -139,24 +139,6 @@ public class InternalPartitionImpl implements InternalPartition {
         callPartitionListener(replicaIndex, oldAddress, newAddress);
     }
 
-    // TODO we may move this method to somewhere else
-    void apply(MigrationInfo migrationInfo) {
-        // TODO: set replica addresses in a batch, instead of setting individually
-        if (migrationInfo.getSourceCurrentReplicaIndex() > -1) {
-            setReplicaAddress(migrationInfo.getSourceCurrentReplicaIndex(), null);
-        }
-
-        if (migrationInfo.getDestinationCurrentReplicaIndex() > -1) {
-            setReplicaAddress(migrationInfo.getDestinationCurrentReplicaIndex(), null);
-        }
-
-        setReplicaAddress(migrationInfo.getDestinationNewReplicaIndex(), migrationInfo.getDestination());
-
-        if (migrationInfo.getSourceNewReplicaIndex() > -1) {
-            setReplicaAddress(migrationInfo.getSourceNewReplicaIndex(), migrationInfo.getSource());
-        }
-    }
-
     private void callPartitionListener(Address[] newAddresses, Address[] oldAddresses) {
         if (partitionListener != null) {
             for (int replicaIndex = 0; replicaIndex < MAX_REPLICA_COUNT; replicaIndex++) {

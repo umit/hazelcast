@@ -87,16 +87,14 @@ public final class FinalizeMigrationOperation extends AbstractOperation
                 }
             } else if (migrationInfo.getSourceCurrentReplicaIndex() != keepReplicaIndex && keepReplicaIndex > 1) {
                 long[] versions = replicaManager.getPartitionReplicaVersions(partitionId);
+                // No need to set versions back right now. actual version array is modified directly.
                 Arrays.fill(versions, 0, keepReplicaIndex - 1, 0);
-                // TODO: no need to set versions back right now. actual version array is modified directly.
-                // replicaManager.setPartitionReplicaVersions(partitionId, versions, keepReplicaIndex);
 
                 if (getLogger().isFinestEnabled()) {
                     getLogger().finest("Replica versions are set after MOVE COPY BACK migration. partitionId=" + partitionId + " replica versions=" + Arrays.toString(versions));
                 }
             }
         } else if (endpoint == MigrationEndpoint.DESTINATION && !success) {
-            // TODO: !!! handle destination rollback !!!
             int destinationCurrentReplicaIndex = migrationInfo.getDestinationCurrentReplicaIndex();
             if (destinationCurrentReplicaIndex == -1) {
                 replicaManager.clearPartitionReplicaVersions(partitionId);
@@ -107,7 +105,7 @@ public final class FinalizeMigrationOperation extends AbstractOperation
                 long[] versions = replicaManager.getPartitionReplicaVersions(partitionId);
                 int replicaOffset = migrationInfo.getDestinationCurrentReplicaIndex() <= 1 ? 1 : migrationInfo
                         .getDestinationCurrentReplicaIndex();
-                // TODO: no need to set versions back right now. actual version array is modified directly.
+                // No need to set versions back right now. actual version array is modified directly.
                 Arrays.fill(versions, 0, replicaOffset - 1, 0);
 
                 if (getLogger().isFinestEnabled()) {

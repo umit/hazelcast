@@ -75,8 +75,8 @@ public class MigrationInfo implements DataSerializable {
     private int destinationCurrentReplicaIndex;
     private int destinationNewReplicaIndex;
 
-    // TODO: fix name
-    private Address oldReplicaOwner;
+    // old replica owner of sourceNewReplicaIndex
+    private Address oldBackupReplicaOwner;
 
     private final AtomicBoolean processing = new AtomicBoolean(false);
     private volatile MigrationStatus status;
@@ -104,7 +104,7 @@ public class MigrationInfo implements DataSerializable {
         copy.uuid = uuid;
         copy.master = master;
         copy.status = status;
-        copy.oldReplicaOwner = oldReplicaOwner;
+        copy.oldBackupReplicaOwner = oldBackupReplicaOwner;
         return copy;
     }
 
@@ -128,32 +128,12 @@ public class MigrationInfo implements DataSerializable {
         return sourceNewReplicaIndex;
     }
 
-    public MigrationInfo setSourceCurrentReplicaIndex(int sourceCurrentReplicaIndex) {
-        this.sourceCurrentReplicaIndex = sourceCurrentReplicaIndex;
-        return this;
-    }
-
-    public MigrationInfo setSourceNewReplicaIndex(int sourceNewReplicaIndex) {
-        this.sourceNewReplicaIndex = sourceNewReplicaIndex;
-        return this;
-    }
-
     public int getDestinationCurrentReplicaIndex() {
         return destinationCurrentReplicaIndex;
     }
 
-    public MigrationInfo setDestinationCurrentReplicaIndex(int destinationCurrentReplicaIndex) {
-        this.destinationCurrentReplicaIndex = destinationCurrentReplicaIndex;
-        return this;
-    }
-
     public int getDestinationNewReplicaIndex() {
         return destinationNewReplicaIndex;
-    }
-
-    public MigrationInfo setDestinationNewReplicaIndex(int destinationNewReplicaIndex) {
-        this.destinationNewReplicaIndex = destinationNewReplicaIndex;
-        return this;
     }
 
     public Address getMaster() {
@@ -165,12 +145,12 @@ public class MigrationInfo implements DataSerializable {
         return this;
     }
 
-    public Address getOldReplicaOwner() {
-        return oldReplicaOwner;
+    public Address getOldBackupReplicaOwner() {
+        return oldBackupReplicaOwner;
     }
 
-    public MigrationInfo setOldReplicaOwner(Address oldKeepReplicaOwner) {
-        this.oldReplicaOwner = oldKeepReplicaOwner;
+    public MigrationInfo setOldBackupReplicaOwner(Address oldKeepReplicaOwner) {
+        this.oldBackupReplicaOwner = oldKeepReplicaOwner;
         return this;
     }
 
@@ -224,10 +204,10 @@ public class MigrationInfo implements DataSerializable {
 
         master.writeData(out);
 
-        boolean hasOld = oldReplicaOwner != null;
+        boolean hasOld = oldBackupReplicaOwner != null;
         out.writeBoolean(hasOld);
         if (hasOld) {
-            oldReplicaOwner.writeData(out);
+            oldBackupReplicaOwner.writeData(out);
         }
     }
 
@@ -257,8 +237,8 @@ public class MigrationInfo implements DataSerializable {
         master.readData(in);
 
         if (in.readBoolean()) {
-            oldReplicaOwner = new Address();
-            oldReplicaOwner.readData(in);
+            oldBackupReplicaOwner = new Address();
+            oldBackupReplicaOwner.readData(in);
         }
     }
 

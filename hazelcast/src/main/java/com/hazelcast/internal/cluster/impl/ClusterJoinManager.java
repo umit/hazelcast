@@ -500,7 +500,6 @@ public class ClusterJoinManager {
                 int count = members.size() - 1 + setJoins.size();
                 List<Future> calls = new ArrayList<Future>(count);
                 PartitionRuntimeState partitionState = null;
-                // TODO BASRI we need a more understandable check here
                 if (!node.partitionService.isFetchMostRecentPartitionTableTaskRequired()) {
                     partitionState = node.partitionService.createPartitionState();;
                 }

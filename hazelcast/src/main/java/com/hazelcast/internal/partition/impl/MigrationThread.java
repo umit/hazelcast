@@ -25,8 +25,8 @@ import java.util.concurrent.TimeUnit;
 import static java.lang.Math.max;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * MigrationThread is responsible to execute migration related tasks submitted to its
+ * migration-queue.
  */
 class MigrationThread extends Thread implements Runnable {
     private final MigrationManager migrationManager;
@@ -90,7 +90,7 @@ class MigrationThread extends Thread implements Runnable {
         }
     }
 
-    boolean processTask(MigrationRunnable runnable) {
+    private boolean processTask(MigrationRunnable runnable) {
         try {
             if (runnable == null || isInterrupted()) {
                 return false;
