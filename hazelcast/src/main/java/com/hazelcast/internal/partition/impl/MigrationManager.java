@@ -69,6 +69,7 @@ import static com.hazelcast.spi.partition.IPartitionService.SERVICE_NAME;
  */
 public class MigrationManager {
 
+    private static final boolean ASSERTION_ENABLED = MigrationManager.class.desiredAssertionStatus();
     private static final int DEFAULT_PAUSE_MILLIS = 1000;
     private static final int PARTITION_STATE_VERSION_INCREMENT_DELTA_ON_MIGRATION_FAILURE = 2;
     private static final boolean DISABLE_RESUME_EVENTUALLY
@@ -528,34 +529,6 @@ public class MigrationManager {
                     return;
                 }
 
-                // TODO: DEBUG
-                boolean failed = false;
-                for (int partitionId = 0; partitionId < partitionService.getPartitionCount(); partitionId++) {
-                    boolean nulled = false;
-                    for (Address address : newState[partitionId]) {
-                        if (nulled) {
-                            if (address != null) {
-                                failed = true;
-                                System.err.println(">>> Repartitioning problem:" + Arrays.toString(newState[partitionId]));
-                                break;
-                            }
-                        } else {
-                            if (address == null) {
-                                nulled = true;
-                            }
-                        }
-                    }
-
-                    if (failed) {
-                        break;
-                    }
-                }
-
-                if (failed) {
-                    System.err.println("Repartitioning problem:" + Arrays.deepToString(newState));
-                }
-                // ------------------
-
                 if (!isAllowed()) {
                     return;
                 }
@@ -564,8 +537,9 @@ public class MigrationManager {
 
                 processNewPartitionState(newState);
 
-                // TODO: DEBUG
-                migrationQueue.add(new CheckPartitionTableTask());
+                if (ASSERTION_ENABLED) {
+                    migrationQueue.add(new CheckPartitionTableTask());
+                }
 
                 if (!partitionService.syncPartitionRuntimeState() && logger.isFinestEnabled()) {
                     logger.finest("All members not synced partition table after repartitioning");
@@ -588,17 +562,6 @@ public class MigrationManager {
             }
 
             logMigrationStatistics(migrationCount.value, lostCount.value);
-
-            // TODO: debug
-            final int backupCount = partitionService.getMaxAllowedBackupCount();
-            for (int p = 0; p < newState.length; p++) {
-                Address[] addresses = newState[p];
-                for (int i = 0; i <= backupCount; i++) {
-                    assert addresses[i] != null : "Backups: " + backupCount + ", Partition: " + p + " -> "
-                            + Arrays.toString(addresses);
-                }
-            }
-            // -----------
         }
 
         private void logMigrationStatistics(int migrationCount, int lostCount) {
@@ -681,36 +644,40 @@ public class MigrationManager {
         }
     }
 
-    class CheckPartitionTableTask implements MigrationRunnable {
+    private class CheckPartitionTableTask implements MigrationRunnable {
 
         @Override
         public void run() {
+            if (!ASSERTION_ENABLED) {
+                return;
+            }
+
             partitionServiceLock.lock();
             try {
                 final InternalPartition[] partitions = partitionStateManager.getPartitions();
+                final int maxBackupCount = partitionService.getMaxAllowedBackupCount();
+                final Set<Address> replicas = new HashSet<Address>();
+
                 for (InternalPartition partition : partitions) {
-                    final Set<Address> replicas = new HashSet<Address>();
-                    boolean nulled = false;
-                    for (int i = 0; i < InternalPartition.MAX_REPLICA_COUNT; i++) {
-                        final Address address = partition.getReplicaAddress(i);
-                        if (nulled) {
-                            if (address != null) {
-                                System.err.println("############# " + nodeEngine.getThisAddress() +  " Repartitioning problem: " + partition);
-                                break;
-                            }
+                    replicas.clear();
+
+                    for (int index = 0; index < InternalPartition.MAX_REPLICA_COUNT; index++) {
+                        final Address address = partition.getReplicaAddress(index);
+                        if (index <= maxBackupCount) {
+                            assert address != null : "Repartitioning problem, missing replica! "
+                                    + "Current replica: " + index + ", Max backups: " + maxBackupCount
+                                    + " -> " + partition;
                         } else {
-                            if (address == null) {
-                                nulled = true;
-                            } else if (!replicas.add(address)) {
-                                System.err.println("############# " + nodeEngine.getThisAddress() +  " Duplicate: " + partition);
-                                break;
-                            }
+                            assert address == null : "Repartitioning problem, leaking replica! "
+                                    + "Current replica: " + index + ", Max backups: " + maxBackupCount
+                                    + " -> " + partition;
                         }
 
+                        if (address != null) {
+                            assert replicas.add(address) : "Duplicate address in " + partition;
+                        }
                     }
                 }
-
-                System.out.println(nodeEngine.getThisAddress() +  " CheckPartitionTable done");
             } finally {
                 partitionServiceLock.unlock();
             }

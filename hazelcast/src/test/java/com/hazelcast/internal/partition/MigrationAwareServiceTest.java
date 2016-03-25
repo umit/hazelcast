@@ -579,7 +579,6 @@ public class MigrationAwareServiceTest extends HazelcastTestSupport {
         public void run() throws Exception {
             SampleMigrationAwareService service = getService();
             service.data.put(getPartitionId(), value);
-            getLogger().info("Partition: " + getPartitionId() + ", replica: " + getReplicaIndex() + ", value: " + value);
         }
 
         @Override
