@@ -102,7 +102,7 @@ public class MigrationEvent implements DataSerializable, PartitionEvent {
     /**
      * Migration status: Started, completed or failed
      */
-    public static enum MigrationStatus {
+    public enum MigrationStatus {
         /**
          * Migration has been started
          */

@@ -589,7 +589,6 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
                 // But from API point of view, we should provide explicit guarantees.
                 // For the time being, leaving this stuff as is to not to change behaviour.
 
-                // TODO BASRI IS THIS STILL NECESSARY? CAN WE MOVE UPDATEALLPARTITIONS(partitions) BEFORE FOR LOOP AND REMOVE NEXT LINE?
                 partitionStateManager.updateReplicaAddresses(partitionInfo.getPartitionId(), partitionInfo.getReplicaAddresses());
                 migrationManager.scheduleActiveMigrationFinalization(completedMigration);
             }

@@ -279,8 +279,7 @@ public class MigrationManager {
                 // shift up when a partition owner is removed
                 assert migrationInfo.getStatus() == MigrationStatus.SUCCESS
                         : "Promotion status should be SUCCESS! -> " + migrationInfo.getStatus();
-                // TODO BASRI source is null here. we need to move partition lost event dispatching logic to PartitionStateManger
-                PromoteFromBackupOperation op = new PromoteFromBackupOperation(migrationInfo.getSource(), migrationInfo.getDestinationCurrentReplicaIndex());
+                PromoteFromBackupOperation op = new PromoteFromBackupOperation(migrationInfo.getDestinationCurrentReplicaIndex());
                 op.setPartitionId(migrationInfo.getPartitionId()).setNodeEngine(nodeEngine).setService(partitionService);
                 nodeEngine.getOperationService().executeOperation(op);
 

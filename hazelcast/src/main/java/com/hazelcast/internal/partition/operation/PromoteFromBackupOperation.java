@@ -19,14 +19,12 @@ package com.hazelcast.internal.partition.operation;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MigrationEvent;
 import com.hazelcast.core.MigrationEvent.MigrationStatus;
-import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.internal.partition.InternalPartitionService;
 import com.hazelcast.internal.partition.MigrationCycleOperation;
 import com.hazelcast.internal.partition.impl.InternalPartitionImpl;
 import com.hazelcast.internal.partition.impl.InternalPartitionServiceImpl;
 import com.hazelcast.internal.partition.impl.PartitionStateManager;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.spi.partition.IPartitionLostEvent;
@@ -60,15 +58,12 @@ public final class PromoteFromBackupOperation
         extends AbstractOperation
         implements PartitionAwareOperation, MigrationCycleOperation {
 
-    private final Address oldAddress;
-
     // this is the replica index of the partition owner before the promotion.
     private final int currentReplicaIndex;
 
     private ILogger logger;
 
-    public PromoteFromBackupOperation(Address oldAddress, int currentReplicaIndex) {
-        this.oldAddress = oldAddress;
+    public PromoteFromBackupOperation(int currentReplicaIndex) {
         this.currentReplicaIndex = currentReplicaIndex;
     }
 
@@ -100,15 +95,14 @@ public final class PromoteFromBackupOperation
         final int partitionId = getPartitionId();
         final NodeEngine nodeEngine = getNodeEngine();
         final Member localMember = nodeEngine.getLocalMember();
-        final MemberImpl deadMember = new MemberImpl(oldAddress, false);
-        final MigrationEvent event = new MigrationEvent(partitionId, deadMember, localMember, status);
+        final MigrationEvent event = new MigrationEvent(partitionId, null, localMember, status);
 
         final EventService eventService = nodeEngine.getEventService();
         final Collection<EventRegistration> registrations = eventService.getRegistrations(SERVICE_NAME, MIGRATION_EVENT_TOPIC);
         eventService.publishEvent(SERVICE_NAME, registrations, event, partitionId);
     }
 
-    void shiftUpReplicaVersions() {
+    private void shiftUpReplicaVersions() {
         final int partitionId = getPartitionId();
         try {
             final InternalPartitionService partitionService = getService();
@@ -138,7 +132,7 @@ public final class PromoteFromBackupOperation
         }
     }
 
-    void migrateServices() {
+    private void migrateServices() {
         try {
             sendToAllMigrationAwareServices(new PartitionMigrationEvent(DESTINATION, getPartitionId(), currentReplicaIndex, 0));
         } finally {
@@ -195,7 +189,7 @@ public final class PromoteFromBackupOperation
         throw new UnsupportedOperationException();
     }
 
-    static class InternalPartitionLostEventPublisher
+    private static class InternalPartitionLostEventPublisher
             implements Runnable {
 
         private final NodeEngineImpl nodeEngine;
