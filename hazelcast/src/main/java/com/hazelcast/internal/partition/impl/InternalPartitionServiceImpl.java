@@ -298,7 +298,6 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
                 if (partitionStateManager.isInitialized()) {
                     final ClusterState clusterState = nodeEngine.getClusterService().getClusterState();
                     if (clusterState == ClusterState.ACTIVE) {
-                        // TODO: is version increment still needed?
                         partitionStateManager.incrementVersion();
                         migrationManager.triggerControlTask();
                     }
@@ -323,7 +322,6 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
             if (node.isMaster() && partitionStateManager.isInitialized()
                     && node.getClusterService().getClusterState() == ClusterState.ACTIVE) {
-                // TODO: is version increment still needed?
                 partitionStateManager.incrementVersion();
             }
 

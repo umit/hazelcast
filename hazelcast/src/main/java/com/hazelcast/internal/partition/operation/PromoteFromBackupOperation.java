@@ -61,7 +61,9 @@ public final class PromoteFromBackupOperation
         implements PartitionAwareOperation, MigrationCycleOperation {
 
     private final Address oldAddress;
-    private final int currentReplicaIndex; // TODO BASRI ADD EXPLANATION
+
+    // this is the replica index of the partition owner before the promotion.
+    private final int currentReplicaIndex;
 
     private ILogger logger;
 
@@ -140,11 +142,10 @@ public final class PromoteFromBackupOperation
         try {
             sendToAllMigrationAwareServices(new PartitionMigrationEvent(DESTINATION, getPartitionId(), currentReplicaIndex, 0));
         } finally {
-            clearPartitionMigratingFlag(); // TODO BASRI IS THIS NECESSARY
+            clearPartitionMigratingFlag();
         }
     }
 
-    // TODO BASRI MOVE THIS
     private void sendPartitionLostEvent(int partitionId, int lostReplicaIndex) {
         final IPartitionLostEvent event = new IPartitionLostEvent(partitionId, lostReplicaIndex,
                 getNodeEngine().getThisAddress());
