@@ -381,10 +381,10 @@ public class MigrationAwareServiceTest extends HazelcastTestSupport {
 
                             for (int replica = 1; replica <= actualBackupCount; replica++) {
                                 Address address = partition.getReplicaAddress(replica);
-                                assertNotNull("Replica: " + replica + " is not found in " + partition.toString(), address);
+                                assertNotNull("Replica: " + replica + " is not found in " + partition, address);
 
                                 HazelcastInstance backupInstance = factory.getInstance(address);
-                                assertNotNull("Instance for " + address + " is not found!", backupInstance);
+                                assertNotNull("Instance for " + address + " is not found! -> " + partition, backupInstance);
 
                                 Node backupNode = getNode(backupInstance);
                                 assertNotNull(backupNode);
