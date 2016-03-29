@@ -28,8 +28,7 @@ import java.util.Collection;
 @RunWith(Parameterized.class)
 @Parameterized.UseParametersRunnerFactory(HazelcastParametersRunnerFactory.class)
 @Category({QuickTest.class/*, ParallelTest.class*/})
-//@Ignore // related issue https://github.com/hazelcast/hazelcast/issues/5444
-public class MigrationCorrectnessTest extends AbstractMigrationCorrectnessTest {
+public class PartitionAssignmentsCorrectnessTest extends AbstractPartitionAssignmentsCorrectnessTest {
 
     @Parameterized.Parameters(name = "backups:{0},nodes:{1}")
     public static Collection<Object[]> parameters() {
