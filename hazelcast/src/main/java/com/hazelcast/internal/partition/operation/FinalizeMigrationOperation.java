@@ -20,6 +20,7 @@ import com.hazelcast.internal.partition.MigrationCycleOperation;
 import com.hazelcast.internal.partition.MigrationInfo;
 import com.hazelcast.internal.partition.impl.InternalPartitionServiceImpl;
 import com.hazelcast.internal.partition.impl.PartitionReplicaManager;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.spi.partition.MigrationEndpoint;
@@ -78,28 +79,32 @@ public final class FinalizeMigrationOperation extends AbstractOperation
         }
 
         PartitionReplicaManager replicaManager = partitionService.getReplicaManager();
+        ILogger logger = getLogger();
+
         if (endpoint == MigrationEndpoint.SOURCE && success) {
             int keepReplicaIndex = migrationInfo.getSourceNewReplicaIndex();
             if (keepReplicaIndex < 0) {
                 replicaManager.clearPartitionReplicaVersions(partitionId);
-                if (getLogger().isFinestEnabled()) {
-                    getLogger().finest("Replica versions are cleared in source after migration. partitionId=" + partitionId);
+                if (logger.isFinestEnabled()) {
+                    logger.finest("Replica versions are cleared in source after migration. partitionId=" + partitionId);
                 }
             } else if (migrationInfo.getSourceCurrentReplicaIndex() != keepReplicaIndex && keepReplicaIndex > 1) {
                 long[] versions = replicaManager.getPartitionReplicaVersions(partitionId);
                 // No need to set versions back right now. actual version array is modified directly.
                 Arrays.fill(versions, 0, keepReplicaIndex - 1, 0);
 
-                if (getLogger().isFinestEnabled()) {
-                    getLogger().finest("Replica versions are set after MOVE COPY BACK migration. partitionId=" + partitionId + " replica versions=" + Arrays.toString(versions));
+                if (logger.isFinestEnabled()) {
+                    logger.finest("Replica versions are set after MOVE COPY BACK migration. partitionId="
+                            + partitionId + " replica versions=" + Arrays.toString(versions));
                 }
             }
         } else if (endpoint == MigrationEndpoint.DESTINATION && !success) {
             int destinationCurrentReplicaIndex = migrationInfo.getDestinationCurrentReplicaIndex();
             if (destinationCurrentReplicaIndex == -1) {
                 replicaManager.clearPartitionReplicaVersions(partitionId);
-                if (getLogger().isFinestEnabled()) {
-                    getLogger().finest("Replica versions are cleared in destination after failed migration. partitionId=" + partitionId);
+                if (logger.isFinestEnabled()) {
+                    logger.finest("Replica versions are cleared in destination after failed migration. partitionId="
+                            + partitionId);
                 }
             } else {
                 long[] versions = replicaManager.getPartitionReplicaVersions(partitionId);
@@ -108,8 +113,9 @@ public final class FinalizeMigrationOperation extends AbstractOperation
                 // No need to set versions back right now. actual version array is modified directly.
                 Arrays.fill(versions, 0, replicaOffset - 1, 0);
 
-                if (getLogger().isFinestEnabled()) {
-                    getLogger().finest("Replica versions are rolled back in destination after failed migration. partitionId=" + partitionId + " replica versions=" + Arrays.toString(versions));
+                if (logger.isFinestEnabled()) {
+                    logger.finest("Replica versions are rolled back in destination after failed migration. partitionId="
+                            + partitionId + " replica versions=" + Arrays.toString(versions));
                 }
             }
         }

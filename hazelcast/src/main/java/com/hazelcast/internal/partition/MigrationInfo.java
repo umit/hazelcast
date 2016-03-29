@@ -36,6 +36,12 @@ public class MigrationInfo implements DataSerializable {
         SUCCESS(2),
         FAILED(3);
 
+        private final int code;
+
+        MigrationStatus(int code) {
+            this.code = code;
+        }
+
         public static void writeTo(MigrationStatus type, DataOutput out) throws IOException {
             out.writeByte(type.code);
         }
@@ -51,15 +57,10 @@ public class MigrationInfo implements DataSerializable {
                     return SUCCESS;
                 case 3:
                     return FAILED;
+                default:
+                    throw new IllegalArgumentException("Code: " + code);
             }
-            throw new IllegalArgumentException("Code: " + code);
         }
-
-        MigrationStatus(int code) {
-            this.code = code;
-        }
-
-        private final int code;
 
     }
 

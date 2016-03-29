@@ -59,6 +59,7 @@ import com.hazelcast.spi.exception.TargetNotMemberException;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.spi.partition.IPartition;
 import com.hazelcast.spi.partition.IPartitionLostEvent;
+import com.hazelcast.util.EmptyStatement;
 import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.FutureUtil.ExceptionHandler;
 import com.hazelcast.util.HashUtil;
@@ -412,7 +413,8 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
             InternalPartitionImpl partition = (InternalPartitionImpl) partitions[partitionId];
             migrationManager.applyMigration(partition, migrationInfo);
 
-            return new PartitionRuntimeState(logger, memberInfos, partitions, completedMigrations, getPartitionStateVersion() + 1);
+            int committedVersion = getPartitionStateVersion() + 1;
+            return new PartitionRuntimeState(logger, memberInfos, partitions, completedMigrations, committedVersion);
         } finally {
             lock.unlock();
         }
@@ -1093,9 +1095,9 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
                         allActiveMigrations.add(state.getActiveMigration());
                     }
                 } catch (TargetNotMemberException e) {
-                    // ignore
+                    EmptyStatement.ignore(e);
                 } catch (MemberLeftException e) {
-                    // ignore
+                    EmptyStatement.ignore(e);
                 } catch (InterruptedException e) {
                     logger.fine("FetchMostRecentPartitionTableTask is interrupted.");
                 } catch (ExecutionException e) {

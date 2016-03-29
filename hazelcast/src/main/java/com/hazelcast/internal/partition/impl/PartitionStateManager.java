@@ -185,7 +185,8 @@ public class PartitionStateManager {
             if (index == -1) {
                 continue;
             } else if (logger.isFinestEnabled()) {
-                logger.finest("partitionId=" + partition.getPartitionId() + " " + address + " is removed from replica index: " + index + " partition: " + partition);
+                logger.finest("partitionId=" + partition.getPartitionId() + " " + address
+                        + " is removed from replica index: " + index + " partition: " + partition);
             }
         }
     }

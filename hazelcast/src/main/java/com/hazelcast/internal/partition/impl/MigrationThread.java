@@ -29,19 +29,23 @@ import static java.lang.Math.max;
  * migration-queue.
  */
 class MigrationThread extends Thread implements Runnable {
+
+    private static final long DEFAULT_MIGRATION_SLEEP_INTERVAL = 250L;
+
     private final MigrationManager migrationManager;
     private final MigrationQueue queue;
     private final ILogger logger;
     private final long partitionMigrationInterval;
     private final long sleepTime;
 
-    MigrationThread(MigrationManager migrationManager, HazelcastThreadGroup hazelcastThreadGroup, ILogger logger) {
+    MigrationThread(MigrationManager migrationManager, HazelcastThreadGroup hazelcastThreadGroup, ILogger logger,
+                    MigrationQueue queue) {
         super(hazelcastThreadGroup.getInternalThreadGroup(), hazelcastThreadGroup.getThreadNamePrefix("migration"));
 
         this.migrationManager = migrationManager;
-        queue = migrationManager.migrationQueue;
+        this.queue = queue;
         partitionMigrationInterval = migrationManager.partitionMigrationInterval;
-        sleepTime = max(250L, partitionMigrationInterval);
+        sleepTime = max(DEFAULT_MIGRATION_SLEEP_INTERVAL, partitionMigrationInterval);
         this.logger = logger;
     }
 

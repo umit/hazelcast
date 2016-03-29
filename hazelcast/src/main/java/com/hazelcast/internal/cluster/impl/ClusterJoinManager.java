@@ -501,7 +501,7 @@ public class ClusterJoinManager {
                 List<Future> calls = new ArrayList<Future>(count);
                 PartitionRuntimeState partitionState = null;
                 if (!node.partitionService.isFetchMostRecentPartitionTableTaskRequired()) {
-                    partitionState = node.partitionService.createPartitionState();;
+                    partitionState = node.partitionService.createPartitionState();
                 }
                 for (MemberInfo member : setJoins) {
                     long startTime = clusterClock.getClusterStartTime();

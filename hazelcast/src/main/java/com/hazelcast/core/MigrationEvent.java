@@ -120,7 +120,7 @@ public class MigrationEvent implements DataSerializable, PartitionEvent {
 
         private final byte code;
 
-        private MigrationStatus(final int code) {
+        MigrationStatus(final int code) {
             this.code = (byte) code;
         }
 

@@ -75,14 +75,16 @@ public class MigrationManager {
     private static final boolean DISABLE_RESUME_EVENTUALLY
             = Boolean.getBoolean("hazelcast.migration.resume.eventually.disabled");
 
+
+    final long partitionMigrationInterval;
+
     private final Node node;
     private final NodeEngineImpl nodeEngine;
     private final InternalPartitionServiceImpl partitionService;
     private final ILogger logger;
-
     private final PartitionStateManager partitionStateManager;
 
-    final MigrationQueue migrationQueue = new MigrationQueue();
+    private final MigrationQueue migrationQueue = new MigrationQueue();
 
     private final MigrationThread migrationThread;
 
@@ -91,8 +93,8 @@ public class MigrationManager {
     @Probe(name = "lastRepartitionTime")
     private final AtomicLong lastRepartitionTime = new AtomicLong();
 
-    final long partitionMigrationInterval;
     private final long partitionMigrationTimeout;
+
     private final CoalescingDelayedTrigger delayedResumeMigrationTrigger;
 
     // updates will be done under lock, but reads will be multithreaded.
@@ -120,7 +122,8 @@ public class MigrationManager {
 
         partitionStateManager = partitionService.getPartitionStateManager();
 
-        migrationThread = new MigrationThread(this, node.getHazelcastThreadGroup(), node.getLogger(MigrationThread.class));
+        ILogger migrationThreadLogger = node.getLogger(MigrationThread.class);
+        migrationThread = new MigrationThread(this, node.getHazelcastThreadGroup(), migrationThreadLogger, migrationQueue);
 
         long intervalMillis = node.groupProperties.getMillis(GroupProperty.PARTITION_MIGRATION_INTERVAL);
         partitionMigrationInterval = (intervalMillis > 0 ? intervalMillis : 0);
@@ -467,7 +470,8 @@ public class MigrationManager {
                     logger.finest("partitionId=" + partition.getPartitionId() + " owner is removed. replicaIndex=" + index
                             + " is shifted up to 0. " + partition);
                 } else {
-                    logger.finest("partitionId=" + partition.getPartitionId() + " owner is removed. there is no other replica to shift up. " + partition);
+                    logger.finest("partitionId=" + partition.getPartitionId()
+                            + " owner is removed. there is no other replica to shift up. " + partition);
                 }
             }
 
@@ -864,7 +868,8 @@ public class MigrationManager {
             } finally {
                 partitionServiceLock.unlock();
             }
-            partitionService.getPartitionEventManager().sendMigrationEvent(migrationInfo, MigrationEvent.MigrationStatus.COMPLETED);
+            PartitionEventManager partitionEventManager = partitionService.getPartitionEventManager();
+            partitionEventManager.sendMigrationEvent(migrationInfo,  MigrationEvent.MigrationStatus.COMPLETED);
         }
 
         @Override

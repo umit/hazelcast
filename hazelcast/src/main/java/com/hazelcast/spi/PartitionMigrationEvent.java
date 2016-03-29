@@ -80,11 +80,11 @@ public class PartitionMigrationEvent extends EventObject {
 
     @Override
     public String toString() {
-        return "PartitionMigrationEvent{" +
-                "migrationEndpoint=" + migrationEndpoint +
-                ", partitionId=" + partitionId +
-                ", currentReplicaIndex=" + currentReplicaIndex +
-                ", newReplicaIndex=" + newReplicaIndex +
-                '}';
+        return "PartitionMigrationEvent{"
+                + "migrationEndpoint=" + migrationEndpoint
+                + ", partitionId=" + partitionId
+                + ", currentReplicaIndex=" + currentReplicaIndex
+                + ", newReplicaIndex=" + newReplicaIndex
+                + '}';
     }
 }

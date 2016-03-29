@@ -41,8 +41,8 @@ class MigrationPlanner {
     private final Set<Address> verificationSet = new HashSet<Address>();
 
     void planMigrations(Address[] oldAddresses, Address[] newAddresses, MigrationDecisionCallback callback) {
-        assert oldAddresses.length == newAddresses.length :
-                    "Replica addresses with different lengths! Old: " + Arrays.toString(oldAddresses)
+        assert oldAddresses.length == newAddresses.length
+                : "Replica addresses with different lengths! Old: " + Arrays.toString(oldAddresses)
                             + ", New: " + Arrays.toString(newAddresses);
 
         if (TRACE) {
@@ -103,19 +103,19 @@ class MigrationPlanner {
                 continue;
             }
 
-            // IT IS A MOVE COPY BACK
+            // IT IS A SHIFT DOWN
             if (getReplicaIndex(state, newAddresses[currentIndex]) == -1) {
-                int keepReplicaIndex = getReplicaIndex(newAddresses, state[currentIndex]);
+                int newIndex = getReplicaIndex(newAddresses, state[currentIndex]);
 
-                if (keepReplicaIndex <= currentIndex) {
+                if (newIndex <= currentIndex) {
                     throw new AssertionError(
-                            "Migration decision algorithm failed during MOVE COPY BACK! INITIAL: "
+                            "Migration decision algorithm failed during SHIFT DOWN! INITIAL: "
                                     + Arrays.toString(oldAddresses) + ", CURRENT: " + Arrays.toString(state)
                                     + ", FINAL: " + Arrays.toString(newAddresses));
                 }
 
-                callback.migrate(state[currentIndex], currentIndex, keepReplicaIndex, newAddresses[currentIndex], -1, currentIndex);
-                state[keepReplicaIndex] = state[currentIndex];
+                callback.migrate(state[currentIndex], currentIndex, newIndex, newAddresses[currentIndex], -1, currentIndex);
+                state[newIndex] = state[currentIndex];
                 state[currentIndex] = newAddresses[currentIndex];
                 currentIndex++;
                 continue;
@@ -136,7 +136,7 @@ class MigrationPlanner {
                     state[i] = state[j];
                     state[j] = null;
                     break;
-                } else if (getReplicaIndex(state, newAddresses[j]) == -1) { //
+                } else if (getReplicaIndex(state, newAddresses[j]) == -1) {
                     callback.migrate(state[j], j, -1, newAddresses[j], -1, j);
                     state[j] = newAddresses[j];
                     break;
@@ -165,8 +165,8 @@ class MigrationPlanner {
                 if (address == null) {
                     continue;
                 }
-                assert verificationSet.add(address) :
-                    "Migration decision algorithm failed! DUPLICATE REPLICA ADDRESSES! INITIAL: "
+                assert verificationSet.add(address)
+                        : "Migration decision algorithm failed! DUPLICATE REPLICA ADDRESSES! INITIAL: "
                             + Arrays.toString(oldAddresses) + ", CURRENT: " + Arrays.toString(state)
                             + ", FINAL: " + Arrays.toString(newAddresses);
             }
@@ -245,7 +245,7 @@ class MigrationPlanner {
         }
     }
 
-    private static class TracingMigrationDecisionCallback implements MigrationDecisionCallback {
+    private static final class TracingMigrationDecisionCallback implements MigrationDecisionCallback {
 
         final MigrationDecisionCallback delegate;
 

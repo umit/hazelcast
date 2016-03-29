@@ -26,8 +26,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Manages migration tasks and migration status flag for {@link InternalPartitionServiceImpl} safely. Once a migration task
- * is added to the queue, queue has to be notified via {@link MigrationQueue#afterTaskCompletion(MigrationRunnable)} after its execution.
+ * Manages migration tasks and migration status flag for {@link InternalPartitionServiceImpl} safely.
+ * Once a migration task is added to the queue, queue has to be notified
+ * via {@link MigrationQueue#afterTaskCompletion(MigrationRunnable)} after its execution.
  */
 class MigrationQueue {
 
