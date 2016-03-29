@@ -24,24 +24,15 @@ import com.hazelcast.instance.Node;
 import com.hazelcast.instance.TestUtil;
 import com.hazelcast.internal.properties.GroupProperty;
 import com.hazelcast.internal.serialization.InternalSerializationService;
-import com.hazelcast.logging.ILogger;
+import com.hazelcast.internal.partition.service.TestMigrationAwareService;
+import com.hazelcast.internal.partition.service.TestPutOperation;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
-import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.Packet;
 import com.hazelcast.nio.tcp.FirewallingMockConnectionManager;
 import com.hazelcast.nio.tcp.PacketFilter;
-import com.hazelcast.spi.AbstractOperation;
-import com.hazelcast.spi.BackupAwareOperation;
-import com.hazelcast.spi.ManagedService;
-import com.hazelcast.spi.MigrationAwareService;
 import com.hazelcast.spi.NodeEngine;
-import com.hazelcast.spi.Operation;
-import com.hazelcast.spi.PartitionMigrationEvent;
-import com.hazelcast.spi.PartitionReplicationEvent;
 import com.hazelcast.spi.impl.SpiDataSerializerHook;
-import com.hazelcast.spi.serialization.SerializationService;
-import com.hazelcast.spi.partition.MigrationEndpoint;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastParametersRunnerFactory;
 import com.hazelcast.test.HazelcastTestSupport;
@@ -60,9 +51,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -72,7 +60,6 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
@@ -80,9 +67,8 @@ import static org.junit.Assert.assertTrue;
 @Parameterized.UseParametersRunnerFactory(HazelcastParametersRunnerFactory.class)
 @Category({QuickTest.class/*, ParallelTest.class*/})
 //@Ignore // related issue https://github.com/hazelcast/hazelcast/issues/5444
-public class MigrationAwareServiceTest extends HazelcastTestSupport {
+public class MigrationCorrectnessTest extends HazelcastTestSupport {
 
-    private static final String BACKUP_COUNT_PROP = "backups.count";
     private static final int PARTITION_COUNT = 111;
     private static final int PARALLEL_REPLICATIONS = 10;
     private static final int BACKUP_SYNC_INTERVAL = 1;
@@ -306,7 +292,7 @@ public class MigrationAwareServiceTest extends HazelcastTestSupport {
     private void fill(HazelcastInstance hz) {
         NodeEngine nodeEngine = getNode(hz).nodeEngine;
         for (int i = 0; i < PARTITION_COUNT; i++) {
-            nodeEngine.getOperationService().invokeOnPartition(null, new SamplePutOperation(), i);
+            nodeEngine.getOperationService().invokeOnPartition(null, new TestPutOperation(), i);
         }
     }
 
@@ -385,7 +371,7 @@ public class MigrationAwareServiceTest extends HazelcastTestSupport {
 
                 int total = 0;
                 for (HazelcastInstance hz : instances) {
-                    SampleMigrationAwareService service = getService(hz);
+                    TestMigrationAwareService service = getService(hz);
                     total += service.size();
 
                     Node node = getNode(hz);
@@ -394,7 +380,7 @@ public class MigrationAwareServiceTest extends HazelcastTestSupport {
                     Address thisAddress = node.getThisAddress();
 
                     // find leaks
-                    for (Integer p : service.data.keySet()) {
+                    for (Integer p : service.keys()) {
                         int replicaIndex = partitions[p].getReplicaIndex(thisAddress);
                         assertThat("Partition: " + p + " is leaking on " + thisAddress,
                                 replicaIndex, allOf(greaterThanOrEqualTo(0), lessThanOrEqualTo(backupCount)));
@@ -406,7 +392,7 @@ public class MigrationAwareServiceTest extends HazelcastTestSupport {
                         if (replicaIndex >= 0 && replicaIndex <= backupCount) {
                             assertTrue("Partition: " + partition.getPartitionId() + ", replica: " + replicaIndex
                                     + " data is missing on " + thisAddress,
-                                    service.data.containsKey(partition.getPartitionId()));
+                                    service.contains(partition.getPartitionId()));
                         }
                     }
 
@@ -436,10 +422,10 @@ public class MigrationAwareServiceTest extends HazelcastTestSupport {
                                             replicaVersions[i], backupReplicaVersions[i]);
                                 }
 
-                                SampleMigrationAwareService backupService = getService(backupInstance);
+                                TestMigrationAwareService backupService = getService(backupInstance);
                                 assertEquals("Wrong data! Partition: " + partitionId + ", replica: " + replica + " on "
                                         + address + " has stale value! " + Arrays.toString(backupReplicaVersions),
-                                        service.data.get(partitionId), backupService.data.get(partitionId));
+                                        service.get(partitionId), backupService.get(partitionId));
                             }
                         }
                     }
@@ -449,19 +435,16 @@ public class MigrationAwareServiceTest extends HazelcastTestSupport {
         });
     }
 
-    private SampleMigrationAwareService getService(HazelcastInstance hz) {
+    private TestMigrationAwareService getService(HazelcastInstance hz) {
         Node node = getNode(hz);
-        return node.nodeEngine.getService(SampleMigrationAwareService.SERVICE_NAME);
+        return node.nodeEngine.getService(TestMigrationAwareService.SERVICE_NAME);
     }
 
     private Config getConfig(int backupCount) {
         Config config = new Config();
 
         if (!withoutService) {
-            ServiceConfig serviceConfig = new ServiceConfig()
-                    .setEnabled(true).setName(SampleMigrationAwareService.SERVICE_NAME)
-                    .setClassName(SampleMigrationAwareService.class.getName())
-                    .addProperty(BACKUP_COUNT_PROP, String.valueOf(backupCount));
+            ServiceConfig serviceConfig = TestMigrationAwareService.createServiceConfig(backupCount);
             config.getServicesConfig().addServiceConfig(serviceConfig);
         }
 
@@ -476,186 +459,11 @@ public class MigrationAwareServiceTest extends HazelcastTestSupport {
         return config;
     }
 
-    private static class SampleMigrationAwareService implements ManagedService, MigrationAwareService {
-
-        private static final String SERVICE_NAME = "SampleMigrationAwareService";
-
-        private final ConcurrentMap<Integer, Integer> data = new ConcurrentHashMap<Integer, Integer>();
-
-        private volatile int backupCount;
-
-        private volatile ILogger logger;
-
-        @Override
-        public void init(NodeEngine nodeEngine, Properties properties) {
-            backupCount = Integer.parseInt(properties.getProperty(BACKUP_COUNT_PROP, "1"));
-            logger = nodeEngine.getLogger(getClass());
-        }
-
-        @Override
-        public void reset() {
-        }
-
-        @Override
-        public void shutdown(boolean terminate) {
-        }
-
-        int inc(int partitionId) {
-            Integer count = data.get(partitionId);
-            if (count == null) {
-                count = 1;
-            } else {
-                count++;
-            }
-            data.put(partitionId, count);
-            return count;
-        }
-
-        int size() {
-            return data.size();
-        }
-
-        @Override
-        public Operation prepareReplicationOperation(PartitionReplicationEvent event) {
-//            logger.info(event.toString() + "\n");
-            if (event.getReplicaIndex() > backupCount) {
-                return null;
-            }
-            if (!data.containsKey(event.getPartitionId())) {
-                throw new HazelcastException("No data found for " + event);
-//                logger.severe("No data found for " + event);
-//                return null;
-            }
-            return new SampleReplicationOperation(data.get(event.getPartitionId()));
-        }
-
-        @Override
-        public void beforeMigration(PartitionMigrationEvent event) {
-        }
-
-        @Override
-        public void commitMigration(PartitionMigrationEvent event) {
-//            logger.info("COMMIT: " + event.toString() + "\n");
-            if (event.getMigrationEndpoint() == MigrationEndpoint.SOURCE) {
-                if (event.getNewReplicaIndex() == -1 || event.getNewReplicaIndex() > backupCount) {
-                    data.remove(event.getPartitionId());
-                }
-            }
-            if (event.getMigrationEndpoint() == MigrationEndpoint.DESTINATION) {
-                if (event.getNewReplicaIndex() > backupCount) {
-                    assertNull(data.get(event.getPartitionId()));
-                }
-            }
-        }
-
-        @Override
-        public void rollbackMigration(PartitionMigrationEvent event) {
-//            logger.info("ROLLBACK: " + event.toString() + "\n");
-            if (event.getMigrationEndpoint() == MigrationEndpoint.DESTINATION) {
-                if (event.getCurrentReplicaIndex() == -1 || event.getCurrentReplicaIndex() > backupCount) {
-                    data.remove(event.getPartitionId());
-                }
-            }
-        }
-
-        @Override
-        public void clearPartitionReplica(int partitionId) {
-//            logger.info("CLEAR: " + partitionId);
-//            new UnsupportedOperationException().printStackTrace();
-            data.remove(partitionId);
-        }
-    }
-
-    private static class SamplePutOperation extends AbstractOperation implements BackupAwareOperation {
-
-        int value;
-
-        public SamplePutOperation() {
-        }
-
-        @Override
-        public void run() throws Exception {
-            SampleMigrationAwareService service = getService();
-            value = service.inc(getPartitionId());
-        }
-
-        @Override
-        public boolean shouldBackup() {
-            return true;
-        }
-
-        @Override
-        public int getSyncBackupCount() {
-            SampleMigrationAwareService service = getService();
-            return service.backupCount;
-        }
-
-        @Override
-        public int getAsyncBackupCount() {
-            return 0;
-        }
-
-        @Override
-        public Operation getBackupOperation() {
-            return new SampleBackupPutOperation(value);
-        }
-
-        @Override
-        public String getServiceName() {
-            return SampleMigrationAwareService.SERVICE_NAME;
-        }
-    }
-
-    private static class SampleBackupPutOperation extends AbstractOperation {
-
-        int value;
-
-        public SampleBackupPutOperation() {
-        }
-
-        public SampleBackupPutOperation(int value) {
-            this.value = value;
-        }
-
-        @Override
-        public void run() throws Exception {
-            SampleMigrationAwareService service = getService();
-            service.data.put(getPartitionId(), value);
-        }
-
-        @Override
-        public String getServiceName() {
-            return SampleMigrationAwareService.SERVICE_NAME;
-        }
-
-        @Override
-        protected void writeInternal(ObjectDataOutput out) throws IOException {
-            super.writeInternal(out);
-            out.writeInt(value);
-        }
-
-        @Override
-        protected void readInternal(ObjectDataInput in) throws IOException {
-            super.readInternal(in);
-            value = in.readInt();
-        }
-    }
-
-    private static class SampleReplicationOperation extends SampleBackupPutOperation {
-
-        public SampleReplicationOperation() {
-        }
-
-        public SampleReplicationOperation(int value) {
-            super(value);
-        }
-    }
-
     private static class BackupPacketFilter implements PacketFilter {
         final InternalSerializationService serializationService;
         final float blockRatio;
 
-        public BackupPacketFilter(InternalSerializationService serializationService, float blockRatio) {
+        BackupPacketFilter(InternalSerializationService serializationService, float blockRatio) {
             this.serializationService = serializationService;
             this.blockRatio = blockRatio;
         }
