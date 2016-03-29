@@ -29,6 +29,7 @@ import com.hazelcast.internal.partition.MigrationInfo.MigrationStatus;
 import com.hazelcast.internal.partition.PartitionRuntimeState;
 import com.hazelcast.internal.partition.PartitionStateVersionMismatchException;
 import com.hazelcast.internal.partition.impl.InternalMigrationListener.MigrationParticipant;
+import com.hazelcast.internal.partition.impl.MigrationPlanner.MigrationDecisionCallback;
 import com.hazelcast.internal.partition.operation.ClearReplicaOperation;
 import com.hazelcast.internal.partition.operation.FinalizeMigrationOperation;
 import com.hazelcast.internal.partition.operation.MigrationCommitOperation;
@@ -52,7 +53,9 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -555,15 +558,34 @@ public class MigrationManager {
             final MutableInteger lostCount = new MutableInteger();
             final MutableInteger migrationCount = new MutableInteger();
 
+            final List<Queue<MigrationInfo>> migrations = new ArrayList<Queue<MigrationInfo>>();
+
             for (int partitionId = 0; partitionId < newState.length; partitionId++) {
                 InternalPartitionImpl currentPartition = partitionStateManager.getPartitionImpl(partitionId);
                 Address[] newReplicas = newState[partitionId];
 
-                migrationPlanner.planMigrations(currentPartition.getReplicaAddresses(), newReplicas,
-                        new MigrationScheduler(currentPartition, migrationCount, lostCount));
+                final MigrationCollector migrationCollector = new MigrationCollector(currentPartition, migrationCount, lostCount);
+                migrationPlanner.planMigrations(currentPartition.getReplicaAddresses(), newReplicas, migrationCollector);
+                migrations.add(migrationCollector.migrations);
             }
 
+            scheduleMigrations(migrations);
+
             logMigrationStatistics(migrationCount.value, lostCount.value);
+        }
+
+        private void scheduleMigrations(List<Queue<MigrationInfo>> migrations) {
+            boolean migrationScheduled;
+            do {
+                migrationScheduled = false;
+                for (Queue<MigrationInfo> queue : migrations) {
+                    MigrationInfo migration = queue.poll();
+                    if (migration != null) {
+                        migrationScheduled = true;
+                        scheduleMigration(migration);
+                    }
+                }
+            } while (migrationScheduled);
         }
 
         private void logMigrationStatistics(int migrationCount, int lostCount) {
@@ -596,14 +618,14 @@ public class MigrationManager {
             return false;
         }
 
-        private class MigrationScheduler implements MigrationPlanner.MigrationDecisionCallback {
+        private class MigrationCollector implements MigrationDecisionCallback {
             private final int partitionId;
             private final InternalPartitionImpl partition;
             private final MutableInteger migrationCount;
             private final MutableInteger lostCount;
+            private final Queue<MigrationInfo> migrations = new LinkedList<MigrationInfo>();
 
-            MigrationScheduler(InternalPartitionImpl partition, MutableInteger migrationCount,
-                    MutableInteger lostCount) {
+            MigrationCollector(InternalPartitionImpl partition, MutableInteger migrationCount, MutableInteger lostCount) {
                 partitionId = partition.getPartitionId();
                 this.partition = partition;
                 this.migrationCount = migrationCount;
@@ -640,7 +662,8 @@ public class MigrationManager {
                     if (sourceNewReplicaIndex > 0) {
                         migration.setOldBackupReplicaOwner(partition.getReplicaAddress(sourceNewReplicaIndex));
                     }
-                    scheduleMigration(migration);
+
+                    migrations.offer(migration);
                 }
             }
         }
