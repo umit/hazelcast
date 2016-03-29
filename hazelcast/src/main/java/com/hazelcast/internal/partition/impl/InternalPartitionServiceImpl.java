@@ -363,7 +363,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
     }
 
     public PartitionRuntimeState createPartitionState() {
-        return createPartitionState(getCurrentMembersAndMembersRemovedWhileNotClusterNotActive());
+        return createPartitionState(getCurrentMembersAndMembersRemovedWhileClusterNotActive());
     }
 
     private PartitionRuntimeState createPartitionState(Collection<MemberImpl> members) {
@@ -437,7 +437,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
         lock.lock();
         try {
-            Collection<MemberImpl> members = getCurrentMembersAndMembersRemovedWhileNotClusterNotActive();
+            Collection<MemberImpl> members = getCurrentMembersAndMembersRemovedWhileClusterNotActive();
             PartitionRuntimeState partitionState = createPartitionState(members);
             if (partitionState == null) {
                 return;
@@ -584,6 +584,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
             partitionStateManager.setVersion(newVersion);
             partitionStateManager.setInitialized();
+            partitionStateManager.updateMemberUuidMap(partitionState.getMembers());
 
             filterAndLogUnknownAddressesInPartitionTable(sender, partitionState.getPartitions());
             finalizeOrRollbackMigration(partitionState);
@@ -704,10 +705,13 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         return partitionReplicaChecker.prepareToSafeShutdown(timeout, unit);
     }
 
-    List<MemberImpl> getCurrentMembersAndMembersRemovedWhileNotClusterNotActive() {
-        final List<MemberImpl> members = new ArrayList<MemberImpl>();
-        members.addAll(node.clusterService.getMemberImpls());
-        members.addAll(node.clusterService.getMembersRemovedWhileClusterIsNotActive());
+    List<MemberImpl> getCurrentMembersAndMembersRemovedWhileClusterNotActive() {
+        Collection<MemberImpl> currentMembers = node.clusterService.getMemberImpls();
+        Collection<MemberImpl> removedMembers = node.clusterService.getMembersRemovedWhileClusterIsNotActive();
+
+        List<MemberImpl> members = new ArrayList<MemberImpl>(currentMembers.size() + removedMembers.size());
+        members.addAll(currentMembers);
+        members.addAll(removedMembers);
         return members;
     }
 

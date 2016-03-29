@@ -540,6 +540,7 @@ public class MigrationManager {
 
                 lastRepartitionTime.set(Clock.currentTimeMillis());
 
+                partitionStateManager.updateMemberUuidMap();
                 processNewPartitionState(newState);
 
                 if (ASSERTION_ENABLED) {
@@ -558,7 +559,7 @@ public class MigrationManager {
             final MutableInteger lostCount = new MutableInteger();
             final MutableInteger migrationCount = new MutableInteger();
 
-            final List<Queue<MigrationInfo>> migrations = new ArrayList<Queue<MigrationInfo>>();
+            final List<Queue<MigrationInfo>> migrations = new ArrayList<Queue<MigrationInfo>>(newState.length);
 
             for (int partitionId = 0; partitionId < newState.length; partitionId++) {
                 InternalPartitionImpl currentPartition = partitionStateManager.getPartitionImpl(partitionId);
@@ -918,7 +919,12 @@ public class MigrationManager {
                 for (InternalPartition partition : partitions) {
                     for (int i = 0; i < InternalPartition.MAX_REPLICA_COUNT; i++) {
                         Address address = partition.getReplicaAddress(i);
-                        if (address != null && clusterService.getMember(address) == null) {
+                        if (address == null) {
+                            continue;
+                        }
+
+                        MemberImpl member = clusterService.getMember(address);
+                        if (member == null || !partitionStateManager.isKnownMemberUuid(address, member.getUuid())) {
                             addresses.add(address);
                         }
                     }

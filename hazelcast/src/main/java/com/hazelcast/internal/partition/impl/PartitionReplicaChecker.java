@@ -93,7 +93,7 @@ public class PartitionReplicaChecker {
             }
 
             if (node.isMaster()) {
-                final List<MemberImpl> members = partitionService.getCurrentMembersAndMembersRemovedWhileNotClusterNotActive();
+                final List<MemberImpl> members = partitionService.getCurrentMembersAndMembersRemovedWhileClusterNotActive();
                 partitionService.syncPartitionRuntimeState(members);
             } else {
                 timeoutInMillis = waitForOngoingMigrations(timeoutInMillis, sleep);
