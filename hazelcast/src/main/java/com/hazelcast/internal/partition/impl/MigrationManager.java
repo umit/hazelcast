@@ -484,8 +484,7 @@ public class MigrationManager {
 
         if (partition.getOwnerOrNull() == null) {
             logger.warning("partitionId=" + partitionId + " is completely lost!");
-            // we lost the partition!
-            // TODO BASRI partition lost
+            partitionService.sendPartitionLostEvent(partitionId, InternalPartition.MAX_BACKUP_COUNT);
         }
     }
 

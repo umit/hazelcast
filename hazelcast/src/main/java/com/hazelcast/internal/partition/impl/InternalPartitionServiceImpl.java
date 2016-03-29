@@ -82,6 +82,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 
 import static com.hazelcast.cluster.memberselector.MemberSelectors.DATA_MEMBER_SELECTOR;
+import static com.hazelcast.spi.ExecutionService.SYSTEM_EXECUTOR;
 import static com.hazelcast.util.FutureUtil.logAllExceptions;
 import static com.hazelcast.util.FutureUtil.returnWithDeadline;
 import static java.lang.Math.max;
@@ -954,7 +955,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         return fetchPartitionTablesAfterVersion > -1;
     }
 
-   boolean scheduleFetchMostRecentPartitionTableTaskIfRequired() {
+    boolean scheduleFetchMostRecentPartitionTableTaskIfRequired() {
        lock.lock();
        try {
            if (isFetchMostRecentPartitionTableTaskRequired()) {
@@ -966,6 +967,42 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
        } finally {
            lock.unlock();
        }
+    }
+
+    public void sendPartitionLostEvent(int partitionId, int lostReplicaIndex) {
+        final IPartitionLostEvent event = new IPartitionLostEvent(partitionId, lostReplicaIndex,
+                nodeEngine.getThisAddress());
+        final InternalPartitionLostEventPublisher publisher = new InternalPartitionLostEventPublisher(nodeEngine, event);
+        nodeEngine.getExecutionService().execute(SYSTEM_EXECUTOR, publisher);
+    }
+
+    private static class InternalPartitionLostEventPublisher
+            implements Runnable {
+
+        private final NodeEngineImpl nodeEngine;
+
+        private final IPartitionLostEvent event;
+
+        public InternalPartitionLostEventPublisher(NodeEngineImpl nodeEngine, IPartitionLostEvent event) {
+            this.nodeEngine = nodeEngine;
+            this.event = event;
+        }
+
+        @Override
+        public void run() {
+            for (PartitionAwareService service : nodeEngine.getServices(PartitionAwareService.class)) {
+                try {
+                    service.onPartitionLost(event);
+                } catch (Exception e) {
+                    final ILogger logger = nodeEngine.getLogger(InternalPartitionLostEventPublisher.class);
+                    logger.warning("Handling partitionLostEvent failed. Service: " + service.getClass() + " Event: " + event, e);
+                }
+            }
+        }
+
+        public IPartitionLostEvent getEvent() {
+            return event;
+        }
     }
 
     private class FetchMostRecentPartitionTableTask implements MigrationRunnable {

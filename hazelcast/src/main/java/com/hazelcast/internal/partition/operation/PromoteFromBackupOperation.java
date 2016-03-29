@@ -19,7 +19,6 @@ package com.hazelcast.internal.partition.operation;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MigrationEvent;
 import com.hazelcast.core.MigrationEvent.MigrationStatus;
-import com.hazelcast.internal.partition.InternalPartitionService;
 import com.hazelcast.internal.partition.MigrationCycleOperation;
 import com.hazelcast.internal.partition.impl.InternalPartitionImpl;
 import com.hazelcast.internal.partition.impl.InternalPartitionServiceImpl;
@@ -34,7 +33,6 @@ import com.hazelcast.spi.EventService;
 import com.hazelcast.spi.MigrationAwareService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.PartitionAwareOperation;
-import com.hazelcast.spi.PartitionAwareService;
 import com.hazelcast.spi.PartitionMigrationEvent;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 
@@ -46,7 +44,6 @@ import static com.hazelcast.core.MigrationEvent.MigrationStatus.COMPLETED;
 import static com.hazelcast.core.MigrationEvent.MigrationStatus.STARTED;
 import static com.hazelcast.internal.partition.InternalPartitionService.MIGRATION_EVENT_TOPIC;
 import static com.hazelcast.internal.partition.InternalPartitionService.SERVICE_NAME;
-import static com.hazelcast.spi.ExecutionService.SYSTEM_EXECUTOR;
 import static com.hazelcast.spi.partition.MigrationEndpoint.DESTINATION;
 
 // Runs locally when the node becomes owner of a partition
@@ -105,7 +102,7 @@ public final class PromoteFromBackupOperation
     private void shiftUpReplicaVersions() {
         final int partitionId = getPartitionId();
         try {
-            final InternalPartitionService partitionService = getService();
+            final InternalPartitionServiceImpl partitionService = getService();
             // returns the internal array itself, not the copy
             final long[] versions = partitionService.getPartitionReplicaVersions(partitionId);
 
@@ -126,7 +123,7 @@ public final class PromoteFromBackupOperation
                 logger.finest("PROMOTE partitionId=" + getPartitionId() + " from currentReplicaIndex=" + currentReplicaIndex);
             }
 
-            sendPartitionLostEvent(partitionId, lostReplicaIndex);
+            partitionService.sendPartitionLostEvent(partitionId, lostReplicaIndex);
         } catch (Throwable e) {
             logger.warning("Promotion failed. partitionId=" + partitionId + " replicaIndex=" + currentReplicaIndex, e);
         }
@@ -138,14 +135,6 @@ public final class PromoteFromBackupOperation
         } finally {
             clearPartitionMigratingFlag();
         }
-    }
-
-    private void sendPartitionLostEvent(int partitionId, int lostReplicaIndex) {
-        final IPartitionLostEvent event = new IPartitionLostEvent(partitionId, lostReplicaIndex,
-                getNodeEngine().getThisAddress());
-        final NodeEngineImpl nodeEngine = (NodeEngineImpl) getNodeEngine();
-        final InternalPartitionLostEventPublisher publisher = new InternalPartitionLostEventPublisher(nodeEngine, event);
-        nodeEngine.getExecutionService().execute(SYSTEM_EXECUTOR, publisher);
     }
 
     private void sendToAllMigrationAwareServices(PartitionMigrationEvent event) {
@@ -189,32 +178,4 @@ public final class PromoteFromBackupOperation
         throw new UnsupportedOperationException();
     }
 
-    private static class InternalPartitionLostEventPublisher
-            implements Runnable {
-
-        private final NodeEngineImpl nodeEngine;
-
-        private final IPartitionLostEvent event;
-
-        public InternalPartitionLostEventPublisher(NodeEngineImpl nodeEngine, IPartitionLostEvent event) {
-            this.nodeEngine = nodeEngine;
-            this.event = event;
-        }
-
-        @Override
-        public void run() {
-            for (PartitionAwareService service : nodeEngine.getServices(PartitionAwareService.class)) {
-                try {
-                    service.onPartitionLost(event);
-                } catch (Exception e) {
-                    final ILogger logger = nodeEngine.getLogger(InternalPartitionLostEventPublisher.class);
-                    logger.warning("Handling partitionLostEvent failed. Service: " + service.getClass() + " Event: " + event, e);
-                }
-            }
-        }
-
-        public IPartitionLostEvent getEvent() {
-            return event;
-        }
-    }
 }
