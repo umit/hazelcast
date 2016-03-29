@@ -437,8 +437,15 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         try {
             Collection<MemberImpl> members = getCurrentMembersAndMembersRemovedWhileNotClusterNotActive();
             PartitionRuntimeState partitionState = createPartitionState(members);
-            PartitionStateOperation op = new PartitionStateOperation(partitionState);
+            if (partitionState == null) {
+                return;
+            }
 
+            if (logger.isFineEnabled()) {
+                logger.fine("Publishing partition state, version: " + partitionState.getVersion());
+            }
+
+            PartitionStateOperation op = new PartitionStateOperation(partitionState);
             OperationService operationService = nodeEngine.getOperationService();
             final ClusterServiceImpl clusterService = node.clusterService;
             for (MemberImpl member : members) {
@@ -472,20 +479,33 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         lock.lock();
         try {
             PartitionRuntimeState partitionState = createPartitionState(members);
+            if (partitionState == null) {
+                return false;
+            }
+
+            if (logger.isFineEnabled()) {
+                logger.fine("Sync'ing partition state, version: " + partitionState.getVersion());
+            }
+
             OperationService operationService = nodeEngine.getOperationService();
 
             List<Future<Boolean>> calls = firePartitionStateOperation(members, partitionState, operationService);
             Collection<Boolean> results = returnWithDeadline(calls, 10, TimeUnit.SECONDS, partitionStateSyncTimeoutHandler);
 
-            if (calls.size() == results.size()) {
-                for (Boolean result : results) {
-                    if (!result) {
-                        return false;
-                    }
-                }
-                return true;
+            if (calls.size() != results.size()) {
+                return false;
             }
-            return false;
+
+            for (Boolean result : results) {
+                if (!result) {
+                    if (logger.isFineEnabled()) {
+                        logger.fine("Partition state, version: " + partitionState.getVersion()
+                                + " sync failed to one of the members!");
+                    }
+                    return false;
+                }
+            }
+            return true;
         } finally {
             lock.unlock();
         }

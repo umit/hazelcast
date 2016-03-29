@@ -147,7 +147,9 @@ abstract class BaseMigrationOperation extends AbstractOperation
             if (logger.isFineEnabled()) {
                 logger.log(Level.FINE, e.getMessage(), e);
             }
+            return;
         }
+
         super.logError(e);
     }
 

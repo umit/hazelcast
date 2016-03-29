@@ -23,7 +23,24 @@ import java.util.concurrent.TimeUnit;
 
 public interface InternalPartitionService extends IPartitionService {
 
+    /**
+     * Retry count for migration operations.
+     */
+    int MIGRATION_RETRY_COUNT = 6;
+
+    /**
+     * Retry pause for migration operations.
+     */
+    long MIGRATION_RETRY_PAUSE = 10000;
+
+    /**
+     * Delay for anti-entropy replica synchronization.
+     */
     long DEFAULT_REPLICA_SYNC_DELAY = 5000L;
+
+    /**
+     * Retry delay for replica synchronization.
+     */
     long REPLICA_SYNC_RETRY_DELAY = 500L;
 
     /**

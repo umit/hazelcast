@@ -46,8 +46,6 @@ import java.util.logging.Level;
 
 public final class MigrationRequestOperation extends BaseMigrationOperation {
 
-    private static final int TRY_PAUSE_MILLIS = 1000;
-
     private boolean returnResponse = true;
 
     public MigrationRequestOperation() {
@@ -150,7 +148,8 @@ public final class MigrationRequestOperation extends BaseMigrationOperation {
                 .setExecutionCallback(new MigrationCallback(migrationInfo, this))
                 .setResultDeserialized(true)
                 .setCallTimeout(partitionService.getPartitionMigrationTimeout())
-                .setTryPauseMillis(TRY_PAUSE_MILLIS)
+                .setTryCount(InternalPartitionService.MIGRATION_RETRY_COUNT)
+                .setTryPauseMillis(InternalPartitionService.MIGRATION_RETRY_PAUSE)
                 .setReplicaIndex(getReplicaIndex())
                 .invoke();
     }

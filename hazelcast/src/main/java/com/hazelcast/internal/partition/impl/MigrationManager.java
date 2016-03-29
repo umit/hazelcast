@@ -23,6 +23,7 @@ import com.hazelcast.instance.Node;
 import com.hazelcast.internal.cluster.impl.ClusterServiceImpl;
 import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.internal.partition.InternalPartition;
+import com.hazelcast.internal.partition.InternalPartitionService;
 import com.hazelcast.internal.partition.MigrationInfo;
 import com.hazelcast.internal.partition.MigrationInfo.MigrationStatus;
 import com.hazelcast.internal.partition.PartitionRuntimeState;
@@ -70,7 +71,6 @@ import static com.hazelcast.spi.partition.IPartitionService.SERVICE_NAME;
 public class MigrationManager {
 
     private static final boolean ASSERTION_ENABLED = MigrationManager.class.desiredAssertionStatus();
-    private static final int DEFAULT_PAUSE_MILLIS = 1000;
     private static final int PARTITION_STATE_VERSION_INCREMENT_DELTA_ON_MIGRATION_FAILURE = 2;
     private static final boolean DISABLE_RESUME_EVENTUALLY
             = Boolean.getBoolean("hazelcast.migration.resume.eventually.disabled");
@@ -774,7 +774,8 @@ public class MigrationManager {
             Future future = nodeEngine.getOperationService().createInvocationBuilder(SERVICE_NAME, migrationRequestOp,
                     fromMember.getAddress())
                     .setCallTimeout(partitionMigrationTimeout)
-                    .setTryPauseMillis(DEFAULT_PAUSE_MILLIS).invoke();
+                    .setTryCount(InternalPartitionService.MIGRATION_RETRY_COUNT)
+                    .setTryPauseMillis(InternalPartitionService.MIGRATION_RETRY_PAUSE).invoke();
 
             try {
                 Object response = future.get();
@@ -782,7 +783,7 @@ public class MigrationManager {
             } catch (Throwable e) {
                 Level level = nodeEngine.isRunning() && migrationInfo.isValid() ? Level.WARNING : Level.FINE;
                 if (e instanceof ExecutionException && e.getCause() instanceof PartitionStateVersionMismatchException) {
-                    level = Level.FINEST;
+                    level = Level.FINE;
                 }
                 if (logger.isLoggable(level)) {
                     logger.log(level, "Failed migration from " + fromMember + " for " + migrationRequestOp.getMigrationInfo(), e);
