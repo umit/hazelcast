@@ -610,7 +610,7 @@ public class MigrationManager {
         }
 
         private boolean isAllowed() {
-            boolean migrationAllowed = isMigrationAllowed();
+            boolean migrationAllowed = partitionService.isMigrationAllowed();
             boolean hasMigrationTasks = migrationQueue.hasMigrationTasks();
             if (migrationAllowed && !hasMigrationTasks) {
                 return true;
