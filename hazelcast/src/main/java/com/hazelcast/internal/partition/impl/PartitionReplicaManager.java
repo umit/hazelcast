@@ -223,13 +223,13 @@ public class PartitionReplicaManager {
 
     // called in operation threads
     // Caution: Returning version array without copying for performance reasons. Callers must not modify this array!
-    public long[] incrementPartitionReplicaVersions(int partitionId, int backupCount) {
+    long[] incrementPartitionReplicaVersions(int partitionId, int backupCount) {
         PartitionReplicaVersions replicaVersion = replicaVersions[partitionId];
         return replicaVersion.incrementAndGet(backupCount);
     }
 
     // called in operation threads
-    public void updatePartitionReplicaVersions(int partitionId, long[] versions, int replicaIndex) {
+    void updatePartitionReplicaVersions(int partitionId, long[] versions, int replicaIndex) {
         PartitionReplicaVersions partitionVersion = replicaVersions[partitionId];
         if (!partitionVersion.update(versions, replicaIndex)) {
             // this partition backup is behind the owner.
@@ -238,7 +238,7 @@ public class PartitionReplicaManager {
     }
 
     // called in operation threads
-    public boolean isPartitionReplicaVersionStale(int partitionId, long[] versions, int replicaIndex) {
+    boolean isPartitionReplicaVersionStale(int partitionId, long[] versions, int replicaIndex) {
         PartitionReplicaVersions partitionVersion = replicaVersions[partitionId];
         return partitionVersion.isStale(versions, replicaIndex);
     }
@@ -317,7 +317,7 @@ public class PartitionReplicaManager {
     /**
      * @return copy of ongoing replica-sync operations
      */
-    public List<ReplicaSyncInfo> getOngoingReplicaSyncRequests() {
+    List<ReplicaSyncInfo> getOngoingReplicaSyncRequests() {
         final int length = replicaSyncRequests.length();
         final List<ReplicaSyncInfo> replicaSyncRequestsList = new ArrayList<ReplicaSyncInfo>(length);
         for (int i = 0; i < length; i++) {
@@ -333,7 +333,7 @@ public class PartitionReplicaManager {
     /**
      * @return copy of scheduled replica-sync requests
      */
-    public List<ScheduledEntry<Integer, ReplicaSyncInfo>> getScheduledReplicaSyncRequests() {
+    List<ScheduledEntry<Integer, ReplicaSyncInfo>> getScheduledReplicaSyncRequests() {
         final List<ScheduledEntry<Integer, ReplicaSyncInfo>> entries = new ArrayList<ScheduledEntry<Integer, ReplicaSyncInfo>>();
         for (int partitionId = 0; partitionId < partitionCount; partitionId++) {
             final ScheduledEntry<Integer, ReplicaSyncInfo> entry = replicaSyncScheduler.get(partitionId);

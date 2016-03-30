@@ -55,8 +55,7 @@ import static com.hazelcast.spi.partition.IPartitionService.SERVICE_NAME;
  * TODO: Javadoc Pending...
  *
  */
-// TODO: find a better name!
-public class PartitionReplicaChecker {
+public class PartitionReplicaStateChecker {
 
     private static final int DEFAULT_PAUSE_MILLIS = 1000;
     private static final int REPLICA_SYNC_CHECK_TIMEOUT_SECONDS = 10;
@@ -70,7 +69,7 @@ public class PartitionReplicaChecker {
     private final MigrationManager migrationManager;
     private final PartitionReplicaManager replicaManager;
 
-    public PartitionReplicaChecker(Node node, InternalPartitionServiceImpl partitionService) {
+    public PartitionReplicaStateChecker(Node node, InternalPartitionServiceImpl partitionService) {
         this.node = node;
         this.partitionService = partitionService;
         nodeEngine = node.nodeEngine;
@@ -81,7 +80,7 @@ public class PartitionReplicaChecker {
         replicaManager = partitionService.getReplicaManager();
     }
 
-    public boolean prepareToSafeShutdown(long timeout, TimeUnit unit) {
+    boolean prepareToSafeShutdown(long timeout, TimeUnit unit) {
         long timeoutInMillis = unit.toMillis(timeout);
         long sleep = DEFAULT_PAUSE_MILLIS;
         while (timeoutInMillis > 0) {

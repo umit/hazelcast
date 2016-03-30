@@ -123,14 +123,14 @@ public class MigrationManager {
         this.logger = node.getLogger(getClass());
         this.partitionServiceLock = partitionServiceLock;
 
+        long intervalMillis = node.groupProperties.getMillis(GroupProperty.PARTITION_MIGRATION_INTERVAL);
+        partitionMigrationInterval = (intervalMillis > 0 ? intervalMillis : 0);
+        partitionMigrationTimeout = node.groupProperties.getMillis(GroupProperty.PARTITION_MIGRATION_TIMEOUT);
+
         partitionStateManager = partitionService.getPartitionStateManager();
 
         ILogger migrationThreadLogger = node.getLogger(MigrationThread.class);
         migrationThread = new MigrationThread(this, node.getHazelcastThreadGroup(), migrationThreadLogger, migrationQueue);
-
-        long intervalMillis = node.groupProperties.getMillis(GroupProperty.PARTITION_MIGRATION_INTERVAL);
-        partitionMigrationInterval = (intervalMillis > 0 ? intervalMillis : 0);
-        partitionMigrationTimeout = node.groupProperties.getMillis(GroupProperty.PARTITION_MIGRATION_TIMEOUT);
 
         long migrationPauseDelayMs =
                 node.groupProperties.getMillis(GroupProperty.MIGRATION_MIN_DELAY_ON_MEMBER_REMOVED_SECONDS);
@@ -235,7 +235,7 @@ public class MigrationManager {
         return activeMigrationInfo;
     }
 
-    boolean removeActiveMigration(int partitionId) {
+    private boolean removeActiveMigration(int partitionId) {
         partitionServiceLock.lock();
         try {
             if (activeMigrationInfo != null) {

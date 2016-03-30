@@ -25,6 +25,7 @@ import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.instance.Node;
 import com.hazelcast.internal.cluster.MemberInfo;
 import com.hazelcast.internal.cluster.impl.ClusterServiceImpl;
+import com.hazelcast.internal.metrics.MetricsRegistry;
 import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.internal.partition.InternalPartition;
 import com.hazelcast.internal.partition.InternalPartitionService;
@@ -113,7 +114,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
     private final PartitionStateManager partitionStateManager;
     private final MigrationManager migrationManager;
     private final PartitionReplicaManager replicaManager;
-    private final PartitionReplicaChecker partitionReplicaChecker;
+    private final PartitionReplicaStateChecker partitionReplicaStateChecker;
     private final PartitionEventManager partitionEventManager;
 
     private final ExceptionHandler partitionStateSyncTimeoutHandler;
@@ -137,7 +138,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         migrationManager = new MigrationManager(node, this, lock);
         replicaManager = new PartitionReplicaManager(node, this);
 
-        partitionReplicaChecker = new PartitionReplicaChecker(node, this);
+        partitionReplicaStateChecker = new PartitionReplicaStateChecker(node, this);
         partitionEventManager = new PartitionEventManager(node);
 
         partitionStateSyncTimeoutHandler =
@@ -147,7 +148,11 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
         proxy = new PartitionServiceProxy(nodeEngine, this);
 
-        nodeEngine.getMetricsRegistry().scanAndRegister(this, "partitions");
+        MetricsRegistry metricsRegistry = nodeEngine.getMetricsRegistry();
+        metricsRegistry.scanAndRegister(this, "partitions");
+        metricsRegistry.scanAndRegister(partitionStateManager, "partitions");
+        metricsRegistry.scanAndRegister(migrationManager, "partitions");
+        metricsRegistry.scanAndRegister(replicaManager, "partitions");
     }
 
     @Override
@@ -702,7 +707,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
     @Override
     public boolean prepareToSafeShutdown(long timeout, TimeUnit unit) {
-        return partitionReplicaChecker.prepareToSafeShutdown(timeout, unit);
+        return partitionReplicaStateChecker.prepareToSafeShutdown(timeout, unit);
     }
 
     List<MemberImpl> getCurrentMembersAndMembersRemovedWhileClusterNotActive() {
@@ -717,7 +722,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
     @Override
     public boolean isMemberStateSafe() {
-        return partitionReplicaChecker.getMemberState() == InternalPartitionServiceState.SAFE;
+        return partitionReplicaStateChecker.getMemberState() == InternalPartitionServiceState.SAFE;
     }
 
     @Override
@@ -969,8 +974,8 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         return replicaManager;
     }
 
-    public PartitionReplicaChecker getPartitionReplicaChecker() {
-        return partitionReplicaChecker;
+    public PartitionReplicaStateChecker getPartitionReplicaStateChecker() {
+        return partitionReplicaStateChecker;
     }
 
     public PartitionEventManager getPartitionEventManager() {
@@ -1009,7 +1014,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
         private final IPartitionLostEvent event;
 
-        public InternalPartitionLostEventPublisher(NodeEngineImpl nodeEngine, IPartitionLostEvent event) {
+        InternalPartitionLostEventPublisher(NodeEngineImpl nodeEngine, IPartitionLostEvent event) {
             this.nodeEngine = nodeEngine;
             this.event = event;
         }
