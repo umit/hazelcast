@@ -29,6 +29,7 @@ import static org.junit.Assert.assertTrue;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category(SlowTest.class)
+// TODO: this test is broken!
 public class SemaphoreSplitBrainTest extends HazelcastTestSupport {
 
     @Before

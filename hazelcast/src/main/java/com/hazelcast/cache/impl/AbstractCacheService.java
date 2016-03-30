@@ -19,6 +19,8 @@ package com.hazelcast.cache.impl;
 import com.hazelcast.cache.impl.event.CachePartitionLostEventFilter;
 import com.hazelcast.cache.impl.operation.CacheDestroyOperation;
 import com.hazelcast.cache.impl.operation.PostJoinCacheOperation;
+import com.hazelcast.concurrent.lock.LockStoreContainer;
+import com.hazelcast.concurrent.lock.LockStoreImpl;
 import com.hazelcast.config.CacheConfig;
 import com.hazelcast.config.CacheSimpleConfig;
 import com.hazelcast.config.InMemoryFormat;
@@ -50,6 +52,7 @@ import javax.cache.event.CacheEntryListener;
 import java.io.Closeable;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Properties;
@@ -159,7 +162,7 @@ public abstract class AbstractCacheService
     @Override
     public void commitMigration(PartitionMigrationEvent event) {
         if (event.getMigrationEndpoint() == MigrationEndpoint.SOURCE) {
-            clearPartitionReplica(event.getPartitionId());
+            clearCachesHavingLesserBackupCountThan(event.getPartitionId(), event.getNewReplicaIndex());
         }
         initPartitionReplica(event.getPartitionId());
     }
@@ -167,9 +170,19 @@ public abstract class AbstractCacheService
     @Override
     public void rollbackMigration(PartitionMigrationEvent event) {
         if (event.getMigrationEndpoint() == MigrationEndpoint.DESTINATION) {
-            clearPartitionReplica(event.getPartitionId());
+            clearCachesHavingLesserBackupCountThan(event.getPartitionId(), event.getCurrentReplicaIndex());
         }
         initPartitionReplica(event.getPartitionId());
+    }
+
+    private void clearCachesHavingLesserBackupCountThan(int partitionId, int thresholdReplicaIndex) {
+        if (thresholdReplicaIndex == -1) {
+            clearPartitionReplica(partitionId);
+            return;
+        }
+
+        CachePartitionSegment segment = segments[partitionId];
+        segment.clearHavingLesserBackupCountThan(thresholdReplicaIndex);
     }
 
     private void initPartitionReplica(int partitionId) {
