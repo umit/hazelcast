@@ -185,7 +185,7 @@ public class PartitionReplicaStateChecker {
             final Address owner = partition.getOwnerOrNull();
             if (owner == null) {
                 return false;
-            } if (thisAddress.equals(owner)) {
+            } else if (thisAddress.equals(owner)) {
                 if (partition.getReplicaAddress(replicaIndex) != null) {
                     final int partitionId = partition.getPartitionId();
                     final long replicaVersion = getCurrentReplicaVersion(replicaIndex, partitionId);

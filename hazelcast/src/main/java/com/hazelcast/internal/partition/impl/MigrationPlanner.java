@@ -46,9 +46,8 @@ class MigrationPlanner {
     // checkstyle warnings are suppressed intentionally because the algorithm is followed easier within a single coherent method.
     @SuppressWarnings({"checkstyle:npathcomplexity", "checkstyle:cyclomaticcomplexity", "checkstyle:methodlength"})
     void planMigrations(Address[] oldAddresses, Address[] newAddresses, MigrationDecisionCallback callback) {
-        assert oldAddresses.length == newAddresses.length :
-                "Replica addresses with different lengths! Old: " + Arrays.toString(oldAddresses) + ", New: " + Arrays
-                        .toString(newAddresses);
+        assert oldAddresses.length == newAddresses.length : "Replica addresses with different lengths! Old: "
+                + Arrays.toString(oldAddresses) + ", New: " + Arrays.toString(newAddresses);
 
         if (TRACE) {
             callback = new TracingMigrationDecisionCallback(callback);
@@ -170,8 +169,8 @@ class MigrationPlanner {
                 if (address == null) {
                     continue;
                 }
-                assert verificationSet.add(address) :
-                        "Migration decision algorithm failed! DUPLICATE REPLICA ADDRESSES! INITIAL: " + Arrays
+                assert verificationSet.add(address)
+                        : "Migration decision algorithm failed! DUPLICATE REPLICA ADDRESSES! INITIAL: " + Arrays
                                 .toString(oldAddresses) + ", CURRENT: " + Arrays.toString(state) + ", FINAL: " + Arrays
                                 .toString(newAddresses);
             }
