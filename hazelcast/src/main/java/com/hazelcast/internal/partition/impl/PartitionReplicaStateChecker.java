@@ -174,15 +174,18 @@ public class PartitionReplicaStateChecker {
     }
 
     private boolean isReplicaInSyncState() {
-        if (!partitionStateManager.isInitialized() || !hasMultipleMemberGroups()) {
+        if (!partitionStateManager.isInitialized() || partitionStateManager.getMemberGroupsSize() == 0) {
             return true;
         }
+
         final int replicaIndex = 1;
         final List<Future> futures = new ArrayList<Future>();
         final Address thisAddress = node.getThisAddress();
         for (InternalPartition partition : partitionStateManager.getPartitions()) {
             final Address owner = partition.getOwnerOrNull();
-            if (thisAddress.equals(owner)) {
+            if (owner == null) {
+                return false;
+            } if (thisAddress.equals(owner)) {
                 if (partition.getReplicaAddress(replicaIndex) != null) {
                     final int partitionId = partition.getPartitionId();
                     final long replicaVersion = getCurrentReplicaVersion(replicaIndex, partitionId);
@@ -241,11 +244,7 @@ public class PartitionReplicaStateChecker {
     }
 
     private boolean checkReplicaSyncState() {
-        if (!partitionStateManager.isInitialized()) {
-            return true;
-        }
-
-        if (!hasMultipleMemberGroups()) {
+        if (!partitionStateManager.isInitialized() || partitionStateManager.getMemberGroupsSize() == 0) {
             return true;
         }
 
@@ -291,7 +290,9 @@ public class PartitionReplicaStateChecker {
 
         for (InternalPartition partition : partitionStateManager.getPartitions()) {
             Address owner = partition.getOwnerOrNull();
-            if (thisAddress.equals(owner)) {
+            if (owner == null) {
+                ok.set(false);
+            } else if (thisAddress.equals(owner)) {
                 for (int i = 1; i <= maxBackupCount; i++) {
                     final Address replicaAddress = partition.getReplicaAddress(i);
                     if (replicaAddress != null) {
@@ -311,8 +312,6 @@ public class PartitionReplicaStateChecker {
                     }
                 }
                 ownedCount++;
-            } else if (owner == null) {
-                ok.set(false);
             }
         }
         return ownedCount;
@@ -360,11 +359,7 @@ public class PartitionReplicaStateChecker {
     }
 
     private boolean preCheckShouldWaitMigrationOrBackups() {
-        return partitionStateManager.isInitialized() && hasMultipleMemberGroups();
-    }
-
-    private boolean hasMultipleMemberGroups() {
-        return partitionStateManager.getMemberGroupsSize() >= 2;
+        return partitionStateManager.isInitialized() && partitionStateManager.getMemberGroupsSize() >= 2;
     }
 
     private boolean checkForActiveMigrations(Level level) {
