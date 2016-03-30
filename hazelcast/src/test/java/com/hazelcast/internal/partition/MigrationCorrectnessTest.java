@@ -40,4 +40,5 @@ public class MigrationCorrectnessTest extends AbstractMigrationCorrectnessTest {
                 {2, InternalPartition.MAX_REPLICA_COUNT},
         });
     }
+
 }

@@ -26,7 +26,6 @@ import com.hazelcast.internal.partition.impl.PartitionStateManager;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.spi.partition.IPartitionLostEvent;
 import com.hazelcast.spi.AbstractOperation;
 import com.hazelcast.spi.EventRegistration;
 import com.hazelcast.spi.EventService;

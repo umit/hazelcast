@@ -19,7 +19,7 @@ package com.hazelcast.internal.partition;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.instance.Node;
-import com.hazelcast.internal.serialization.SerializationService;
+import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.Packet;
@@ -52,10 +52,10 @@ public abstract class AbstractAntiEntropyCorrectnessTest extends PartitionCorrec
     }
 
     private static class BackupPacketFilter implements PacketFilter {
-        final SerializationService serializationService;
+        final InternalSerializationService serializationService;
         final float blockRatio;
 
-        BackupPacketFilter(SerializationService serializationService, float blockRatio) {
+        BackupPacketFilter(InternalSerializationService serializationService, float blockRatio) {
             this.serializationService = serializationService;
             this.blockRatio = blockRatio;
         }
