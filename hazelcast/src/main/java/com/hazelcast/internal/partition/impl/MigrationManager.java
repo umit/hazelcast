@@ -256,6 +256,9 @@ public class MigrationManager {
         return false;
     }
 
+    // suppressed intentionally since it is easier the follow the cases in one place.
+    // if this part gets more complicated, method can be divided into multiple methods
+    @SuppressWarnings("checkstyle:cyclomaticcomplexity")
     void scheduleActiveMigrationFinalization(final MigrationInfo migrationInfo) {
         partitionServiceLock.lock();
         try {
@@ -524,16 +527,8 @@ public class MigrationManager {
 
             partitionServiceLock.lock();
             try {
-                if (!isAllowed()) {
-                    return;
-                }
-
-                Address[][] newState = partitionStateManager.repartition();
+                Address[][] newState = repartition();
                 if (newState == null) {
-                    return;
-                }
-
-                if (!isAllowed()) {
                     return;
                 }
 
@@ -552,6 +547,23 @@ public class MigrationManager {
             } finally {
                 partitionServiceLock.unlock();
             }
+        }
+
+        private Address[][] repartition() {
+            if (!isAllowed()) {
+                return null;
+            }
+
+            Address[][] newState = partitionStateManager.repartition();
+            if (newState == null) {
+                return null;
+            }
+
+            if (!isAllowed()) {
+                return null;
+            }
+
+            return newState;
         }
 
         private void processNewPartitionState(Address[][] newState) {
@@ -725,24 +737,8 @@ public class MigrationManager {
             }
 
             try {
-                MemberImpl partitionOwner = getPartitionOwner();
+                MemberImpl partitionOwner = checkMigrationParticipantsAndGetPartitionOwner();
                 if (partitionOwner == null) {
-                    logger.fine("Partition owner is null. Ignoring " + migrationInfo);
-                    triggerRepartitioningAfterMigrationFailure();
-                    return;
-                }
-
-                if (migrationInfo.getSource() != null) {
-                    if (node.getClusterService().getMember(migrationInfo.getSource()) == null) {
-                        logger.fine("Source is not member anymore. Ignoring " + migrationInfo);
-                        triggerRepartitioningAfterMigrationFailure();
-                        return;
-                    }
-                }
-
-                if (node.getClusterService().getMember(migrationInfo.getDestination()) == null) {
-                    logger.fine("Destination is not member anymore. Ignoring " + migrationInfo);
-                    triggerRepartitioningAfterMigrationFailure();
                     return;
                 }
 
@@ -762,6 +758,30 @@ public class MigrationManager {
                 logger.finest(t);
                 migrationOperationFailed();
             }
+        }
+
+        private MemberImpl checkMigrationParticipantsAndGetPartitionOwner() {
+            MemberImpl partitionOwner = getPartitionOwner();
+            if (partitionOwner == null) {
+                logger.fine("Partition owner is null. Ignoring " + migrationInfo);
+                triggerRepartitioningAfterMigrationFailure();
+                return null;
+            }
+
+            if (migrationInfo.getSource() != null) {
+                if (node.getClusterService().getMember(migrationInfo.getSource()) == null) {
+                    logger.fine("Source is not member anymore. Ignoring " + migrationInfo);
+                    triggerRepartitioningAfterMigrationFailure();
+                    return null;
+                }
+            }
+
+            if (node.getClusterService().getMember(migrationInfo.getDestination()) == null) {
+                logger.fine("Destination is not member anymore. Ignoring " + migrationInfo);
+                triggerRepartitioningAfterMigrationFailure();
+                return null;
+            }
+            return partitionOwner;
         }
 
         private MemberImpl getPartitionOwner() {
@@ -911,23 +931,10 @@ public class MigrationManager {
 
             partitionServiceLock.lock();
             try {
-                Collection<Address> addresses = new HashSet<Address>();
                 InternalPartition[] partitions = partitionStateManager.getPartitions();
                 ClusterServiceImpl clusterService = node.getClusterService();
 
-                for (InternalPartition partition : partitions) {
-                    for (int i = 0; i < InternalPartition.MAX_REPLICA_COUNT; i++) {
-                        Address address = partition.getReplicaAddress(i);
-                        if (address == null) {
-                            continue;
-                        }
-
-                        MemberImpl member = clusterService.getMember(address);
-                        if (member == null || !partitionStateManager.isKnownMemberUuid(address, member.getUuid())) {
-                            addresses.add(address);
-                        }
-                    }
-                }
+                Collection<Address> addresses = collectUnknownAddresses(partitions, clusterService);
 
                 for (Address address : addresses) {
                     partitionStateManager.removeDeadAddress(address);
@@ -950,6 +957,27 @@ public class MigrationManager {
             } finally {
                 partitionServiceLock.unlock();
             }
+        }
+
+        private Collection<Address> collectUnknownAddresses(InternalPartition[] partitions,
+                                             ClusterServiceImpl clusterService) {
+            Collection<Address> addresses = new HashSet<Address>();
+
+            for (InternalPartition partition : partitions) {
+                for (int i = 0; i < InternalPartition.MAX_REPLICA_COUNT; i++) {
+                    Address address = partition.getReplicaAddress(i);
+                    if (address == null) {
+                        continue;
+                    }
+
+                    MemberImpl member = clusterService.getMember(address);
+                    if (member == null || !partitionStateManager.isKnownMemberUuid(address, member.getUuid())) {
+                        addresses.add(address);
+                    }
+                }
+            }
+
+            return addresses;
         }
 
     }
