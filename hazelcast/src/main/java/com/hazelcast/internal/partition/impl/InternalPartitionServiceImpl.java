@@ -124,7 +124,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
     private volatile Address lastMaster;
 
-    private volatile int fetchPartitionTablesAfterVersion = -1;
+    private volatile boolean shouldFetchPartitionTables;
 
     public InternalPartitionServiceImpl(Node node) {
         this.partitionCount = node.groupProperties.getInteger(GroupProperty.PARTITION_COUNT);
@@ -305,8 +305,6 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
                 if (partitionStateManager.isInitialized()) {
                     final ClusterState clusterState = nodeEngine.getClusterService().getClusterState();
                     if (clusterState == ClusterState.ACTIVE) {
-                        // TODO: is version inc still needed?
-                        partitionStateManager.incrementVersion();
                         migrationManager.triggerControlTask();
                     }
                 }
@@ -326,22 +324,12 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
         lock.lock();
         try {
-            final int partitionStateVersionBeforeMemberRemove = partitionStateManager.getVersion();
-
-            if (node.isMaster() && partitionStateManager.isInitialized()
-                    && node.getClusterService().getClusterState() == ClusterState.ACTIVE) {
-                // TODO: is version inc still needed?
-                partitionStateManager.incrementVersion();
-            }
-
             migrationManager.onMemberRemove(member);
 
             boolean isThisNodeNewMaster = node.isMaster() && !thisAddress.equals(lastMaster);
             if (isThisNodeNewMaster) {
-                assert fetchPartitionTablesAfterVersion < 0 : "SOMETHING IS WRONG "
-                        + fetchPartitionTablesAfterVersion + " currently removed member: " + member;
-
-                fetchPartitionTablesAfterVersion = partitionStateVersionBeforeMemberRemove;
+                assert !shouldFetchPartitionTables : "SOMETHING IS WRONG! Removed member: " + member;
+                shouldFetchPartitionTables = true;
             }
 
             lastMaster = node.getMasterAddress();
@@ -985,14 +973,14 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
     }
 
     public boolean isFetchMostRecentPartitionTableTaskRequired() {
-        return fetchPartitionTablesAfterVersion > -1;
+        return shouldFetchPartitionTables;
     }
 
     boolean scheduleFetchMostRecentPartitionTableTaskIfRequired() {
        lock.lock();
        try {
-           if (isFetchMostRecentPartitionTableTaskRequired()) {
-               migrationManager.schedule(new FetchMostRecentPartitionTableTask(fetchPartitionTablesAfterVersion));
+           if (shouldFetchPartitionTables) {
+               migrationManager.schedule(new FetchMostRecentPartitionTableTask());
                return true;
            }
 
@@ -1046,11 +1034,9 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
         private PartitionRuntimeState newState;
 
-        FetchMostRecentPartitionTableTask(int version) {
-            maxVersion = version;
-        }
-
         public void run() {
+            maxVersion = partitionStateManager.getVersion();
+
             Collection<Future<PartitionRuntimeState>> futures = invokeFetchPartitionStateOps();
 
             logger.info("Fetching most recent partition table! my version: " + maxVersion);
@@ -1156,7 +1142,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
                     }
                 }
 
-                fetchPartitionTablesAfterVersion = -1;
+                shouldFetchPartitionTables = false;
             } finally {
                 lock.unlock();
             }
