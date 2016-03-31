@@ -38,19 +38,10 @@ public class MigrationQueueTest {
     private final MigrationQueue migrationQueue = new MigrationQueue();
 
     @Test
-    public void test_migrationTaskCount_incremented_onMigrateTask() {
-        migrationQueue.add(mock(MigrationManager.MigrateTask.class));
-
-        assertTrue(migrationQueue.hasMigrationTasks());
-        assertEquals(1, migrationQueue.size());
-    }
-
-    @Test
-    public void test_migrationTaskCount_notIncremented_onNonMigrateTask() {
+    public void test_migrationTaskCount_incremented() {
         migrationQueue.add(mock(MigrationRunnable.class));
 
-        assertFalse(migrationQueue.hasMigrationTasks());
-        assertEquals(1, migrationQueue.size());
+        assertEquals(1, migrationQueue.migrationTaskCount());
     }
 
     @Test
@@ -63,23 +54,14 @@ public class MigrationQueueTest {
     }
 
     @Test
-    public void test_migrateTaskCount_decremented_afterMigrateTaskCompleted()
+    public void test_migrateTaskCount_decremented_afterTaskCompleted()
             throws InterruptedException {
-        final MigrationManager.MigrateTask migrateTask = mock(MigrationManager.MigrateTask.class);
+        final MigrationRunnable task = mock(MigrationRunnable.class);
 
-        migrationQueue.add(migrateTask);
-        migrationQueue.afterTaskCompletion(migrateTask);
+        migrationQueue.add(task);
+        migrationQueue.afterTaskCompletion(task);
 
         assertFalse(migrationQueue.hasMigrationTasks());
-    }
-
-    @Test
-    public void test_migrateTaskCount_notDecremented_afterNonMigrateTaskCompleted()
-            throws InterruptedException {
-        migrationQueue.add(mock(MigrationManager.MigrateTask.class));
-        migrationQueue.afterTaskCompletion(mock(MigrationRunnable.class));
-
-        assertTrue(migrationQueue.hasMigrationTasks());
     }
 
     @Test

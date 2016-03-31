@@ -427,12 +427,11 @@ public class MigrationManager {
     }
 
     boolean hasOnGoingMigration() {
-        return activeMigrationInfo != null || migrationQueue.isNonEmpty()
-                || migrationQueue.hasMigrationTasks();
+        return activeMigrationInfo != null || migrationQueue.hasMigrationTasks();
     }
 
     int getMigrationQueueSize() {
-        return migrationQueue.size();
+        return migrationQueue.migrationTaskCount();
     }
 
     void reset() {
@@ -611,7 +610,7 @@ public class MigrationManager {
 
         private boolean isAllowed() {
             boolean migrationAllowed = partitionService.isMigrationAllowed();
-            boolean hasMigrationTasks = migrationQueue.hasMigrationTasks();
+            boolean hasMigrationTasks = migrationQueue.migrationTaskCount() > 1;
             if (migrationAllowed && !hasMigrationTasks) {
                 return true;
             }
