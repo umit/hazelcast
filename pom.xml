@@ -378,9 +378,9 @@
                             <excludes>
                                 <exclude>**/jsr/**.java</exclude>
                             </excludes>
-                            <groups>com.hazelcast.test.annotation.QuickTest</groups>
+                            <groups>com.hazelcast.test.annotation.QuickTest,com.hazelcast.test.annotation.SlowTest</groups>
                             <excludedGroups>
-                                com.hazelcast.test.annotation.SlowTest,com.hazelcast.test.annotation.NightlyTest
+                                com.hazelcast.test.annotation.NightlyTest
                             </excludedGroups>
                         </configuration>
                     </plugin>
