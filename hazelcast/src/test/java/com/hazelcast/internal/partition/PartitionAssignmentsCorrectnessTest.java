@@ -37,6 +37,8 @@ public class PartitionAssignmentsCorrectnessTest extends AbstractPartitionAssign
                 {1, InternalPartition.MAX_REPLICA_COUNT},
                 {2, 3},
                 {2, InternalPartition.MAX_REPLICA_COUNT},
+                {3, 4},
+                {3, InternalPartition.MAX_REPLICA_COUNT}
         });
     }
 }
