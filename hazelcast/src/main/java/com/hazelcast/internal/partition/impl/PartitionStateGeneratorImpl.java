@@ -128,7 +128,8 @@ public final class PartitionStateGeneratorImpl implements PartitionStateGenerato
                 // until queue is empty.
                 distributeUnownedPartitions(groups, freePartitions, index);
             }
-            // TODO: what if there are still free partitions?
+            assert freePartitions.isEmpty() : "There are partitions not-owned yet: " + freePartitions;
+
             // iterate through over-loaded groups' partitions and distribute them to under-loaded groups.
             transferPartitionsBetweenGroups(underLoadedGroups, overLoadedGroups, index,
                     avgPartitionPerGroup, plusOneGroupCount);
@@ -676,7 +677,7 @@ public final class PartitionStateGeneratorImpl implements PartitionStateGenerato
             }
             if (containsPartition(partitionId)) {
                 if (LOGGER.isFinestEnabled()) {
-                    String error = "Partition[" + partitionId + "] is already owned by this node " + address + "! Duplicate!";
+                    String error = "Partition[" + partitionId + "] is already owned by this node " + address;
                     LOGGER.finest(error);
                 }
                 return false;
