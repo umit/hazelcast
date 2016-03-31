@@ -29,13 +29,12 @@ import static org.junit.Assert.assertTrue;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category(SlowTest.class)
-// TODO: this test is broken!
 public class SemaphoreSplitBrainTest extends HazelcastTestSupport {
 
     @Before
     @After
     public void killAllHazelcastInstances() throws IOException {
-        HazelcastInstanceManager.shutdownAll();
+        HazelcastInstanceManager.terminateAll();
     }
 
     @Test
@@ -98,7 +97,7 @@ public class SemaphoreSplitBrainTest extends HazelcastTestSupport {
         return config;
     }
 
-    private class TestLifeCycleListener implements LifecycleListener {
+    private static class TestLifeCycleListener implements LifecycleListener {
 
         CountDownLatch latch;
 
@@ -114,7 +113,7 @@ public class SemaphoreSplitBrainTest extends HazelcastTestSupport {
         }
     }
 
-    private class TestMemberShipListener implements MembershipListener {
+    private static class TestMemberShipListener implements MembershipListener {
 
         final CountDownLatch latch;
 
