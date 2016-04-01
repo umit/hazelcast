@@ -22,6 +22,7 @@ import com.hazelcast.core.MigrationEvent.MigrationStatus;
 import com.hazelcast.internal.partition.MigrationCycleOperation;
 import com.hazelcast.internal.partition.impl.InternalPartitionImpl;
 import com.hazelcast.internal.partition.impl.InternalPartitionServiceImpl;
+import com.hazelcast.internal.partition.impl.PartitionEventManager;
 import com.hazelcast.internal.partition.impl.PartitionStateManager;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.ObjectDataInput;
@@ -122,7 +123,8 @@ public final class PromoteFromBackupOperation
                 logger.finest("PROMOTE partitionId=" + getPartitionId() + " from currentReplicaIndex=" + currentReplicaIndex);
             }
 
-            partitionService.sendPartitionLostEvent(partitionId, lostReplicaIndex);
+            PartitionEventManager partitionEventManager = partitionService.getPartitionEventManager();
+            partitionEventManager.sendPartitionLostEvent(partitionId, lostReplicaIndex);
         } catch (Throwable e) {
             logger.warning("Promotion failed. partitionId=" + partitionId + " replicaIndex=" + currentReplicaIndex, e);
         }

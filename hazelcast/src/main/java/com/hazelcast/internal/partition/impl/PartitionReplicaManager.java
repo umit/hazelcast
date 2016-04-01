@@ -45,7 +45,8 @@ import static com.hazelcast.internal.partition.InternalPartitionService.REPLICA_
 import static com.hazelcast.spi.impl.OperationResponseHandlerFactory.createErrorLoggingResponseHandler;
 
 /**
- * TODO: Javadoc Pending...
+ *
+ * Maintains the version values for the partition replicas and manages the replica-related operations for partitions
  *
  */
 public class PartitionReplicaManager {

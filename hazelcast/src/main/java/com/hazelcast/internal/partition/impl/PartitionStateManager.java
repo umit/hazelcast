@@ -41,7 +41,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static com.hazelcast.cluster.memberselector.MemberSelectors.DATA_MEMBER_SELECTOR;
 
 /**
- * TODO: Javadoc Pending...
+ *
+ * Maintains the partition table state.
  *
  */
 public class PartitionStateManager {

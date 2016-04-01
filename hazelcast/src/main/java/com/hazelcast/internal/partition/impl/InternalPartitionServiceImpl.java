@@ -990,41 +990,6 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
        }
     }
 
-    public void sendPartitionLostEvent(int partitionId, int lostReplicaIndex) {
-        final IPartitionLostEvent event = new IPartitionLostEvent(partitionId, lostReplicaIndex,
-                nodeEngine.getThisAddress());
-        final InternalPartitionLostEventPublisher publisher = new InternalPartitionLostEventPublisher(nodeEngine, event);
-        nodeEngine.getExecutionService().execute(SYSTEM_EXECUTOR, publisher);
-    }
-
-    private static class InternalPartitionLostEventPublisher
-            implements Runnable {
-
-        private final NodeEngineImpl nodeEngine;
-
-        private final IPartitionLostEvent event;
-
-        InternalPartitionLostEventPublisher(NodeEngineImpl nodeEngine, IPartitionLostEvent event) {
-            this.nodeEngine = nodeEngine;
-            this.event = event;
-        }
-
-        @Override
-        public void run() {
-            for (PartitionAwareService service : nodeEngine.getServices(PartitionAwareService.class)) {
-                try {
-                    service.onPartitionLost(event);
-                } catch (Exception e) {
-                    final ILogger logger = nodeEngine.getLogger(InternalPartitionLostEventPublisher.class);
-                    logger.warning("Handling partitionLostEvent failed. Service: " + service.getClass() + " Event: " + event, e);
-                }
-            }
-        }
-
-        public IPartitionLostEvent getEvent() {
-            return event;
-        }
-    }
 
     private class FetchMostRecentPartitionTableTask implements MigrationRunnable {
 
@@ -1049,9 +1014,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
             logger.info("Most recent partition table version: " + maxVersion);
             processNewState(allCompletedMigrations, allActiveMigrations);
 
-            if (!syncPartitionRuntimeState() && logger.isFinestEnabled()) {
-                logger.finest("All members not synced partition table after master fetch");
-            }
+            syncPartitionRuntimeState();
         }
 
         private Collection<Future<PartitionRuntimeState>> invokeFetchPartitionStateOps() {

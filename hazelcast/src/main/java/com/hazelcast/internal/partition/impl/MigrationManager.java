@@ -68,7 +68,8 @@ import java.util.logging.Level;
 import static com.hazelcast.spi.partition.IPartitionService.SERVICE_NAME;
 
 /**
- * TODO: Javadoc Pending...
+ *
+ * Maintains migration system state and manages migration operations performed within the cluster.
  *
  */
 public class MigrationManager {
@@ -493,7 +494,8 @@ public class MigrationManager {
 
         if (partition.getOwnerOrNull() == null) {
             logger.warning("partitionId=" + partitionId + " is completely lost!");
-            partitionService.sendPartitionLostEvent(partitionId, InternalPartition.MAX_BACKUP_COUNT);
+            PartitionEventManager partitionEventManager = partitionService.getPartitionEventManager();
+            partitionEventManager.sendPartitionLostEvent(partitionId, InternalPartition.MAX_BACKUP_COUNT);
         }
     }
 
@@ -541,9 +543,7 @@ public class MigrationManager {
                     migrationQueue.add(new CheckPartitionTableTask());
                 }
 
-                if (!partitionService.syncPartitionRuntimeState() && logger.isFinestEnabled()) {
-                    logger.finest("All members not synced partition table after repartitioning");
-                }
+                partitionService.syncPartitionRuntimeState();
             } finally {
                 partitionServiceLock.unlock();
             }
@@ -931,10 +931,7 @@ public class MigrationManager {
 
             partitionServiceLock.lock();
             try {
-                InternalPartition[] partitions = partitionStateManager.getPartitions();
-                ClusterServiceImpl clusterService = node.getClusterService();
-
-                Collection<Address> addresses = collectUnknownAddresses(partitions, clusterService);
+                Collection<Address> addresses = collectUnknownAddresses();
 
                 for (Address address : addresses) {
                     partitionStateManager.removeDeadAddress(address);
@@ -944,9 +941,7 @@ public class MigrationManager {
                     repairPartition(partitionId);
                 }
 
-                if (!partitionService.syncPartitionRuntimeState() && logger.isFinestEnabled()) {
-                    logger.finest("All members not synced partition table after repair");
-                }
+                partitionService.syncPartitionRuntimeState();
 
                 if (logger.isFinestEnabled()) {
                     logger.finest("RepartitioningTask scheduled");
@@ -959,8 +954,10 @@ public class MigrationManager {
             }
         }
 
-        private Collection<Address> collectUnknownAddresses(InternalPartition[] partitions,
-                                             ClusterServiceImpl clusterService) {
+        private Collection<Address> collectUnknownAddresses() {
+            InternalPartition[] partitions = partitionStateManager.getPartitions();
+            ClusterServiceImpl clusterService = node.getClusterService();
+
             Collection<Address> addresses = new HashSet<Address>();
 
             for (InternalPartition partition : partitions) {
