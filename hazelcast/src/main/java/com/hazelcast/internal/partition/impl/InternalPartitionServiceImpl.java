@@ -36,11 +36,9 @@ import com.hazelcast.internal.partition.PartitionRuntimeState;
 import com.hazelcast.internal.partition.PartitionServiceProxy;
 import com.hazelcast.internal.partition.operation.AssignPartitions;
 import com.hazelcast.internal.partition.operation.FetchPartitionStateOperation;
-import com.hazelcast.internal.partition.operation.HasOngoingMigration;
 import com.hazelcast.internal.partition.operation.PartitionStateOperation;
 import com.hazelcast.internal.properties.GroupProperty;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.Logger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.partition.NoDataMemberInClusterException;
@@ -49,10 +47,8 @@ import com.hazelcast.partition.PartitionEventListener;
 import com.hazelcast.partition.PartitionLostListener;
 import com.hazelcast.spi.EventPublishingService;
 import com.hazelcast.spi.ExecutionService;
-import com.hazelcast.spi.InvocationBuilder;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
-import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.spi.PartitionAwareService;
 import com.hazelcast.spi.exception.TargetNotMemberException;
@@ -91,11 +87,13 @@ import static java.lang.Math.min;
 /**
  * The {@link InternalPartitionService} implementation.
  */
+@SuppressWarnings({"checkstyle:methodcount", "checkstyle:classfanoutcomplexity", "checkstyle:classdataabstractioncoupling"})
 public class InternalPartitionServiceImpl implements InternalPartitionService, ManagedService,
         EventPublishingService<PartitionEvent, PartitionEventListener<PartitionEvent>>, PartitionAwareService {
 
     private static final int PARTITION_OWNERSHIP_WAIT_MILLIS = 10;
     private static final String EXCEPTION_MSG_PARTITION_STATE_SYNC_TIMEOUT = "Partition state sync invocation timed out";
+    private static final int PTABLE_SYNC_TIMEOUT_SECONDS = 10;
 
     private final Node node;
     private final NodeEngineImpl nodeEngine;
@@ -480,7 +478,8 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
             Collection<MemberImpl> members = node.clusterService.getMemberImpls();
             List<Future<Boolean>> calls = firePartitionStateOperation(members, partitionState, operationService);
-            Collection<Boolean> results = returnWithDeadline(calls, 10, TimeUnit.SECONDS, partitionStateSyncTimeoutHandler);
+            Collection<Boolean> results = returnWithDeadline(calls, PTABLE_SYNC_TIMEOUT_SECONDS,
+                    TimeUnit.SECONDS, partitionStateSyncTimeoutHandler);
 
             if (calls.size() != results.size()) {
                 return false;
@@ -710,27 +709,8 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
     @Override
     public boolean hasOnGoingMigration() {
-        return hasOnGoingMigrationLocal() || (!node.isMaster() && hasOnGoingMigrationMaster(Level.FINEST));
-    }
-
-    private boolean hasOnGoingMigrationMaster(Level level) {
-        Address masterAddress = node.getMasterAddress();
-        if (masterAddress == null) {
-            return node.joined();
-        }
-        Operation operation = new HasOngoingMigration();
-        OperationService operationService = nodeEngine.getOperationService();
-        InvocationBuilder invocationBuilder = operationService.createInvocationBuilder(SERVICE_NAME, operation,
-                masterAddress);
-        Future future = invocationBuilder.setTryCount(100).setTryPauseMillis(100).invoke();
-        try {
-            return (Boolean) future.get(1, TimeUnit.MINUTES);
-        } catch (InterruptedException ie) {
-            Logger.getLogger(InternalPartitionServiceImpl.class).finest("Future wait interrupted", ie);
-        } catch (Exception e) {
-            logger.log(level, "Could not get a response from master about migrations! -> " + e.toString());
-        }
-        return false;
+        return hasOnGoingMigrationLocal()
+                || (!node.isMaster() && partitionReplicaStateChecker.hasOnGoingMigrationMaster(Level.FINEST));
     }
 
     @Override

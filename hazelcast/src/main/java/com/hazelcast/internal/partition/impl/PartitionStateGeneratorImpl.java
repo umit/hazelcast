@@ -38,7 +38,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
-public final class PartitionStateGeneratorImpl implements PartitionStateGenerator {
+final class PartitionStateGeneratorImpl implements PartitionStateGenerator {
 
     private static final ILogger LOGGER = Logger.getLogger(PartitionStateGenerator.class);
 
@@ -140,6 +140,7 @@ public final class PartitionStateGeneratorImpl implements PartitionStateGenerato
         }
     }
 
+    @SuppressWarnings({"checkstyle:cyclomaticcomplexity", "checkstyle:npathcomplexity"})
     private void transferPartitionsBetweenGroups(Queue<NodeGroup> underLoadedGroups, Collection<NodeGroup> overLoadedGroups,
                                                  int index, int avgPartitionPerGroup, int plusOneGroupCount) {
 

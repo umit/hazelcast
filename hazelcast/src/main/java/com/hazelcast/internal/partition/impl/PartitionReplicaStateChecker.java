@@ -152,7 +152,7 @@ public class PartitionReplicaStateChecker {
         return isReplicaInSyncState() ? SAFE : REPLICA_NOT_SYNC;
     }
 
-    private boolean hasOnGoingMigrationMaster(Level level) {
+    boolean hasOnGoingMigrationMaster(Level level) {
         Address masterAddress = node.getMasterAddress();
         if (masterAddress == null) {
             return node.joined();
