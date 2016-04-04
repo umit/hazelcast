@@ -31,7 +31,6 @@ import com.hazelcast.internal.partition.InternalPartition;
 import com.hazelcast.internal.partition.InternalPartitionService;
 import com.hazelcast.internal.partition.MigrationInfo;
 import com.hazelcast.internal.partition.MigrationInfo.MigrationStatus;
-import com.hazelcast.internal.partition.PartitionInfo;
 import com.hazelcast.internal.partition.PartitionListener;
 import com.hazelcast.internal.partition.PartitionRuntimeState;
 import com.hazelcast.internal.partition.PartitionServiceProxy;
@@ -84,7 +83,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 
 import static com.hazelcast.cluster.memberselector.MemberSelectors.DATA_MEMBER_SELECTOR;
-import static com.hazelcast.spi.ExecutionService.SYSTEM_EXECUTOR;
 import static com.hazelcast.util.FutureUtil.logAllExceptions;
 import static com.hazelcast.util.FutureUtil.returnWithDeadline;
 import static java.lang.Math.max;
@@ -306,6 +304,8 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
                     final ClusterState clusterState = nodeEngine.getClusterService().getClusterState();
                     if (clusterState == ClusterState.ACTIVE) {
                         migrationManager.triggerControlTask();
+                    } else if (clusterState == ClusterState.FROZEN || clusterState == ClusterState.PASSIVE) {
+                        partitionStateManager.updateMemberUuidMap();
                     }
                 }
             } finally {
@@ -358,28 +358,20 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
     }
 
     public PartitionRuntimeState createPartitionState() {
-        return createPartitionState(getCurrentMembersAndMembersRemovedWhileClusterNotActive());
-    }
-
-    private PartitionRuntimeState createPartitionState(Collection<MemberImpl> members) {
         if (!partitionStateManager.isInitialized()) {
             return null;
         }
 
         lock.lock();
         try {
-            List<MemberInfo> memberInfos = new ArrayList<MemberInfo>(members.size());
-            for (MemberImpl member : members) {
-                MemberInfo memberInfo = new MemberInfo(member.getAddress(), member.getUuid(), member.getAttributes());
-                memberInfos.add(memberInfo);
-            }
+            Collection<MemberInfo> members = partitionStateManager.getPartitionTableMembers();
             List<MigrationInfo> completedMigrations = migrationManager.getCompletedMigrations();
             ILogger logger = node.getLogger(PartitionRuntimeState.class);
 
             InternalPartition[] partitions = partitionStateManager.getPartitions();
 
             PartitionRuntimeState state =
-                    new PartitionRuntimeState(logger, memberInfos, partitions, completedMigrations, getPartitionStateVersion());
+                    new PartitionRuntimeState(logger, members, partitions, completedMigrations, getPartitionStateVersion());
             state.setActiveMigration(migrationManager.getActiveMigration());
             return state;
         } finally {
@@ -391,14 +383,9 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         if (!partitionStateManager.isInitialized()) {
             return null;
         }
-        Collection<MemberImpl> members = node.clusterService.getMemberImpls();
         lock.lock();
         try {
-            List<MemberInfo> memberInfos = new ArrayList<MemberInfo>(members.size());
-            for (MemberImpl member : members) {
-                MemberInfo memberInfo = new MemberInfo(member.getAddress(), member.getUuid(), member.getAttributes());
-                memberInfos.add(memberInfo);
-            }
+            Collection<MemberInfo> members = partitionStateManager.getPartitionTableMembers();
             List<MigrationInfo> completedMigrations = migrationManager.getCompletedMigrations();
             ILogger logger = node.getLogger(PartitionRuntimeState.class);
 
@@ -409,7 +396,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
             migrationManager.applyMigration(partition, migrationInfo);
 
             int committedVersion = getPartitionStateVersion() + 1;
-            return new PartitionRuntimeState(logger, memberInfos, partitions, completedMigrations, committedVersion);
+            return new PartitionRuntimeState(logger, members, partitions, completedMigrations, committedVersion);
         } finally {
             lock.unlock();
         }
@@ -432,8 +419,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
         lock.lock();
         try {
-            Collection<MemberImpl> members = getCurrentMembersAndMembersRemovedWhileClusterNotActive();
-            PartitionRuntimeState partitionState = createPartitionState(members);
+            PartitionRuntimeState partitionState = createPartitionState();
             if (partitionState == null) {
                 return;
             }
@@ -444,9 +430,9 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
             PartitionStateOperation op = new PartitionStateOperation(partitionState);
             OperationService operationService = nodeEngine.getOperationService();
-            final ClusterServiceImpl clusterService = node.clusterService;
+            Collection<MemberImpl> members = node.clusterService.getMemberImpls();
             for (MemberImpl member : members) {
-                if (!(member.localMember() || clusterService.isMemberRemovedWhileClusterIsNotActive(member.getAddress()))) {
+                if (!member.localMember()) {
                     try {
                         operationService.send(op, member.getAddress());
                     } catch (Exception e) {
@@ -475,7 +461,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
         lock.lock();
         try {
-            PartitionRuntimeState partitionState = createPartitionState(members);
+            PartitionRuntimeState partitionState = createPartitionState();
             if (partitionState == null) {
                 return false;
             }
@@ -581,7 +567,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
             partitionStateManager.setInitialized();
             partitionStateManager.updateMemberUuidMap(partitionState.getMembers());
 
-            filterAndLogUnknownAddressesInPartitionTable(sender, partitionState.getPartitions());
+            filterAndLogUnknownAddressesInPartitionTable(sender, partitionState.getPartitionTable());
             finalizeOrRollbackMigration(partitionState);
             return true;
         } finally {
@@ -590,7 +576,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
     }
 
     private void finalizeOrRollbackMigration(PartitionRuntimeState partitionState) {
-        final PartitionInfo[] partitions = partitionState.getPartitions();
+        final Address[][] partitionTable = partitionState.getPartitionTable();
         Collection<MigrationInfo> completedMigrations = partitionState.getCompletedMigrations();
         for (MigrationInfo completedMigration : completedMigrations) {
 
@@ -600,7 +586,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
             if (migrationManager.addCompletedMigration(completedMigration)) {
                 int partitionId = completedMigration.getPartitionId();
-                PartitionInfo partitionInfo = partitions[partitionId];
+                Address[] replicas = partitionTable[partitionId];
                 // mdogan:
                 // Each partition should be updated right after migration is finalized
                 // at the moment, it doesn't cause any harm to existing services,
@@ -608,27 +594,27 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
                 // But from API point of view, we should provide explicit guarantees.
                 // For the time being, leaving this stuff as is to not to change behaviour.
 
-                partitionStateManager.updateReplicaAddresses(partitionInfo.getPartitionId(), partitionInfo.getReplicaAddresses());
+                partitionStateManager.updateReplicaAddresses(partitionId, replicas);
                 migrationManager.scheduleActiveMigrationFinalization(completedMigration);
             }
         }
 
-        updateAllPartitions(partitions);
+        updateAllPartitions(partitionTable);
         migrationManager.retainCompletedMigrations(completedMigrations);
     }
 
-    private void updateAllPartitions(PartitionInfo[] state) {
+    private void updateAllPartitions(Address[][] partitionTable) {
         for (int partitionId = 0; partitionId < partitionCount; partitionId++) {
-            final PartitionInfo partitionInfo = state[partitionId];
-            partitionStateManager.updateReplicaAddresses(partitionInfo.getPartitionId(), partitionInfo.getReplicaAddresses());
+            Address[] replicas = partitionTable[partitionId];
+            partitionStateManager.updateReplicaAddresses(partitionId, replicas);
         }
     }
 
-    private void filterAndLogUnknownAddressesInPartitionTable(Address sender, PartitionInfo[] state) {
+    private void filterAndLogUnknownAddressesInPartitionTable(Address sender, Address[][] partitionTable) {
         final Set<Address> unknownAddresses = new HashSet<Address>();
-        for (int partitionId = 0; partitionId < state.length; partitionId++) {
-            PartitionInfo partitionInfo = state[partitionId];
-            searchUnknownAddressesInPartitionTable(sender, unknownAddresses, partitionId, partitionInfo);
+        for (int partitionId = 0; partitionId < partitionTable.length; partitionId++) {
+            Address[] replicas = partitionTable[partitionId];
+            searchUnknownAddressesInPartitionTable(sender, unknownAddresses, partitionId, replicas);
         }
         logUnknownAddressesInPartitionTable(sender, unknownAddresses);
     }
@@ -648,11 +634,11 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
     }
 
     private void searchUnknownAddressesInPartitionTable(Address sender, Set<Address> unknownAddresses, int partitionId,
-                                                        PartitionInfo partitionInfo) {
+                                                        Address[] addresses) {
         final ClusterServiceImpl clusterService = node.clusterService;
         final ClusterState clusterState = clusterService.getClusterState();
         for (int index = 0; index < InternalPartition.MAX_REPLICA_COUNT; index++) {
-            Address address = partitionInfo.getReplicaAddress(index);
+            Address address = addresses[index];
             if (address != null && node.clusterService.getMember(address) == null) {
                 if (clusterState == ClusterState.ACTIVE || !clusterService.isMemberRemovedWhileClusterIsNotActive(address)) {
                     if (logger.isFinestEnabled()) {
