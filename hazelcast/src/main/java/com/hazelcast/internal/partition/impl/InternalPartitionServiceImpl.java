@@ -364,7 +364,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
         lock.lock();
         try {
-            Collection<MemberInfo> members = partitionStateManager.getPartitionTableMembers();
+            MemberInfo[] members = partitionStateManager.getPartitionTableMembers();
             List<MigrationInfo> completedMigrations = migrationManager.getCompletedMigrations();
             ILogger logger = node.getLogger(PartitionRuntimeState.class);
 
@@ -385,7 +385,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         }
         lock.lock();
         try {
-            Collection<MemberInfo> members = partitionStateManager.getPartitionTableMembers();
+            MemberInfo[] members = partitionStateManager.getPartitionTableMembers();
             List<MigrationInfo> completedMigrations = migrationManager.getCompletedMigrations();
             ILogger logger = node.getLogger(PartitionRuntimeState.class);
 

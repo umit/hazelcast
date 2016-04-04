@@ -32,7 +32,6 @@ import com.hazelcast.partition.membergroup.MemberGroup;
 import com.hazelcast.partition.membergroup.MemberGroupFactory;
 import com.hazelcast.partition.membergroup.MemberGroupFactoryFactory;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -188,10 +187,11 @@ public class PartitionStateManager {
         return uuid.equals(currentUuid);
     }
 
-    Collection<MemberInfo> getPartitionTableMembers() {
-        Collection<MemberInfo> members = new ArrayList<MemberInfo>(memberUuidMap.size());
+    MemberInfo[] getPartitionTableMembers() {
+        MemberInfo[] members = new MemberInfo[memberUuidMap.size()];
+        int ix = 0;
         for (Map.Entry<Address, String> entry : memberUuidMap.entrySet()) {
-            members.add(new MemberInfo(entry.getKey(), entry.getValue(), Collections.<String, Object>emptyMap()));
+            members[ix++] = new MemberInfo(entry.getKey(), entry.getValue(), Collections.<String, Object>emptyMap());
         }
         return members;
     }

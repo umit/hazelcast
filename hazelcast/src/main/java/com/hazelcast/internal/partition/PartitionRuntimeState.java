@@ -50,35 +50,24 @@ public final class PartitionRuntimeState implements IdentifiedDataSerializable {
     }
 
     public PartitionRuntimeState(ILogger logger,
-                                 Collection<MemberInfo> memberList,
+                                 MemberInfo[] members,
                                  InternalPartition[] partitions,
                                  Collection<MigrationInfo> migrationInfos,
                                  int version) {
         this.logger = logger;
         this.version = version;
-
-        members = new MemberInfo[memberList.size()];
-        Map<Address, Integer> addressIndexes = new HashMap<Address, Integer>(memberList.size());
-        int memberIndex = 0;
-        for (MemberInfo member : memberList) {
-            addMember(member, addressIndexes, memberIndex);
-            memberIndex++;
-        }
-        setPartitions(partitions, addressIndexes);
-        completedMigrations = migrationInfos != null ? migrationInfos : new ArrayList<MigrationInfo>(0);
+        this.members = members;
+        completedMigrations = migrationInfos != null ? migrationInfos : Collections.<MigrationInfo>emptyList();
+        minimizedPartitionTable = createMinimizedPartitionTable(partitions);
     }
 
-    private void addMember(MemberInfo member, Map<Address, Integer> addressIndexes, int memberIndex) {
-        members[memberIndex] = member;
-        addressIndexes.put(member.getAddress(), memberIndex);
-    }
-
-    private void setPartitions(InternalPartition[] partitions, Map<Address, Integer> addressIndexes) {
-        minimizedPartitionTable = new int[partitions.length][InternalPartition.MAX_REPLICA_COUNT];
+    private int[][] createMinimizedPartitionTable(InternalPartition[] partitions) {
+        int[][] partitionTable = new int[partitions.length][InternalPartition.MAX_REPLICA_COUNT];
+        Map<Address, Integer> addressIndexes = addressToIndexMap();
 
         List<String> unmatchedAddresses = new LinkedList<String>();
         for (InternalPartition partition : partitions) {
-            int[] indexes = minimizedPartitionTable[partition.getPartitionId()];
+            int[] indexes = partitionTable[partition.getPartitionId()];
 
             for (int replicaIndex = 0; replicaIndex < InternalPartition.MAX_REPLICA_COUNT; replicaIndex++) {
                 Address address = partition.getReplicaAddress(replicaIndex);
@@ -106,6 +95,15 @@ public final class PartitionRuntimeState implements IdentifiedDataSerializable {
             logger.fine("Unknown owner addresses in partition state! "
                     + "(Probably they have recently joined to or left the cluster.) " + unmatchedAddresses);
         }
+        return partitionTable;
+    }
+
+    private Map<Address, Integer> addressToIndexMap() {
+        Map<Address, Integer> addressIndexes = new HashMap<Address, Integer>(members.length);
+        for (int ix = 0; ix < members.length; ix++) {
+            addressIndexes.put(members[ix].getAddress(), ix);
+        }
+        return addressIndexes;
     }
 
     public Address[][] getPartitionTable() {
