@@ -357,7 +357,15 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         }
     }
 
+    @Override
     public PartitionRuntimeState createPartitionState() {
+        if (!isFetchMostRecentPartitionTableTaskRequired()) {
+            return createPartitionStateInternal();
+        }
+        return null;
+    }
+
+    public PartitionRuntimeState createPartitionStateInternal() {
         if (!partitionStateManager.isInitialized()) {
             return null;
         }
@@ -402,6 +410,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         }
     }
 
+    @SuppressWarnings("checkstyle:npathcomplexity")
     void publishPartitionRuntimeState() {
         if (!partitionStateManager.isInitialized()) {
             // do not send partition state until initialized!
@@ -419,7 +428,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
         lock.lock();
         try {
-            PartitionRuntimeState partitionState = createPartitionState();
+            PartitionRuntimeState partitionState = createPartitionStateInternal();
             if (partitionState == null) {
                 return;
             }
@@ -445,11 +454,8 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         }
     }
 
+    @SuppressWarnings("checkstyle:npathcomplexity")
     boolean syncPartitionRuntimeState() {
-        return syncPartitionRuntimeState(node.clusterService.getMemberImpls());
-    }
-
-    boolean syncPartitionRuntimeState(Collection<MemberImpl> members) {
         if (!partitionStateManager.isInitialized()) {
             // do not send partition state until initialized!
             return false;
@@ -461,7 +467,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
         lock.lock();
         try {
-            PartitionRuntimeState partitionState = createPartitionState();
+            PartitionRuntimeState partitionState = createPartitionStateInternal();
             if (partitionState == null) {
                 return false;
             }
@@ -472,6 +478,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
             OperationService operationService = nodeEngine.getOperationService();
 
+            Collection<MemberImpl> members = node.clusterService.getMemberImpls();
             List<Future<Boolean>> calls = firePartitionStateOperation(members, partitionState, operationService);
             Collection<Boolean> results = returnWithDeadline(calls, 10, TimeUnit.SECONDS, partitionStateSyncTimeoutHandler);
 

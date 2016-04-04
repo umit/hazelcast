@@ -72,6 +72,7 @@ import static com.hazelcast.spi.partition.IPartitionService.SERVICE_NAME;
  * Maintains migration system state and manages migration operations performed within the cluster.
  *
  */
+@SuppressWarnings({"checkstyle:classdataabstractioncoupling", "checkstyle:methodcount"})
 public class MigrationManager {
 
     private static final boolean ASSERTION_ENABLED = MigrationManager.class.desiredAssertionStatus();
@@ -278,11 +279,17 @@ public class MigrationManager {
                         }
                     }, 3, TimeUnit.SECONDS);
                 }
-            } else if (migrationInfo.getSourceCurrentReplicaIndex() > 0
+                return;
+            }
+
+            if (migrationInfo.getSourceCurrentReplicaIndex() > 0
                     && node.getThisAddress().equals(migrationInfo.getSource())) {
                 // OLD BACKUP
                 finalizeMigration(migrationInfo);
-            } else if (migrationInfo.getSource() == null
+                return;
+            }
+
+            if (migrationInfo.getSource() == null
                     && node.getThisAddress().equals(migrationInfo.getDestination())
                     && migrationInfo.getDestinationCurrentReplicaIndex() > 0
                     && migrationInfo.getDestinationNewReplicaIndex() == 0) {
@@ -292,8 +299,10 @@ public class MigrationManager {
                 PromoteFromBackupOperation op = new PromoteFromBackupOperation(migrationInfo.getDestinationCurrentReplicaIndex());
                 op.setPartitionId(migrationInfo.getPartitionId()).setNodeEngine(nodeEngine).setService(partitionService);
                 nodeEngine.getOperationService().executeOperation(op);
+                return;
+            }
 
-            } else if (migrationInfo.getSourceNewReplicaIndex() > 0) {
+            if (migrationInfo.getSourceNewReplicaIndex() > 0) {
                 if (migrationInfo.getStatus() == MigrationStatus.SUCCESS
                         && node.getThisAddress().equals(migrationInfo.getOldBackupReplicaOwner())) {
                     // clear
@@ -301,6 +310,7 @@ public class MigrationManager {
                     op.setPartitionId(migrationInfo.getPartitionId()).setNodeEngine(nodeEngine).setService(partitionService);
                     nodeEngine.getOperationService().executeOperation(op);
                 }
+                return;
             }
         } finally {
             partitionServiceLock.unlock();
