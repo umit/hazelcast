@@ -23,6 +23,7 @@ import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -49,6 +50,8 @@ public final class PartitionRuntimeState implements IdentifiedDataSerializable {
     public PartitionRuntimeState() {
     }
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP",
+            justification = "Members array is used internally by partitioning system.")
     public PartitionRuntimeState(ILogger logger,
                                  MemberInfo[] members,
                                  InternalPartition[] partitions,
@@ -122,6 +125,8 @@ public final class PartitionRuntimeState implements IdentifiedDataSerializable {
         return result;
     }
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP",
+            justification = "Members array is used internally by partitioning system.")
     public MemberInfo[] getMembers() {
         return members;
     }
