@@ -8,6 +8,7 @@ import com.hazelcast.raft.impl.dto.AppendResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.operation.AppendEntriesOp;
+import com.hazelcast.raft.impl.operation.HeartbeatOp;
 import com.hazelcast.raft.impl.operation.RaftResponseHandler;
 import com.hazelcast.raft.impl.operation.RequestVoteOp;
 import com.hazelcast.raft.impl.util.StripeExecutorConveyor;
@@ -28,6 +29,7 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
+import static com.hazelcast.raft.impl.RaftService.SERVICE_NAME;
 import static java.lang.Math.min;
 
 /**
@@ -122,7 +124,7 @@ public class RaftNode {
                 RequestVoteOp op = new RequestVoteOp(state.name(), new VoteRequest(state.term(),
                         thisAddress, state.lastLogTerm(), state.lastLogIndex()));
                 InternalCompletableFuture<VoteResponse> future =
-                        operationService.createInvocationBuilder(RaftService.SERVICE_NAME, op, address)
+                        operationService.createInvocationBuilder(SERVICE_NAME, op, address)
                         .setCallTimeout(timeout).invoke();
                 futures.add(future);
             }
@@ -219,7 +221,7 @@ public class RaftNode {
             if (nodeEngine.getThisAddress().equals(address)) {
                 continue;
             }
-            operationService.send(new AppendEntriesOp(state.name(), appendRequest), address);
+            operationService.send(new HeartbeatOp(state.name(), appendRequest), address);
         }
         lastAppendEntriesTimestamp = Clock.currentTimeMillis();
     }
@@ -465,6 +467,107 @@ public class RaftNode {
             if (lastAppendEntriesTimestamp < Clock.currentTimeMillis() - TimeUnit.SECONDS.toMillis(5)) {
                 sendHeartbeat();
             }
+        }
+    }
+
+    public void replicate(Object value) {
+        executor.execute(new ReplicateTask(value));
+    }
+
+    private class ReplicateTask extends StripedTask {
+        private final Object value;
+
+        public ReplicateTask(Object value) {
+            this.value = value;
+        }
+
+        @Override
+        public void run() {
+
+            // TODO: debug
+            if (state.role() != RaftRole.LEADER) {
+                return;
+            }
+
+            logger.info("Replicating: " + value);
+
+            assert state.role() == RaftRole.LEADER;
+
+            int lastLogIndex = state.lastLogIndex();
+            int lastLogTerm = state.lastLogTerm();
+
+            LogEntry entry = new LogEntry(state.term(), lastLogIndex + 1, value);
+            state.storeLogs(entry);
+
+            AppendRequest request = new AppendRequest(state.term(), nodeEngine.getThisAddress(),
+                    lastLogTerm, lastLogIndex, state.commitIndex(), new LogEntry[]{entry});
+
+            OperationService operationService = nodeEngine.getOperationService();
+            Collection<InternalCompletableFuture<AppendResponse>> futures = new LinkedList<InternalCompletableFuture<AppendResponse>>();
+            for (Address address : state.members()) {
+                if (nodeEngine.getThisAddress().equals(address)) {
+                    continue;
+                }
+
+                AppendEntriesOp op = new AppendEntriesOp(state.name(), request);
+                InternalCompletableFuture<AppendResponse> future = operationService.invokeOnTarget(SERVICE_NAME, op, address);
+                futures.add(future);
+            }
+
+            ExecutionCallback<AppendResponse> callback = new AppendEntriesCallback(request, state.majority());
+            for (InternalCompletableFuture<AppendResponse> future : futures) {
+                future.andThen(callback, new StripeExecutorConveyor(getStripeKey(), executor));
+            }
+        }
+
+    }
+
+    private class AppendEntriesCallback implements ExecutionCallback<AppendResponse> {
+        private final AppendRequest req;
+        private final int majority;
+        private final Set<Address> addresses = new HashSet<Address>();
+
+        AppendEntriesCallback(AppendRequest request, int majority) {
+            this.req = request;
+            this.majority = majority;
+            addresses.add(nodeEngine.getThisAddress());
+        }
+
+        @Override
+        public void onResponse(AppendResponse resp) {
+            // Check for a newer term, stop running
+            if (resp.term > req.term) {
+//                r.handleStaleTerm(s)
+                return;
+            }
+
+            // Abort pipeline if not successful
+            if (!resp.success) {
+                logger.severe("Failure response " + resp);
+                // TODO: handle?
+                return;
+            }
+
+            assert req.entries.length > 0;
+
+            if (addresses.add(resp.follower)) {
+                logger.warning("Success response " + resp);
+
+                // Update our replication state
+                LogEntry last = req.entries[req.entries.length - 1];
+                LeaderState leaderState = state.getLeaderState();
+                leaderState.nextIndex(resp.follower, last.index + 1);
+                leaderState.matchIndex(resp.follower, last.index);
+            }
+
+            if (addresses.size() >= majority) {
+                LogEntry last = req.entries[req.entries.length - 1];
+                state.commitIndex(last.index);
+            }
+        }
+
+        @Override
+        public void onFailure(Throwable t) {
         }
     }
 }

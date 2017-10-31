@@ -44,4 +44,10 @@ public class AppendResponse implements DataSerializable {
         follower = in.readObject();
         lastLogIndex = in.readInt();
     }
+
+    @Override
+    public String toString() {
+        return "AppendResponse{" + "success=" + success + ", term=" + term + ", follower=" + follower
+                + ", lastLogIndex=" + lastLogIndex + '}';
+    }
 }
