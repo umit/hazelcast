@@ -16,6 +16,8 @@ public class RaftResponseHandler {
     }
 
     public void send(Object r) {
-        operation.sendResponse(r);
+        if (operation != null) {
+            operation.sendResponse(r);
+        }
     }
 }

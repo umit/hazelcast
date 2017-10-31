@@ -134,7 +134,11 @@ public class RaftState {
         log.deleteAfter(index);
     }
 
-    public void storeLogs(LogEntry[] newEntries) {
+    public void storeLogs(LogEntry... newEntries) {
         log.store(newEntries);
+    }
+
+    public LeaderState getLeaderState() {
+        return leaderState;
     }
 }

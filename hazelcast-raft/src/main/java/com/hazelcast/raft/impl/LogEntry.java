@@ -16,6 +16,15 @@ public class LogEntry implements DataSerializable {
 
     Object data;
 
+    public LogEntry() {
+    }
+
+    public LogEntry(int term, int index, Object data) {
+        this.term = term;
+        this.index = index;
+        this.data = data;
+    }
+
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeInt(term);
