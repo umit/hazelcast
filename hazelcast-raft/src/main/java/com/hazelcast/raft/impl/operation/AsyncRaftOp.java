@@ -1,8 +1,8 @@
-package com.hazelcast.raft.operation;
+package com.hazelcast.raft.impl.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.raft.RaftService;
+import com.hazelcast.raft.impl.RaftService;
 import com.hazelcast.spi.Operation;
 
 import java.io.IOException;
@@ -14,8 +14,6 @@ import java.io.IOException;
 public abstract class AsyncRaftOp extends Operation {
 
     String name;
-//    int term;
-
 
     public AsyncRaftOp() {
     }
@@ -41,12 +39,10 @@ public abstract class AsyncRaftOp extends Operation {
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         out.writeUTF(name);
-//        out.writeInt(term);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         name = in.readUTF();
-//        term = in.readInt();
     }
 }

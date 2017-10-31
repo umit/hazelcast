@@ -1,9 +1,9 @@
-package com.hazelcast.raft.operation;
+package com.hazelcast.raft.impl.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.raft.RaftService;
-import com.hazelcast.raft.VoteRequest;
+import com.hazelcast.raft.impl.RaftService;
+import com.hazelcast.raft.impl.dto.VoteRequest;
 
 import java.io.IOException;
 

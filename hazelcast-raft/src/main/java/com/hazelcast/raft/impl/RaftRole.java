@@ -1,4 +1,4 @@
-package com.hazelcast.raft;
+package com.hazelcast.raft.impl;
 
 /**
  * TODO: Javadoc Pending...
