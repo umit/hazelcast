@@ -1,4 +1,4 @@
-package com.hazelcast.raft;
+package com.hazelcast.raft.impl.dto;
 
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
@@ -13,10 +13,10 @@ import java.io.IOException;
  */
 public class VoteRequest implements DataSerializable {
 
-    int term;
-    Address candidate;
-    int lastLogTerm;
-    int lastLogIndex;
+    public int term;
+    public Address candidate;
+    public int lastLogTerm;
+    public int lastLogIndex;
 
     public VoteRequest() {
     }

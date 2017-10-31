@@ -1,4 +1,4 @@
-package com.hazelcast.raft.operation;
+package com.hazelcast.raft.impl.operation;
 
 import com.hazelcast.spi.Operation;
 

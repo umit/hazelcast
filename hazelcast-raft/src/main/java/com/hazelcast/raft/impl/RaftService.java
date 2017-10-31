@@ -1,11 +1,15 @@
-package com.hazelcast.raft;
+package com.hazelcast.raft.impl;
 
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.internal.util.RuntimeAvailableProcessors;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazelcast.nio.Address;
-import com.hazelcast.raft.operation.RaftResponseHandler;
+import com.hazelcast.raft.RaftConfig;
+import com.hazelcast.raft.impl.dto.AppendRequest;
+import com.hazelcast.raft.impl.dto.VoteRequest;
+import com.hazelcast.raft.impl.dto.VoteResponse;
+import com.hazelcast.raft.impl.operation.RaftResponseHandler;
 import com.hazelcast.spi.ConfigurableService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
@@ -90,5 +94,14 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
            return;
         }
         node.handleRequestVote(voteRequest, responseHandler);
+    }
+
+    public void handleAppendEntries(String name, AppendRequest appendRequest, RaftResponseHandler responseHandler) {
+        RaftNode node = nodes.get(name);
+        if (node == null) {
+            // ....
+            return;
+        }
+        node.handleAppendEntries(appendRequest, responseHandler);
     }
 }

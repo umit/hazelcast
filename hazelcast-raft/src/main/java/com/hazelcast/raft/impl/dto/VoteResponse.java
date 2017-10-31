@@ -1,4 +1,4 @@
-package com.hazelcast.raft;
+package com.hazelcast.raft.impl.dto;
 
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
@@ -13,9 +13,9 @@ import java.io.IOException;
  */
 public class VoteResponse implements DataSerializable {
 
-    int term;
-    boolean granted;
-    Address voter;
+    public int term;
+    public boolean granted;
+    public Address voter;
 
     public VoteResponse() {
     }
