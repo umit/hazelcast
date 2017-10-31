@@ -1,6 +1,5 @@
 package com.hazelcast.raft.impl;
 
-import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.dto.AppendRequest;
@@ -11,12 +10,14 @@ import com.hazelcast.raft.impl.operation.AppendEntriesOp;
 import com.hazelcast.raft.impl.operation.HeartbeatOp;
 import com.hazelcast.raft.impl.operation.RaftResponseHandler;
 import com.hazelcast.raft.impl.operation.RequestVoteOp;
+import com.hazelcast.raft.impl.util.AddressableExecutionCallback;
+import com.hazelcast.raft.impl.util.ExecutionCallbackAdapter;
+import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.raft.impl.util.StripeExecutorConveyor;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.spi.TaskScheduler;
-import com.hazelcast.spi.impl.AbstractCompletableFuture;
 import com.hazelcast.util.Clock;
 import com.hazelcast.util.RandomPicker;
 import com.hazelcast.util.executor.StripedExecutor;
@@ -36,7 +37,6 @@ import static java.lang.Math.min;
 /**
  * TODO: Javadoc Pending...
  *
- * @author mdogan 30.10.2017
  */
 public class RaftNode {
     
@@ -229,7 +229,7 @@ public class RaftNode {
         private final VoteRequest req;
         private final RaftResponseHandler responseHandler;
 
-        public RequestVoteTask(VoteRequest req, RaftResponseHandler responseHandler) {
+        RequestVoteTask(VoteRequest req, RaftResponseHandler responseHandler) {
             this.req = req;
             this.responseHandler = responseHandler;
         }
@@ -289,10 +289,9 @@ public class RaftNode {
         }
     }
 
-    private VoteResponse rejectVoteResponse(VoteResponse response) {
+    private void rejectVoteResponse(VoteResponse response) {
         response.granted = false;
         response.term = state.term();
-        return response;
     }
 
     private class AppendEntriesTask extends StripedTask {
@@ -517,40 +516,6 @@ public class RaftNode {
         }
     }
 
-    private <T> void registerCallback(InternalCompletableFuture<T> future, Address address, AddressableExecutionCallback<T> callback) {
-        future.andThen(new ExecutionCallbackAdapter<T>(address, callback), new StripeExecutorConveyor(getStripeKey(), executor));
-    }
-
-    private interface AddressableExecutionCallback<T> {
-
-        void onResponse(Address address, T response);
-
-        void onFailure(Address address, Throwable t);
-
-    }
-
-    private class ExecutionCallbackAdapter<T> implements ExecutionCallback<T> {
-
-        private final Address address;
-
-        private final AddressableExecutionCallback<T> callback;
-
-        ExecutionCallbackAdapter(Address address, AddressableExecutionCallback<T> callback) {
-            this.address = address;
-            this.callback = callback;
-        }
-
-        @Override
-        public void onResponse(T response) {
-            callback.onResponse(address, response);
-        }
-
-        @Override
-        public void onFailure(Throwable t) {
-            callback.onFailure(address, t);
-        }
-    }
-
     private class AppendEntriesExecutionCallback implements AddressableExecutionCallback<AppendResponse> {
         private final AppendRequest req;
         private final int majority;
@@ -599,6 +564,11 @@ public class RaftNode {
                 processLogs(state.commitIndex());
                 Object result = req.entries[0].data;
                 resultFuture.setResult(result);
+                return;
+            }
+
+            if (addresses.size() + erroneousAddresses.size() >= state.members().size()) {
+
             }
         }
 
@@ -608,15 +578,7 @@ public class RaftNode {
         }
     }
 
-    static class SimpleCompletableFuture<T> extends AbstractCompletableFuture<T> {
-
-        SimpleCompletableFuture(NodeEngine nodeEngine) {
-            super(nodeEngine, nodeEngine.getLogger(RaftNode.class));
-        }
-
-        @Override
-        public void setResult(Object result) {
-            super.setResult(result);
-        }
+    private <T> void registerCallback(InternalCompletableFuture<T> future, Address address, AddressableExecutionCallback<T> callback) {
+        future.andThen(new ExecutionCallbackAdapter<T>(address, callback), new StripeExecutorConveyor(getStripeKey(), executor));
     }
 }
