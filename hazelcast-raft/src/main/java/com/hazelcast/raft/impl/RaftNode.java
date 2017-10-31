@@ -16,6 +16,7 @@ import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.spi.TaskScheduler;
+import com.hazelcast.spi.impl.AbstractCompletableFuture;
 import com.hazelcast.util.Clock;
 import com.hazelcast.util.RandomPicker;
 import com.hazelcast.util.executor.StripedExecutor;
@@ -27,6 +28,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Set;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.raft.impl.RaftService.SERVICE_NAME;
@@ -346,7 +348,7 @@ public class RaftNode {
                         prevLogTerm = lastTerm;
 
                     } else {
-                        LogEntry prevLog = state.getLog(req.prevLogIndex);
+                        LogEntry prevLog = state.getLogEntry(req.prevLogIndex);
                         if (prevLog == null) {
                             logger.warning("Failed to get previous log " + req.prevLogIndex + ", last-index: " + lastIndex);
 //                            resp.NoRetryBackoff = true
@@ -376,7 +378,7 @@ public class RaftNode {
                             break;
                         }
 
-                        LogEntry storeEntry = state.getLog(entry.index);
+                        LogEntry storeEntry = state.getLogEntry(entry.index);
                         if (storeEntry == null) {
                             logger.warning("Failed to get log entry: " + entry.index);
                             return;
@@ -445,7 +447,7 @@ public class RaftNode {
 
         // Apply all the preceding logs
         for (int idx = state.lastApplied() + 1; idx <= index; idx++) {
-            LogEntry l = state.getLog(idx);
+            LogEntry l = state.getLogEntry(idx);
             if (l == null) {
                 logger.severe("Failed to get log at " +  idx);
                 throw new AssertionError("Failed to get log at " +  idx);
@@ -471,15 +473,19 @@ public class RaftNode {
         }
     }
 
-    public void replicate(Object value) {
-        executor.execute(new ReplicateTask(value));
+    public Future replicate(Object value) {
+        SimpleCompletableFuture resultFuture = new SimpleCompletableFuture(nodeEngine);
+        executor.execute(new ReplicateTask(value, resultFuture));
+        return resultFuture;
     }
 
     private class ReplicateTask extends StripedTask {
         private final Object value;
+        private final SimpleCompletableFuture resultFuture;
 
-        public ReplicateTask(Object value) {
+        public ReplicateTask(Object value, SimpleCompletableFuture resultFuture) {
             this.value = value;
+            this.resultFuture = resultFuture;
         }
 
         @Override
@@ -515,7 +521,7 @@ public class RaftNode {
                 futures.add(future);
             }
 
-            ExecutionCallback<AppendResponse> callback = new AppendEntriesCallback(request, state.majority());
+            ExecutionCallback<AppendResponse> callback = new AppendEntriesCallback(request, state.majority(), resultFuture);
             for (InternalCompletableFuture<AppendResponse> future : futures) {
                 future.andThen(callback, new StripeExecutorConveyor(getStripeKey(), executor));
             }
@@ -527,10 +533,12 @@ public class RaftNode {
         private final AppendRequest req;
         private final int majority;
         private final Set<Address> addresses = new HashSet<Address>();
+        private final SimpleCompletableFuture resultFuture;
 
-        AppendEntriesCallback(AppendRequest request, int majority) {
+        AppendEntriesCallback(AppendRequest request, int majority, SimpleCompletableFuture resultFuture) {
             this.req = request;
             this.majority = majority;
+            this.resultFuture = resultFuture;
             addresses.add(nodeEngine.getThisAddress());
         }
 
@@ -565,11 +573,26 @@ public class RaftNode {
                 LogEntry last = req.entries[req.entries.length - 1];
                 state.commitIndex(last.index);
                 sendHeartbeat();
+                processLogs(state.commitIndex());
+                Object result = req.entries[0].data;
+                resultFuture.setResult(result);
             }
         }
 
         @Override
         public void onFailure(Throwable t) {
+        }
+    }
+
+    static class SimpleCompletableFuture<T> extends AbstractCompletableFuture<T> {
+
+        SimpleCompletableFuture(NodeEngine nodeEngine) {
+            super(nodeEngine, nodeEngine.getLogger(RaftNode.class));
+        }
+
+        @Override
+        public void setResult(Object result) {
+            super.setResult(result);
         }
     }
 }
