@@ -25,7 +25,6 @@ import com.hazelcast.util.executor.StripedRunnable;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
@@ -116,8 +115,7 @@ public class RaftNode {
 
 
             OperationService operationService = nodeEngine.getOperationService();
-            Collection<InternalCompletableFuture<VoteResponse>> futures = new LinkedList<InternalCompletableFuture<VoteResponse>>();
-            ExecutionCallback<VoteResponse> callback = new LeaderElectionCallback(state.majority());
+            AddressableExecutionCallback<VoteResponse> callback = new LeaderElectionExecutionCallback(state.majority());
             for (Address address : state.members()) {
                 if (address.equals(thisAddress)) {
                     continue;
@@ -128,12 +126,10 @@ public class RaftNode {
                 InternalCompletableFuture<VoteResponse> future =
                         operationService.createInvocationBuilder(SERVICE_NAME, op, address)
                         .setCallTimeout(timeout).invoke();
-                futures.add(future);
+                registerCallback(future, address, callback);
             }
 
-            for (InternalCompletableFuture<VoteResponse> future : futures) {
-                future.andThen(callback, new StripeExecutorConveyor(getStripeKey(), executor));
-            }
+
             scheduleTimeout(timeout);
         }
 
@@ -159,17 +155,17 @@ public class RaftNode {
         }
     }
 
-    private class LeaderElectionCallback implements ExecutionCallback<VoteResponse> {
+    private class LeaderElectionExecutionCallback implements AddressableExecutionCallback<VoteResponse> {
         final int majority;
         final Set<Address> voters = new HashSet<Address>();
 
-        private LeaderElectionCallback(int majority) {
+        private LeaderElectionExecutionCallback(int majority) {
             this.majority = majority;
             voters.add(nodeEngine.getThisAddress());
         }
 
         @Override
-        public void onResponse(VoteResponse resp) {
+        public void onResponse(Address voter, VoteResponse resp) {
             if (RaftRole.CANDIDATE != state.role()) {
                 return;
             }
@@ -187,8 +183,8 @@ public class RaftNode {
             }
 
             if (resp.granted && resp.term == state.term()) {
-                if (voters.add(resp.voter)) {
-                    logger.warning("Vote granted from " + resp.voter + " for term " + state.term()
+                if (voters.add(voter)) {
+                    logger.warning("Vote granted from " + voter + " for term " + state.term()
                            + ", number of votes: " + voters.size() + ", majority: " + majority);
                 }
             }
@@ -201,7 +197,7 @@ public class RaftNode {
         }
 
         @Override
-        public void onFailure(Throwable t) {
+        public void onFailure(Address remote, Throwable t) {
         }
     }
 
@@ -241,7 +237,6 @@ public class RaftNode {
         @Override
         public void run() {
             VoteResponse resp = new VoteResponse();
-            resp.voter = nodeEngine.getThisAddress();
             try {
                 if (state.leader() != null && !req.candidate.equals(state.leader())) {
                     logger.warning("Rejecting vote request from " + req.candidate + " since we have a leader " + state.leader());
@@ -297,7 +292,6 @@ public class RaftNode {
     private VoteResponse rejectVoteResponse(VoteResponse response) {
         response.granted = false;
         response.term = state.term();
-        response.voter = nodeEngine.getThisAddress();
         return response;
     }
 
@@ -313,7 +307,6 @@ public class RaftNode {
         @Override
         public void run() {
             AppendResponse resp = new AppendResponse();
-            resp.follower = nodeEngine.getThisAddress();
             resp.term = state.term();
             resp.lastLogIndex = state.lastLogIndex();
 
@@ -509,8 +502,9 @@ public class RaftNode {
             AppendRequest request = new AppendRequest(state.term(), nodeEngine.getThisAddress(),
                     lastLogTerm, lastLogIndex, state.commitIndex(), new LogEntry[]{entry});
 
+            AddressableExecutionCallback<AppendResponse> callback = new AppendEntriesExecutionCallback(request, state.majority(), resultFuture);
+
             OperationService operationService = nodeEngine.getOperationService();
-            Collection<InternalCompletableFuture<AppendResponse>> futures = new LinkedList<InternalCompletableFuture<AppendResponse>>();
             for (Address address : state.members()) {
                 if (nodeEngine.getThisAddress().equals(address)) {
                     continue;
@@ -518,24 +512,53 @@ public class RaftNode {
 
                 AppendEntriesOp op = new AppendEntriesOp(state.name(), request);
                 InternalCompletableFuture<AppendResponse> future = operationService.invokeOnTarget(SERVICE_NAME, op, address);
-                futures.add(future);
-            }
-
-            ExecutionCallback<AppendResponse> callback = new AppendEntriesCallback(request, state.majority(), resultFuture);
-            for (InternalCompletableFuture<AppendResponse> future : futures) {
-                future.andThen(callback, new StripeExecutorConveyor(getStripeKey(), executor));
+                registerCallback(future, address, callback);
             }
         }
+    }
+
+    private <T> void registerCallback(InternalCompletableFuture<T> future, Address address, AddressableExecutionCallback<T> callback) {
+        future.andThen(new ExecutionCallbackAdapter<T>(address, callback), new StripeExecutorConveyor(getStripeKey(), executor));
+    }
+
+    private interface AddressableExecutionCallback<T> {
+
+        void onResponse(Address address, T response);
+
+        void onFailure(Address address, Throwable t);
 
     }
 
-    private class AppendEntriesCallback implements ExecutionCallback<AppendResponse> {
+    private class ExecutionCallbackAdapter<T> implements ExecutionCallback<T> {
+
+        private final Address address;
+
+        private final AddressableExecutionCallback<T> callback;
+
+        ExecutionCallbackAdapter(Address address, AddressableExecutionCallback<T> callback) {
+            this.address = address;
+            this.callback = callback;
+        }
+
+        @Override
+        public void onResponse(T response) {
+            callback.onResponse(address, response);
+        }
+
+        @Override
+        public void onFailure(Throwable t) {
+            callback.onFailure(address, t);
+        }
+    }
+
+    private class AppendEntriesExecutionCallback implements AddressableExecutionCallback<AppendResponse> {
         private final AppendRequest req;
         private final int majority;
         private final Set<Address> addresses = new HashSet<Address>();
+        private final Set<Address> erroneousAddresses = new HashSet<Address>();
         private final SimpleCompletableFuture resultFuture;
 
-        AppendEntriesCallback(AppendRequest request, int majority, SimpleCompletableFuture resultFuture) {
+        AppendEntriesExecutionCallback(AppendRequest request, int majority, SimpleCompletableFuture resultFuture) {
             this.req = request;
             this.majority = majority;
             this.resultFuture = resultFuture;
@@ -543,7 +566,7 @@ public class RaftNode {
         }
 
         @Override
-        public void onResponse(AppendResponse resp) {
+        public void onResponse(Address follower, AppendResponse resp) {
             // Check for a newer term, stop running
             if (resp.term > req.term) {
 //                r.handleStaleTerm(s)
@@ -559,14 +582,14 @@ public class RaftNode {
 
             assert req.entries.length > 0;
 
-            if (addresses.add(resp.follower)) {
+            if (addresses.add(follower)) {
                 logger.warning("Success response " + resp);
 
                 // Update our replication state
                 LogEntry last = req.entries[req.entries.length - 1];
                 LeaderState leaderState = state.getLeaderState();
-                leaderState.nextIndex(resp.follower, last.index + 1);
-                leaderState.matchIndex(resp.follower, last.index);
+                leaderState.nextIndex(follower, last.index + 1);
+                leaderState.matchIndex(follower, last.index);
             }
 
             if (addresses.size() >= majority) {
@@ -580,7 +603,8 @@ public class RaftNode {
         }
 
         @Override
-        public void onFailure(Throwable t) {
+        public void onFailure(Address remote, Throwable t) {
+            erroneousAddresses.add(remote);
         }
     }
 
