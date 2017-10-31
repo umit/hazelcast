@@ -1,4 +1,4 @@
-package com.hazelcast.raft.util;
+package com.hazelcast.raft.impl.util;
 
 import com.hazelcast.util.executor.StripedRunnable;
 

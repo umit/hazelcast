@@ -1,8 +1,9 @@
-package com.hazelcast.raft;
+package com.hazelcast.raft.impl;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.Hazelcast;
+import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.spi.properties.GroupProperty;
 
 import java.util.Arrays;
@@ -10,7 +11,6 @@ import java.util.Arrays;
 /**
  * TODO: Javadoc Pending...
  *
- * @author mdogan 30.10.2017
  */
 public class Test {
 
