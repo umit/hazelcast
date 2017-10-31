@@ -204,12 +204,13 @@ public class RaftNode {
     }
 
     private void scheduleLeaderLoop() {
+        executor.execute(new HeartbeatTask());
         taskScheduler.scheduleWithRepetition(new Runnable() {
             @Override
             public void run() {
                 executor.execute(new HeartbeatTask());
             }
-        }, 0, 5, TimeUnit.SECONDS);
+        }, 5, 5, TimeUnit.SECONDS);
     }
 
     private void sendHeartbeat() {
@@ -457,7 +458,7 @@ public class RaftNode {
     }
 
     private void processLog(LogEntry entry) {
-        logger.info("Processing log " + entry);
+        logger.severe("Processing log " + entry);
     }
 
     private class HeartbeatTask extends StripedTask {
@@ -563,6 +564,7 @@ public class RaftNode {
             if (addresses.size() >= majority) {
                 LogEntry last = req.entries[req.entries.length - 1];
                 state.commitIndex(last.index);
+                sendHeartbeat();
             }
         }
 
