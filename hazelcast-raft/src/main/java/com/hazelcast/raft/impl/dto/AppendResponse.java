@@ -1,6 +1,5 @@
 package com.hazelcast.raft.impl.dto;
 
-import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.DataSerializable;
@@ -16,16 +15,14 @@ public class AppendResponse implements DataSerializable {
     public boolean success;
     public int term;
 
-    public Address follower;
     public int lastLogIndex;
 
     public AppendResponse() {
     }
 
-    public AppendResponse(boolean success, int term, Address follower, int lastLogIndex) {
+    public AppendResponse(boolean success, int term, int lastLogIndex) {
         this.success = success;
         this.term = term;
-        this.follower = follower;
         this.lastLogIndex = lastLogIndex;
     }
 
@@ -33,7 +30,6 @@ public class AppendResponse implements DataSerializable {
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeBoolean(success);
         out.writeInt(term);
-        out.writeObject(follower);
         out.writeInt(lastLogIndex);
     }
 
@@ -41,13 +37,11 @@ public class AppendResponse implements DataSerializable {
     public void readData(ObjectDataInput in) throws IOException {
         success = in.readBoolean();
         term = in.readInt();
-        follower = in.readObject();
         lastLogIndex = in.readInt();
     }
 
     @Override
     public String toString() {
-        return "AppendResponse{" + "success=" + success + ", term=" + term + ", follower=" + follower
-                + ", lastLogIndex=" + lastLogIndex + '}';
+        return "AppendResponse{" + "success=" + success + ", term=" + term + ", lastLogIndex=" + lastLogIndex + '}';
     }
 }
