@@ -3,10 +3,13 @@ package com.hazelcast.raft.impl;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.test.HazelcastTestSupport;
 
 import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 
 /**
  * TODO: Javadoc Pending...
@@ -19,19 +22,29 @@ public class Test {
         System.setProperty(GroupProperty.WAIT_SECONDS_BEFORE_JOIN.getName(), "0");
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         Config config = new Config();
         config.getNetworkConfig().getJoin().getMulticastConfig().setEnabled(false);
         config.getNetworkConfig().getJoin().getTcpIpConfig().setEnabled(true).clear().addMember("127.0.0.1");
 
         RaftConfig raftConfig = new RaftConfig();
-        raftConfig.setAddresses(Arrays.asList("127.0.0.1:5701", "127.0.0.1:5702"));
+        raftConfig.setAddresses(Arrays.asList("127.0.0.1:5701", "127.0.0.1:5702", "127.0.0.1:5703"));
 
         config.getServicesConfig().addServiceConfig(
                 new ServiceConfig().setEnabled(true).setName(RaftService.SERVICE_NAME)
                         .setClassName(RaftService.class.getName())
                         .setConfigObject(raftConfig));
 
-        Hazelcast.newHazelcastInstance(config);
+        HazelcastInstance instance = Hazelcast.newHazelcastInstance(config);
+
+        RaftService service = HazelcastTestSupport.getNodeEngineImpl(instance).getService(RaftService.SERVICE_NAME);
+        RaftNode node = service.getRaftNode("METADATA");
+
+        TimeUnit.SECONDS.sleep(20);
+
+        for (int i = 0; i < 1; i++) {
+            String s = String.valueOf(i);
+            node.replicate(s);
+        }
     }
 }

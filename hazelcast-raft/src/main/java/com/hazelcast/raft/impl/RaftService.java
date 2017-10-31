@@ -7,6 +7,7 @@ import com.hazelcast.logging.Logger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.impl.dto.AppendRequest;
+import com.hazelcast.raft.impl.dto.AppendResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.operation.RaftResponseHandler;
@@ -99,9 +100,22 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     public void handleAppendEntries(String name, AppendRequest appendRequest, RaftResponseHandler responseHandler) {
         RaftNode node = nodes.get(name);
         if (node == null) {
-            // ....
+            // TODO: ?
+            responseHandler.send(new AppendResponse(false, appendRequest.term, nodeEngine.getThisAddress(), 0));
             return;
         }
         node.handleAppendEntries(appendRequest, responseHandler);
+    }
+
+    public void handleHeartbeat(String name, AppendRequest appendRequest) {
+        RaftNode node = nodes.get(name);
+        if (node == null) {
+            return;
+        }
+        node.handleAppendEntries(appendRequest, new RaftResponseHandler(null));
+    }
+
+    public RaftNode getRaftNode(String name) {
+        return nodes.get(name);
     }
 }

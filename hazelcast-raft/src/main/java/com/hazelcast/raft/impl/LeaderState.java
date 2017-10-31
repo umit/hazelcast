@@ -22,4 +22,12 @@ public class LeaderState {
             matchIndices.put(address, 0);
         }
     }
+
+    public void nextIndex(Address follower, int index) {
+        nextIndices.put(follower, index);
+    }
+
+    public void matchIndex(Address follower, int index) {
+        matchIndices.put(follower, index);
+    }
 }
