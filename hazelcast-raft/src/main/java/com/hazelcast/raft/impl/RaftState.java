@@ -122,7 +122,7 @@ public class RaftState {
         leaderState = new LeaderState(members, log.lastLogIndex());
     }
 
-    public LogEntry getLog(int index) {
+    public LogEntry getLogEntry(int index) {
         return log.getLog(index);
     }
 
