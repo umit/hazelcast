@@ -28,7 +28,7 @@ public class Test {
         config.getNetworkConfig().getJoin().getTcpIpConfig().setEnabled(true).clear().addMember("127.0.0.1");
 
         RaftConfig raftConfig = new RaftConfig();
-        raftConfig.setAddresses(Arrays.asList("127.0.0.1:5701", "127.0.0.1:5702", "127.0.0.1:5703"));
+        raftConfig.setAddresses(Arrays.asList("127.0.0.1:5701", "127.0.0.1:5702"));
 
         config.getServicesConfig().addServiceConfig(
                 new ServiceConfig().setEnabled(true).setName(RaftService.SERVICE_NAME)
@@ -40,11 +40,12 @@ public class Test {
         RaftService service = HazelcastTestSupport.getNodeEngineImpl(instance).getService(RaftService.SERVICE_NAME);
         RaftNode node = service.getRaftNode("METADATA");
 
-        TimeUnit.SECONDS.sleep(20);
+        TimeUnit.SECONDS.sleep(10);
 
-        for (int i = 0; i < 1; i++) {
+        for (int i = 0; i < 10; i++) {
             String s = String.valueOf(i);
             node.replicate(s);
+            TimeUnit.SECONDS.sleep(5);
         }
     }
 }
