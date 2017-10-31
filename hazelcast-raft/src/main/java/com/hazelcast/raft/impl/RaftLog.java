@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * TODO: Javadoc Pending...
  *
- * @author mdogan 30.10.2017
+ * !!! INDEX starts from 1 !!!
  */
 public class RaftLog {
 
@@ -25,7 +25,7 @@ public class RaftLog {
     }
 
     public LogEntry getLog(int index) {
-        return logs.size() > index ? logs.get(index) : null;
+        return logs.size() >= index ? logs.get(index - 1) : null;
     }
 
     public void deleteRange(int from, int to) {
@@ -33,7 +33,7 @@ public class RaftLog {
     }
 
     public void deleteAfter(int index) {
-        for (int i = logs.size() - 1; i >= index ; i--) {
+        for (int i = logs.size() - 1; i >= index - 1; i--) {
             logs.remove(i);
         }
     }
