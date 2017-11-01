@@ -1,8 +1,13 @@
 package com.hazelcast.raft.impl;
 
 import com.hazelcast.nio.Address;
+import com.hazelcast.raft.impl.dto.VoteRequest;
 
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+
+import static java.util.Collections.unmodifiableSet;
 
 /**
  * TODO: Javadoc Pending...
@@ -13,6 +18,7 @@ public class RaftState {
     private final Address thisAddress;
     private final String name;
     private final Collection<Address> members;
+    private final Collection<Address> remoteMembers;
 
     private RaftRole role = RaftRole.FOLLOWER;
     private int term;
@@ -36,7 +42,10 @@ public class RaftState {
     public RaftState(String name, Address thisAddress, Collection<Address> members) {
         this.name = name;
         this.thisAddress = thisAddress;
-        this.members = members;
+        this.members = unmodifiableSet(new HashSet<Address>(members));
+        Set<Address> remoteMembers = new HashSet<Address>(members);
+        remoteMembers.remove(thisAddress);
+        this.remoteMembers = unmodifiableSet(remoteMembers);
     }
 
     public String name() {
@@ -47,6 +56,18 @@ public class RaftState {
         return members;
     }
 
+    public Collection<Address> remoteMembers() {
+        return remoteMembers;
+    }
+
+    public int memberCount() {
+        return members.size();
+    }
+
+    public int majority() {
+        return members.size() / 2 + 1;
+    }
+
     public RaftRole role() {
         return role;
     }
@@ -55,7 +76,7 @@ public class RaftState {
         return term;
     }
 
-    public int incTerm() {
+    public int incrementTerm() {
         return ++term;
     }
 
@@ -79,8 +100,9 @@ public class RaftState {
         return commitIndex;
     }
 
-    public void commitIndex(int idx) {
-        commitIndex = idx;
+    public void commitIndex(int index) {
+        assert index >= commitIndex : "new commit index: " + index + " is smaller than current commit index: " + commitIndex;
+        commitIndex = index;
     }
 
     public int lastApplied() {
@@ -88,11 +110,8 @@ public class RaftState {
     }
 
     public void lastApplied(int index) {
+        assert index >= lastApplied : "new last applied: " + index + " is smaller than current last applied: " + lastApplied;
         lastApplied = index;
-    }
-
-    public int majority() {
-        return members.size() / 2 + 1;
     }
 
     public RaftLog log() {
@@ -119,18 +138,20 @@ public class RaftState {
         this.term = term;
     }
 
-    public void toCandidate() {
+    public VoteRequest toCandidate() {
         role = RaftRole.CANDIDATE;
         leaderState = null;
         candidateState = new CandidateState(majority());
         candidateState.grantVote(thisAddress);
-        persistVote(incTerm(), thisAddress);
+        persistVote(incrementTerm(), thisAddress);
+
+        return new VoteRequest(thisAddress, term, log.lastLogTerm(), log.lastLogIndex());
     }
 
     public void toLeader() {
         role = RaftRole.LEADER;
         leader(thisAddress);
         candidateState = null;
-        leaderState = new LeaderState(members, thisAddress, log.lastLogIndex());
+        leaderState = new LeaderState(remoteMembers, log.lastLogIndex());
     }
 }

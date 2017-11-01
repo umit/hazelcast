@@ -13,15 +13,15 @@ import java.io.IOException;
  */
 public class VoteRequest implements DataSerializable {
 
-    public int term;
     public Address candidate;
+    public int term;
     public int lastLogTerm;
     public int lastLogIndex;
 
     public VoteRequest() {
     }
 
-    public VoteRequest(int term, Address candidate, int lastLogTerm, int lastLogIndex) {
+    public VoteRequest(Address candidate, int term, int lastLogTerm, int lastLogIndex) {
         this.term = term;
         this.candidate = candidate;
         this.lastLogTerm = lastLogTerm;
@@ -46,7 +46,8 @@ public class VoteRequest implements DataSerializable {
 
     @Override
     public String toString() {
-        return "VoteRequest{" + "term=" + term + ", candidate=" + candidate + ", lastLogTerm=" + lastLogTerm
-                + ", lastLogIndex=" + lastLogIndex + '}';
+        return "VoteRequest{" + "candidate=" + candidate + ", term=" + term + ", lastLogTerm=" + lastLogTerm + ", lastLogIndex="
+                + lastLogIndex + '}';
     }
+
 }

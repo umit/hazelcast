@@ -1,7 +1,6 @@
 package com.hazelcast.raft.impl.async;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.LogEntry;
 import com.hazelcast.raft.impl.RaftLog;
 import com.hazelcast.raft.impl.RaftNode;
@@ -13,6 +12,8 @@ import com.hazelcast.raft.impl.operation.AppendResponseOp;
 import com.hazelcast.util.executor.StripedRunnable;
 
 import java.util.Arrays;
+
+import static java.lang.Math.min;
 
 /**
  * TODO: Javadoc Pending...
@@ -35,7 +36,7 @@ public class AppendRequestTask implements StripedRunnable {
         RaftLog raftLog = state.log();
 
         AppendResponse resp = new AppendResponse();
-        resp.follower = raftNode.getNodeEngine().getThisAddress();
+        resp.follower = raftNode.getThisAddress();
         resp.term = state.term();
         resp.lastLogIndex = raftLog.lastLogIndex();
 
@@ -44,8 +45,7 @@ public class AppendRequestTask implements StripedRunnable {
         try {
             // Reply false if term < currentTerm (§5.1)
             if (req.term < state.term()) {
-                logger.warning(
-                        "Older append entries received term: " + req.term + ", current-term: " + state.term());
+                logger.warning("Older append entries received in request term: " + req.term + ", current term: " + state.term());
                 return;
             }
 
@@ -53,30 +53,29 @@ public class AppendRequestTask implements StripedRunnable {
             // if we ever get an appendEntries call
             if (req.term > state.term() || state.role() != RaftRole.FOLLOWER) {
                 // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
-                logger.warning("Transiting to FOLLOWER, term: " + req.term);
+                logger.warning("Transiting to FOLLOWER, request term: " + req.term + ", current term: " + state.term());
                 state.toFollower(req.term);
                 resp.term = req.term;
             }
 
             if (!req.leader.equals(state.leader())) {
                 logger.severe("Setting leader " + req.leader);
+                state.leader(req.leader);
             }
-            state.leader(req.leader);
 
             // Verify the last log entry
             if (req.prevLogIndex > 0) {
-                int lastIndex = raftLog.lastLogIndex();
-                int lastTerm = raftLog.lastLogTerm();
+                int lastLogIndex = raftLog.lastLogIndex();
+                int lastLogTerm = raftLog.lastLogTerm();
 
                 int prevLogTerm;
-                if (req.prevLogIndex == lastIndex) {
-                    prevLogTerm = lastTerm;
-
+                if (req.prevLogIndex == lastLogIndex) {
+                    prevLogTerm = lastLogTerm;
                 } else {
-                    // Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
+                    // Reply false if log does not contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
                     LogEntry prevLog = raftLog.getEntry(req.prevLogIndex);
                     if (prevLog == null) {
-                        logger.warning("Failed to get previous log " + req.prevLogIndex + ", last-index: " + lastIndex);
+                        logger.warning("Failed to get previous log " + req.prevLogIndex + ", last log index: " + lastLogIndex);
                         //                            resp.NoRetryBackoff = true
                         return;
                     }
@@ -84,7 +83,7 @@ public class AppendRequestTask implements StripedRunnable {
                 }
 
                 if (req.prevLogTerm != prevLogTerm) {
-                    logger.warning("Previous log term mis-match: ours: " + prevLogTerm + ", remote: " + req.prevLogTerm);
+                    logger.warning("Previous log term mismatch: ours: " + prevLogTerm + ", remote: " + req.prevLogTerm);
                     //                        resp.NoRetryBackoff = true
                     return;
                 }
@@ -113,13 +112,8 @@ public class AppendRequestTask implements StripedRunnable {
                     // If an existing entry conflicts with a new one (same index but different terms),
                     // delete the existing entry and all that follow it (§5.3)
                     if (entry.term() != storeEntry.term()) {
-                        logger.warning("Clearing log suffix from " + entry.index() + " to " + lastLogIndex);
-                        try {
-                            raftLog.deleteEntriesAfter(entry.index());
-                        } catch (Exception e) {
-                            logger.severe("Failed to clear log from " + entry.index() + " to " + lastLogIndex, e);
-                            return;
-                        }
+                        logger.warning("Truncating log suffix from " + entry.index() + " to " + lastLogIndex);
+                        raftLog.truncateEntriesAfter(entry.index());
 
                         //                            if (entry.index <= r.configurations.latestIndex) {
                         //                                r.configurations.latest = r.configurations.committed
@@ -132,12 +126,8 @@ public class AppendRequestTask implements StripedRunnable {
 
                 if (newEntries != null && newEntries.length > 0) {
                     // Append any new entries not already in the log
-                    try {
-                        raftLog.storeEntries(newEntries);
-                    } catch (Exception e) {
-                        logger.severe("Failed to append to logs", e);
-                        return;
-                    }
+                    raftLog.appendEntries(newEntries);
+                    resp.lastLogIndex = raftLog.lastLogIndex();
 
                     // Handle any new configuration changes
                     //                        for _, newEntry := range newEntries {
@@ -147,27 +137,22 @@ public class AppendRequestTask implements StripedRunnable {
             }
 
             // Update the commit index
-            if (req.leaderCommitIndex > 0 && req.leaderCommitIndex > state.commitIndex()) {
+            if (req.leaderCommitIndex > state.commitIndex()) {
                 // If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
-                int idx = Math.min(req.leaderCommitIndex, raftLog.lastLogIndex());
-                state.commitIndex(idx);
-                //                    if r.configurations.latestIndex <= idx {
+                int newCommitIndex = min(req.leaderCommitIndex, raftLog.lastLogIndex());
+                state.commitIndex(newCommitIndex);
+                //                    if r.configurations.latestIndex <= newCommitIndex {
                 //                        r.configurations.committed = r.configurations.latest
                 //                        r.configurations.committedIndex = r.configurations.latestIndex
                 //                    }
-                raftNode.processLogs(idx);
+                raftNode.processLogs(newCommitIndex);
             }
 
             // Everything went well, set success
             resp.success = true;
         } finally {
-            sendResponse(resp, req.leader);
+            raftNode.send(new AppendResponseOp(raftNode.state().name(), resp), req.leader);
         }
-    }
-
-    private void sendResponse(AppendResponse resp, Address leader) {
-        AppendResponseOp op = new AppendResponseOp(raftNode.state().name(), resp);
-        raftNode.getNodeEngine().getOperationService().send(op, leader);
     }
 
     @Override

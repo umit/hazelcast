@@ -2,12 +2,10 @@ package com.hazelcast.raft.impl.async;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
-import com.hazelcast.raft.impl.RaftLog;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftState;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.operation.VoteRequestOp;
-import com.hazelcast.spi.OperationService;
 import com.hazelcast.util.RandomPicker;
 import com.hazelcast.util.executor.StripedRunnable;
 
@@ -28,40 +26,31 @@ public class LeaderElectionTask implements StripedRunnable {
 
     @Override
     public void run() {
-        Address thisAddress = raftNode.getNodeEngine().getThisAddress();
+        Address thisAddress = raftNode.getThisAddress();
         int timeout = RandomPicker.getInt(1000, 3000);
         RaftState state = raftNode.state();
         if (state.votedFor() != null && !thisAddress.equals(state.votedFor())) {
-            scheduleTimeout(timeout);
+            scheduleLeaderElectionTimeout(timeout);
             return;
         }
 
         logger.warning("Leader election start");
-        state.toCandidate();
+        VoteRequest voteRequest = state.toCandidate();
 
-        if (state.members().size() == 1) {
+        if (state.memberCount() == 1) {
             state.toLeader();
             logger.warning("We are the one! ");
             return;
         }
 
-        OperationService operationService = raftNode.getNodeEngine().getOperationService();
-
-        RaftLog raftLog = state.log();
-        for (Address address : state.members()) {
-            if (address.equals(thisAddress)) {
-                continue;
-            }
-
-            VoteRequest request =
-                    new VoteRequest(state.term(), thisAddress, raftLog.lastLogTerm(), raftLog.lastLogIndex());
-            operationService.send(new VoteRequestOp(state.name(), request), address);
+        for (Address address : state.remoteMembers()) {
+            raftNode.send(new VoteRequestOp(state.name(), voteRequest), address);
         }
 
-        scheduleTimeout(timeout);
+        scheduleLeaderElectionTimeout(timeout);
     }
 
-    private void scheduleTimeout(int timeout) {
+    private void scheduleLeaderElectionTimeout(long timeout) {
         raftNode.taskScheduler().schedule(new Runnable() {
             @Override
             public void run() {

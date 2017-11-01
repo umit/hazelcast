@@ -97,7 +97,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     public void handleVoteRequest(String name, VoteRequest request) {
         RaftNode node = nodes.get(name);
         if (node == null) {
-            Operation op = new VoteResponseOp(name, new VoteResponse(request.term, false, nodeEngine.getThisAddress()));
+            Operation op = new VoteResponseOp(name, new VoteResponse(nodeEngine.getThisAddress(), request.term, false));
             nodeEngine.getOperationService().send(op, request.candidate);
             return;
         }
@@ -117,7 +117,8 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         RaftNode node = nodes.get(name);
         if (node == null) {
             // TODO: ?
-            AppendResponseOp op = new AppendResponseOp(name, new AppendResponse(false, request.term, nodeEngine.getThisAddress(), 0));
+            AppendResponseOp op = new AppendResponseOp(name, new AppendResponse(nodeEngine.getThisAddress(), request.term, false,
+                    0));
             nodeEngine.getOperationService().send(op, request.leader);
             return;
         }

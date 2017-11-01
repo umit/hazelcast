@@ -13,14 +13,14 @@ import java.io.IOException;
  */
 public class VoteResponse implements DataSerializable {
 
+    public Address voter;
     public int term;
     public boolean granted;
-    public Address voter;
 
     public VoteResponse() {
     }
 
-    public VoteResponse(int term, boolean granted, Address voter) {
+    public VoteResponse(Address voter, int term, boolean granted) {
         this.term = term;
         this.granted = granted;
         this.voter = voter;
@@ -42,6 +42,7 @@ public class VoteResponse implements DataSerializable {
 
     @Override
     public String toString() {
-        return "VoteResponse{" + "term=" + term + ", granted=" + granted + ", voter=" + voter + '}';
+        return "VoteResponse{" + "voter=" + voter + ", term=" + term + ", granted=" + granted + '}';
     }
+
 }
