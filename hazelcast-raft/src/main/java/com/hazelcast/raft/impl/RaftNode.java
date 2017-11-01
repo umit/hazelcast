@@ -84,25 +84,50 @@ public class RaftNode {
     }
 
     public void sendHeartbeat() {
-        OperationService operationService = nodeEngine.getOperationService();
-        RaftLog raftLog = state.log();
-        AppendRequest appendRequest = new AppendRequest(state.term(), nodeEngine.getThisAddress(),
-                raftLog.lastLogTerm(), raftLog.lastLogIndex(), state.commitIndex(), new LogEntry[0]);
-
-        for (Address address : state.members()) {
-            if (nodeEngine.getThisAddress().equals(address)) {
+        for (Address follower : state.members()) {
+            if (nodeEngine.getThisAddress().equals(follower)) {
                 continue;
             }
-            operationService.send(new AppendRequestOp(state.name(), appendRequest), address);
+            sendHeartbeat(follower);
         }
         lastAppendEntriesTimestamp = Clock.currentTimeMillis();
     }
 
+    public void sendHeartbeat(Address follower) {
+        OperationService operationService = nodeEngine.getOperationService();
+        RaftLog raftLog = state.log();
+        LeaderState leaderState = state.leaderState();
+
+        int index = leaderState.getNextIndex(follower);
+
+        LogEntry prevEntry;
+        LogEntry[] entries;
+        // TODO: define a max batch size
+        if (index > 1) {
+            prevEntry = raftLog.getEntry(index - 1);
+            entries = raftLog.getEntriesBetween(index, raftLog.lastLogIndex());
+        } else if (index == 1 && raftLog.lastLogIndex() > 0) {
+            prevEntry = new LogEntry();
+            entries = raftLog.getEntriesBetween(index, raftLog.lastLogIndex());
+        } else {
+            prevEntry = new LogEntry();
+            entries = new LogEntry[0];
+        }
+
+        AppendRequest appendRequest = new AppendRequest(state.term(), nodeEngine.getThisAddress(),
+                prevEntry.term(), prevEntry.index(), state.commitIndex(), entries);
+
+        logger.warning("Sending heartbeat " + appendRequest + " to " + follower + " with next-index: " + index);
+
+        operationService.send(new AppendRequestOp(state.name(), appendRequest), follower);
+    }
+
+    // If commitIndex > lastApplied: increment lastApplied, apply log[lastApplied] to state machine (§5.3)
     public void processLogs(int index) {
         // Reject logs we've applied already
         int lastApplied = state.lastApplied();
         if (index <= lastApplied) {
-            logger.warning("Skipping application of old log: " + index);
+            logger.warning("Skipping application of old log: " + index + ", lastApplied: " + lastApplied);
             return;
         }
 
