@@ -11,14 +11,14 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public class AppendEntriesOp extends AsyncRaftOp {
+public class AppendRequestOp extends AsyncRaftOp {
 
     private AppendRequest appendRequest;
 
-    public AppendEntriesOp() {
+    public AppendRequestOp() {
     }
 
-    public AppendEntriesOp(String name, AppendRequest appendRequest) {
+    public AppendRequestOp(String name, AppendRequest appendRequest) {
         super(name);
         this.appendRequest = appendRequest;
     }
@@ -26,7 +26,7 @@ public class AppendEntriesOp extends AsyncRaftOp {
     @Override
     public void run() throws Exception {
         RaftService service = getService();
-        service.handleAppendEntries(name, appendRequest, newResponseHandler());
+        service.handleAppendEntries(name, appendRequest);
     }
 
     @Override

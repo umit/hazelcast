@@ -10,10 +10,12 @@ import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
-import com.hazelcast.raft.impl.operation.RaftResponseHandler;
+import com.hazelcast.raft.impl.operation.AppendResponseOp;
+import com.hazelcast.raft.impl.operation.VoteResponseOp;
 import com.hazelcast.spi.ConfigurableService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.Operation;
 import com.hazelcast.util.AddressUtil;
 import com.hazelcast.util.executor.StripedExecutor;
 
@@ -88,31 +90,43 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         this.config = config;
     }
 
-    public void handleRequestVote(String name, VoteRequest voteRequest, RaftResponseHandler responseHandler) {
+    public void handleVoteRequest(String name, VoteRequest request) {
         RaftNode node = nodes.get(name);
         if (node == null) {
-           responseHandler.send(new VoteResponse(voteRequest.term, false));
-           return;
+            Operation op = new VoteResponseOp(name, new VoteResponse(request.term, false, nodeEngine.getThisAddress()));
+            nodeEngine.getOperationService().send(op, request.candidate);
+            return;
         }
-        node.handleRequestVote(voteRequest, responseHandler);
+        node.handleVoteRequest(request);
     }
 
-    public void handleAppendEntries(String name, AppendRequest appendRequest, RaftResponseHandler responseHandler) {
+    public void handleVoteResponse(String name, VoteResponse response) {
+        RaftNode node = nodes.get(name);
+        if (node == null) {
+            logger.severe("RaftNode[" + name + "] doesn't exist!");
+            return;
+        }
+        node.handleVoteResponse(response);
+    }
+
+    public void handleAppendEntries(String name, AppendRequest request) {
         RaftNode node = nodes.get(name);
         if (node == null) {
             // TODO: ?
-            responseHandler.send(new AppendResponse(false, appendRequest.term, 0));
+            AppendResponseOp op = new AppendResponseOp(name, new AppendResponse(false, request.term, nodeEngine.getThisAddress(), 0));
+            nodeEngine.getOperationService().send(op, request.leader);
             return;
         }
-        node.handleAppendEntries(appendRequest, responseHandler);
+        node.handleAppendRequest(request);
     }
 
-    public void handleHeartbeat(String name, AppendRequest appendRequest) {
+    public void handleAppendResponse(String name, AppendResponse response) {
         RaftNode node = nodes.get(name);
         if (node == null) {
+            logger.severe("RaftNode[" + name + "] doesn't exist!");
             return;
         }
-        node.handleAppendEntries(appendRequest, new RaftResponseHandler(null));
+        node.handleAppendResponse(response);
     }
 
     public RaftNode getRaftNode(String name) {

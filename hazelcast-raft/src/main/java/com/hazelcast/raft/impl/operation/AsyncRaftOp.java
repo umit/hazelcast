@@ -3,9 +3,7 @@ package com.hazelcast.raft.impl.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.impl.RaftService;
-import com.hazelcast.spi.ExceptionAction;
 import com.hazelcast.spi.Operation;
-import com.hazelcast.spi.exception.TargetNotMemberException;
 
 import java.io.IOException;
 
@@ -22,10 +20,6 @@ public abstract class AsyncRaftOp extends Operation {
 
     public AsyncRaftOp(String name) {
         this.name = name;
-    }
-
-    RaftResponseHandler newResponseHandler() {
-        return new RaftResponseHandler(this);
     }
 
     @Override
@@ -48,11 +42,4 @@ public abstract class AsyncRaftOp extends Operation {
         name = in.readUTF();
     }
 
-    @Override
-    public ExceptionAction onInvocationException(Throwable throwable) {
-        if (throwable instanceof TargetNotMemberException) {
-            return ExceptionAction.THROW_EXCEPTION;
-        }
-        return super.onInvocationException(throwable);
-    }
 }
