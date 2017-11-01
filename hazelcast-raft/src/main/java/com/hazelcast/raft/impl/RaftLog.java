@@ -13,11 +13,11 @@ public class RaftLog {
     final List<LogEntry> logs = new ArrayList<LogEntry>();
 
     public int lastLogIndex() {
-        return lastLogEntry().index;
+        return lastLogEntry().index();
     }
 
     public int lastLogTerm() {
-        return lastLogEntry().term;
+        return lastLogEntry().term();
     }
 
     private LogEntry lastLogEntry() {
