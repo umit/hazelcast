@@ -20,7 +20,7 @@ public class LeaderElectionTimeoutTask implements StripedRunnable {
         if (raftNode.state().role() != RaftRole.CANDIDATE) {
             return;
         }
-        raftNode.logger.severe("Leader election timed out!");
+        raftNode.getLogger(getClass()).severe("Leader election timed out!");
         new LeaderElectionTask(raftNode).run();
     }
 

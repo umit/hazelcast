@@ -34,7 +34,7 @@ public class RaftNode {
 
     private static final int HEARTBEAT_PERIOD = 5;
 
-    public final ILogger logger;
+    private final ILogger logger;
     private final RaftState state;
     private final Executor executor;
     private final NodeEngine nodeEngine;
@@ -47,7 +47,12 @@ public class RaftNode {
         this.executor = executor;
         this.state = new RaftState(name, nodeEngine.getThisAddress(), addresses);
         this.taskScheduler = nodeEngine.getExecutionService().getGlobalTaskScheduler();
-        this.logger = nodeEngine.getLogger(getClass().getSimpleName() + "[" + name + "]");
+        this.logger = getLogger(getClass());
+    }
+
+    public ILogger getLogger(Class clazz) {
+        String name = state.name();
+        return nodeEngine.getLogger(clazz.getSimpleName() + "[" + name + "]");
     }
 
     public void start() {

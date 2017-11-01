@@ -1,5 +1,6 @@
 package com.hazelcast.raft.impl.async;
 
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.RaftLog;
 import com.hazelcast.raft.impl.RaftNode;
@@ -18,9 +19,11 @@ import java.util.concurrent.TimeUnit;
  */
 public class LeaderElectionTask implements StripedRunnable {
     private final RaftNode raftNode;
+    private final ILogger logger;
 
     public LeaderElectionTask(RaftNode raftNode) {
         this.raftNode = raftNode;
+        this.logger = raftNode.getLogger(getClass());
     }
 
     @Override
@@ -33,12 +36,12 @@ public class LeaderElectionTask implements StripedRunnable {
             return;
         }
 
-        raftNode.logger.warning("Leader election start");
+        logger.warning("Leader election start");
         state.toCandidate();
 
         if (state.members().size() == 1) {
             state.toLeader();
-            raftNode.logger.warning("We are the one! ");
+            logger.warning("We are the one! ");
             return;
         }
 
