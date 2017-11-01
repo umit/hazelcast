@@ -2,20 +2,14 @@ package com.hazelcast.raft.impl.async;
 
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.RaftNode;
-import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.RaftState;
 import com.hazelcast.raft.impl.dto.VoteRequest;
-import com.hazelcast.raft.impl.dto.VoteResponse;
-import com.hazelcast.raft.impl.operation.RequestVoteOp;
-import com.hazelcast.raft.impl.util.AddressableExecutionCallback;
-import com.hazelcast.spi.InternalCompletableFuture;
+import com.hazelcast.raft.impl.operation.VoteRequestOp;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.util.RandomPicker;
 import com.hazelcast.util.executor.StripedRunnable;
 
 import java.util.concurrent.TimeUnit;
-
-import static com.hazelcast.raft.impl.RaftService.SERVICE_NAME;
 
 /**
  * TODO: Javadoc Pending...
@@ -39,30 +33,26 @@ public class LeaderElectionTask implements StripedRunnable {
         }
 
         raftNode.logger.warning("Leader election start");
-        state.role(RaftRole.CANDIDATE);
-        state.persistVote(state.incTerm(), thisAddress);
+        state.toCandidate();
 
         if (state.members().size() == 1) {
-            state.role(RaftRole.LEADER);
+            state.toLeader();
             raftNode.logger.warning("We are the one! ");
             return;
         }
 
-
         OperationService operationService = raftNode.getNodeEngine().getOperationService();
-        AddressableExecutionCallback<VoteResponse>
-                callback = new LeaderElectionExecutionCallback(raftNode, state.majority());
+
         for (Address address : state.members()) {
             if (address.equals(thisAddress)) {
                 continue;
             }
 
-            RequestVoteOp op = new RequestVoteOp(state.name(),
-                    new VoteRequest(
-                            state.term(), thisAddress, state.lastLogTerm(), state.lastLogIndex()));
-            InternalCompletableFuture<VoteResponse> future =
-                    operationService.createInvocationBuilder(SERVICE_NAME, op, address).setCallTimeout(timeout).invoke();
-            raftNode.registerCallback(future, address, callback);
+            VoteRequest request =
+                    new VoteRequest(state.term(), thisAddress, state.lastLogTerm(), state.lastLogIndex());
+            VoteRequestOp op = new VoteRequestOp(state.name(), request);
+
+            operationService.send(op, address);
         }
 
         scheduleTimeout(timeout);

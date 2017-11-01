@@ -2,19 +2,18 @@ package com.hazelcast.raft.impl;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
-import com.hazelcast.raft.impl.async.AppendEntriesTask;
+import com.hazelcast.raft.impl.async.AppendRequestTask;
+import com.hazelcast.raft.impl.async.AppendResponseTask;
 import com.hazelcast.raft.impl.async.LeaderElectionTask;
 import com.hazelcast.raft.impl.async.ReplicateTask;
-import com.hazelcast.raft.impl.async.RequestVoteTask;
+import com.hazelcast.raft.impl.async.VoteRequestTask;
+import com.hazelcast.raft.impl.async.VoteResponseTask;
 import com.hazelcast.raft.impl.dto.AppendRequest;
+import com.hazelcast.raft.impl.dto.AppendResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
-import com.hazelcast.raft.impl.operation.HeartbeatOp;
-import com.hazelcast.raft.impl.operation.RaftResponseHandler;
-import com.hazelcast.raft.impl.util.AddressableExecutionCallback;
-import com.hazelcast.raft.impl.util.ExecutionCallbackAdapter;
+import com.hazelcast.raft.impl.dto.VoteResponse;
+import com.hazelcast.raft.impl.operation.AppendRequestOp;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
-import com.hazelcast.raft.impl.util.StripeExecutorConveyor;
-import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.spi.TaskScheduler;
@@ -67,19 +66,12 @@ public class RaftNode {
         }, 500, TimeUnit.MILLISECONDS);
     }
 
-    public void handleRequestVote(VoteRequest voteRequest, RaftResponseHandler responseHandler) {
-        executor.execute(new RequestVoteTask(this, voteRequest, responseHandler));
-    }
-
-    public void handleAppendEntries(AppendRequest appendRequest, RaftResponseHandler responseHandler) {
-        executor.execute(new AppendEntriesTask(this, appendRequest, responseHandler));
-    }
-
     public int getStripeKey() {
         return state.name().hashCode();
     }
 
     public void scheduleLeaderLoop() {
+        // TODO: increment commit index with an empty commit
         executor.execute(new HeartbeatTask());
         taskScheduler.scheduleWithRepetition(new Runnable() {
             @Override
@@ -98,7 +90,7 @@ public class RaftNode {
             if (nodeEngine.getThisAddress().equals(address)) {
                 continue;
             }
-            operationService.send(new HeartbeatOp(state.name(), appendRequest), address);
+            operationService.send(new AppendRequestOp(state.name(), appendRequest), address);
         }
         lastAppendEntriesTimestamp = Clock.currentTimeMillis();
     }
@@ -136,11 +128,6 @@ public class RaftNode {
         return resultFuture;
     }
 
-    public <T> void registerCallback(InternalCompletableFuture<T> future, Address address,
-            AddressableExecutionCallback<T> callback) {
-        future.andThen(new ExecutionCallbackAdapter<T>(address, callback), new StripeExecutorConveyor(getStripeKey(), executor));
-    }
-
     public RaftState state() {
         return state;
     }
@@ -155,6 +142,22 @@ public class RaftNode {
 
     public Executor executor() {
         return executor;
+    }
+
+    public void handleVoteRequest(VoteRequest request) {
+        executor.execute(new VoteRequestTask(this, request));
+    }
+
+    public void handleVoteResponse(VoteResponse response) {
+        executor.execute(new VoteResponseTask(this, response));
+    }
+
+    public void handleAppendRequest(AppendRequest request) {
+        executor.execute(new AppendRequestTask(this, request));
+    }
+
+    public void handleAppendResponse(AppendResponse response) {
+        executor.execute(new AppendResponseTask(this, response));
     }
 
     private class HeartbeatTask implements StripedRunnable {

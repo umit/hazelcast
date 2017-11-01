@@ -31,7 +31,7 @@ public class RaftState {
     private RaftLog log = new RaftLog();
 
     private LeaderState leaderState;
-
+    private CandidateState candidateState;
 
     public RaftState(String name, Address thisAddress, Collection<Address> members) {
         this.name = name;
@@ -41,10 +41,6 @@ public class RaftState {
 
     public String name() {
         return name;
-    }
-
-    public void role(RaftRole role) {
-        this.role = role;
     }
 
     public Collection<Address> members() {
@@ -70,10 +66,6 @@ public class RaftState {
     public void persistVote(int term, Address address) {
         this.lastVoteTerm = term;
         this.votedFor = address;
-    }
-
-    public void term(int term) {
-        this.term = term;
     }
 
     public int lastVoteTerm() {
@@ -116,18 +108,8 @@ public class RaftState {
         return members.size() / 2 + 1;
     }
 
-    public void selfLeader() {
-        role(RaftRole.LEADER);
-        leader(thisAddress);
-        leaderState = new LeaderState(members, log.lastLogIndex());
-    }
-
     public LogEntry getLogEntry(int index) {
         return log.getLog(index);
-    }
-
-    public void deleteLogRange(int from, int to) {
-        log.deleteRange(from, to);
     }
 
     public void deleteLogAfter(int index) {
@@ -140,5 +122,31 @@ public class RaftState {
 
     public LeaderState leaderState() {
         return leaderState;
+    }
+
+    public CandidateState candidateState() {
+        return candidateState;
+    }
+
+    public void toFollower(int term) {
+        role = RaftRole.FOLLOWER;
+        leaderState = null;
+        candidateState = null;
+        this.term = term;
+    }
+
+    public void toCandidate() {
+        role = RaftRole.CANDIDATE;
+        leaderState = null;
+        candidateState = new CandidateState(majority());
+        candidateState.grantVote(thisAddress);
+        persistVote(incTerm(), thisAddress);
+    }
+
+    public void toLeader() {
+        role = RaftRole.LEADER;
+        leader(thisAddress);
+        candidateState = null;
+        leaderState = new LeaderState(members, thisAddress, log.lastLogIndex());
     }
 }

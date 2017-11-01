@@ -3,42 +3,41 @@ package com.hazelcast.raft.impl.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.impl.RaftService;
-import com.hazelcast.raft.impl.dto.VoteRequest;
+import com.hazelcast.raft.impl.dto.VoteResponse;
 
 import java.io.IOException;
 
 /**
  * TODO: Javadoc Pending...
  *
- * @author mdogan 30.10.2017
  */
-public class RequestVoteOp extends AsyncRaftOp {
+public class VoteResponseOp extends AsyncRaftOp {
 
-    private VoteRequest voteRequest;
+    private VoteResponse voteResponse;
 
-    public RequestVoteOp() {
+    public VoteResponseOp() {
     }
 
-    public RequestVoteOp(String name, VoteRequest voteRequest) {
+    public VoteResponseOp(String name, VoteResponse voteResponse) {
         super(name);
-        this.voteRequest = voteRequest;
+        this.voteResponse = voteResponse;
     }
 
     @Override
     public void run() throws Exception {
         RaftService service = getService();
-        service.handleRequestVote(name, voteRequest, newResponseHandler());
+        service.handleVoteResponse(name, voteResponse);
     }
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeObject(voteRequest);
+        out.writeObject(voteResponse);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        voteRequest = in.readObject();
+        voteResponse = in.readObject();
     }
 }

@@ -3,7 +3,7 @@ package com.hazelcast.raft.impl.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.impl.RaftService;
-import com.hazelcast.raft.impl.dto.AppendRequest;
+import com.hazelcast.raft.impl.dto.AppendResponse;
 
 import java.io.IOException;
 
@@ -11,33 +11,33 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public class HeartbeatOp extends AsyncRaftOp {
+public class AppendResponseOp extends AsyncRaftOp {
 
-    private AppendRequest appendRequest;
+    private AppendResponse appendResponse;
 
-    public HeartbeatOp() {
+    public AppendResponseOp() {
     }
 
-    public HeartbeatOp(String name, AppendRequest appendRequest) {
+    public AppendResponseOp(String name, AppendResponse appendResponse) {
         super(name);
-        this.appendRequest = appendRequest;
+        this.appendResponse = appendResponse;
     }
 
     @Override
     public void run() throws Exception {
         RaftService service = getService();
-        service.handleHeartbeat(name, appendRequest);
+        service.handleAppendResponse(name, appendResponse);
     }
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeObject(appendRequest);
+        out.writeObject(appendResponse);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        appendRequest = in.readObject();
+        appendResponse = in.readObject();
     }
 }

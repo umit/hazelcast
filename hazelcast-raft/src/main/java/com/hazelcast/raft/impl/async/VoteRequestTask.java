@@ -1,31 +1,30 @@
 package com.hazelcast.raft.impl.async;
 
+import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.RaftNode;
-import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.RaftState;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
-import com.hazelcast.raft.impl.operation.RaftResponseHandler;
+import com.hazelcast.raft.impl.operation.VoteResponseOp;
 import com.hazelcast.util.executor.StripedRunnable;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public class RequestVoteTask implements StripedRunnable {
+public class VoteRequestTask implements StripedRunnable {
     private RaftNode raftNode;
     private final VoteRequest req;
-    private final RaftResponseHandler responseHandler;
 
-    public RequestVoteTask(RaftNode raftNode, VoteRequest req, RaftResponseHandler responseHandler) {
+    public VoteRequestTask(RaftNode raftNode, VoteRequest req) {
         this.raftNode = raftNode;
         this.req = req;
-        this.responseHandler = responseHandler;
     }
 
     @Override
     public void run() {
         VoteResponse resp = new VoteResponse();
+        resp.voter = raftNode.getNodeEngine().getThisAddress();
         try {
             RaftState state = raftNode.state();
             if (state.leader() != null && !req.candidate.equals(state.leader())) {
@@ -43,8 +42,7 @@ public class RequestVoteTask implements StripedRunnable {
             if (state.term() < req.term) {
                 raftNode.logger.warning("Demoting to FOLLOWER after vote request from " + req.candidate
                         + " since our term is lower " + state.term() + " < " + req.term);
-                state.role(RaftRole.FOLLOWER);
-                state.term(req.term);
+                state.toFollower(req.term);
                 resp.term = req.term;
             }
 
@@ -74,8 +72,13 @@ public class RequestVoteTask implements StripedRunnable {
             resp.granted = true;
 
         } finally {
-            responseHandler.send(resp);
+            sendResponse(resp, req.candidate);
         }
+    }
+
+    private void sendResponse(VoteResponse resp, Address candidate) {
+        VoteResponseOp op = new VoteResponseOp(raftNode.state().name(), resp);
+        raftNode.getNodeEngine().getOperationService().send(op, candidate);
     }
 
     private void rejectVoteResponse(VoteResponse response) {
