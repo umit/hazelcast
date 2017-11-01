@@ -6,15 +6,10 @@ import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.RaftState;
 import com.hazelcast.raft.impl.dto.AppendRequest;
-import com.hazelcast.raft.impl.dto.AppendResponse;
-import com.hazelcast.raft.impl.operation.AppendEntriesOp;
-import com.hazelcast.raft.impl.util.AddressableExecutionCallback;
+import com.hazelcast.raft.impl.operation.AppendRequestOp;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
-import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.util.executor.StripedRunnable;
-
-import static com.hazelcast.raft.impl.RaftService.SERVICE_NAME;
 
 /**
  * TODO: Javadoc Pending...
@@ -39,7 +34,6 @@ public class ReplicateTask implements StripedRunnable {
         if (state.role() != RaftRole.LEADER) {
             return;
         }
-
         raftNode.logger.info("Replicating: " + value);
 
         assert state.role() == RaftRole.LEADER;
@@ -55,18 +49,14 @@ public class ReplicateTask implements StripedRunnable {
                 new AppendRequest(state.term(), thisAddress, lastLogTerm, lastLogIndex,
                         state.commitIndex(), new LogEntry[] {entry});
 
-        AddressableExecutionCallback<AppendResponse> callback =
-                new AppendEntriesExecutionCallback(raftNode, request, state.majority(), resultFuture);
-
         OperationService operationService = raftNode.getNodeEngine().getOperationService();
         for (Address address : state.members()) {
             if (thisAddress.equals(address)) {
                 continue;
             }
 
-            AppendEntriesOp op = new AppendEntriesOp(state.name(), request);
-            InternalCompletableFuture<AppendResponse> future = operationService.invokeOnTarget(SERVICE_NAME, op, address);
-            raftNode.registerCallback(future, address, callback);
+            AppendRequestOp op = new AppendRequestOp(state.name(), request);
+            operationService.send(op, address);
         }
     }
 

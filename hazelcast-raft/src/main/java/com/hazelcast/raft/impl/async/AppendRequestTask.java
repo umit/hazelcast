@@ -1,12 +1,13 @@
 package com.hazelcast.raft.impl.async;
 
+import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.LogEntry;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.RaftState;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendResponse;
-import com.hazelcast.raft.impl.operation.RaftResponseHandler;
+import com.hazelcast.raft.impl.operation.AppendResponseOp;
 import com.hazelcast.util.executor.StripedRunnable;
 
 import java.util.Arrays;
@@ -15,20 +16,19 @@ import java.util.Arrays;
  * TODO: Javadoc Pending...
  *
  */
-public class AppendEntriesTask implements StripedRunnable {
-    private RaftNode raftNode;
+public class AppendRequestTask implements StripedRunnable {
+    private final RaftNode raftNode;
     private final AppendRequest req;
-    private final RaftResponseHandler responseHandler;
 
-    public AppendEntriesTask(RaftNode raftNode, AppendRequest req, RaftResponseHandler responseHandler) {
+    public AppendRequestTask(RaftNode raftNode, AppendRequest req) {
         this.raftNode = raftNode;
         this.req = req;
-        this.responseHandler = responseHandler;
     }
 
     @Override
     public void run() {
         AppendResponse resp = new AppendResponse();
+        resp.follower = raftNode.getNodeEngine().getThisAddress();
         RaftState state = raftNode.state();
         resp.term = state.term();
         resp.lastLogIndex = state.lastLogIndex();
@@ -45,8 +45,7 @@ public class AppendEntriesTask implements StripedRunnable {
             if (req.term > state.term() || state.role() != RaftRole.FOLLOWER) {
                 // Ensure transition to follower
                 raftNode.logger.warning("Transiting to FOLLOWER, term: " + req.term);
-                state.role(RaftRole.FOLLOWER);
-                state.term(req.term);
+                state.toFollower(req.term);
                 resp.term = req.term;
             }
 
@@ -149,8 +148,13 @@ public class AppendEntriesTask implements StripedRunnable {
             // Everything went well, set success
             resp.success = true;
         } finally {
-            responseHandler.send(resp);
+            sendResponse(resp, req.leader);
         }
+    }
+
+    private void sendResponse(AppendResponse resp, Address leader) {
+        AppendResponseOp op = new AppendResponseOp(raftNode.state().name(), resp);
+        raftNode.getNodeEngine().getOperationService().send(op, leader);
     }
 
     @Override

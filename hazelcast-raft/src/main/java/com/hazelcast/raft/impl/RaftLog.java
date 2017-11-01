@@ -28,10 +28,6 @@ public class RaftLog {
         return logs.size() >= index ? logs.get(index - 1) : null;
     }
 
-    public void deleteRange(int from, int to) {
-        throw new UnsupportedOperationException();
-    }
-
     public void deleteAfter(int index) {
         for (int i = logs.size() - 1; i >= index - 1; i--) {
             logs.remove(i);

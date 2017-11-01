@@ -47,7 +47,8 @@ public class Test {
         for (int i = 0; i < 10; i++) {
             String s = String.valueOf(i);
             final Future replicate = node.replicate(s);
-            System.out.println("ERROR DONE " + replicate.get());
+//            System.out.println("ERROR DONE " + replicate.get());
+            Thread.sleep(5000);
         }
     }
 }
