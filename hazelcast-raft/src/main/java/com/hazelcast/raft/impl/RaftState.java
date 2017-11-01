@@ -138,7 +138,7 @@ public class RaftState {
         log.store(newEntries);
     }
 
-    public LeaderState getLeaderState() {
+    public LeaderState leaderState() {
         return leaderState;
     }
 }

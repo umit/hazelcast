@@ -11,10 +11,10 @@ import java.io.IOException;
  *
  */
 public class LogEntry implements DataSerializable {
-    int term;
-    int index;
+    private int term;
+    private int index;
 
-    Object data;
+    private Object data;
 
     public LogEntry() {
     }
@@ -23,6 +23,18 @@ public class LogEntry implements DataSerializable {
         this.term = term;
         this.index = index;
         this.data = data;
+    }
+
+    public int index() {
+        return index;
+    }
+
+    public int term() {
+        return term;
+    }
+
+    public Object data() {
+        return data;
     }
 
     @Override
