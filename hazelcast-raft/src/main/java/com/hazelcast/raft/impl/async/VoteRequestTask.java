@@ -1,7 +1,6 @@
 package com.hazelcast.raft.impl.async;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.RaftLog;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftState;
@@ -28,7 +27,7 @@ public class VoteRequestTask implements StripedRunnable {
     @Override
     public void run() {
         VoteResponse resp = new VoteResponse();
-        resp.voter = raftNode.getNodeEngine().getThisAddress();
+        resp.voter = raftNode.getThisAddress();
         try {
             RaftState state = raftNode.state();
             if (state.leader() != null && !req.candidate.equals(state.leader())) {
@@ -38,8 +37,8 @@ public class VoteRequestTask implements StripedRunnable {
             }
             // Reply false if term < currentTerm (§5.1)
             if (state.term() > req.term) {
-                logger.warning(
-                        "Rejecting vote request from " + req.candidate + " since our term is greater " + state.term() + " > " + req.term);
+                logger.warning("Rejecting vote request from " + req.candidate + " since current term: " + state.term()
+                        + " is greater than request term: " + req.term);
                 rejectVoteResponse(resp);
                 return;
             }
@@ -50,7 +49,7 @@ public class VoteRequestTask implements StripedRunnable {
             if (state.term() < req.term) {
                 // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
                 logger.warning("Demoting to FOLLOWER after vote request from " + req.candidate
-                        + " since our term is lower " + state.term() + " < " + req.term);
+                        + " since current term: " + state.term() + " is lower than request term: " + req.term);
                 state.toFollower(req.term);
                 resp.term = req.term;
             }
@@ -66,14 +65,14 @@ public class VoteRequestTask implements StripedRunnable {
 
             RaftLog raftLog = state.log();
             if (raftLog.lastLogTerm() > req.lastLogTerm) {
-                logger.warning("Rejecting vote request from " + req.candidate + " since our last term is greater "
-                        + raftLog.lastLogTerm() + " > " + req.lastLogTerm);
+                logger.warning("Rejecting vote request from " + req.candidate + " since our last log term: "
+                        + raftLog.lastLogTerm() + " is greater than request last log term: " + req.lastLogTerm);
                 return;
             }
 
             if (raftLog.lastLogTerm() == req.lastLogTerm && raftLog.lastLogIndex() > req.lastLogIndex) {
-                logger.warning("Rejecting vote request from " + req.candidate + " since our last index is greater "
-                        + raftLog.lastLogIndex() + " > " + req.lastLogIndex);
+                logger.warning("Rejecting vote request from " + req.candidate + " since our last log index: "
+                        + raftLog.lastLogIndex() + " is greater than request last log index: " + req.lastLogIndex);
                 return;
             }
 
@@ -82,13 +81,8 @@ public class VoteRequestTask implements StripedRunnable {
             resp.granted = true;
 
         } finally {
-            sendResponse(resp, req.candidate);
+            raftNode.send(new VoteResponseOp(raftNode.state().name(), resp), req.candidate);
         }
-    }
-
-    private void sendResponse(VoteResponse resp, Address candidate) {
-        VoteResponseOp op = new VoteResponseOp(raftNode.state().name(), resp);
-        raftNode.getNodeEngine().getOperationService().send(op, candidate);
     }
 
     private void rejectVoteResponse(VoteResponse response) {

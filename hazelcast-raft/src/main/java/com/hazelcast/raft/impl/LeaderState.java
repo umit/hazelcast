@@ -16,23 +16,20 @@ public class LeaderState {
 
     private final Map<Address, Integer> matchIndices = new HashMap<Address, Integer>();
 
-    public LeaderState(Collection<Address> addresses, Address thisAddress, int lastLogIndex) {
-        for (Address address : addresses) {
-            if (address.equals(thisAddress)) {
-                continue;
-            }
-            nextIndices.put(address, lastLogIndex + 1);
-            matchIndices.put(address, 0);
+    public LeaderState(Collection<Address> remoteMembers, int lastLogIndex) {
+        for (Address follower : remoteMembers) {
+            nextIndices.put(follower, lastLogIndex + 1);
+            matchIndices.put(follower, 0);
         }
     }
 
     public void setNextIndex(Address follower, int index) {
-        assert nextIndices.containsKey(follower) : "Unknown address " + follower;
+        assertFollower(nextIndices, follower);
         nextIndices.put(follower, index);
     }
 
     public void setMatchIndex(Address follower, int index) {
-        assert matchIndices.containsKey(follower) : "Unknown address " + follower;
+        assertFollower(matchIndices, follower);
         matchIndices.put(follower, index);
     }
 
@@ -41,12 +38,17 @@ public class LeaderState {
     }
 
     public int getNextIndex(Address follower) {
-        assert nextIndices.containsKey(follower) : "Unknown address " + follower;
+        assertFollower(nextIndices, follower);
         return nextIndices.get(follower);
     }
 
     public int getMatchIndex(Address follower) {
-        assert matchIndices.containsKey(follower) : "Unknown address " + follower;
+        assertFollower(matchIndices, follower);
         return matchIndices.get(follower);
     }
+
+    private void assertFollower(Map<Address, Integer> indices, Address follower) {
+        assert indices.containsKey(follower) : "Unknown address " + follower;
+    }
+
 }

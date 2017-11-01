@@ -15,19 +15,17 @@ import java.util.Arrays;
  */
 public class AppendRequest implements DataSerializable {
 
-    public int term;
     public Address leader;
+    public int term;
     public int prevLogTerm;
     public int prevLogIndex;
-
     public int leaderCommitIndex;
     public LogEntry[] entries;
 
     public AppendRequest() {
     }
 
-    public AppendRequest(int term, Address leader, int prevLogTerm, int prevLogIndex, int leaderCommitIndex,
-            LogEntry[] entries) {
+    public AppendRequest(Address leader, int term, int prevLogTerm, int prevLogIndex, int leaderCommitIndex, LogEntry[] entries) {
         this.term = term;
         this.leader = leader;
         this.prevLogTerm = prevLogTerm;
@@ -67,8 +65,8 @@ public class AppendRequest implements DataSerializable {
 
     @Override
     public String toString() {
-        return "AppendRequest{" + "term=" + term + ", leader=" + leader + ", prevLogTerm=" + prevLogTerm
-                + ", prevLogIndex=" + prevLogIndex + ", leaderCommitIndex=" + leaderCommitIndex + ", entries=" + Arrays
-                .toString(entries) + '}';
+        return "AppendRequest{" + "leader=" + leader + ", term=" + term + ", prevLogTerm=" + prevLogTerm + ", prevLogIndex="
+                + prevLogIndex + ", leaderCommitIndex=" + leaderCommitIndex + ", entries=" + Arrays.toString(entries) + '}';
     }
+
 }

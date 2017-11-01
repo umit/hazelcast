@@ -31,21 +31,21 @@ public class VoteResponseTask implements StripedRunnable {
         }
 
         if (resp.term > state.term()) {
-            logger.warning("Newer term discovered, fallback to follower");
+            logger.warning("Newer term: " + resp.term + " than current term: " + state.term()
+                    + " discovered, fallback to follower");
             state.toFollower(resp.term);
             return;
         }
 
         if (resp.term < state.term()) {
-            logger.warning("Obsolete vote response received: " + resp + ", current-term: " + state.term());
+            logger.warning("Obsolete vote response received: " + resp + ", current term: " + state.term());
             return;
         }
 
         CandidateState candidateState = state.candidateState();
         if (resp.granted && candidateState.grantVote(resp.voter)) {
-                logger.warning("Vote granted from " + resp.voter + " for term " + state.term()
-                                + ", number of votes: " + candidateState.voteCount()
-                                + ", majority: " + candidateState.majority());
+            logger.warning("Vote granted from " + resp.voter + " for term " + state.term()
+                    + ", number of votes: " + candidateState.voteCount() + ", majority: " + candidateState.majority());
         }
 
         if (candidateState.isMajorityGranted()) {

@@ -15,7 +15,7 @@ import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.operation.AppendRequestOp;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
-import com.hazelcast.spi.OperationService;
+import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.TaskScheduler;
 import com.hazelcast.util.Clock;
 import com.hazelcast.util.executor.StripedExecutor;
@@ -55,6 +55,14 @@ public class RaftNode {
         return nodeEngine.getLogger(clazz.getSimpleName() + "[" + name + "]");
     }
 
+    public Address getThisAddress() {
+        return nodeEngine.getThisAddress();
+    }
+
+    public void send(Operation operation, Address target) {
+        nodeEngine.getOperationService().send(operation, target);
+    }
+
     public void start() {
         if (nodeEngine.getClusterService().isJoined()) {
             logger.warning("Starting raft group...");
@@ -78,7 +86,6 @@ public class RaftNode {
     }
 
     public void scheduleLeaderLoop() {
-        // TODO: increment commit index with an empty commit
         executor.execute(new HeartbeatTask());
         taskScheduler.scheduleWithRepetition(new Runnable() {
             @Override
@@ -88,63 +95,59 @@ public class RaftNode {
         }, HEARTBEAT_PERIOD, HEARTBEAT_PERIOD, TimeUnit.SECONDS);
     }
 
-    public void sendHeartbeat() {
-        for (Address follower : state.members()) {
-            if (nodeEngine.getThisAddress().equals(follower)) {
-                continue;
-            }
-            sendHeartbeat(follower);
+    public void broadcastAppendRequest() {
+        for (Address follower : state.remoteMembers()) {
+            sendAppendRequest(follower);
         }
         lastAppendEntriesTimestamp = Clock.currentTimeMillis();
     }
 
-    public void sendHeartbeat(Address follower) {
-        OperationService operationService = nodeEngine.getOperationService();
+    public void sendAppendRequest(Address follower) {
         RaftLog raftLog = state.log();
         LeaderState leaderState = state.leaderState();
 
-        int index = leaderState.getNextIndex(follower);
+        int nextIndex = leaderState.getNextIndex(follower);
 
         LogEntry prevEntry;
         LogEntry[] entries;
         // TODO: define a max batch size
-        if (index > 1) {
-            prevEntry = raftLog.getEntry(index - 1);
-            entries = raftLog.getEntriesBetween(index, raftLog.lastLogIndex());
-        } else if (index == 1 && raftLog.lastLogIndex() > 0) {
+        if (nextIndex > 1) {
+            prevEntry = raftLog.getEntry(nextIndex - 1);
+            entries = raftLog.getEntriesBetween(nextIndex, raftLog.lastLogIndex());
+        } else if (nextIndex == 1 && raftLog.lastLogIndex() > 0) {
             prevEntry = new LogEntry();
-            entries = raftLog.getEntriesBetween(index, raftLog.lastLogIndex());
+            entries = raftLog.getEntriesBetween(nextIndex, raftLog.lastLogIndex());
         } else {
             prevEntry = new LogEntry();
             entries = new LogEntry[0];
         }
 
-        AppendRequest appendRequest = new AppendRequest(state.term(), nodeEngine.getThisAddress(),
-                prevEntry.term(), prevEntry.index(), state.commitIndex(), entries);
+        AppendRequest appendRequest = new AppendRequest(getThisAddress(), state.term(), prevEntry.term(), prevEntry.index(),
+                state.commitIndex(), entries);
 
-        logger.warning("Sending heartbeat " + appendRequest + " to " + follower + " with next-index: " + index);
+        logger.warning("Sending " + appendRequest + " to " + follower + " with next index: " + nextIndex);
 
-        operationService.send(new AppendRequestOp(state.name(), appendRequest), follower);
+        send(new AppendRequestOp(state.name(), appendRequest), follower);
     }
-
     // If commitIndex > lastApplied: increment lastApplied, apply log[lastApplied] to state machine (§5.3)
-    public void processLogs(int index) {
+
+    public void processLogs(int commitIndex) {
         // Reject logs we've applied already
         int lastApplied = state.lastApplied();
-        if (index <= lastApplied) {
-            logger.warning("Skipping application of old log: " + index + ", lastApplied: " + lastApplied);
+        if (commitIndex <= lastApplied) {
+            logger.warning("Skipping application of old log commit index: " + commitIndex + ", lastApplied: " + lastApplied);
             return;
         }
 
         // Apply all the preceding logs
         RaftLog raftLog = state.log();
-        for (int idx = state.lastApplied() + 1; idx <= index; idx++) {
-            LogEntry l = raftLog.getEntry(idx);
-            if (l == null) {
+        for (int idx = state.lastApplied() + 1; idx <= commitIndex; idx++) {
+            LogEntry entry = raftLog.getEntry(idx);
+            if (entry == null) {
                 logger.severe("Failed to get log at " +  idx);
                 throw new AssertionError("Failed to get log at " +  idx);
             }
-            processLog(l);
+            processLog(entry);
 
             // Update the lastApplied index and term
             state.lastApplied(idx);
@@ -198,7 +201,7 @@ public class RaftNode {
         @Override
         public void run() {
             if (lastAppendEntriesTimestamp < Clock.currentTimeMillis() - TimeUnit.SECONDS.toMillis(HEARTBEAT_PERIOD)) {
-                sendHeartbeat();
+                broadcastAppendRequest();
             }
         }
 
