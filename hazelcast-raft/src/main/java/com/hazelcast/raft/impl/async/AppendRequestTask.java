@@ -1,5 +1,6 @@
 package com.hazelcast.raft.impl.async;
 
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.LogEntry;
 import com.hazelcast.raft.impl.RaftLog;
@@ -20,10 +21,12 @@ import java.util.Arrays;
 public class AppendRequestTask implements StripedRunnable {
     private final RaftNode raftNode;
     private final AppendRequest req;
+    private final ILogger logger;
 
     public AppendRequestTask(RaftNode raftNode, AppendRequest req) {
         this.raftNode = raftNode;
         this.req = req;
+        this.logger = raftNode.getLogger(getClass());
     }
 
     @Override
@@ -36,12 +39,12 @@ public class AppendRequestTask implements StripedRunnable {
         resp.term = state.term();
         resp.lastLogIndex = raftLog.lastLogIndex();
 
-        raftNode.logger.warning("Received " + req);
+        logger.warning("Received " + req);
 
         try {
             // Reply false if term < currentTerm (§5.1)
             if (req.term < state.term()) {
-                raftNode.logger.warning(
+                logger.warning(
                         "Older append entries received term: " + req.term + ", current-term: " + state.term());
                 return;
             }
@@ -50,13 +53,13 @@ public class AppendRequestTask implements StripedRunnable {
             // if we ever get an appendEntries call
             if (req.term > state.term() || state.role() != RaftRole.FOLLOWER) {
                 // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
-                raftNode.logger.warning("Transiting to FOLLOWER, term: " + req.term);
+                logger.warning("Transiting to FOLLOWER, term: " + req.term);
                 state.toFollower(req.term);
                 resp.term = req.term;
             }
 
             if (!req.leader.equals(state.leader())) {
-                raftNode.logger.severe("Setting leader " + req.leader);
+                logger.severe("Setting leader " + req.leader);
             }
             state.leader(req.leader);
 
@@ -73,7 +76,7 @@ public class AppendRequestTask implements StripedRunnable {
                     // Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
                     LogEntry prevLog = raftLog.getEntry(req.prevLogIndex);
                     if (prevLog == null) {
-                        raftNode.logger.warning("Failed to get previous log " + req.prevLogIndex + ", last-index: " + lastIndex);
+                        logger.warning("Failed to get previous log " + req.prevLogIndex + ", last-index: " + lastIndex);
                         //                            resp.NoRetryBackoff = true
                         return;
                     }
@@ -81,7 +84,7 @@ public class AppendRequestTask implements StripedRunnable {
                 }
 
                 if (req.prevLogTerm != prevLogTerm) {
-                    raftNode.logger.warning("Previous log term mis-match: ours: " + prevLogTerm + ", remote: " + req.prevLogTerm);
+                    logger.warning("Previous log term mis-match: ours: " + prevLogTerm + ", remote: " + req.prevLogTerm);
                     //                        resp.NoRetryBackoff = true
                     return;
                 }
@@ -103,18 +106,18 @@ public class AppendRequestTask implements StripedRunnable {
 
                     LogEntry storeEntry = raftLog.getEntry(entry.index());
                     if (storeEntry == null) {
-                        raftNode.logger.warning("Failed to get log entry: " + entry.index());
+                        logger.warning("Failed to get log entry: " + entry.index());
                         return;
                     }
 
                     // If an existing entry conflicts with a new one (same index but different terms),
                     // delete the existing entry and all that follow it (§5.3)
                     if (entry.term() != storeEntry.term()) {
-                        raftNode.logger.warning("Clearing log suffix from " + entry.index() + " to " + lastLogIndex);
+                        logger.warning("Clearing log suffix from " + entry.index() + " to " + lastLogIndex);
                         try {
                             raftLog.deleteEntriesAfter(entry.index());
                         } catch (Exception e) {
-                            raftNode.logger.severe("Failed to clear log from " + entry.index() + " to " + lastLogIndex, e);
+                            logger.severe("Failed to clear log from " + entry.index() + " to " + lastLogIndex, e);
                             return;
                         }
 
@@ -132,7 +135,7 @@ public class AppendRequestTask implements StripedRunnable {
                     try {
                         raftLog.storeEntries(newEntries);
                     } catch (Exception e) {
-                        raftNode.logger.severe("Failed to append to logs", e);
+                        logger.severe("Failed to append to logs", e);
                         return;
                     }
 
