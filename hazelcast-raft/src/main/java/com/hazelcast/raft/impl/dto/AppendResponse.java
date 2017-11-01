@@ -13,16 +13,15 @@ import java.io.IOException;
  */
 public class AppendResponse implements DataSerializable {
 
-    public boolean success;
-    public int term;
-
     public Address follower;
+    public int term;
+    public boolean success;
     public int lastLogIndex;
 
     public AppendResponse() {
     }
 
-    public AppendResponse(boolean success, int term, Address follower, int lastLogIndex) {
+    public AppendResponse(Address follower, int term, boolean success, int lastLogIndex) {
         this.success = success;
         this.term = term;
         this.follower = follower;
@@ -47,7 +46,8 @@ public class AppendResponse implements DataSerializable {
 
     @Override
     public String toString() {
-        return "AppendResponse{" + "success=" + success + ", term=" + term + ", follower=" + follower
-                + ", lastLogIndex=" + lastLogIndex + '}';
+        return "AppendResponse{" + "follower=" + follower + ", term=" + term + ", success=" + success + ", lastLogIndex="
+                + lastLogIndex + '}';
     }
+
 }
