@@ -30,7 +30,7 @@ public class Test {
         config.getNetworkConfig().getJoin().getTcpIpConfig().setEnabled(true).clear().addMember("127.0.0.1");
 
         RaftConfig raftConfig = new RaftConfig();
-        raftConfig.setAddresses(Arrays.asList("127.0.0.1:5701", "127.0.0.1:5702"));
+        raftConfig.setAddresses(Arrays.asList("127.0.0.1:5701", "127.0.0.1:5702", "127.0.0.1:5703"));
 
         config.getServicesConfig().addServiceConfig(
                 new ServiceConfig().setEnabled(true).setName(RaftService.SERVICE_NAME)
@@ -44,7 +44,7 @@ public class Test {
 
         TimeUnit.SECONDS.sleep(10);
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 30; i++) {
             String s = String.valueOf(i);
             final Future replicate = node.replicate(s);
 //            System.out.println("ERROR DONE " + replicate.get());

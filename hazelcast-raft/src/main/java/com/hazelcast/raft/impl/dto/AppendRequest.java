@@ -7,6 +7,7 @@ import com.hazelcast.nio.serialization.DataSerializable;
 import com.hazelcast.raft.impl.LogEntry;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 /**
  * TODO: Javadoc Pending...
@@ -62,5 +63,12 @@ public class AppendRequest implements DataSerializable {
         for (int i = 0; i < len; i++) {
             entries[i] = in.readObject();
         }
+    }
+
+    @Override
+    public String toString() {
+        return "AppendRequest{" + "term=" + term + ", leader=" + leader + ", prevLogTerm=" + prevLogTerm
+                + ", prevLogIndex=" + prevLogIndex + ", leaderCommitIndex=" + leaderCommitIndex + ", entries=" + Arrays
+                .toString(entries) + '}';
     }
 }

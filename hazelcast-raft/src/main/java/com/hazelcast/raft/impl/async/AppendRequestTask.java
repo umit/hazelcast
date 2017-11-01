@@ -36,7 +36,10 @@ public class AppendRequestTask implements StripedRunnable {
         resp.term = state.term();
         resp.lastLogIndex = raftLog.lastLogIndex();
 
+        raftNode.logger.warning("Received " + req);
+
         try {
+            // Reply false if term < currentTerm (§5.1)
             if (req.term < state.term()) {
                 raftNode.logger.warning(
                         "Older append entries received term: " + req.term + ", current-term: " + state.term());
@@ -46,7 +49,7 @@ public class AppendRequestTask implements StripedRunnable {
             // Increase the term if we see a newer one, also transition to follower
             // if we ever get an appendEntries call
             if (req.term > state.term() || state.role() != RaftRole.FOLLOWER) {
-                // Ensure transition to follower
+                // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
                 raftNode.logger.warning("Transiting to FOLLOWER, term: " + req.term);
                 state.toFollower(req.term);
                 resp.term = req.term;
@@ -67,6 +70,7 @@ public class AppendRequestTask implements StripedRunnable {
                     prevLogTerm = lastTerm;
 
                 } else {
+                    // Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
                     LogEntry prevLog = raftLog.getEntry(req.prevLogIndex);
                     if (prevLog == null) {
                         raftNode.logger.warning("Failed to get previous log " + req.prevLogIndex + ", last-index: " + lastIndex);
@@ -103,6 +107,8 @@ public class AppendRequestTask implements StripedRunnable {
                         return;
                     }
 
+                    // If an existing entry conflicts with a new one (same index but different terms),
+                    // delete the existing entry and all that follow it (§5.3)
                     if (entry.term() != storeEntry.term()) {
                         raftNode.logger.warning("Clearing log suffix from " + entry.index() + " to " + lastLogIndex);
                         try {
@@ -122,7 +128,7 @@ public class AppendRequestTask implements StripedRunnable {
                 }
 
                 if (newEntries != null && newEntries.length > 0) {
-                    // Append the new entries
+                    // Append any new entries not already in the log
                     try {
                         raftLog.storeEntries(newEntries);
                     } catch (Exception e) {
@@ -139,6 +145,7 @@ public class AppendRequestTask implements StripedRunnable {
 
             // Update the commit index
             if (req.leaderCommitIndex > 0 && req.leaderCommitIndex > state.commitIndex()) {
+                // If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
                 int idx = Math.min(req.leaderCommitIndex, raftLog.lastLogIndex());
                 state.commitIndex(idx);
                 //                    if r.configurations.latestIndex <= idx {
