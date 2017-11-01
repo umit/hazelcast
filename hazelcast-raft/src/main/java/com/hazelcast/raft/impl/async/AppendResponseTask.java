@@ -1,5 +1,6 @@
 package com.hazelcast.raft.impl.async;
 
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.impl.LeaderState;
 import com.hazelcast.raft.impl.LogEntry;
 import com.hazelcast.raft.impl.RaftLog;
@@ -18,10 +19,12 @@ import java.util.Collection;
 public class AppendResponseTask implements StripedRunnable {
     private final RaftNode raftNode;
     private final AppendResponse resp;
+    private final ILogger logger;
 
     public AppendResponseTask(RaftNode raftNode, AppendResponse response) {
         this.raftNode = raftNode;
         this.resp = response;
+        this.logger = raftNode.getLogger(getClass());
     }
 
     @Override
@@ -30,7 +33,7 @@ public class AppendResponseTask implements StripedRunnable {
 
         if (resp.term > state.term()) {
             // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
-            raftNode.logger.warning("Transiting to FOLLOWER, term: " + resp.term);
+            logger.warning("Transiting to FOLLOWER, term: " + resp.term);
             state.toFollower(resp.term);
             // TODO: notify futures
             return;
@@ -38,12 +41,12 @@ public class AppendResponseTask implements StripedRunnable {
 
         if (!resp.success) {
             // If AppendEntries fails because of log inconsistency: decrement nextIndex and retry (§5.3)
-            raftNode.logger.severe("Failure response " + resp);
+            logger.severe("Failure response " + resp);
             updateFollowerIndicesAndReplicateMissing(state);
             return;
         }
 
-        raftNode.logger.warning("Success response " + resp);
+        logger.warning("Success response " + resp);
         // If successful: update nextIndex and matchIndex for follower (§5.3)
         updateFollowerIndicesAfterSuccess(state);
 
@@ -80,16 +83,16 @@ public class AppendResponseTask implements StripedRunnable {
         int followerLastLogIndex = resp.lastLogIndex;
 
         if (followerLastLogIndex >= nextIndex) {
-            raftNode.logger.warning("Will not update follower next index. Follower: " + followerLastLogIndex + ", Next: " + nextIndex);
+            logger.warning("Will not update follower next index. Follower: " + followerLastLogIndex + ", Next: " + nextIndex);
             return false;
         }
 
         if (followerLastLogIndex < matchIndex) {
-            raftNode.logger.severe("Will not update follower next index. Follower: " + followerLastLogIndex + ", Match: " + matchIndex);
+            logger.severe("Will not update follower next index. Follower: " + followerLastLogIndex + ", Match: " + matchIndex);
             return false;
         }
 
-        raftNode.logger.warning("Updating next index for " + resp.follower + " to " + (followerLastLogIndex + 1));
+        logger.warning("Updating next index for " + resp.follower + " to " + (followerLastLogIndex + 1));
         leaderState.setNextIndex(resp.follower, followerLastLogIndex + 1);
         return true;
     }
@@ -102,16 +105,16 @@ public class AppendResponseTask implements StripedRunnable {
         int followerLastLogIndex = resp.lastLogIndex;
 
         if (followerLastLogIndex < nextIndex) {
-            raftNode.logger.warning("Will not update indices for " + resp.follower + " . Follower: " + followerLastLogIndex + ", Next: " + nextIndex);
+            logger.warning("Will not update indices for " + resp.follower + " . Follower: " + followerLastLogIndex + ", Next: " + nextIndex);
             return;
         }
 
         if (followerLastLogIndex < matchIndex) {
-            raftNode.logger.warning("Will not update indices for " + resp.follower + ". Follower: " + followerLastLogIndex + ", Match: " + matchIndex);
+            logger.warning("Will not update indices for " + resp.follower + ". Follower: " + followerLastLogIndex + ", Match: " + matchIndex);
             return;
         }
 
-        raftNode.logger.warning("Updating indices for " + resp.follower + " to " + followerLastLogIndex + "/" +  (followerLastLogIndex + 1));
+        logger.warning("Updating indices for " + resp.follower + " to " + followerLastLogIndex + "/" +  (followerLastLogIndex + 1));
         leaderState.setMatchIndex(resp.follower, followerLastLogIndex);
         leaderState.setNextIndex(resp.follower, followerLastLogIndex + 1);
     }
@@ -129,12 +132,12 @@ public class AppendResponseTask implements StripedRunnable {
         Arrays.sort(indices);
 
         int quorumMatchIndex = indices[(indices.length - 1) / 2];
-        raftNode.logger.warning("Quorum match index: " + quorumMatchIndex + ", indices: " + Arrays.toString(indices));
+        logger.warning("Quorum match index: " + quorumMatchIndex + ", indices: " + Arrays.toString(indices));
         return quorumMatchIndex;
     }
 
     private void progressCommitState(RaftState state, int commitIndex) {
-        raftNode.logger.severe("Commit index: " + commitIndex);
+        logger.severe("Commit index: " + commitIndex);
         state.commitIndex(commitIndex);
         raftNode.sendHeartbeat();
         raftNode.processLogs(commitIndex);

@@ -1,5 +1,6 @@
 package com.hazelcast.raft.impl.async;
 
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.RaftLog;
 import com.hazelcast.raft.impl.RaftNode;
@@ -14,12 +15,14 @@ import com.hazelcast.util.executor.StripedRunnable;
  *
  */
 public class VoteRequestTask implements StripedRunnable {
+    private final ILogger logger;
     private RaftNode raftNode;
     private final VoteRequest req;
 
     public VoteRequestTask(RaftNode raftNode, VoteRequest req) {
         this.raftNode = raftNode;
         this.req = req;
+        this.logger = raftNode.getLogger(getClass());
     }
 
     @Override
@@ -29,13 +32,13 @@ public class VoteRequestTask implements StripedRunnable {
         try {
             RaftState state = raftNode.state();
             if (state.leader() != null && !req.candidate.equals(state.leader())) {
-                raftNode.logger.warning("Rejecting vote request from " + req.candidate + " since we have a leader " + state.leader());
+                logger.warning("Rejecting vote request from " + req.candidate + " since we have a leader " + state.leader());
                 rejectVoteResponse(resp);
                 return;
             }
             // Reply false if term < currentTerm (§5.1)
             if (state.term() > req.term) {
-                raftNode.logger.warning(
+                logger.warning(
                         "Rejecting vote request from " + req.candidate + " since our term is greater " + state.term() + " > " + req.term);
                 rejectVoteResponse(resp);
                 return;
@@ -46,16 +49,16 @@ public class VoteRequestTask implements StripedRunnable {
 
             if (state.term() < req.term) {
                 // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
-                raftNode.logger.warning("Demoting to FOLLOWER after vote request from " + req.candidate
+                logger.warning("Demoting to FOLLOWER after vote request from " + req.candidate
                         + " since our term is lower " + state.term() + " < " + req.term);
                 state.toFollower(req.term);
                 resp.term = req.term;
             }
 
             if (state.lastVoteTerm() == req.term && state.votedFor() != null) {
-                raftNode.logger.warning("Duplicate RequestVote for same term " + req.term + ", currently voted-for " + state.votedFor());
+                logger.warning("Duplicate RequestVote for same term " + req.term + ", currently voted-for " + state.votedFor());
                 if (req.candidate.equals(state.votedFor())) {
-                    raftNode.logger.warning("Duplicate RequestVote from candidate " + req.candidate);
+                    logger.warning("Duplicate RequestVote from candidate " + req.candidate);
                     resp.granted = true;
                 }
                 return;
@@ -63,18 +66,18 @@ public class VoteRequestTask implements StripedRunnable {
 
             RaftLog raftLog = state.log();
             if (raftLog.lastLogTerm() > req.lastLogTerm) {
-                raftNode.logger.warning("Rejecting vote request from " + req.candidate + " since our last term is greater "
+                logger.warning("Rejecting vote request from " + req.candidate + " since our last term is greater "
                         + raftLog.lastLogTerm() + " > " + req.lastLogTerm);
                 return;
             }
 
             if (raftLog.lastLogTerm() == req.lastLogTerm && raftLog.lastLogIndex() > req.lastLogIndex) {
-                raftNode.logger.warning("Rejecting vote request from " + req.candidate + " since our last index is greater "
+                logger.warning("Rejecting vote request from " + req.candidate + " since our last index is greater "
                         + raftLog.lastLogIndex() + " > " + req.lastLogIndex);
                 return;
             }
 
-            raftNode.logger.warning("Granted vote for " + req.candidate + ", term: " + req.term);
+            logger.warning("Granted vote for " + req.candidate + ", term: " + req.term);
             state.persistVote(req.term, req.candidate);
             resp.granted = true;
 

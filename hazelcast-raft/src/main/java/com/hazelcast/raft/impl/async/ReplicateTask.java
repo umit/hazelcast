@@ -1,5 +1,6 @@
 package com.hazelcast.raft.impl.async;
 
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.LogEntry;
 import com.hazelcast.raft.impl.RaftNode;
@@ -19,10 +20,12 @@ public class ReplicateTask implements StripedRunnable {
     private final RaftNode raftNode;
     private final Object value;
     private final SimpleCompletableFuture resultFuture;
+    private final ILogger logger;
 
     public ReplicateTask(RaftNode raftNode, Object value, SimpleCompletableFuture resultFuture) {
         this.raftNode = raftNode;
         this.value = value;
+        this.logger = raftNode.getLogger(getClass());
         this.resultFuture = resultFuture;
     }
 
@@ -33,7 +36,7 @@ public class ReplicateTask implements StripedRunnable {
         if (state.role() != RaftRole.LEADER) {
             return;
         }
-        raftNode.logger.info("Replicating: " + value);
+        logger.info("Replicating: " + value);
 
         assert state.role() == RaftRole.LEADER;
 
