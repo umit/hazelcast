@@ -2,6 +2,7 @@ package com.hazelcast.raft.impl.async;
 
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.LogEntry;
+import com.hazelcast.raft.impl.RaftLog;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.RaftState;
@@ -27,11 +28,13 @@ public class AppendRequestTask implements StripedRunnable {
 
     @Override
     public void run() {
+        RaftState state = raftNode.state();
+        RaftLog raftLog = state.log();
+
         AppendResponse resp = new AppendResponse();
         resp.follower = raftNode.getNodeEngine().getThisAddress();
-        RaftState state = raftNode.state();
         resp.term = state.term();
-        resp.lastLogIndex = state.lastLogIndex();
+        resp.lastLogIndex = raftLog.lastLogIndex();
 
         try {
             if (req.term < state.term()) {
@@ -56,15 +59,15 @@ public class AppendRequestTask implements StripedRunnable {
 
             // Verify the last log entry
             if (req.prevLogIndex > 0) {
-                int lastIndex = state.lastLogIndex();
-                int lastTerm = state.lastLogTerm();
+                int lastIndex = raftLog.lastLogIndex();
+                int lastTerm = raftLog.lastLogTerm();
 
                 int prevLogTerm;
                 if (req.prevLogIndex == lastIndex) {
                     prevLogTerm = lastTerm;
 
                 } else {
-                    LogEntry prevLog = state.getLogEntry(req.prevLogIndex);
+                    LogEntry prevLog = raftLog.getEntry(req.prevLogIndex);
                     if (prevLog == null) {
                         raftNode.logger.warning("Failed to get previous log " + req.prevLogIndex + ", last-index: " + lastIndex);
                         //                            resp.NoRetryBackoff = true
@@ -83,7 +86,7 @@ public class AppendRequestTask implements StripedRunnable {
             // Process any new entries
             if (req.entries.length > 0) {
                 // Delete any conflicting entries, skip any duplicates
-                int lastLogIndex = state.lastLogIndex();
+                int lastLogIndex = raftLog.lastLogIndex();
 
                 LogEntry[] newEntries = null;
                 for (int i = 0; i < req.entries.length; i++) {
@@ -94,7 +97,7 @@ public class AppendRequestTask implements StripedRunnable {
                         break;
                     }
 
-                    LogEntry storeEntry = state.getLogEntry(entry.index());
+                    LogEntry storeEntry = raftLog.getEntry(entry.index());
                     if (storeEntry == null) {
                         raftNode.logger.warning("Failed to get log entry: " + entry.index());
                         return;
@@ -103,7 +106,7 @@ public class AppendRequestTask implements StripedRunnable {
                     if (entry.term() != storeEntry.term()) {
                         raftNode.logger.warning("Clearing log suffix from " + entry.index() + " to " + lastLogIndex);
                         try {
-                            state.deleteLogAfter(entry.index());
+                            raftLog.deleteEntriesAfter(entry.index());
                         } catch (Exception e) {
                             raftNode.logger.severe("Failed to clear log from " + entry.index() + " to " + lastLogIndex, e);
                             return;
@@ -121,7 +124,7 @@ public class AppendRequestTask implements StripedRunnable {
                 if (newEntries != null && newEntries.length > 0) {
                     // Append the new entries
                     try {
-                        state.storeLogs(newEntries);
+                        raftLog.storeEntries(newEntries);
                     } catch (Exception e) {
                         raftNode.logger.severe("Failed to append to logs", e);
                         return;
@@ -136,7 +139,7 @@ public class AppendRequestTask implements StripedRunnable {
 
             // Update the commit index
             if (req.leaderCommitIndex > 0 && req.leaderCommitIndex > state.commitIndex()) {
-                int idx = Math.min(req.leaderCommitIndex, state.lastLogIndex());
+                int idx = Math.min(req.leaderCommitIndex, raftLog.lastLogIndex());
                 state.commitIndex(idx);
                 //                    if r.configurations.latestIndex <= idx {
                 //                        r.configurations.committed = r.configurations.latest

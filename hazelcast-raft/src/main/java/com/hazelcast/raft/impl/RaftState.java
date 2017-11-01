@@ -63,25 +63,12 @@ public class RaftState {
         return leader;
     }
 
-    public void persistVote(int term, Address address) {
-        this.lastVoteTerm = term;
-        this.votedFor = address;
-    }
-
     public int lastVoteTerm() {
         return lastVoteTerm;
     }
 
     public Address votedFor() {
         return votedFor;
-    }
-
-    public int lastLogTerm() {
-        return log.lastLogTerm();
-    }
-
-    public int lastLogIndex() {
-        return log.lastLogIndex();
     }
 
     public void leader(Address address) {
@@ -108,16 +95,8 @@ public class RaftState {
         return members.size() / 2 + 1;
     }
 
-    public LogEntry getLogEntry(int index) {
-        return log.getLog(index);
-    }
-
-    public void deleteLogAfter(int index) {
-        log.deleteAfter(index);
-    }
-
-    public void storeLogs(LogEntry... newEntries) {
-        log.store(newEntries);
+    public RaftLog log() {
+        return log;
     }
 
     public LeaderState leaderState() {
@@ -126,6 +105,11 @@ public class RaftState {
 
     public CandidateState candidateState() {
         return candidateState;
+    }
+
+    public void persistVote(int term, Address address) {
+        this.lastVoteTerm = term;
+        this.votedFor = address;
     }
 
     public void toFollower(int term) {
