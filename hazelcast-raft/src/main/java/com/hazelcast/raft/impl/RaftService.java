@@ -3,7 +3,6 @@ package com.hazelcast.raft.impl;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.internal.util.RuntimeAvailableProcessors;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.Logger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.impl.dto.AppendRequest;
@@ -27,6 +26,8 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.hazelcast.util.ThreadUtil.createThreadName;
+
 /**
  * TODO: Javadoc Pending...
  */
@@ -36,17 +37,20 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     private static final String METADATA_RAFT = "METADATA";
 
     private final Map<String, RaftNode> nodes = new ConcurrentHashMap<String, RaftNode>();
-    private final StripedExecutor executor =
-            new StripedExecutor(Logger.getLogger("RaftServiceExecutor"), "raft", RuntimeAvailableProcessors.get(), Integer.MAX_VALUE);
-
-    private volatile ILogger logger;
-    private volatile NodeEngine nodeEngine;
+    private final NodeEngine nodeEngine;
+    private final ILogger logger;
+    private final StripedExecutor executor;
     private volatile RaftConfig config;
+
+    public RaftService(NodeEngine nodeEngine) {
+        this.nodeEngine = nodeEngine;
+        this.logger = nodeEngine.getLogger(getClass());
+        String threadPoolName = createThreadName(nodeEngine.getHazelcastInstance().getName(), "raft");
+        this.executor = new StripedExecutor(logger, threadPoolName, RuntimeAvailableProcessors.get(), Integer.MAX_VALUE);
+    }
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
-        this.nodeEngine = nodeEngine;
-        this.logger = nodeEngine.getLogger(getClass());
         Collection<Address> addresses;
         try {
             addresses = getAddresses();
