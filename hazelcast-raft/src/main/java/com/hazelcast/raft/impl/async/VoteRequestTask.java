@@ -33,6 +33,7 @@ public class VoteRequestTask implements StripedRunnable {
                 rejectVoteResponse(resp);
                 return;
             }
+            // Reply false if term < currentTerm (§5.1)
             if (state.term() > req.term) {
                 raftNode.logger.warning(
                         "Rejecting vote request from " + req.candidate + " since our term is greater " + state.term() + " > " + req.term);
@@ -40,7 +41,11 @@ public class VoteRequestTask implements StripedRunnable {
                 return;
             }
 
+            // If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log,
+            // grant vote (§5.2, §5.4)
+
             if (state.term() < req.term) {
+                // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
                 raftNode.logger.warning("Demoting to FOLLOWER after vote request from " + req.candidate
                         + " since our term is lower " + state.term() + " < " + req.term);
                 state.toFollower(req.term);

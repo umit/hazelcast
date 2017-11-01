@@ -26,17 +26,27 @@ public class LeaderState {
         }
     }
 
-    public void nextIndex(Address follower, int index) {
+    public void setNextIndex(Address follower, int index) {
         assert nextIndices.containsKey(follower) : "Unknown address " + follower;
         nextIndices.put(follower, index);
     }
 
-    public void matchIndex(Address follower, int index) {
+    public void setMatchIndex(Address follower, int index) {
         assert matchIndices.containsKey(follower) : "Unknown address " + follower;
         matchIndices.put(follower, index);
     }
 
     public Collection<Integer> matchIndices() {
         return matchIndices.values();
+    }
+
+    public int getNextIndex(Address follower) {
+        assert nextIndices.containsKey(follower) : "Unknown address " + follower;
+        return nextIndices.get(follower);
+    }
+
+    public int getMatchIndex(Address follower) {
+        assert matchIndices.containsKey(follower) : "Unknown address " + follower;
+        return matchIndices.get(follower);
     }
 }

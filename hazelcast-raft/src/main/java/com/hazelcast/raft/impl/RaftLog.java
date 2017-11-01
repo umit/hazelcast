@@ -24,17 +24,29 @@ public class RaftLog {
         return logs.isEmpty() ? new LogEntry() : logs.get(logs.size() - 1);
     }
 
-    public LogEntry getEntry(int index) {
-        return logs.size() >= index ? logs.get(index - 1) : null;
+    public LogEntry getEntry(int entryIndex) {
+        return logs.size() >= entryIndex ? logs.get(toArrayIndex(entryIndex)) : null;
     }
 
-    public void deleteEntriesAfter(int index) {
-        for (int i = logs.size() - 1; i >= index - 1; i--) {
+    public void deleteEntriesAfter(int entryIndex) {
+        for (int i = logs.size() - 1; i >= entryIndex - 1; i--) {
             logs.remove(i);
         }
     }
 
     public void storeEntries(LogEntry... newEntries) {
         Collections.addAll(logs, newEntries);
+    }
+
+    // both inclusive
+    public LogEntry[] getEntriesBetween(int fromEntryIndex, int toEntryIndex) {
+        if (logs.size() <= fromEntryIndex) {
+            return new LogEntry[0];
+        }
+        return logs.subList(toArrayIndex(fromEntryIndex), toArrayIndex(toEntryIndex + 1)).toArray(new LogEntry[0]);
+    }
+
+    private int toArrayIndex(int entryIndex) {
+        return entryIndex - 1;
     }
 }
