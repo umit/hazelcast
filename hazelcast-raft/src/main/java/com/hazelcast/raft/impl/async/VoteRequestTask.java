@@ -1,6 +1,7 @@
 package com.hazelcast.raft.impl.async;
 
 import com.hazelcast.nio.Address;
+import com.hazelcast.raft.impl.RaftLog;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftState;
 import com.hazelcast.raft.impl.dto.VoteRequest;
@@ -55,15 +56,16 @@ public class VoteRequestTask implements StripedRunnable {
                 return;
             }
 
-            if (state.lastLogTerm() > req.lastLogTerm) {
+            RaftLog raftLog = state.log();
+            if (raftLog.lastLogTerm() > req.lastLogTerm) {
                 raftNode.logger.warning("Rejecting vote request from " + req.candidate + " since our last term is greater "
-                        + state.lastLogTerm() + " > " + req.lastLogTerm);
+                        + raftLog.lastLogTerm() + " > " + req.lastLogTerm);
                 return;
             }
 
-            if (state.lastLogTerm() == req.lastLogTerm && state.lastLogIndex() > req.lastLogIndex) {
+            if (raftLog.lastLogTerm() == req.lastLogTerm && raftLog.lastLogIndex() > req.lastLogIndex) {
                 raftNode.logger.warning("Rejecting vote request from " + req.candidate + " since our last index is greater "
-                        + state.lastLogIndex() + " > " + req.lastLogIndex);
+                        + raftLog.lastLogIndex() + " > " + req.lastLogIndex);
                 return;
             }
 
