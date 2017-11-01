@@ -1,6 +1,7 @@
 package com.hazelcast.raft.impl.async;
 
 import com.hazelcast.nio.Address;
+import com.hazelcast.raft.impl.RaftLog;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftState;
 import com.hazelcast.raft.impl.dto.VoteRequest;
@@ -43,16 +44,15 @@ public class LeaderElectionTask implements StripedRunnable {
 
         OperationService operationService = raftNode.getNodeEngine().getOperationService();
 
+        RaftLog raftLog = state.log();
         for (Address address : state.members()) {
             if (address.equals(thisAddress)) {
                 continue;
             }
 
             VoteRequest request =
-                    new VoteRequest(state.term(), thisAddress, state.lastLogTerm(), state.lastLogIndex());
-            VoteRequestOp op = new VoteRequestOp(state.name(), request);
-
-            operationService.send(op, address);
+                    new VoteRequest(state.term(), thisAddress, raftLog.lastLogTerm(), raftLog.lastLogIndex());
+            operationService.send(new VoteRequestOp(state.name(), request), address);
         }
 
         scheduleTimeout(timeout);

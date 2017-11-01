@@ -2,6 +2,7 @@ package com.hazelcast.raft.impl.async;
 
 import com.hazelcast.raft.impl.LeaderState;
 import com.hazelcast.raft.impl.LogEntry;
+import com.hazelcast.raft.impl.RaftLog;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftState;
 import com.hazelcast.raft.impl.dto.AppendResponse;
@@ -43,18 +44,38 @@ public class AppendResponseTask implements StripedRunnable {
         }
 
         raftNode.logger.warning("Success response " + resp);
+        updateLeaderState(state);
 
+        int quorumMatchIndex = findQuorumMatchIndex(state);
+        int commitIndex = state.commitIndex();
+        if (commitIndex == quorumMatchIndex) {
+            return;
+        }
+
+        assert commitIndex < quorumMatchIndex : "Commit: " + commitIndex + ", Match: " + quorumMatchIndex;
+
+        RaftLog raftLog = state.log();
+        for (; quorumMatchIndex > commitIndex; quorumMatchIndex--) {
+            LogEntry logEntry = raftLog.getEntry(quorumMatchIndex);
+            if (logEntry.term() == state.term()) {
+                progressCommitState(state, quorumMatchIndex);
+                break;
+            }
+        }
+    }
+
+    private void updateLeaderState(RaftState state) {
         int followerLastLogIndex = resp.lastLogIndex;
         LeaderState leaderState = state.leaderState();
         leaderState.matchIndex(resp.follower, followerLastLogIndex);
         leaderState.nextIndex(resp.follower, followerLastLogIndex + 1);
+    }
 
-        int commitIndex = state.commitIndex();
-        int term = state.term();
-
+    private int findQuorumMatchIndex(RaftState state) {
+        LeaderState leaderState = state.leaderState();
         Collection<Integer> matchIndices = leaderState.matchIndices();
         int[] indices = new int[matchIndices.size() + 1];
-        indices[0] = state.lastLogIndex();
+        indices[0] = state.log().lastLogIndex();
 
         int k = 1;
         for (int index : matchIndices) {
@@ -64,18 +85,7 @@ public class AppendResponseTask implements StripedRunnable {
 
         int quorumMatchIndex = indices[(indices.length - 1) / 2];
         raftNode.logger.warning("Quorum match index: " + quorumMatchIndex + ", indices: " + Arrays.toString(indices));
-        if (commitIndex == quorumMatchIndex) {
-            return;
-        }
-        assert commitIndex < quorumMatchIndex : "Commit: " + commitIndex + ", Match: " + quorumMatchIndex;
-
-        for (; quorumMatchIndex > commitIndex; quorumMatchIndex--) {
-            LogEntry logEntry = state.getLogEntry(quorumMatchIndex);
-            if (logEntry.term() == term) {
-                progressCommitState(state, quorumMatchIndex);
-                break;
-            }
-        }
+        return quorumMatchIndex;
     }
 
     private void progressCommitState(RaftState state, int commitIndex) {

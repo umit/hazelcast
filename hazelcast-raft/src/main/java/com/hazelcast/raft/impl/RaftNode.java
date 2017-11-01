@@ -31,7 +31,9 @@ import java.util.concurrent.TimeUnit;
  *
  */
 public class RaftNode {
-    
+
+    private static final int HEARTBEAT_PERIOD = 5;
+
     public final ILogger logger;
     private final RaftState state;
     private final Executor executor;
@@ -78,13 +80,14 @@ public class RaftNode {
             public void run() {
                 executor.execute(new HeartbeatTask());
             }
-        }, 5, 5, TimeUnit.SECONDS);
+        }, HEARTBEAT_PERIOD, HEARTBEAT_PERIOD, TimeUnit.SECONDS);
     }
 
     public void sendHeartbeat() {
         OperationService operationService = nodeEngine.getOperationService();
+        RaftLog raftLog = state.log();
         AppendRequest appendRequest = new AppendRequest(state.term(), nodeEngine.getThisAddress(),
-                state.lastLogTerm(), state.lastLogIndex(), state.commitIndex(), new LogEntry[0]);
+                raftLog.lastLogTerm(), raftLog.lastLogIndex(), state.commitIndex(), new LogEntry[0]);
 
         for (Address address : state.members()) {
             if (nodeEngine.getThisAddress().equals(address)) {
@@ -95,7 +98,6 @@ public class RaftNode {
         lastAppendEntriesTimestamp = Clock.currentTimeMillis();
     }
 
-
     public void processLogs(int index) {
         // Reject logs we've applied already
         int lastApplied = state.lastApplied();
@@ -105,8 +107,9 @@ public class RaftNode {
         }
 
         // Apply all the preceding logs
+        RaftLog raftLog = state.log();
         for (int idx = state.lastApplied() + 1; idx <= index; idx++) {
-            LogEntry l = state.getLogEntry(idx);
+            LogEntry l = raftLog.getEntry(idx);
             if (l == null) {
                 logger.severe("Failed to get log at " +  idx);
                 throw new AssertionError("Failed to get log at " +  idx);
@@ -164,7 +167,7 @@ public class RaftNode {
 
         @Override
         public void run() {
-            if (lastAppendEntriesTimestamp < Clock.currentTimeMillis() - TimeUnit.SECONDS.toMillis(5)) {
+            if (lastAppendEntriesTimestamp < Clock.currentTimeMillis() - TimeUnit.SECONDS.toMillis(HEARTBEAT_PERIOD)) {
                 sendHeartbeat();
             }
         }

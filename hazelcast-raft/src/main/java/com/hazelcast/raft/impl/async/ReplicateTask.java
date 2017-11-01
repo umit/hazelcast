@@ -28,7 +28,6 @@ public class ReplicateTask implements StripedRunnable {
 
     @Override
     public void run() {
-
         // TODO: debug
         RaftState state = raftNode.state();
         if (state.role() != RaftRole.LEADER) {
@@ -38,11 +37,11 @@ public class ReplicateTask implements StripedRunnable {
 
         assert state.role() == RaftRole.LEADER;
 
-        int lastLogIndex = state.lastLogIndex();
-        int lastLogTerm = state.lastLogTerm();
+        int lastLogIndex = state.log().lastLogIndex();
+        int lastLogTerm = state.log().lastLogTerm();
 
         LogEntry entry = new LogEntry(state.term(), lastLogIndex + 1, value);
-        state.storeLogs(entry);
+        state.log().storeEntries(entry);
 
         Address thisAddress = raftNode.getNodeEngine().getThisAddress();
         AppendRequest request =
