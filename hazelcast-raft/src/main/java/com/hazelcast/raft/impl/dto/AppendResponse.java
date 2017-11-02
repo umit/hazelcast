@@ -3,7 +3,8 @@ package com.hazelcast.raft.impl.dto;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.DataSerializable;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.raft.impl.RaftDataSerializerHook;
 
 import java.io.IOException;
 
@@ -11,7 +12,7 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public class AppendResponse implements DataSerializable {
+public class AppendResponse implements IdentifiedDataSerializable {
 
     public Address follower;
     public int term;
@@ -35,6 +36,16 @@ public class AppendResponse implements DataSerializable {
         term = in.readInt();
         follower = in.readObject();
         lastLogIndex = in.readInt();
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftDataSerializerHook.APPEND_RESPONSE;
     }
 
     @Override

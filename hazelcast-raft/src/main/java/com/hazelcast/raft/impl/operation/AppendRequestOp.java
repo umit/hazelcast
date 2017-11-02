@@ -2,6 +2,7 @@ package com.hazelcast.raft.impl.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.RaftService;
 
@@ -39,5 +40,10 @@ public class AppendRequestOp extends RaftOp {
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         appendRequest = in.readObject();
+    }
+
+    @Override
+    public int getId() {
+        return RaftDataSerializerHook.APPEND_REQUEST_OP;
     }
 }
