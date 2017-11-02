@@ -19,10 +19,13 @@ import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.TaskScheduler;
 import com.hazelcast.util.Clock;
 import com.hazelcast.util.RandomPicker;
+import com.hazelcast.util.collection.Long2ObjectHashMap;
 import com.hazelcast.util.executor.StripedExecutor;
 import com.hazelcast.util.executor.StripedRunnable;
 
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -40,6 +43,8 @@ public class RaftNode {
     private final Executor executor;
     private final NodeEngine nodeEngine;
     private final TaskScheduler taskScheduler;
+
+    final Long2ObjectHashMap<SimpleCompletableFuture> futures = new Long2ObjectHashMap<SimpleCompletableFuture>();
 
     private long lastAppendEntriesTimestamp;
 
@@ -169,12 +174,10 @@ public class RaftNode {
 
     private void processLog(LogEntry entry) {
         logger.severe("Processing log " + entry);
-    }
-
-    public Future replicate(Object value) {
-        SimpleCompletableFuture resultFuture = new SimpleCompletableFuture(nodeEngine);
-        executor.execute(new ReplicateTask(this, value, resultFuture));
-        return resultFuture;
+        SimpleCompletableFuture future = futures.remove(entry.index());
+        if (future != null) {
+            future.setResult(entry.data());
+        }
     }
 
     public RaftState state() {
@@ -208,6 +211,31 @@ public class RaftNode {
     public void handleAppendResponse(AppendResponse response) {
         executor.execute(new AppendResponseTask(this, response));
     }
+
+    public void registerFuture(int logIndex, SimpleCompletableFuture future) {
+        SimpleCompletableFuture f = futures.put(logIndex, future);
+        assert f == null : "Index : " + logIndex + " -> " + f;
+    }
+
+    public void invalidateFuturesFrom(int entryIndex) {
+        Iterator<Map.Entry<Long, SimpleCompletableFuture>> iterator = futures.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<Long, SimpleCompletableFuture> entry = iterator.next();
+            long index = entry.getKey();
+            if (index >= entryIndex) {
+                logger.severe("Truncating log entry at index: " + index);
+                iterator.remove();
+                entry.getValue().setResult(new IllegalStateException("Truncated: " + index));
+            }
+        }
+    }
+
+    public Future replicate(Object value) {
+        SimpleCompletableFuture resultFuture = new SimpleCompletableFuture(nodeEngine);
+        executor.execute(new ReplicateTask(this, value, resultFuture));
+        return resultFuture;
+    }
+
 
     private class HeartbeatTask implements StripedRunnable {
 

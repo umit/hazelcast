@@ -114,6 +114,7 @@ public class AppendRequestTask implements StripedRunnable {
                     if (entry.term() != storeEntry.term()) {
                         logger.warning("Truncating log suffix from " + entry.index() + " to " + lastLogIndex);
                         raftLog.truncateEntriesAfter(entry.index());
+                        raftNode.invalidateFuturesFrom(entry.index());
 
                         //                            if (entry.index <= r.configurations.latestIndex) {
                         //                                r.configurations.latest = r.configurations.committed
