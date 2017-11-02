@@ -153,7 +153,7 @@ public class RaftNode {
         int commitIndex = state.commitIndex();
         int lastApplied = state.lastApplied();
         if (commitIndex <= lastApplied) {
-            logger.warning("Skipping application of stale log commit index: " + commitIndex + ", lastApplied: " + lastApplied);
+            logger.warning("Skipping application of stale log commit index: " + commitIndex + ", last applied: " + lastApplied);
             return;
         }
 
@@ -162,8 +162,8 @@ public class RaftNode {
         for (int idx = state.lastApplied() + 1; idx <= commitIndex; idx++) {
             LogEntry entry = raftLog.getEntry(idx);
             if (entry == null) {
-                logger.severe("Failed to get log at " +  idx);
-                throw new AssertionError("Failed to get log at " +  idx);
+                logger.severe("Failed to get log entry at index: " + idx);
+                throw new AssertionError("Failed to get log entry at index: " + idx);
             }
             processLog(entry);
 
@@ -173,7 +173,7 @@ public class RaftNode {
     }
 
     private void processLog(LogEntry entry) {
-        logger.severe("Processing log " + entry);
+        logger.severe("Processing " + entry);
         SimpleCompletableFuture future = futures.remove(entry.index());
         if (future != null) {
             future.setResult(entry.data());
@@ -212,9 +212,9 @@ public class RaftNode {
         executor.execute(new AppendResponseHandlerTask(this, response));
     }
 
-    public void registerFuture(int logIndex, SimpleCompletableFuture future) {
-        SimpleCompletableFuture f = futures.put(logIndex, future);
-        assert f == null : "Index : " + logIndex + " -> " + f;
+    public void registerFuture(int entryIndex, SimpleCompletableFuture future) {
+        SimpleCompletableFuture f = futures.put(entryIndex, future);
+        assert f == null : "Future object is already registered for entry index: " + entryIndex;
     }
 
     public void invalidateFuturesFrom(int entryIndex) {

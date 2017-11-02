@@ -11,7 +11,7 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public class AppendRequestOp extends AsyncRaftOp {
+public class AppendRequestOp extends RaftOp {
 
     private AppendRequest appendRequest;
 

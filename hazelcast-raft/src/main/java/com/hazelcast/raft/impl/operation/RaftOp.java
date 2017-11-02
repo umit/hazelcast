@@ -11,14 +11,14 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public abstract class AsyncRaftOp extends Operation {
+public abstract class RaftOp extends Operation {
 
     String name;
 
-    public AsyncRaftOp() {
+    public RaftOp() {
     }
 
-    public AsyncRaftOp(String name) {
+    public RaftOp(String name) {
         this.name = name;
     }
 
@@ -34,11 +34,13 @@ public abstract class AsyncRaftOp extends Operation {
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
+        super.writeInternal(out);
         out.writeUTF(name);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
+        super.readInternal(in);
         name = in.readUTF();
     }
 
