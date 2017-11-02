@@ -20,12 +20,6 @@ public class VoteResponse implements DataSerializable {
     public VoteResponse() {
     }
 
-    public VoteResponse(Address voter, int term, boolean granted) {
-        this.term = term;
-        this.granted = granted;
-        this.voter = voter;
-    }
-
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeInt(term);
