@@ -18,6 +18,7 @@ import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.TaskScheduler;
 import com.hazelcast.util.Clock;
+import com.hazelcast.util.RandomPicker;
 import com.hazelcast.util.executor.StripedExecutor;
 import com.hazelcast.util.executor.StripedRunnable;
 
@@ -70,6 +71,18 @@ public class RaftNode {
         } else {
             scheduleStart();
         }
+
+        scheduleLeaderFailureDetection();
+    }
+
+    private void scheduleLeaderFailureDetection() {
+        long delay = RandomPicker.getInt(1000, 1500);
+        taskScheduler.schedule(new Runnable() {
+            @Override
+            public void run() {
+                executor.execute(new LeaderFailureDetectionTask());
+            }
+        }, delay, TimeUnit.MILLISECONDS);
     }
 
     private void scheduleStart() {
@@ -208,6 +221,26 @@ public class RaftNode {
         @Override
         public int getKey() {
             return getStripeKey();
+        }
+    }
+
+    private class LeaderFailureDetectionTask implements StripedRunnable {
+        @Override
+        public int getKey() {
+            return getStripeKey();
+        }
+
+        @Override
+        public void run() {
+            try {
+                Address leader = state.leader();
+                if (leader != null && nodeEngine.getClusterService().getMember(leader) == null) {
+                    state.leader(null);
+                    new LeaderElectionTask(RaftNode.this).run();
+                }
+            } finally {
+                scheduleLeaderFailureDetection();
+            }
         }
     }
 }

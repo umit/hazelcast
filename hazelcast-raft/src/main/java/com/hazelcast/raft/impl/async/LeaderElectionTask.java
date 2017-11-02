@@ -26,11 +26,11 @@ public class LeaderElectionTask implements StripedRunnable {
 
     @Override
     public void run() {
-        Address thisAddress = raftNode.getThisAddress();
         int timeout = RandomPicker.getInt(1000, 3000);
         RaftState state = raftNode.state();
-        if (state.votedFor() != null && !thisAddress.equals(state.votedFor())) {
-            scheduleLeaderElectionTimeout(timeout);
+
+        if (state.leader() != null) {
+            logger.severe("No election, we have a leader: " + state.leader());
             return;
         }
 
