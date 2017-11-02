@@ -34,8 +34,8 @@ public class LeaderElectionTask implements StripedRunnable {
             return;
         }
 
-        logger.warning("Leader election starting");
         VoteRequest voteRequest = state.toCandidate();
+        logger.warning("Leader election started at term: " + voteRequest.term);
 
         if (state.memberCount() == 1) {
             state.toLeader();

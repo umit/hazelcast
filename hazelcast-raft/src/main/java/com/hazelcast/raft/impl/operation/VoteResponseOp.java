@@ -11,7 +11,7 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public class VoteResponseOp extends AsyncRaftOp {
+public class VoteResponseOp extends RaftOp {
 
     private VoteResponse voteResponse;
 
