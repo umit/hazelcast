@@ -21,13 +21,6 @@ public class AppendResponse implements DataSerializable {
     public AppendResponse() {
     }
 
-    public AppendResponse(Address follower, int term, boolean success, int lastLogIndex) {
-        this.success = success;
-        this.term = term;
-        this.follower = follower;
-        this.lastLogIndex = lastLogIndex;
-    }
-
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeBoolean(success);

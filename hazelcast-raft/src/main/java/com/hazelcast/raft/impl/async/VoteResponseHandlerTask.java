@@ -12,12 +12,12 @@ import com.hazelcast.util.executor.StripedRunnable;
  * TODO: Javadoc Pending...
  *
  */
-public class VoteResponseTask implements StripedRunnable {
+public class VoteResponseHandlerTask implements StripedRunnable {
     private final RaftNode raftNode;
     private final VoteResponse resp;
     private final ILogger logger;
 
-    public VoteResponseTask(RaftNode raftNode, VoteResponse response) {
+    public VoteResponseHandlerTask(RaftNode raftNode, VoteResponse response) {
         this.raftNode = raftNode;
         this.resp = response;
         this.logger = raftNode.getLogger(getClass());
@@ -26,31 +26,31 @@ public class VoteResponseTask implements StripedRunnable {
     @Override
     public void run() {
         RaftState state = raftNode.state();
-        if (RaftRole.CANDIDATE != state.role()) {
-            logger.severe("Ignored " + resp + ". We are not candidate anymore.");
+        if (state.role() != RaftRole.CANDIDATE) {
+            logger.severe("Ignored " + resp + ". We are not CANDIDATE anymore.");
             return;
         }
 
         if (resp.term > state.term()) {
             logger.warning("Newer term: " + resp.term + " than current term: " + state.term()
-                    + " discovered, fallback to follower");
+                    + " is discovered, fallback to FOLLOWER");
             state.toFollower(resp.term);
             return;
         }
 
         if (resp.term < state.term()) {
-            logger.warning("Obsolete vote response received: " + resp + ", current term: " + state.term());
+            logger.warning("Stale " + resp + " is received, current term: " + state.term());
             return;
         }
 
         CandidateState candidateState = state.candidateState();
         if (resp.granted && candidateState.grantVote(resp.voter)) {
-            logger.warning("Vote granted from " + resp.voter + " for term " + state.term()
+            logger.warning("Vote granted from " + resp.voter + " for term: " + state.term()
                     + ", number of votes: " + candidateState.voteCount() + ", majority: " + candidateState.majority());
         }
 
         if (candidateState.isMajorityGranted()) {
-            logger.severe("We are THE leader!");
+            logger.severe("We are the LEADER!");
             state.toLeader();
             raftNode.scheduleLeaderLoop();
         }

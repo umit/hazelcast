@@ -25,11 +25,13 @@ public class LeaderState {
 
     public void setNextIndex(Address follower, int index) {
         assertFollower(nextIndices, follower);
+        assert index > 0 : "Invalid next index: " + index;
         nextIndices.put(follower, index);
     }
 
     public void setMatchIndex(Address follower, int index) {
         assertFollower(matchIndices, follower);
+        assert index >= 0 : "Invalid match index: " + index;
         matchIndices.put(follower, index);
     }
 
