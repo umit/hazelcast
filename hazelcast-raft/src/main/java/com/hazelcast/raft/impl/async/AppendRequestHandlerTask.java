@@ -19,12 +19,12 @@ import static java.lang.Math.min;
  * TODO: Javadoc Pending...
  *
  */
-public class AppendRequestTask implements StripedRunnable {
+public class AppendRequestHandlerTask implements StripedRunnable {
     private final RaftNode raftNode;
     private final AppendRequest req;
     private final ILogger logger;
 
-    public AppendRequestTask(RaftNode raftNode, AppendRequest req) {
+    public AppendRequestHandlerTask(RaftNode raftNode, AppendRequest req) {
         this.raftNode = raftNode;
         this.req = req;
         this.logger = raftNode.getLogger(getClass());
@@ -76,7 +76,6 @@ public class AppendRequestTask implements StripedRunnable {
                     LogEntry prevLog = raftLog.getEntry(req.prevLogIndex);
                     if (prevLog == null) {
                         logger.warning("Failed to get previous log " + req.prevLogIndex + ", last log index: " + lastLogIndex);
-                        //                            resp.NoRetryBackoff = true
                         return;
                     }
                     prevLogTerm = prevLog.term();
@@ -84,7 +83,6 @@ public class AppendRequestTask implements StripedRunnable {
 
                 if (req.prevLogTerm != prevLogTerm) {
                     logger.warning("Previous log term mismatch: ours: " + prevLogTerm + ", remote: " + req.prevLogTerm);
-                    //                        resp.NoRetryBackoff = true
                     return;
                 }
             }
@@ -112,8 +110,8 @@ public class AppendRequestTask implements StripedRunnable {
                     // If an existing entry conflicts with a new one (same index but different terms),
                     // delete the existing entry and all that follow it (§5.3)
                     if (entry.term() != storeEntry.term()) {
-                        logger.warning("Truncating log suffix from " + entry.index() + " to " + lastLogIndex);
-                        raftLog.truncateEntriesAfter(entry.index());
+                        logger.warning("Truncating log from entry index: " + entry.index() + " to " + lastLogIndex);
+                        raftLog.truncateEntriesFrom(entry.index());
                         raftNode.invalidateFuturesFrom(entry.index());
 
                         //                            if (entry.index <= r.configurations.latestIndex) {
@@ -146,7 +144,7 @@ public class AppendRequestTask implements StripedRunnable {
                 //                        r.configurations.committed = r.configurations.latest
                 //                        r.configurations.committedIndex = r.configurations.latestIndex
                 //                    }
-                raftNode.processLogs(newCommitIndex);
+                raftNode.processLogs();
             }
 
             // Everything went well, set success

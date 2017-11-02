@@ -9,12 +9,9 @@ import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
-import com.hazelcast.raft.impl.operation.AppendResponseOp;
-import com.hazelcast.raft.impl.operation.VoteResponseOp;
 import com.hazelcast.spi.ConfigurableService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
-import com.hazelcast.spi.Operation;
 import com.hazelcast.util.AddressUtil;
 import com.hazelcast.util.executor.StripedExecutor;
 
@@ -97,8 +94,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     public void handleVoteRequest(String name, VoteRequest request) {
         RaftNode node = nodes.get(name);
         if (node == null) {
-            Operation op = new VoteResponseOp(name, new VoteResponse(nodeEngine.getThisAddress(), request.term, false));
-            nodeEngine.getOperationService().send(op, request.candidate);
+            logger.severe("RaftNode[" + name + "] does not exist to handle: " + request);
             return;
         }
         node.handleVoteRequest(request);
@@ -107,7 +103,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     public void handleVoteResponse(String name, VoteResponse response) {
         RaftNode node = nodes.get(name);
         if (node == null) {
-            logger.severe("RaftNode[" + name + "] doesn't exist!");
+            logger.severe("RaftNode[" + name + "] does not exist to handle: " + response);
             return;
         }
         node.handleVoteResponse(response);
@@ -116,10 +112,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     public void handleAppendEntries(String name, AppendRequest request) {
         RaftNode node = nodes.get(name);
         if (node == null) {
-            // TODO: ?
-            AppendResponseOp op = new AppendResponseOp(name, new AppendResponse(nodeEngine.getThisAddress(), request.term, false,
-                    0));
-            nodeEngine.getOperationService().send(op, request.leader);
+            logger.severe("RaftNode[" + name + "] does not exist to handle: " + request);
             return;
         }
         node.handleAppendRequest(request);
@@ -128,7 +121,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     public void handleAppendResponse(String name, AppendResponse response) {
         RaftNode node = nodes.get(name);
         if (node == null) {
-            logger.severe("RaftNode[" + name + "] doesn't exist!");
+            logger.severe("RaftNode[" + name + "] does not exist to handle: " + response);
             return;
         }
         node.handleAppendResponse(response);

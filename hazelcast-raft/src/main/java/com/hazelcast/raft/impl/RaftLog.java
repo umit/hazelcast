@@ -29,7 +29,7 @@ public class RaftLog {
         return logs.size() >= entryIndex ? logs.get(toArrayIndex(entryIndex)) : null;
     }
 
-    public void truncateEntriesAfter(int entryIndex) {
+    public void truncateEntriesFrom(int entryIndex) {
         for (int i = logs.size() - 1; i >= toArrayIndex(entryIndex); i--) {
             logs.remove(i);
         }

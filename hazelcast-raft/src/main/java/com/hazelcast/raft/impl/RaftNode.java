@@ -2,12 +2,12 @@ package com.hazelcast.raft.impl;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
-import com.hazelcast.raft.impl.async.AppendRequestTask;
-import com.hazelcast.raft.impl.async.AppendResponseTask;
+import com.hazelcast.raft.impl.async.AppendRequestHandlerTask;
+import com.hazelcast.raft.impl.async.AppendResponseHandlerTask;
 import com.hazelcast.raft.impl.async.LeaderElectionTask;
 import com.hazelcast.raft.impl.async.ReplicateTask;
-import com.hazelcast.raft.impl.async.VoteRequestTask;
-import com.hazelcast.raft.impl.async.VoteResponseTask;
+import com.hazelcast.raft.impl.async.VoteRequestHandlerTask;
+import com.hazelcast.raft.impl.async.VoteResponseHandlerTask;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
@@ -44,8 +44,7 @@ public class RaftNode {
     private final NodeEngine nodeEngine;
     private final TaskScheduler taskScheduler;
 
-    final Long2ObjectHashMap<SimpleCompletableFuture> futures = new Long2ObjectHashMap<SimpleCompletableFuture>();
-
+    private final Long2ObjectHashMap<SimpleCompletableFuture> futures = new Long2ObjectHashMap<SimpleCompletableFuture>();
     private long lastAppendEntriesTimestamp;
 
     public RaftNode(String name, Collection<Address> addresses, NodeEngine nodeEngine, StripedExecutor executor) {
@@ -147,13 +146,14 @@ public class RaftNode {
 
         send(new AppendRequestOp(state.name(), appendRequest), follower);
     }
-    // If commitIndex > lastApplied: increment lastApplied, apply log[lastApplied] to state machine (§5.3)
 
-    public void processLogs(int commitIndex) {
+    // If commitIndex > lastApplied: increment lastApplied, apply log[lastApplied] to state machine (§5.3)
+    public void processLogs() {
         // Reject logs we've applied already
+        int commitIndex = state.commitIndex();
         int lastApplied = state.lastApplied();
         if (commitIndex <= lastApplied) {
-            logger.warning("Skipping application of old log commit index: " + commitIndex + ", lastApplied: " + lastApplied);
+            logger.warning("Skipping application of stale log commit index: " + commitIndex + ", lastApplied: " + lastApplied);
             return;
         }
 
@@ -197,19 +197,19 @@ public class RaftNode {
     }
 
     public void handleVoteRequest(VoteRequest request) {
-        executor.execute(new VoteRequestTask(this, request));
+        executor.execute(new VoteRequestHandlerTask(this, request));
     }
 
     public void handleVoteResponse(VoteResponse response) {
-        executor.execute(new VoteResponseTask(this, response));
+        executor.execute(new VoteResponseHandlerTask(this, response));
     }
 
     public void handleAppendRequest(AppendRequest request) {
-        executor.execute(new AppendRequestTask(this, request));
+        executor.execute(new AppendRequestHandlerTask(this, request));
     }
 
     public void handleAppendResponse(AppendResponse response) {
-        executor.execute(new AppendResponseTask(this, response));
+        executor.execute(new AppendResponseHandlerTask(this, response));
     }
 
     public void registerFuture(int logIndex, SimpleCompletableFuture future) {

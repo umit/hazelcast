@@ -13,12 +13,12 @@ import com.hazelcast.util.executor.StripedRunnable;
  * TODO: Javadoc Pending...
  *
  */
-public class VoteRequestTask implements StripedRunnable {
+public class VoteRequestHandlerTask implements StripedRunnable {
     private final ILogger logger;
     private RaftNode raftNode;
     private final VoteRequest req;
 
-    public VoteRequestTask(RaftNode raftNode, VoteRequest req) {
+    public VoteRequestHandlerTask(RaftNode raftNode, VoteRequest req) {
         this.raftNode = raftNode;
         this.req = req;
         this.logger = raftNode.getLogger(getClass());
@@ -55,9 +55,9 @@ public class VoteRequestTask implements StripedRunnable {
             }
 
             if (state.lastVoteTerm() == req.term && state.votedFor() != null) {
-                logger.warning("Duplicate RequestVote for same term " + req.term + ", currently voted-for " + state.votedFor());
+                logger.warning("Duplicate RequestVote for same term: " + req.term + ", currently voted-for: " + state.votedFor());
                 if (req.candidate.equals(state.votedFor())) {
-                    logger.warning("Duplicate RequestVote from candidate " + req.candidate);
+                    logger.warning("Duplicate RequestVote from " + req.candidate);
                     resp.granted = true;
                 }
                 return;
