@@ -3,7 +3,8 @@ package com.hazelcast.raft.impl.dto;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.DataSerializable;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.raft.impl.RaftDataSerializerHook;
 
 import java.io.IOException;
 
@@ -11,7 +12,7 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public class VoteRequest implements DataSerializable {
+public class VoteRequest implements IdentifiedDataSerializable {
 
     public Address candidate;
     public int term;
@@ -42,6 +43,16 @@ public class VoteRequest implements DataSerializable {
         candidate = in.readObject();
         lastLogTerm = in.readInt();
         lastLogIndex = in.readInt();
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftDataSerializerHook.VOTE_REQUEST;
     }
 
     @Override

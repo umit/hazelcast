@@ -3,8 +3,9 @@ package com.hazelcast.raft.impl.dto;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.DataSerializable;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.impl.LogEntry;
+import com.hazelcast.raft.impl.RaftDataSerializerHook;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -13,7 +14,7 @@ import java.util.Arrays;
  * TODO: Javadoc Pending...
  *
  */
-public class AppendRequest implements DataSerializable {
+public class AppendRequest implements IdentifiedDataSerializable {
 
     public Address leader;
     public int term;
@@ -61,6 +62,16 @@ public class AppendRequest implements DataSerializable {
         for (int i = 0; i < len; i++) {
             entries[i] = in.readObject();
         }
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftDataSerializerHook.APPEND_REQUEST;
     }
 
     @Override
