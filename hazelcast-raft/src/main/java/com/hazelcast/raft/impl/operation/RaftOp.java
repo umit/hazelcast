@@ -2,6 +2,8 @@ package com.hazelcast.raft.impl.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.impl.RaftService;
 import com.hazelcast.spi.Operation;
 
@@ -11,9 +13,9 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public abstract class RaftOp extends Operation {
+public abstract class RaftOp extends Operation implements IdentifiedDataSerializable {
 
-    String name;
+    protected String name;
 
     public RaftOp() {
     }
@@ -44,4 +46,8 @@ public abstract class RaftOp extends Operation {
         name = in.readUTF();
     }
 
+    @Override
+    public int getFactoryId() {
+        return RaftDataSerializerHook.F_ID;
+    }
 }

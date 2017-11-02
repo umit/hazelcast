@@ -2,6 +2,7 @@ package com.hazelcast.raft.impl.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.impl.RaftService;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 
@@ -39,5 +40,10 @@ public class VoteResponseOp extends RaftOp {
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         voteResponse = in.readObject();
+    }
+
+    @Override
+    public int getId() {
+        return RaftDataSerializerHook.VOTE_RESPONSE_OP;
     }
 }
