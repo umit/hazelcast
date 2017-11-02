@@ -30,13 +30,17 @@ public class ReplicateTask implements StripedRunnable {
         // TODO: debug
         RaftState state = raftNode.state();
         if (state.role() != RaftRole.LEADER) {
+            resultFuture.setResult(new IllegalStateException("We are not the leader!"));
             return;
         }
+
         logger.info("Replicating: " + value);
 
         assert state.role() == RaftRole.LEADER;
 
-        state.log().appendEntries(new LogEntry(state.term(), (state.log().lastLogIndex() + 1), value));
+        int logIndex = state.log().lastLogIndex() + 1;
+        raftNode.registerFuture(logIndex, resultFuture);
+        state.log().appendEntries(new LogEntry(state.term(), logIndex, value));
         raftNode.broadcastAppendRequest();
     }
 

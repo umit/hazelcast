@@ -44,11 +44,15 @@ public class Test {
 
         TimeUnit.SECONDS.sleep(10);
 
-        for (int i = 0; i < 30; i++) {
+        for (int i = 0; i < 10000; i++) {
             String s = String.valueOf(i);
-            final Future replicate = node.replicate(s);
-//            System.out.println("ERROR DONE " + replicate.get());
-            Thread.sleep(5000);
+            Future replicate = node.replicate(s);
+            try {
+                System.out.println("---------------------------> DONE " + replicate.get());
+            } catch (Exception e) {
+                System.err.println("============================" + e.getMessage());
+            }
+            Thread.sleep(1000);
         }
     }
 }
