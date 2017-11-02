@@ -14,6 +14,7 @@ import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.operation.AppendRequestOp;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
+import com.hazelcast.raft.impl.util.StripedExecutorConveyor;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.TaskScheduler;
@@ -228,6 +229,16 @@ public class RaftNode {
                 entry.getValue().setResult(new IllegalStateException("Truncated: " + index));
             }
         }
+    }
+
+    // for testing
+    RaftState getState() {
+        return state;
+    }
+
+    // for testing
+    Executor getExecutor() {
+        return new StripedExecutorConveyor(getStripeKey(), executor);
     }
 
     public Future replicate(Object value) {

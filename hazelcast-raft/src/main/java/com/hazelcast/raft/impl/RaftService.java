@@ -31,7 +31,7 @@ import static com.hazelcast.util.ThreadUtil.createThreadName;
 public class RaftService implements ManagedService, ConfigurableService<RaftConfig> {
 
     public static final String SERVICE_NAME = "hz:core:raft";
-    private static final String METADATA_RAFT = "METADATA";
+    static final String METADATA_RAFT = "METADATA";
 
     private final Map<String, RaftNode> nodes = new ConcurrentHashMap<String, RaftNode>();
     private final NodeEngine nodeEngine;
@@ -127,7 +127,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         node.handleAppendResponse(response);
     }
 
-    public RaftNode getRaftNode(String name) {
+    RaftNode getRaftNode(String name) {
         return nodes.get(name);
     }
 }

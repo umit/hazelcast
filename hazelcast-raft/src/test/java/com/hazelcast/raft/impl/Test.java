@@ -6,12 +6,10 @@ import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.spi.properties.GroupProperty;
-import com.hazelcast.test.HazelcastTestSupport;
 
 import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 /**
  * TODO: Javadoc Pending...
@@ -39,10 +37,8 @@ public class Test {
 
         HazelcastInstance instance = Hazelcast.newHazelcastInstance(config);
 
-        RaftService service = HazelcastTestSupport.getNodeEngineImpl(instance).getService(RaftService.SERVICE_NAME);
-        RaftNode node = service.getRaftNode("METADATA");
-
-        TimeUnit.SECONDS.sleep(10);
+        RaftNode node = RaftUtil.getRaftNode(instance, "METADATA");
+        RaftUtil.waitUntilLeaderElected(node);
 
         for (int i = 0; i < 10000; i++) {
             String s = String.valueOf(i);
