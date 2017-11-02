@@ -27,6 +27,7 @@ public class VoteResponseTask implements StripedRunnable {
     public void run() {
         RaftState state = raftNode.state();
         if (RaftRole.CANDIDATE != state.role()) {
+            logger.severe("Ignored " + resp + ". We are not candidate anymore.");
             return;
         }
 

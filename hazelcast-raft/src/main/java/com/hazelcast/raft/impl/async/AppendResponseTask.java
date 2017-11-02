@@ -5,6 +5,7 @@ import com.hazelcast.raft.impl.LeaderState;
 import com.hazelcast.raft.impl.LogEntry;
 import com.hazelcast.raft.impl.RaftLog;
 import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.RaftState;
 import com.hazelcast.raft.impl.dto.AppendResponse;
 import com.hazelcast.util.executor.StripedRunnable;
@@ -32,6 +33,10 @@ public class AppendResponseTask implements StripedRunnable {
     @Override
     public void run() {
         RaftState state = raftNode.state();
+        if (state.role() != RaftRole.LEADER) {
+            logger.severe("Ignored " + resp + ". We are not leader anymore.");
+            return;
+        }
 
         if (resp.term > state.term()) {
             // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
