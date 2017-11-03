@@ -70,10 +70,15 @@ public class AppendResponseHandlerTask implements StripedRunnable {
 
         RaftLog raftLog = state.log();
         for (; quorumMatchIndex > commitIndex; quorumMatchIndex--) {
+            // Only log entries from the leader’s current term are committed by counting replicas; once an entry
+            // from the current term has been committed in this way, then all prior entries are committed indirectly
+            // because of the Log Matching Property.
             LogEntry logEntry = raftLog.getEntry(quorumMatchIndex);
             if (logEntry.term() == state.term()) {
                 progressCommitState(state, quorumMatchIndex);
                 break;
+            } else {
+                logger.severe("term: " + state.term() + " => " + logEntry);
             }
         }
     }
@@ -107,22 +112,21 @@ public class AppendResponseHandlerTask implements StripedRunnable {
         int matchIndex = leaderState.getMatchIndex(resp.follower);
         int followerLastLogIndex = resp.lastLogIndex;
 
-        if (followerLastLogIndex < nextIndex) {
-            logger.warning("Will not update indices for follower: " + resp.follower + " . follower last log index: "
-                    + followerLastLogIndex + ", next index: " + nextIndex);
-            return;
-        }
-
-        if (followerLastLogIndex < matchIndex) {
-            logger.warning("Will not update indices for follower: " + resp.follower + ". follower last log index: "
+        if (followerLastLogIndex > matchIndex) {
+            logger.warning("Setting new match index: " + followerLastLogIndex + " for follower: " + resp.follower);
+            leaderState.setMatchIndex(resp.follower, followerLastLogIndex);
+        } else if (followerLastLogIndex < matchIndex) {
+            logger.warning("Will not update match index for follower: " + resp.follower + ". follower last log index: "
                     + followerLastLogIndex + ", match index: " + matchIndex);
-            return;
         }
 
-        logger.warning("Setting new match index: " + followerLastLogIndex + ", new next index: " + (followerLastLogIndex + 1)
-                + " for follower: " + resp.follower);
-        leaderState.setMatchIndex(resp.follower, followerLastLogIndex);
-        leaderState.setNextIndex(resp.follower, followerLastLogIndex + 1);
+        if (followerLastLogIndex > nextIndex) {
+            logger.warning("Setting new next index: " + (followerLastLogIndex + 1) + " for follower: " + resp.follower);
+            leaderState.setNextIndex(resp.follower, followerLastLogIndex + 1);
+        } else if (followerLastLogIndex < nextIndex) {
+            logger.warning("Will not update next index for follower: " + resp.follower + " . follower last log index: "
+                    + followerLastLogIndex + ", next index: " + nextIndex);
+        }
     }
 
     private int findQuorumMatchIndex(RaftState state) {
