@@ -105,12 +105,6 @@ public class RaftNode {
 
     public void scheduleLeaderLoop() {
         executor.execute(new HeartbeatTask());
-        taskScheduler.scheduleWithRepetition(new Runnable() {
-            @Override
-            public void run() {
-                executor.execute(new HeartbeatTask());
-            }
-        }, HEARTBEAT_PERIOD, HEARTBEAT_PERIOD, TimeUnit.SECONDS);
     }
 
     public void broadcastAppendRequest() {
@@ -225,8 +219,8 @@ public class RaftNode {
             long index = entry.getKey();
             if (index >= entryIndex) {
                 logger.severe("Truncating log entry at index: " + index);
-                iterator.remove();
                 entry.getValue().setResult(new IllegalStateException("Truncated: " + index));
+                iterator.remove();
             }
         }
     }
@@ -252,9 +246,22 @@ public class RaftNode {
 
         @Override
         public void run() {
-            if (lastAppendEntriesTimestamp < Clock.currentTimeMillis() - TimeUnit.SECONDS.toMillis(HEARTBEAT_PERIOD)) {
-                broadcastAppendRequest();
+            if (state.role() == RaftRole.LEADER) {
+                if (lastAppendEntriesTimestamp < Clock.currentTimeMillis() - TimeUnit.SECONDS.toMillis(HEARTBEAT_PERIOD)) {
+                    broadcastAppendRequest();
+                }
+
+                scheduleNextRun();
             }
+        }
+
+        private void scheduleNextRun() {
+            taskScheduler.schedule(new Runnable() {
+                @Override
+                public void run() {
+                    executor.execute(new HeartbeatTask());
+                }
+            }, HEARTBEAT_PERIOD, TimeUnit.SECONDS);
         }
 
         @Override
