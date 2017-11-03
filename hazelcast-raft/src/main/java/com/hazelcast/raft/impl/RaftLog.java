@@ -21,7 +21,7 @@ public class RaftLog {
         return lastLogEntry().term();
     }
 
-    private LogEntry lastLogEntry() {
+    public LogEntry lastLogEntry() {
         return logs.isEmpty() ? new LogEntry() : logs.get(logs.size() - 1);
     }
 

@@ -41,6 +41,29 @@ public class RaftUtil {
         return readRaftState(node, task);
     }
 
+    public static LogEntry getLastLogEntry(final RaftNode node) {
+        Callable<LogEntry> task = new Callable<LogEntry>() {
+            @Override
+            public LogEntry call() throws Exception {
+                return node.getState().log().lastLogEntry();
+            }
+        };
+
+        return readRaftState(node, task);
+    }
+
+    public static int getCommitIndex(final RaftNode node) {
+        Callable<Integer> task = new Callable<Integer>() {
+            @Override
+            public Integer call()
+                    throws Exception {
+                return node.getState().commitIndex();
+            }
+        };
+
+        return readRaftState(node, task);
+    }
+
     public static void waitUntilLeaderElected(RaftNode node) {
         while (getLeader(node) == null) {
             sleepSeconds(1);
