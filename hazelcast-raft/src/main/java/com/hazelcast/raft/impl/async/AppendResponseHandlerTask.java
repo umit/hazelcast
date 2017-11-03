@@ -61,6 +61,11 @@ public class AppendResponseHandlerTask implements StripedRunnable {
         // If there exists an N such that N > commitIndex, a majority of matchIndex[i] ≥ N, and log[N].term == currentTerm:
         // set commitIndex = N (§5.3, §5.4)
         int quorumMatchIndex = findQuorumMatchIndex(state);
+        if (quorumMatchIndex == 0) {
+            logger.severe("Just became the LEADER and still need to populate the match indices...");
+            return;
+        }
+
         int commitIndex = state.commitIndex();
         if (commitIndex == quorumMatchIndex) {
             return;
@@ -73,12 +78,12 @@ public class AppendResponseHandlerTask implements StripedRunnable {
             // Only log entries from the leader’s current term are committed by counting replicas; once an entry
             // from the current term has been committed in this way, then all prior entries are committed indirectly
             // because of the Log Matching Property.
-            LogEntry logEntry = raftLog.getEntry(quorumMatchIndex);
-            if (logEntry.term() == state.term()) {
+            LogEntry entry = raftLog.getEntry(quorumMatchIndex);
+            if (entry.term() == state.term()) {
                 progressCommitState(state, quorumMatchIndex);
                 break;
             } else {
-                logger.severe("term: " + state.term() + " => " + logEntry);
+                logger.severe("Cannot commit " + entry + " since an entry from the current term: " + state.term() + " is needed");
             }
         }
     }
