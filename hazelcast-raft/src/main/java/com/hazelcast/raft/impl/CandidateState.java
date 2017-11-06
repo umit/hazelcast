@@ -1,7 +1,5 @@
 package com.hazelcast.raft.impl;
 
-import com.hazelcast.nio.Address;
-
 import java.util.HashSet;
 import java.util.Set;
 
@@ -12,13 +10,13 @@ import java.util.Set;
 public class CandidateState {
 
     private final int majority;
-    private final Set<Address> voters = new HashSet<Address>();
+    private final Set<RaftEndpoint> voters = new HashSet<RaftEndpoint>();
 
     public CandidateState(int majority) {
         this.majority = majority;
     }
 
-    public boolean grantVote(Address address) {
+    public boolean grantVote(RaftEndpoint address) {
         return voters.add(address);
     }
 

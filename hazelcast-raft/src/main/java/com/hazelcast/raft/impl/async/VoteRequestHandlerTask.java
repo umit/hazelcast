@@ -26,10 +26,16 @@ public class VoteRequestHandlerTask implements StripedRunnable {
 
     @Override
     public void run() {
+        RaftState state = raftNode.state();
+        if (!state.isKnownEndpoint(req.candidate)) {
+            logger.warning("Ignoring " + req + " since candidate is unknown to us");
+            return;
+        }
+
         VoteResponse resp = new VoteResponse();
-        resp.voter = raftNode.getThisAddress();
+        resp.voter = raftNode.getLocalEndpoint();
         try {
-            RaftState state = raftNode.state();
+
             if (state.leader() != null && !req.candidate.equals(state.leader())) {
                 logger.warning("Rejecting vote request from " + req.candidate + " since we have a leader " + state.leader());
                 rejectVoteResponse(resp);

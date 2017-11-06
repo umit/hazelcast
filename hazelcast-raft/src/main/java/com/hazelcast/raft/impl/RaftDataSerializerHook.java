@@ -29,6 +29,7 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
     public static final int APPEND_RESPONSE = 7;
     public static final int APPEND_RESPONSE_OP = 8;
     public static final int LOG_ENTRY = 9;
+    public static final int ENDPOINT = 10;
 
     @Override
     public int getFactoryId() {
@@ -59,6 +60,8 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
                         return new AppendResponseOp();
                     case LOG_ENTRY:
                         return new LogEntry();
+                    case ENDPOINT:
+                        return new RaftEndpoint();
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
             }
