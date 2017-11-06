@@ -1,7 +1,6 @@
 package com.hazelcast.raft.impl;
 
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.nio.Address;
 import com.hazelcast.util.ExceptionUtil;
 
 import java.util.concurrent.Callable;
@@ -31,12 +30,11 @@ public class RaftUtil {
         return readRaftState(node, task);
     }
 
-    public static Address getLeaderAddress(final RaftNode node) {
-        Callable<Address> task = new Callable<Address>() {
+    public static RaftEndpoint getLeaderEndpoint(final RaftNode node) {
+        Callable<RaftEndpoint> task = new Callable<RaftEndpoint>() {
             @Override
-            public Address call() throws Exception {
-                RaftEndpoint leader = node.getState().leader();
-                return leader != null ? leader.getAddress() : null;
+            public RaftEndpoint call() throws Exception {
+                return node.getState().leader();
             }
         };
         return readRaftState(node, task);
@@ -66,7 +64,7 @@ public class RaftUtil {
     }
 
     public static void waitUntilLeaderElected(RaftNode node) {
-        while (getLeaderAddress(node) == null) {
+        while (getLeaderEndpoint(node) == null) {
             sleepSeconds(1);
         }
     }

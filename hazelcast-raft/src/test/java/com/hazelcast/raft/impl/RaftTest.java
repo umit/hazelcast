@@ -106,7 +106,7 @@ public class RaftTest extends HazelcastTestSupport {
                     throws Exception {
                 for (HazelcastInstance instance : followerInstances) {
                     RaftNode raftNode = getRaftNode(instance, METADATA_RAFT);
-                    assertNotEquals(leader.getLocalEndpoint(), RaftUtil.getLeaderAddress(raftNode));
+                    assertNotEquals(leader.getLocalEndpoint(), RaftUtil.getLeaderEndpoint(raftNode));
                 }
             }
         });
@@ -118,7 +118,7 @@ public class RaftTest extends HazelcastTestSupport {
             public void run()
                     throws Exception {
                 RaftNode raftNode = getRaftNode(followerInstances.get(0), METADATA_RAFT);
-                assertEquals(RaftUtil.getLeaderAddress(leader), RaftUtil.getLeaderAddress(raftNode));
+                assertEquals(RaftUtil.getLeaderEndpoint(leader), RaftUtil.getLeaderEndpoint(raftNode));
             }
         });
 
@@ -168,7 +168,7 @@ public class RaftTest extends HazelcastTestSupport {
                     throws Exception {
                 for (HazelcastInstance instance : followerInstances) {
                     RaftNode raftNode = getRaftNode(instance, METADATA_RAFT);
-                    assertNotEquals(leader.getLocalEndpoint(), RaftUtil.getLeaderAddress(raftNode));
+                    assertNotEquals(leader.getLocalEndpoint(), RaftUtil.getLeaderEndpoint(raftNode));
                 }
             }
         });
@@ -180,7 +180,7 @@ public class RaftTest extends HazelcastTestSupport {
             public void run()
                     throws Exception {
                 RaftNode raftNode = getRaftNode(followerInstances.get(0), METADATA_RAFT);
-                assertEquals(RaftUtil.getLeaderAddress(leader), RaftUtil.getLeaderAddress(raftNode));
+                assertEquals(RaftUtil.getLeaderEndpoint(leader), RaftUtil.getLeaderEndpoint(raftNode));
             }
         });
 
@@ -274,10 +274,10 @@ public class RaftTest extends HazelcastTestSupport {
 
         RaftNode raftNode = getRaftNode(instances[0], raftName);
         waitUntilLeaderElected(raftNode);
-        Address leaderAddress = RaftUtil.getLeaderAddress(raftNode);
+        RaftEndpoint leaderEndpoint = RaftUtil.getLeaderEndpoint(raftNode);
 
         for (HazelcastInstance instance : instances) {
-            if (getAddress(instance).equals(leaderAddress)) {
+            if (getAddress(instance).equals(leaderEndpoint.getAddress())) {
                 return getRaftNode(instance, raftName);
             }
         }
