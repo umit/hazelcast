@@ -14,7 +14,9 @@ public class RaftConfig {
         return addresses;
     }
 
-    public void setAddresses(Collection<String> addresses) {
+    public RaftConfig setAddresses(Collection<String> addresses) {
         this.addresses = addresses;
+        return this;
     }
+
 }

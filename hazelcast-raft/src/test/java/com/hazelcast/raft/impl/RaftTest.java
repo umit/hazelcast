@@ -49,18 +49,14 @@ public class RaftTest extends HazelcastTestSupport {
 
     @Before
     public void init() {
-        factory = createHazelcastInstanceFactory(3);
+        factory = createHazelcastInstanceFactory();
     }
 
     @Test
     public void testNextLeaderCommitsPreviousLeadersEntry() throws ExecutionException, InterruptedException {
-        Config config = createRaftConfig();
-        configureSplitBrainDelay(config);
+        instances = newInstances(3);
 
-        instances = factory.newInstances(config);
-        assertClusterSizeEventually(3, instances);
-
-        final RaftNode leader = getLeader(METADATA_RAFT);
+        final RaftNode leader = getLeaderNode(METADATA_RAFT);
 
         Future f1 = leader.replicate("val1");
         f1.get();
@@ -126,7 +122,7 @@ public class RaftTest extends HazelcastTestSupport {
         });
 
         // the new leader appends f3 to the next index of f2, and commits both f2 and f3
-        RaftNode newLeader = getLeader(METADATA_RAFT);
+        RaftNode newLeader = getLeaderNode(METADATA_RAFT);
         Future f3 = newLeader.replicate("val3");
 
         assertEquals("val3", f3.get());
@@ -135,13 +131,9 @@ public class RaftTest extends HazelcastTestSupport {
 
     @Test
     public void testNextLeaderInvalidatesPreviousLeadersEntry() throws ExecutionException, InterruptedException {
-        Config config = createRaftConfig();
-        configureSplitBrainDelay(config);
+        instances = newInstances(3);
 
-        instances = factory.newInstances(config);
-        assertClusterSizeEventually(3, instances);
-
-        final RaftNode leader = getLeader(METADATA_RAFT);
+        final RaftNode leader = getLeaderNode(METADATA_RAFT);
 
         Future f1 = leader.replicate("val1");
         f1.get();
@@ -190,7 +182,7 @@ public class RaftTest extends HazelcastTestSupport {
             }
         });
 
-        RaftNode newLeader = getLeader(METADATA_RAFT);
+        RaftNode newLeader = getLeaderNode(METADATA_RAFT);
 
         // the new leader overwrites f2 with the new entry f3 on the same log index
         Future f3 = newLeader.replicate("val3");
@@ -203,18 +195,31 @@ public class RaftTest extends HazelcastTestSupport {
         }
     }
 
-    private Config createRaftConfig() {
-        Config config = new Config();
-        config.getNetworkConfig().getJoin().getMulticastConfig().setEnabled(false);
-        config.getNetworkConfig().getJoin().getTcpIpConfig().setEnabled(true).clear().addMember("127.0.0.1");
+    private HazelcastInstance[] newInstances(int count) {
+        Address[] addresses = new Address[count];
+        String[] raftAddresses = new String[count];
+        for (int i = 0; i < count; i++) {
+            Address address = factory.nextAddress();
+            addresses[i] = address;
+            raftAddresses[i] = address.getHost() + ":" + address.getPort(); // assuming IPv4
+        }
 
-        RaftConfig raftConfig = new RaftConfig();
-        raftConfig.setAddresses(asList("127.0.0.1:5001", "127.0.0.1:5002", "127.0.0.1:5003"));
+        Config config = new Config();
+        configureSplitBrainDelay(config);
+
+        RaftConfig raftConfig = new RaftConfig().setAddresses(asList(raftAddresses));
 
         ServiceConfig raftServiceConfig = new ServiceConfig().setEnabled(true).setName(RaftService.SERVICE_NAME)
-                                                             .setClassName(RaftService.class.getName()).setConfigObject(raftConfig);
+                .setClassName(RaftService.class.getName()).setConfigObject(raftConfig);
         config.getServicesConfig().addServiceConfig(raftServiceConfig);
-        return config;
+
+        HazelcastInstance[] instances = new HazelcastInstance[count];
+        for (int i = 0; i < count; i++) {
+            instances[i] = factory.newHazelcastInstance(addresses[i], config);
+        }
+        assertClusterSizeEventually(3, instances);
+
+        return instances;
     }
 
     private void configureSplitBrainDelay(Config config) {
@@ -241,7 +246,7 @@ public class RaftTest extends HazelcastTestSupport {
         }
     }
 
-    private RaftNode getLeader(final String raftName) {
+    private RaftNode getLeaderNode(final String raftName) {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run()
@@ -262,5 +267,4 @@ public class RaftTest extends HazelcastTestSupport {
 
         throw new IllegalStateException();
     }
-
 }
