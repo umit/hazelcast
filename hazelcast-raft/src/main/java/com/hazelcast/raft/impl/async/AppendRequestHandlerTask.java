@@ -32,15 +32,20 @@ public class AppendRequestHandlerTask implements StripedRunnable {
 
     @Override
     public void run() {
-        RaftState state = raftNode.state();
-        RaftLog raftLog = state.log();
+        logger.warning("Received " + req);
 
+        RaftState state = raftNode.state();
+        if (!state.isKnownEndpoint(req.leader)) {
+            logger.warning("Ignoring " + req + ", since sender is unknown to us");
+            return;
+        }
+
+        RaftLog raftLog = state.log();
         AppendResponse resp = new AppendResponse();
-        resp.follower = raftNode.getThisAddress();
+        resp.follower = raftNode.getLocalEndpoint();
         resp.term = state.term();
         resp.lastLogIndex = raftLog.lastLogIndex();
 
-        logger.warning("Received " + req);
 
         try {
             // Reply false if term < currentTerm (§5.1)
@@ -125,6 +130,7 @@ public class AppendRequestHandlerTask implements StripedRunnable {
 
                 if (newEntries != null && newEntries.length > 0) {
                     // Append any new entries not already in the log
+                    logger.warning("Appending entries : " + Arrays.toString(newEntries));
                     raftLog.appendEntries(newEntries);
                     resp.lastLogIndex = raftLog.lastLogIndex();
 

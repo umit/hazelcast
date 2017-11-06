@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl;
 
+import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.async.AppendRequestHandlerTask;
 import com.hazelcast.raft.impl.async.AppendResponseHandlerTask;
 import com.hazelcast.raft.impl.async.LeaderElectionTask;
@@ -43,15 +43,18 @@ public class RaftNode {
     private final RaftState state;
     private final Executor executor;
     private final NodeEngine nodeEngine;
+    private final RaftEndpoint localEndpoint;
     private final TaskScheduler taskScheduler;
 
     private final Long2ObjectHashMap<SimpleCompletableFuture> futures = new Long2ObjectHashMap<SimpleCompletableFuture>();
     private long lastAppendEntriesTimestamp;
 
-    public RaftNode(String name, Collection<Address> addresses, NodeEngine nodeEngine, StripedExecutor executor) {
+    public RaftNode(String name, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints,
+            NodeEngine nodeEngine, StripedExecutor executor) {
         this.nodeEngine = nodeEngine;
         this.executor = executor;
-        this.state = new RaftState(name, nodeEngine.getThisAddress(), addresses);
+        this.localEndpoint = localEndpoint;
+        this.state = new RaftState(name, localEndpoint, endpoints);
         this.taskScheduler = nodeEngine.getExecutionService().getGlobalTaskScheduler();
         this.logger = getLogger(getClass());
     }
@@ -61,12 +64,12 @@ public class RaftNode {
         return nodeEngine.getLogger(clazz.getSimpleName() + "[" + name + "]");
     }
 
-    public Address getThisAddress() {
-        return nodeEngine.getThisAddress();
+    public RaftEndpoint getLocalEndpoint() {
+        return localEndpoint;
     }
 
-    public void send(Operation operation, Address target) {
-        nodeEngine.getOperationService().send(operation, target);
+    public void send(Operation operation, RaftEndpoint target) {
+        nodeEngine.getOperationService().send(operation, target.getAddress());
     }
 
     public void start() {
@@ -81,6 +84,7 @@ public class RaftNode {
     }
 
     private void scheduleLeaderFailureDetection() {
+        // TODO: Delay should be configurable.
         long delay = RandomPicker.getInt(1000, 1500);
         taskScheduler.schedule(new Runnable() {
             @Override
@@ -108,13 +112,13 @@ public class RaftNode {
     }
 
     public void broadcastAppendRequest() {
-        for (Address follower : state.remoteMembers()) {
+        for (RaftEndpoint follower : state.remoteMembers()) {
             sendAppendRequest(follower);
         }
         lastAppendEntriesTimestamp = Clock.currentTimeMillis();
     }
 
-    public void sendAppendRequest(Address follower) {
+    public void sendAppendRequest(RaftEndpoint follower) {
         RaftLog raftLog = state.log();
         LeaderState leaderState = state.leaderState();
 
@@ -133,8 +137,9 @@ public class RaftNode {
             prevEntry = new LogEntry();
             entries = new LogEntry[0];
         }
+        assert prevEntry != null : "Follower: " + follower + ", next index: " + nextIndex;
 
-        AppendRequest appendRequest = new AppendRequest(getThisAddress(), state.term(), prevEntry.term(), prevEntry.index(),
+        AppendRequest appendRequest = new AppendRequest(getLocalEndpoint(), state.term(), prevEntry.term(), prevEntry.index(),
                 state.commitIndex(), entries);
 
         logger.warning("Sending " + appendRequest + " to " + follower + " with next index: " + nextIndex);
@@ -279,8 +284,14 @@ public class RaftNode {
         @Override
         public void run() {
             try {
-                Address leader = state.leader();
-                if (leader != null && nodeEngine.getClusterService().getMember(leader) == null) {
+                RaftEndpoint leader = state.leader();
+                if (leader == null) {
+                    return;
+                }
+
+                MemberImpl member = nodeEngine.getClusterService().getMember(leader.getAddress());
+                if (member == null) {
+                    logger.severe("Current leader " + leader + " is dead. Will start new election round...");
                     state.leader(null);
                     new LeaderElectionTask(RaftNode.this).run();
                 }

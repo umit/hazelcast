@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl.async;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.nio.Address;
+import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftState;
 import com.hazelcast.raft.impl.dto.VoteRequest;
@@ -26,6 +26,7 @@ public class LeaderElectionTask implements StripedRunnable {
 
     @Override
     public void run() {
+        // TODO: Timeout should be configurable.
         int timeout = RandomPicker.getInt(1000, 3000);
         RaftState state = raftNode.state();
 
@@ -43,8 +44,8 @@ public class LeaderElectionTask implements StripedRunnable {
             return;
         }
 
-        for (Address address : state.remoteMembers()) {
-            raftNode.send(new VoteRequestOp(state.name(), voteRequest), address);
+        for (RaftEndpoint endpoint : state.remoteMembers()) {
+            raftNode.send(new VoteRequestOp(state.name(), voteRequest), endpoint);
         }
 
         scheduleLeaderElectionTimeout(timeout);

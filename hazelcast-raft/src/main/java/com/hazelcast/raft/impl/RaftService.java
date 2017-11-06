@@ -5,6 +5,7 @@ import com.hazelcast.internal.util.RuntimeAvailableProcessors;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftConfig;
+import com.hazelcast.raft.RaftMember;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
@@ -36,45 +37,57 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     private final Map<String, RaftNode> nodes = new ConcurrentHashMap<String, RaftNode>();
     private final NodeEngine nodeEngine;
     private final ILogger logger;
-    private final StripedExecutor executor;
+
+    private volatile StripedExecutor executor;
     private volatile RaftConfig config;
 
     public RaftService(NodeEngine nodeEngine) {
         this.nodeEngine = nodeEngine;
         this.logger = nodeEngine.getLogger(getClass());
-        String threadPoolName = createThreadName(nodeEngine.getHazelcastInstance().getName(), "raft");
-        this.executor = new StripedExecutor(logger, threadPoolName, RuntimeAvailableProcessors.get(), Integer.MAX_VALUE);
     }
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
-        Collection<Address> addresses;
+        Collection<RaftEndpoint> endpoints;
         try {
-            addresses = getAddresses();
+            endpoints = getEndpoints();
         } catch (UnknownHostException e) {
             throw new HazelcastException(e);
         }
-        logger.warning("CP nodes: " + addresses);
-        if (!addresses.contains(nodeEngine.getThisAddress())) {
+        logger.warning("CP nodes: " + endpoints);
+        RaftEndpoint localEndpoint = getLocalEndpoint(endpoints);
+        if (localEndpoint == null) {
             logger.warning("We are not in CP nodes group :(");
             return;
         }
 
-        RaftNode node = new RaftNode(METADATA_RAFT, addresses, nodeEngine, executor);
+        String threadPoolName = createThreadName(nodeEngine.getHazelcastInstance().getName(), "raft");
+        this.executor = new StripedExecutor(logger, threadPoolName, RuntimeAvailableProcessors.get(), Integer.MAX_VALUE);
+
+        RaftNode node = new RaftNode(METADATA_RAFT, localEndpoint, endpoints, nodeEngine, executor);
         nodes.put(METADATA_RAFT, node);
         node.start();
     }
 
-    private Collection<Address> getAddresses() throws UnknownHostException {
-        Collection<String> endpoints = config.getAddresses();
-        Set<Address> addresses = new HashSet<Address>(endpoints.size());
-        for (String endpoint : endpoints) {
-            AddressUtil.AddressHolder addressHolder = AddressUtil.getAddressHolder(endpoint);
+    private RaftEndpoint getLocalEndpoint(Collection<RaftEndpoint> endpoints) {
+        for (RaftEndpoint endpoint : endpoints) {
+            if (nodeEngine.getThisAddress().equals(endpoint.getAddress())) {
+                return endpoint;
+            }
+        }
+        return null;
+    }
+
+    private Collection<RaftEndpoint> getEndpoints() throws UnknownHostException {
+        Collection<RaftMember> members = config.getMembers();
+        Set<RaftEndpoint> endpoints = new HashSet<RaftEndpoint>(members.size());
+        for (RaftMember member : members) {
+            AddressUtil.AddressHolder addressHolder = AddressUtil.getAddressHolder(member.getAddress());
             Address address = new Address(addressHolder.getAddress(), addressHolder.getPort());
             address.setScopeId(addressHolder.getScopeId());
-            addresses.add(address);
+            endpoints.add(new RaftEndpoint(member.getId(), address));
         }
-        return addresses;
+        return endpoints;
     }
 
     @Override

@@ -26,6 +26,11 @@ public class VoteResponseHandlerTask implements StripedRunnable {
     @Override
     public void run() {
         RaftState state = raftNode.state();
+        if (!state.isKnownEndpoint(resp.voter)) {
+            logger.warning("Ignoring " + resp + ", since voter is unknown to us");
+            return;
+        }
+
         if (state.role() != RaftRole.CANDIDATE) {
             logger.severe("Ignored " + resp + ". We are not CANDIDATE anymore.");
             return;

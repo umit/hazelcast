@@ -5,9 +5,9 @@ import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.raft.RaftConfig;
+import com.hazelcast.raft.RaftMember;
 import com.hazelcast.spi.properties.GroupProperty;
 
-import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -28,7 +28,9 @@ public class Test {
         config.getNetworkConfig().getJoin().getTcpIpConfig().setEnabled(true).clear().addMember("127.0.0.1");
 
         RaftConfig raftConfig = new RaftConfig();
-        raftConfig.setAddresses(Arrays.asList("127.0.0.1:5701", "127.0.0.1:5702", "127.0.0.1:5703"));
+        for (int i = 0; i < 3; i++) {
+            raftConfig.addMember(new RaftMember("127.0.0.1:" + (5701 + i), "id-" + i));
+        }
 
         config.getServicesConfig().addServiceConfig(
                 new ServiceConfig().setEnabled(true).setName(RaftService.SERVICE_NAME)

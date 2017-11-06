@@ -31,11 +31,12 @@ public class RaftUtil {
         return readRaftState(node, task);
     }
 
-    public static Address getLeader(final RaftNode node) {
+    public static Address getLeaderAddress(final RaftNode node) {
         Callable<Address> task = new Callable<Address>() {
             @Override
             public Address call() throws Exception {
-                return node.getState().leader();
+                RaftEndpoint leader = node.getState().leader();
+                return leader != null ? leader.getAddress() : null;
             }
         };
         return readRaftState(node, task);
@@ -65,7 +66,7 @@ public class RaftUtil {
     }
 
     public static void waitUntilLeaderElected(RaftNode node) {
-        while (getLeader(node) == null) {
+        while (getLeaderAddress(node) == null) {
             sleepSeconds(1);
         }
     }
