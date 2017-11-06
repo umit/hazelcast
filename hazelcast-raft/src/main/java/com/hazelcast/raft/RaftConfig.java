@@ -1,6 +1,7 @@
 package com.hazelcast.raft;
 
 import java.util.Collection;
+import java.util.HashSet;
 
 /**
  * TODO: Javadoc Pending...
@@ -8,14 +9,20 @@ import java.util.Collection;
  */
 public class RaftConfig {
 
-    private Collection<String> addresses;
+    private final Collection<RaftMember> members = new HashSet<RaftMember>();
 
-    public Collection<String> getAddresses() {
-        return addresses;
+    public Collection<RaftMember> getMembers() {
+        return members;
     }
 
-    public RaftConfig setAddresses(Collection<String> addresses) {
-        this.addresses = addresses;
+    public RaftConfig setMembers(Collection<RaftMember> members) {
+        this.members.clear();
+        this.members.addAll(members);
+        return this;
+    }
+
+    public RaftConfig addMember(RaftMember member) {
+        members.add(member);
         return this;
     }
 

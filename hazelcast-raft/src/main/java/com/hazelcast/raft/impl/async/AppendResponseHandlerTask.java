@@ -33,6 +33,11 @@ public class AppendResponseHandlerTask implements StripedRunnable {
     @Override
     public void run() {
         RaftState state = raftNode.state();
+        if (!state.isKnownEndpoint(resp.follower)) {
+            logger.warning("Ignoring " + resp + ", since sender is unknown to us");
+            return;
+        }
+
         if (state.role() != RaftRole.LEADER) {
             logger.severe("Ignored " + resp + ". We are not LEADER anymore.");
             return;
@@ -40,7 +45,8 @@ public class AppendResponseHandlerTask implements StripedRunnable {
 
         if (resp.term > state.term()) {
             // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
-            logger.warning("Transiting to FOLLOWER, response term: " + resp.term + ", current term: " + state.term());
+            logger.warning("Transiting to FOLLOWER after receiving " + resp + ", response term: "
+                    + resp.term + ", current term: " + state.term());
             state.toFollower(resp.term);
             return;
         }

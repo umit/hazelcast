@@ -1,6 +1,5 @@
 package com.hazelcast.raft.impl;
 
-import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 
 import java.util.Collection;
@@ -15,14 +14,14 @@ import static java.util.Collections.unmodifiableSet;
  */
 public class RaftState {
 
-    private final Address thisAddress;
+    private final RaftEndpoint localEndpoint;
     private final String name;
-    private final Collection<Address> members;
-    private final Collection<Address> remoteMembers;
+    private final Collection<RaftEndpoint> members;
+    private final Collection<RaftEndpoint> remoteMembers;
 
     private RaftRole role = RaftRole.FOLLOWER;
     private int term;
-    private Address leader;
+    private RaftEndpoint leader;
 
     // index of highest committed log entry
     private int commitIndex;
@@ -31,7 +30,7 @@ public class RaftState {
     // lastApplied <= commitIndex
     private int lastApplied;
 
-    private Address votedFor;
+    private RaftEndpoint votedFor;
     private int lastVoteTerm;
 
     private RaftLog log = new RaftLog();
@@ -39,12 +38,13 @@ public class RaftState {
     private LeaderState leaderState;
     private CandidateState candidateState;
 
-    public RaftState(String name, Address thisAddress, Collection<Address> members) {
+    public RaftState(String name, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints) {
         this.name = name;
-        this.thisAddress = thisAddress;
-        this.members = unmodifiableSet(new HashSet<Address>(members));
-        Set<Address> remoteMembers = new HashSet<Address>(members);
-        remoteMembers.remove(thisAddress);
+        this.localEndpoint = localEndpoint;
+        this.members = unmodifiableSet(new HashSet<RaftEndpoint>(endpoints));
+        Set<RaftEndpoint> remoteMembers = new HashSet<RaftEndpoint>(endpoints);
+        boolean removed = remoteMembers.remove(localEndpoint);
+        assert removed : "Members set must contain local member! Members: " + endpoints + ", Local member: " + localEndpoint;
         this.remoteMembers = unmodifiableSet(remoteMembers);
     }
 
@@ -52,11 +52,11 @@ public class RaftState {
         return name;
     }
 
-    public Collection<Address> members() {
+    public Collection<RaftEndpoint> members() {
         return members;
     }
 
-    public Collection<Address> remoteMembers() {
+    public Collection<RaftEndpoint> remoteMembers() {
         return remoteMembers;
     }
 
@@ -80,7 +80,7 @@ public class RaftState {
         return ++term;
     }
 
-    public Address leader() {
+    public RaftEndpoint leader() {
         return leader;
     }
 
@@ -88,12 +88,12 @@ public class RaftState {
         return lastVoteTerm;
     }
 
-    public Address votedFor() {
+    public RaftEndpoint votedFor() {
         return votedFor;
     }
 
-    public void leader(Address address) {
-        leader = address;
+    public void leader(RaftEndpoint endpoint) {
+        leader = endpoint;
     }
 
     public int commitIndex() {
@@ -126,9 +126,9 @@ public class RaftState {
         return candidateState;
     }
 
-    public void persistVote(int term, Address address) {
+    public void persistVote(int term, RaftEndpoint endpoint) {
         this.lastVoteTerm = term;
-        this.votedFor = address;
+        this.votedFor = endpoint;
     }
 
     public void toFollower(int term) {
@@ -142,16 +142,20 @@ public class RaftState {
         role = RaftRole.CANDIDATE;
         leaderState = null;
         candidateState = new CandidateState(majority());
-        candidateState.grantVote(thisAddress);
-        persistVote(incrementTerm(), thisAddress);
+        candidateState.grantVote(localEndpoint);
+        persistVote(incrementTerm(), localEndpoint);
 
-        return new VoteRequest(thisAddress, term, log.lastLogTerm(), log.lastLogIndex());
+        return new VoteRequest(localEndpoint, term, log.lastLogTerm(), log.lastLogIndex());
     }
 
     public void toLeader() {
         role = RaftRole.LEADER;
-        leader(thisAddress);
+        leader(localEndpoint);
         candidateState = null;
         leaderState = new LeaderState(remoteMembers, log.lastLogIndex());
+    }
+
+    public boolean isKnownEndpoint(RaftEndpoint endpoint) {
+        return members.contains(endpoint);
     }
 }
