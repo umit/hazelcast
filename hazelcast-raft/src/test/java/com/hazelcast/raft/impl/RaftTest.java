@@ -119,7 +119,11 @@ public class RaftTest extends HazelcastTestSupport {
         Future f3 = newLeader.replicate("val3");
 
         assertEquals("val3", f3.get());
-        assertEquals("val2", f2.get());
+        try {
+            f2.get();
+            fail();
+        } catch (Exception ignored) {
+        }
     }
 
     @Test
