@@ -1,6 +1,7 @@
 package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.impl.LogEntry;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
@@ -14,13 +15,13 @@ import com.hazelcast.util.executor.StripedRunnable;
  */
 public class ReplicateTask implements StripedRunnable {
     private final RaftNode raftNode;
-    private final Object value;
+    private final RaftOperation operation;
     private final SimpleCompletableFuture resultFuture;
     private final ILogger logger;
 
-    public ReplicateTask(RaftNode raftNode, Object value, SimpleCompletableFuture resultFuture) {
+    public ReplicateTask(RaftNode raftNode, RaftOperation operation, SimpleCompletableFuture resultFuture) {
         this.raftNode = raftNode;
-        this.value = value;
+        this.operation = operation;
         this.logger = raftNode.getLogger(getClass());
         this.resultFuture = resultFuture;
     }
@@ -34,13 +35,13 @@ public class ReplicateTask implements StripedRunnable {
             return;
         }
 
-        logger.info("Replicating: " + value);
+        logger.info("Replicating: " + operation);
 
         assert state.role() == RaftRole.LEADER;
 
         int logIndex = state.log().lastLogIndex() + 1;
         raftNode.registerFuture(logIndex, resultFuture);
-        state.log().appendEntries(new LogEntry(state.term(), logIndex, value));
+        state.log().appendEntries(new LogEntry(state.term(), logIndex, operation));
         raftNode.broadcastAppendRequest();
     }
 

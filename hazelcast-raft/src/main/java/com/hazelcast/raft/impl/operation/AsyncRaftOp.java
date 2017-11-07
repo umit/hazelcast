@@ -13,14 +13,14 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public abstract class RaftOp extends Operation implements IdentifiedDataSerializable {
+public abstract class AsyncRaftOp extends Operation implements IdentifiedDataSerializable {
 
     protected String name;
 
-    public RaftOp() {
+    public AsyncRaftOp() {
     }
 
-    public RaftOp(String name) {
+    public AsyncRaftOp(String name) {
         this.name = name;
     }
 
