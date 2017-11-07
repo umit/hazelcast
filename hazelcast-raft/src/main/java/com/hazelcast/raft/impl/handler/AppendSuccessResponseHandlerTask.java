@@ -54,7 +54,9 @@ public class AppendSuccessResponseHandlerTask implements StripedRunnable {
         // set commitIndex = N (§5.3, §5.4)
         int quorumMatchIndex = findQuorumMatchIndex(state);
         if (quorumMatchIndex == 0) {
-            logger.severe("Just became the LEADER and still need to populate match indices...");
+            if (state.log().lastLogIndex() > 0) {
+                logger.severe("Just became the LEADER and still need to populate match indices...");
+            }
             return;
         }
 
