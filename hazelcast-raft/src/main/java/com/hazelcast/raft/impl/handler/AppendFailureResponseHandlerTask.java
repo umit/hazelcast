@@ -43,7 +43,7 @@ public class AppendFailureResponseHandlerTask implements StripedRunnable {
             logger.warning("Transiting to FOLLOWER after receiving " + resp + ", response term: " + resp.term
                     + ", current term: " + state.term());
             state.toFollower(resp.term);
-            raftNode.invalidateFuturesFrom(state.commitIndex());
+            raftNode.invalidateFuturesFrom(state.commitIndex() + 1);
             return;
         }
 
