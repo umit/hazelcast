@@ -12,19 +12,23 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public class AppendResponse implements IdentifiedDataSerializable {
+public class AppendSuccessResponse implements IdentifiedDataSerializable {
 
     public RaftEndpoint follower;
     public int term;
-    public boolean success;
     public int lastLogIndex;
 
-    public AppendResponse() {
+    public AppendSuccessResponse() {
+    }
+
+    public AppendSuccessResponse(RaftEndpoint follower, int term, int lastLogIndex) {
+        this.follower = follower;
+        this.term = term;
+        this.lastLogIndex = lastLogIndex;
     }
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeBoolean(success);
         out.writeInt(term);
         out.writeObject(follower);
         out.writeInt(lastLogIndex);
@@ -32,7 +36,6 @@ public class AppendResponse implements IdentifiedDataSerializable {
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
-        success = in.readBoolean();
         term = in.readInt();
         follower = in.readObject();
         lastLogIndex = in.readInt();
@@ -45,12 +48,12 @@ public class AppendResponse implements IdentifiedDataSerializable {
 
     @Override
     public int getId() {
-        return RaftDataSerializerHook.APPEND_RESPONSE;
+        return RaftDataSerializerHook.APPEND_SUCCESS_RESPONSE;
     }
 
     @Override
     public String toString() {
-        return "AppendResponse{" + "follower=" + follower + ", term=" + term + ", success=" + success + ", lastLogIndex="
+        return "AppendResponse{" + "follower=" + follower + ", term=" + term  + ", lastLogIndex="
                 + lastLogIndex + '}';
     }
 

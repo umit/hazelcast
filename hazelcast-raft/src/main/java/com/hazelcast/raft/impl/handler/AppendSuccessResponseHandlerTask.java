@@ -1,4 +1,4 @@
-package com.hazelcast.raft.impl.async;
+package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.impl.LeaderState;
@@ -7,7 +7,7 @@ import com.hazelcast.raft.impl.RaftLog;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.RaftState;
-import com.hazelcast.raft.impl.dto.AppendResponse;
+import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.util.executor.StripedRunnable;
 
 import java.util.Arrays;
@@ -19,12 +19,12 @@ import static java.util.Arrays.sort;
  * TODO: Javadoc Pending...
  *
  */
-public class AppendResponseHandlerTask implements StripedRunnable {
+public class AppendSuccessResponseHandlerTask implements StripedRunnable {
     private final RaftNode raftNode;
-    private final AppendResponse resp;
+    private final AppendSuccessResponse resp;
     private final ILogger logger;
 
-    public AppendResponseHandlerTask(RaftNode raftNode, AppendResponse response) {
+    public AppendSuccessResponseHandlerTask(RaftNode raftNode, AppendSuccessResponse response) {
         this.raftNode = raftNode;
         this.resp = response;
         this.logger = raftNode.getLogger(getClass());
@@ -43,32 +43,18 @@ public class AppendResponseHandlerTask implements StripedRunnable {
             return;
         }
 
-        if (resp.term > state.term()) {
-            // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
-            logger.warning("Transiting to FOLLOWER after receiving " + resp + ", response term: "
-                    + resp.term + ", current term: " + state.term());
-            state.toFollower(resp.term);
-            return;
-        }
-
-        if (!resp.success) {
-            // If AppendEntries fails because of log inconsistency: decrement nextIndex and retry (§5.3)
-            logger.severe("Failure response " + resp);
-            if (updateFollowerIndicesAfterFailure(state)) {
-                raftNode.sendAppendRequest(resp.follower);
-            }
-            return;
-        }
+        assert resp.term <= state.term() : "Invalid " + resp + " for current term: " + state.term();
 
         logger.warning("Success response " + resp);
+
         // If successful: update nextIndex and matchIndex for follower (§5.3)
-        updateFollowerIndicesAfterSuccess(state);
+        updateFollowerIndices(state);
 
         // If there exists an N such that N > commitIndex, a majority of matchIndex[i] ≥ N, and log[N].term == currentTerm:
         // set commitIndex = N (§5.3, §5.4)
         int quorumMatchIndex = findQuorumMatchIndex(state);
         if (quorumMatchIndex == 0) {
-            logger.severe("Just became the LEADER and still need to populate the match indices...");
+            logger.severe("Just became the LEADER and still need to populate match indices...");
             return;
         }
 
@@ -86,7 +72,7 @@ public class AppendResponseHandlerTask implements StripedRunnable {
             // because of the Log Matching Property.
             LogEntry entry = raftLog.getEntry(quorumMatchIndex);
             if (entry.term() == state.term()) {
-                progressCommitState(state, quorumMatchIndex);
+                advanceCommitState(state, quorumMatchIndex);
                 break;
             } else {
                 logger.severe("Cannot commit " + entry + " since an entry from the current term: " + state.term() + " is needed");
@@ -94,49 +80,20 @@ public class AppendResponseHandlerTask implements StripedRunnable {
         }
     }
 
-    private boolean updateFollowerIndicesAfterFailure(RaftState state) {
+    private void updateFollowerIndices(RaftState state) {
         LeaderState leaderState = state.leaderState();
-        int nextIndex = leaderState.getNextIndex(resp.follower);
-        int matchIndex = leaderState.getMatchIndex(resp.follower);
-        int followerLastLogIndex = resp.lastLogIndex;
-
-        if (followerLastLogIndex >= nextIndex) {
-            logger.warning("Will not update next index for follower: " + resp.follower + " . follower last log index: "
-                    + followerLastLogIndex + ", next index: " + nextIndex);
-            return false;
-        }
-
-        if (followerLastLogIndex < matchIndex) {
-            logger.warning("Will not update next index for follower: " + resp.follower + " . follower last log index: "
-                    + followerLastLogIndex + ", match index: " + matchIndex);
-            return false;
-        }
-
-        logger.warning("Setting new next index: " + (followerLastLogIndex + 1) + " for follower: " + resp.follower);
-        leaderState.setNextIndex(resp.follower, followerLastLogIndex + 1);
-        return true;
-    }
-
-    private void updateFollowerIndicesAfterSuccess(RaftState state) {
-        LeaderState leaderState = state.leaderState();
-        int nextIndex = leaderState.getNextIndex(resp.follower);
         int matchIndex = leaderState.getMatchIndex(resp.follower);
         int followerLastLogIndex = resp.lastLogIndex;
 
         if (followerLastLogIndex > matchIndex) {
-            logger.warning("Setting new match index: " + followerLastLogIndex + " for follower: " + resp.follower);
+            int newNextIndex = followerLastLogIndex + 1;
+            logger.warning("Updating match index: " + followerLastLogIndex + " and next index: " + newNextIndex
+                    + " for follower: " + resp.follower);
             leaderState.setMatchIndex(resp.follower, followerLastLogIndex);
+            leaderState.setNextIndex(resp.follower, newNextIndex);
         } else if (followerLastLogIndex < matchIndex) {
             logger.warning("Will not update match index for follower: " + resp.follower + ". follower last log index: "
                     + followerLastLogIndex + ", match index: " + matchIndex);
-        }
-
-        if (followerLastLogIndex > nextIndex) {
-            logger.warning("Setting new next index: " + (followerLastLogIndex + 1) + " for follower: " + resp.follower);
-            leaderState.setNextIndex(resp.follower, followerLastLogIndex + 1);
-        } else if (followerLastLogIndex < nextIndex) {
-            logger.warning("Will not update next index for follower: " + resp.follower + " . follower last log index: "
-                    + followerLastLogIndex + ", next index: " + nextIndex);
         }
     }
 
@@ -157,7 +114,7 @@ public class AppendResponseHandlerTask implements StripedRunnable {
         return quorumMatchIndex;
     }
 
-    private void progressCommitState(RaftState state, int commitIndex) {
+    private void advanceCommitState(RaftState state, int commitIndex) {
         logger.severe("Setting commit index: " + commitIndex);
         state.commitIndex(commitIndex);
         raftNode.broadcastAppendRequest();

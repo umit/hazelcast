@@ -4,22 +4,18 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.impl.RaftService;
-import com.hazelcast.raft.impl.dto.AppendResponse;
+import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 
 import java.io.IOException;
 
-/**
- * TODO: Javadoc Pending...
- *
- */
-public class AppendResponseOp extends RaftOp {
+public class AppendFailureResponseOp extends RaftOp {
 
-    private AppendResponse appendResponse;
+    private AppendFailureResponse appendResponse;
 
-    public AppendResponseOp() {
+    public AppendFailureResponseOp() {
     }
 
-    public AppendResponseOp(String name, AppendResponse appendResponse) {
+    public AppendFailureResponseOp(String name, AppendFailureResponse appendResponse) {
         super(name);
         this.appendResponse = appendResponse;
     }
@@ -44,6 +40,7 @@ public class AppendResponseOp extends RaftOp {
 
     @Override
     public int getId() {
-        return RaftDataSerializerHook.APPEND_RESPONSE_OP;
+        return RaftDataSerializerHook.APPEND_FAILURE_RESPONSE_OP;
     }
+
 }
