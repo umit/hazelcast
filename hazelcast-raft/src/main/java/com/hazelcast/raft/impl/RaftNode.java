@@ -2,6 +2,12 @@ package com.hazelcast.raft.impl;
 
 import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.raft.RaftOperation;
+import com.hazelcast.raft.impl.dto.AppendFailureResponse;
+import com.hazelcast.raft.impl.dto.AppendRequest;
+import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
+import com.hazelcast.raft.impl.dto.VoteRequest;
+import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.handler.AppendFailureResponseHandlerTask;
 import com.hazelcast.raft.impl.handler.AppendRequestHandlerTask;
 import com.hazelcast.raft.impl.handler.AppendSuccessResponseHandlerTask;
@@ -9,16 +15,12 @@ import com.hazelcast.raft.impl.handler.LeaderElectionTask;
 import com.hazelcast.raft.impl.handler.ReplicateTask;
 import com.hazelcast.raft.impl.handler.VoteRequestHandlerTask;
 import com.hazelcast.raft.impl.handler.VoteResponseHandlerTask;
-import com.hazelcast.raft.impl.dto.AppendFailureResponse;
-import com.hazelcast.raft.impl.dto.AppendRequest;
-import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
-import com.hazelcast.raft.impl.dto.VoteRequest;
-import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.operation.AppendRequestOp;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.raft.impl.util.StripedExecutorConveyor;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
+import com.hazelcast.spi.OperationAccessor;
 import com.hazelcast.spi.TaskScheduler;
 import com.hazelcast.util.Clock;
 import com.hazelcast.util.RandomPicker;
@@ -187,9 +189,28 @@ public class RaftNode {
     private void processLog(LogEntry entry) {
         logger.severe("Processing " + entry);
         SimpleCompletableFuture future = futures.remove(entry.index());
-        if (future != null) {
-            future.setResult(entry.data());
+        Object response;
+        try {
+            RaftOperation operation = prepareOperation(entry);
+            operation.beforeRun();
+            operation.run();
+            operation.afterRun();
+            response = operation.getResponse();
+        } catch (Throwable t) {
+            response = t;
         }
+
+        if (future != null) {
+            future.setResult(response);
+        }
+    }
+
+    private RaftOperation prepareOperation(LogEntry entry) {
+        RaftOperation operation = entry.operation();
+        operation.setCommitIndex(entry.index()).setNodeEngine(getNodeEngine());
+        // TODO do we need this ???
+        OperationAccessor.setCallerAddress(operation, nodeEngine.getThisAddress());
+        return operation;
     }
 
     public RaftState state() {
@@ -257,9 +278,9 @@ public class RaftNode {
         return new StripedExecutorConveyor(getStripeKey(), executor);
     }
 
-    public Future replicate(Object value) {
+    public Future replicate(RaftOperation operation) {
         SimpleCompletableFuture resultFuture = new SimpleCompletableFuture(nodeEngine);
-        executor.execute(new ReplicateTask(this, value, resultFuture));
+        executor.execute(new ReplicateTask(this, operation, resultFuture));
         return resultFuture;
     }
 

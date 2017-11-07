@@ -9,7 +9,6 @@ import com.hazelcast.raft.RaftMember;
 import com.hazelcast.spi.properties.GroupProperty;
 
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 /**
  * TODO: Javadoc Pending...
@@ -44,12 +43,12 @@ public class Test {
 
         for (int i = 0; i < 10000; i++) {
             String s = String.valueOf(i);
-            Future replicate = node.replicate(s);
-            try {
-                System.out.println("---------------------------> DONE " + replicate.get());
-            } catch (Exception e) {
-                System.err.println("============================" + e.getMessage());
-            }
+//            Future replicate = node.replicate(s);
+//            try {
+//                System.out.println("---------------------------> DONE " + replicate.get());
+//            } catch (Exception e) {
+//                System.err.println("============================" + e.getMessage());
+//            }
             Thread.sleep(1000);
         }
     }

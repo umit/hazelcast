@@ -12,7 +12,7 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public class AppendSuccessResponseOp extends RaftOp {
+public class AppendSuccessResponseOp extends AsyncRaftOp {
 
     private AppendSuccessResponse appendResponse;
 
