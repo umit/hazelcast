@@ -3,6 +3,7 @@ package com.hazelcast.raft.impl;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.raft.RaftOperation;
 
 import java.io.IOException;
 
@@ -13,16 +14,15 @@ import java.io.IOException;
 public class LogEntry implements IdentifiedDataSerializable {
     private int term;
     private int index;
-
-    private Object data;
+    private RaftOperation operation;
 
     public LogEntry() {
     }
 
-    public LogEntry(int term, int index, Object data) {
+    public LogEntry(int term, int index, RaftOperation operation) {
         this.term = term;
         this.index = index;
-        this.data = data;
+        this.operation = operation;
     }
 
     public int index() {
@@ -33,22 +33,22 @@ public class LogEntry implements IdentifiedDataSerializable {
         return term;
     }
 
-    public Object data() {
-        return data;
+    public RaftOperation operation() {
+        return operation;
     }
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeInt(term);
         out.writeInt(index);
-        out.writeObject(data);
+        out.writeObject(operation);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         term = in.readInt();
         index = in.readInt();
-        data = in.readObject();
+        operation = in.readObject();
     }
 
     @Override
@@ -63,6 +63,6 @@ public class LogEntry implements IdentifiedDataSerializable {
 
     @Override
     public String toString() {
-        return "LogEntry{" + "term=" + term + ", index=" + index + ", data=" + data + '}';
+        return "LogEntry{" + "term=" + term + ", index=" + index + ", operation=" + operation + '}';
     }
 }

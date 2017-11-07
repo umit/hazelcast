@@ -4,8 +4,13 @@ import com.hazelcast.config.Config;
 import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftMember;
+import com.hazelcast.raft.RaftOperation;
+import com.hazelcast.spi.ManagedService;
+import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
@@ -17,6 +22,10 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.io.IOException;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 
 import static com.hazelcast.raft.impl.RaftDataSerializerHook.APPEND_SUCCESS_RESPONSE_OP;
@@ -60,7 +69,7 @@ public class RaftTest extends HazelcastTestSupport {
 
         final RaftNode leader = getLeaderNode(METADATA_RAFT);
 
-        Future f1 = leader.replicate("val1");
+        Future f1 = leader.replicate(new TestRaftAddOperation("val1"));
         f1.get();
 
         HazelcastInstance leaderInstance = getLeaderInstance(leader);
@@ -73,7 +82,7 @@ public class RaftTest extends HazelcastTestSupport {
                     APPEND_SUCCESS_RESPONSE_OP, VOTE_RESPONSE_OP));
         }
 
-        Future f2 = leader.replicate("val2");
+        Future f2 = leader.replicate(new TestRaftAddOperation("val2"));
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -116,7 +125,7 @@ public class RaftTest extends HazelcastTestSupport {
 
         // the new leader appends f3 to the next index of f2, and commits both f2 and f3
         RaftNode newLeader = getLeaderNode(METADATA_RAFT);
-        Future f3 = newLeader.replicate("val3");
+        Future f3 = newLeader.replicate(new TestRaftAddOperation("val3"));
 
         assertEquals("val3", f3.get());
         try {
@@ -133,7 +142,7 @@ public class RaftTest extends HazelcastTestSupport {
 
         final RaftNode leader = getLeaderNode(METADATA_RAFT);
 
-        Future f1 = leader.replicate("val1");
+        Future f1 = leader.replicate(new TestRaftAddOperation("val1"));
         f1.get();
 
         HazelcastInstance leaderInstance = getLeaderInstance(leader);
@@ -155,7 +164,7 @@ public class RaftTest extends HazelcastTestSupport {
         block(leaderInstance, followerInstances);
 
         // the alone leader appends f2 but cannot replicate it to the others
-        Future f2 = leader.replicate("val2");
+        Future f2 = leader.replicate(new TestRaftAddOperation("val2"));
 
         assertLeaderNotEqualsEventually(leader, followerInstances);
 
@@ -172,7 +181,7 @@ public class RaftTest extends HazelcastTestSupport {
         RaftNode newLeader = getLeaderNode(METADATA_RAFT);
 
         // the new leader overwrites f2 with the new entry f3 on the same log index
-        Future f3 = newLeader.replicate("val3");
+        Future f3 = newLeader.replicate(new TestRaftAddOperation("val3"));
 
         assertEquals("val3", f3.get());
         try {
@@ -330,6 +339,11 @@ public class RaftTest extends HazelcastTestSupport {
         ServiceConfig raftServiceConfig = new ServiceConfig().setEnabled(true).setName(RaftService.SERVICE_NAME)
                 .setClassName(RaftService.class.getName()).setConfigObject(raftConfig);
         config.getServicesConfig().addServiceConfig(raftServiceConfig);
+
+        ServiceConfig raftTestServiceConfig = new ServiceConfig().setEnabled(true)
+                                                                 .setName(RaftTestService.SERVICE_NAME)
+                                                                 .setClassName(RaftTestService.class.getName());
+        config.getServicesConfig().addServiceConfig(raftTestServiceConfig);
         return config;
     }
 
@@ -378,4 +392,80 @@ public class RaftTest extends HazelcastTestSupport {
 
         throw new IllegalStateException();
     }
+
+    public static class RaftTestService implements ManagedService {
+
+        static final String SERVICE_NAME = "RaftTestService";
+
+        private final Map<Integer, Object> values = new ConcurrentHashMap<Integer, Object>();
+
+        public RaftTestService() {
+        }
+
+        @Override
+        public void init(NodeEngine nodeEngine, Properties properties) {
+
+        }
+
+        Object apply(int commitIndex, Object value) {
+            assert !values.containsKey(commitIndex) : "Cannot apply " + value +  "since commitIndex: " + commitIndex
+                    + " already contains: " + values.get(commitIndex);
+
+            values.put(commitIndex, value);
+            System.out.println("ERROR VALUE APPLIED " + value + " AT INDEX: " + commitIndex);
+            return value;
+        }
+
+        @Override
+        public void reset() {
+
+        }
+
+        @Override
+        public void shutdown(boolean terminate) {
+
+        }
+
+    }
+
+    public static class TestRaftAddOperation extends RaftOperation {
+
+        private Object val;
+
+        public TestRaftAddOperation() {
+        }
+
+        public TestRaftAddOperation(Object val) {
+            this.val = val;
+        }
+
+        @Override
+        public Object doRun(int commitIndex) {
+            RaftTestService service = getService();
+            return service.apply(commitIndex, val);
+        }
+
+        @Override
+        public String getServiceName() {
+            return RaftTestService.SERVICE_NAME;
+        }
+
+        @Override
+        protected void writeInternal(ObjectDataOutput out) throws IOException {
+            super.writeInternal(out);
+            out.writeObject(val);
+        }
+
+        @Override
+        protected void readInternal(ObjectDataInput in) throws IOException {
+            super.readInternal(in);
+            val = in.readObject();
+        }
+
+        @Override
+        public String toString() {
+            return "TestRaftAddOperation{" + "val=" + val + '}';
+        }
+    }
+
 }

@@ -8,7 +8,7 @@ import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 
 import java.io.IOException;
 
-public class AppendFailureResponseOp extends RaftOp {
+public class AppendFailureResponseOp extends AsyncRaftOp {
 
     private AppendFailureResponse appendResponse;
 
