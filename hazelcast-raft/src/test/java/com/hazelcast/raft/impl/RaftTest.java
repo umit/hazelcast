@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Future;
 
-import static com.hazelcast.raft.impl.RaftDataSerializerHook.APPEND_RESPONSE_OP;
+import static com.hazelcast.raft.impl.RaftDataSerializerHook.APPEND_SUCCESS_RESPONSE_OP;
 import static com.hazelcast.raft.impl.RaftDataSerializerHook.VOTE_RESPONSE_OP;
 import static com.hazelcast.raft.impl.RaftService.METADATA_RAFT;
 import static com.hazelcast.raft.impl.RaftUtil.getCommitIndex;
@@ -69,7 +69,8 @@ public class RaftTest extends HazelcastTestSupport {
         final int commitIndex = getCommitIndex(leader);
 
         for (HazelcastInstance followerInstance : followerInstances) {
-            dropOperationsBetween(followerInstance, leaderInstance, RaftDataSerializerHook.F_ID, asList(APPEND_RESPONSE_OP, VOTE_RESPONSE_OP));
+            dropOperationsBetween(followerInstance, leaderInstance, RaftDataSerializerHook.F_ID, asList(
+                    APPEND_SUCCESS_RESPONSE_OP, VOTE_RESPONSE_OP));
         }
 
         Future f2 = leader.replicate("val2");

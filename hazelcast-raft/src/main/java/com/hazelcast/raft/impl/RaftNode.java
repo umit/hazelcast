@@ -2,14 +2,16 @@ package com.hazelcast.raft.impl;
 
 import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.impl.async.AppendRequestHandlerTask;
-import com.hazelcast.raft.impl.async.AppendResponseHandlerTask;
-import com.hazelcast.raft.impl.async.LeaderElectionTask;
-import com.hazelcast.raft.impl.async.ReplicateTask;
-import com.hazelcast.raft.impl.async.VoteRequestHandlerTask;
-import com.hazelcast.raft.impl.async.VoteResponseHandlerTask;
+import com.hazelcast.raft.impl.handler.AppendFailureResponseHandlerTask;
+import com.hazelcast.raft.impl.handler.AppendRequestHandlerTask;
+import com.hazelcast.raft.impl.handler.AppendSuccessResponseHandlerTask;
+import com.hazelcast.raft.impl.handler.LeaderElectionTask;
+import com.hazelcast.raft.impl.handler.ReplicateTask;
+import com.hazelcast.raft.impl.handler.VoteRequestHandlerTask;
+import com.hazelcast.raft.impl.handler.VoteResponseHandlerTask;
+import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
-import com.hazelcast.raft.impl.dto.AppendResponse;
+import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.operation.AppendRequestOp;
@@ -129,7 +131,16 @@ public class RaftNode {
         // TODO: define a max batch size
         if (nextIndex > 1) {
             prevEntry = raftLog.getEntry(nextIndex - 1);
-            entries = raftLog.getEntriesBetween(nextIndex, raftLog.lastLogIndex());
+            int matchIndex = leaderState.getMatchIndex(follower);
+            if (matchIndex == 0 && nextIndex > (matchIndex + 1)) {
+                // Until the leader has discovered where it and the follower's logs match,
+                // the leader can send AppendEntries with no entries (like heartbeats) to save bandwidth.
+                entries = new LogEntry[0];
+            } else {
+                // Then, once the matchIndex immediately precedes the nextIndex,
+                // the leader should begin to send the actual entries
+                entries = raftLog.getEntriesBetween(nextIndex, raftLog.lastLogIndex());
+            }
         } else if (nextIndex == 1 && raftLog.lastLogIndex() > 0) {
             prevEntry = new LogEntry();
             entries = raftLog.getEntriesBetween(nextIndex, raftLog.lastLogIndex());
@@ -137,6 +148,7 @@ public class RaftNode {
             prevEntry = new LogEntry();
             entries = new LogEntry[0];
         }
+
         assert prevEntry != null : "Follower: " + follower + ", next index: " + nextIndex;
 
         AppendRequest appendRequest = new AppendRequest(getLocalEndpoint(), state.term(), prevEntry.term(), prevEntry.index(),
@@ -208,8 +220,12 @@ public class RaftNode {
         executor.execute(new AppendRequestHandlerTask(this, request));
     }
 
-    public void handleAppendResponse(AppendResponse response) {
-        executor.execute(new AppendResponseHandlerTask(this, response));
+    public void handleAppendResponse(AppendSuccessResponse response) {
+        executor.execute(new AppendSuccessResponseHandlerTask(this, response));
+    }
+
+    public void handleAppendResponse(AppendFailureResponse response) {
+        executor.execute(new AppendFailureResponseHandlerTask(this, response));
     }
 
     public void registerFuture(int entryIndex, SimpleCompletableFuture future) {
@@ -218,12 +234,13 @@ public class RaftNode {
     }
 
     public void invalidateFuturesFrom(int entryIndex) {
+        logger.warning("Invalidating futures from index: " + entryIndex);
         Iterator<Map.Entry<Long, SimpleCompletableFuture>> iterator = futures.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<Long, SimpleCompletableFuture> entry = iterator.next();
             long index = entry.getKey();
             if (index >= entryIndex) {
-                logger.severe("Truncating log entry at index: " + index);
+                logger.severe("Invalidating log future at index: " + index);
                 entry.getValue().setResult(new IllegalStateException("Truncated: " + index));
                 iterator.remove();
             }

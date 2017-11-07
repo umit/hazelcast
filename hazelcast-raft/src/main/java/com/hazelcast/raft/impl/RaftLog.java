@@ -1,16 +1,19 @@
 package com.hazelcast.raft.impl;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import static java.util.Collections.addAll;
+import static java.util.Collections.reverse;
 
 /**
  * TODO: Javadoc Pending...
- *
- * !!! Log entry indices start from 1 !!!
  */
 public class RaftLog {
 
+    /**
+     * !!! Log entry indices start from 1 !!!
+     */
     private final ArrayList<LogEntry> logs = new ArrayList<LogEntry>();
 
     public int lastLogIndex() {
@@ -29,10 +32,15 @@ public class RaftLog {
         return logs.size() >= entryIndex ? logs.get(toArrayIndex(entryIndex)) : null;
     }
 
-    public void truncateEntriesFrom(int entryIndex) {
+    public List<LogEntry> truncateEntriesFrom(int entryIndex) {
+        List<LogEntry> truncated = new ArrayList<LogEntry>();
         for (int i = logs.size() - 1; i >= toArrayIndex(entryIndex); i--) {
-            logs.remove(i);
+            truncated.add(logs.remove(i));
         }
+
+        reverse(truncated);
+
+        return truncated;
     }
 
     public void appendEntries(LogEntry... newEntries) {
