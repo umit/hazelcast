@@ -87,7 +87,7 @@ public class VoteRequestHandlerTask implements StripedRunnable {
             resp.granted = true;
 
         } finally {
-            raftNode.send(new VoteResponseOp(raftNode.state().name(), resp), req.candidate);
+            raftNode.send(new VoteResponseOp(state.name(), resp), req.candidate);
         }
     }
 
