@@ -1,4 +1,4 @@
-package com.hazelcast.raft.impl.async;
+package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.impl.LogEntry;

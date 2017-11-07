@@ -4,12 +4,14 @@ import com.hazelcast.internal.serialization.DataSerializerHook;
 import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
-import com.hazelcast.raft.impl.dto.AppendResponse;
+import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
+import com.hazelcast.raft.impl.operation.AppendFailureResponseOp;
 import com.hazelcast.raft.impl.operation.AppendRequestOp;
-import com.hazelcast.raft.impl.operation.AppendResponseOp;
+import com.hazelcast.raft.impl.operation.AppendSuccessResponseOp;
 import com.hazelcast.raft.impl.operation.VoteRequestOp;
 import com.hazelcast.raft.impl.operation.VoteResponseOp;
 
@@ -26,10 +28,12 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
     public static final int VOTE_RESPONSE_OP = 4;
     public static final int APPEND_REQUEST = 5;
     public static final int APPEND_REQUEST_OP = 6;
-    public static final int APPEND_RESPONSE = 7;
-    public static final int APPEND_RESPONSE_OP = 8;
-    public static final int LOG_ENTRY = 9;
-    public static final int ENDPOINT = 10;
+    public static final int APPEND_SUCCESS_RESPONSE = 7;
+    public static final int APPEND_SUCCESS_RESPONSE_OP = 8;
+    public static final int APPEND_FAILURE_RESPONSE = 9;
+    public static final int APPEND_FAILURE_RESPONSE_OP = 10;
+    public static final int LOG_ENTRY = 11;
+    public static final int ENDPOINT = 12;
 
     @Override
     public int getFactoryId() {
@@ -54,10 +58,14 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
                         return new AppendRequest();
                     case APPEND_REQUEST_OP:
                         return new AppendRequestOp();
-                    case APPEND_RESPONSE:
-                        return new AppendResponse();
-                    case APPEND_RESPONSE_OP:
-                        return new AppendResponseOp();
+                    case APPEND_SUCCESS_RESPONSE:
+                        return new AppendSuccessResponse();
+                    case APPEND_SUCCESS_RESPONSE_OP:
+                        return new AppendSuccessResponseOp();
+                    case APPEND_FAILURE_RESPONSE:
+                        return new AppendFailureResponse();
+                    case APPEND_FAILURE_RESPONSE_OP:
+                        return new AppendFailureResponseOp();
                     case LOG_ENTRY:
                         return new LogEntry();
                     case ENDPOINT:

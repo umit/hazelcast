@@ -6,8 +6,9 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftMember;
+import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
-import com.hazelcast.raft.impl.dto.AppendResponse;
+import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.spi.ConfigurableService;
@@ -131,7 +132,16 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         node.handleAppendRequest(request);
     }
 
-    public void handleAppendResponse(String name, AppendResponse response) {
+    public void handleAppendResponse(String name, AppendSuccessResponse response) {
+        RaftNode node = nodes.get(name);
+        if (node == null) {
+            logger.severe("RaftNode[" + name + "] does not exist to handle: " + response);
+            return;
+        }
+        node.handleAppendResponse(response);
+    }
+
+    public void handleAppendResponse(String name, AppendFailureResponse response) {
         RaftNode node = nodes.get(name);
         if (node == null) {
             logger.severe("RaftNode[" + name + "] does not exist to handle: " + response);

@@ -25,8 +25,13 @@ public abstract class RaftOp extends Operation implements IdentifiedDataSerializ
     }
 
     @Override
-    public boolean returnsResponse() {
+    public final boolean returnsResponse() {
         return false;
+    }
+
+    @Override
+    public final Object getResponse() {
+        throw new UnsupportedOperationException();
     }
 
     @Override
