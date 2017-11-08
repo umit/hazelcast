@@ -117,6 +117,7 @@ public class RaftStateTest {
 
         assertEquals(term, state.term());
         assertEquals(RaftRole.FOLLOWER, state.role());
+        assertNull(state.leader());
         assertNull(state.leaderState());
         assertNull(state.candidateState());
     }
@@ -130,6 +131,7 @@ public class RaftStateTest {
 
         assertEquals(term, state.term());
         assertEquals(RaftRole.FOLLOWER, state.role());
+        assertNull(state.leader());
         assertNull(state.leaderState());
         assertNull(state.candidateState());
     }
