@@ -14,9 +14,9 @@ import java.io.IOException;
  */
 public class VoteResponse implements IdentifiedDataSerializable {
 
-    public RaftEndpoint voter;
-    public int term;
-    public boolean granted;
+    private RaftEndpoint voter;
+    private int term;
+    private boolean granted;
 
     public VoteResponse() {
     }
@@ -25,6 +25,28 @@ public class VoteResponse implements IdentifiedDataSerializable {
         this.voter = voter;
         this.term = term;
         this.granted = granted;
+    }
+
+    public RaftEndpoint voter() {
+        return voter;
+    }
+
+    public int term() {
+        return term;
+    }
+
+    public boolean granted() {
+        return granted;
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftDataSerializerHook.VOTE_RESPONSE;
     }
 
     @Override
@@ -39,16 +61,6 @@ public class VoteResponse implements IdentifiedDataSerializable {
         term = in.readInt();
         granted = in.readBoolean();
         voter = in.readObject();
-    }
-
-    @Override
-    public int getFactoryId() {
-        return RaftDataSerializerHook.F_ID;
-    }
-
-    @Override
-    public int getId() {
-        return RaftDataSerializerHook.VOTE_RESPONSE;
     }
 
     @Override
