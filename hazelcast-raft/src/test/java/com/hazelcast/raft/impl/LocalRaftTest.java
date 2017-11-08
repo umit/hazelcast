@@ -12,8 +12,12 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.Arrays;
+
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
@@ -70,6 +74,37 @@ public class LocalRaftTest extends HazelcastTestSupport {
                 }
             }
         });
+
+        group.merge();
+        group.waitUntilLeaderElected();
+    }
+
+    @Test
+    public void split_withLeaderOnMinority_AndMergeBack() throws Exception {
+        final int nodeCount = 5;
+        group = new RaftGroup(nodeCount);
+        group.start();
+        group.waitUntilLeaderElected();
+
+        final RaftEndpoint leaderEndpoint = group.getLeaderEndpoint();
+
+        final int[] split = group.createMajoritySplitIndexes(false);
+        group.split(split);
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() throws Exception {
+                for (int ix : split) {
+                    assertNotEquals(leaderEndpoint, getLeaderEndpoint(group.getNode(ix)));
+                }
+            }
+        });
+
+        for (int i = 0; i < nodeCount; i++) {
+            if (Arrays.binarySearch(split, i) < 0) {
+                assertEquals(leaderEndpoint, getLeaderEndpoint(group.getNode(i)));
+            }
+        }
 
         group.merge();
         group.waitUntilLeaderElected();
