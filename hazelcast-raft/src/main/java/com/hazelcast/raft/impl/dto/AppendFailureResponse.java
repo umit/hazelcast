@@ -10,9 +10,9 @@ import java.io.IOException;
 
 public class AppendFailureResponse implements IdentifiedDataSerializable {
 
-    public RaftEndpoint follower;
-    public int term;
-    public int expectedNextIndex;
+    private RaftEndpoint follower;
+    private int term;
+    private int expectedNextIndex;
 
     public AppendFailureResponse() {
     }
@@ -21,6 +21,28 @@ public class AppendFailureResponse implements IdentifiedDataSerializable {
         this.follower = follower;
         this.term = term;
         this.expectedNextIndex = expectedNextIndex;
+    }
+
+    public RaftEndpoint follower() {
+        return follower;
+    }
+
+    public int term() {
+        return term;
+    }
+
+    public int expectedNextIndex() {
+        return expectedNextIndex;
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftDataSerializerHook.APPEND_FAILURE_RESPONSE;
     }
 
     @Override
@@ -35,16 +57,6 @@ public class AppendFailureResponse implements IdentifiedDataSerializable {
         term = in.readInt();
         follower = in.readObject();
         expectedNextIndex = in.readInt();
-    }
-
-    @Override
-    public int getFactoryId() {
-        return RaftDataSerializerHook.F_ID;
-    }
-
-    @Override
-    public int getId() {
-        return RaftDataSerializerHook.APPEND_FAILURE_RESPONSE;
     }
 
     @Override

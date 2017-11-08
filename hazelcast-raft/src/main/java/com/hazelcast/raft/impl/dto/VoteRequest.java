@@ -14,10 +14,10 @@ import java.io.IOException;
  */
 public class VoteRequest implements IdentifiedDataSerializable {
 
-    public RaftEndpoint candidate;
-    public int term;
-    public int lastLogTerm;
-    public int lastLogIndex;
+    private RaftEndpoint candidate;
+    private int term;
+    private int lastLogTerm;
+    private int lastLogIndex;
 
     public VoteRequest() {
     }
@@ -27,6 +27,32 @@ public class VoteRequest implements IdentifiedDataSerializable {
         this.candidate = candidate;
         this.lastLogTerm = lastLogTerm;
         this.lastLogIndex = lastLogIndex;
+    }
+
+    public RaftEndpoint candidate() {
+        return candidate;
+    }
+
+    public int term() {
+        return term;
+    }
+
+    public int lastLogTerm() {
+        return lastLogTerm;
+    }
+
+    public int lastLogIndex() {
+        return lastLogIndex;
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftDataSerializerHook.VOTE_REQUEST;
     }
 
     @Override
@@ -43,16 +69,6 @@ public class VoteRequest implements IdentifiedDataSerializable {
         candidate = in.readObject();
         lastLogTerm = in.readInt();
         lastLogIndex = in.readInt();
-    }
-
-    @Override
-    public int getFactoryId() {
-        return RaftDataSerializerHook.F_ID;
-    }
-
-    @Override
-    public int getId() {
-        return RaftDataSerializerHook.VOTE_REQUEST;
     }
 
     @Override

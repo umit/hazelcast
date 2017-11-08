@@ -26,7 +26,7 @@ public class VoteResponseHandlerTask implements StripedRunnable {
     @Override
     public void run() {
         RaftState state = raftNode.state();
-        if (!state.isKnownEndpoint(resp.voter)) {
+        if (!state.isKnownEndpoint(resp.voter())) {
             logger.warning("Ignoring " + resp + ", since voter is unknown to us");
             return;
         }
@@ -36,21 +36,21 @@ public class VoteResponseHandlerTask implements StripedRunnable {
             return;
         }
 
-        if (resp.term > state.term()) {
-            logger.warning("Newer term: " + resp.term + " than current term: " + state.term()
-                    + " is discovered, fallback to FOLLOWER");
-            state.toFollower(resp.term);
+        if (resp.term() > state.term()) {
+            logger.warning("Demoting to FOLLOWER since newer term: " + resp.term() + " than current term: " + state.term()
+                    + " is discovered");
+            state.toFollower(resp.term());
             return;
         }
 
-        if (resp.term < state.term()) {
+        if (resp.term() < state.term()) {
             logger.warning("Stale " + resp + " is received, current term: " + state.term());
             return;
         }
 
         CandidateState candidateState = state.candidateState();
-        if (resp.granted && candidateState.grantVote(resp.voter)) {
-            logger.warning("Vote granted from " + resp.voter + " for term: " + state.term()
+        if (resp.granted() && candidateState.grantVote(resp.voter())) {
+            logger.warning("Vote granted from " + resp.voter() + " for term: " + state.term()
                     + ", number of votes: " + candidateState.voteCount() + ", majority: " + candidateState.majority());
         }
 
