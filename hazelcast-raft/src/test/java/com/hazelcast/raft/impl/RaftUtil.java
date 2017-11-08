@@ -63,6 +63,18 @@ public class RaftUtil {
         return readRaftState(node, task);
     }
 
+    public static int getTerm(final RaftNode node) {
+        Callable<Integer> task = new Callable<Integer>() {
+            @Override
+            public Integer call()
+                    throws Exception {
+                return node.getState().term();
+            }
+        };
+
+        return readRaftState(node, task);
+    }
+
     public static void waitUntilLeaderElected(RaftNode node) {
         while (getLeaderEndpoint(node) == null) {
             sleepSeconds(1);

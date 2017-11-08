@@ -23,11 +23,19 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
+import static com.hazelcast.raft.impl.RaftDataSerializerHook.APPEND_REQUEST_OP;
 import static com.hazelcast.raft.impl.RaftDataSerializerHook.APPEND_SUCCESS_RESPONSE_OP;
 import static com.hazelcast.raft.impl.RaftDataSerializerHook.VOTE_RESPONSE_OP;
 import static com.hazelcast.raft.impl.RaftService.METADATA_RAFT;
@@ -36,6 +44,7 @@ import static com.hazelcast.raft.impl.RaftUtil.getLastLogEntry;
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static com.hazelcast.raft.impl.RaftUtil.getRaftNode;
 import static com.hazelcast.raft.impl.RaftUtil.getRole;
+import static com.hazelcast.raft.impl.RaftUtil.getTerm;
 import static com.hazelcast.raft.impl.RaftUtil.waitUntilLeaderElected;
 import static com.hazelcast.spi.properties.GroupProperty.MERGE_FIRST_RUN_DELAY_SECONDS;
 import static com.hazelcast.spi.properties.GroupProperty.MERGE_NEXT_RUN_DELAY_SECONDS;
@@ -43,6 +52,7 @@ import static com.hazelcast.test.PacketFiltersUtil.dropOperationsBetween;
 import static com.hazelcast.test.SplitBrainTestSupport.blockCommunicationBetween;
 import static com.hazelcast.test.SplitBrainTestSupport.unblockCommunicationBetween;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
@@ -60,6 +70,138 @@ public class RaftTest extends HazelcastTestSupport {
     @Before
     public void init() {
         factory = createHazelcastInstanceFactory();
+    }
+
+    @Test
+    public void testTwoNodes_electLeader() {
+        raftAddresses = createRaftAddresses(2);
+        instances = newInstances(raftAddresses);
+
+        RaftNode leaderNode = getLeaderNode(METADATA_RAFT);
+        assertNotNull(leaderNode);
+        int leaderTerm = getTerm(leaderNode);
+
+        for (HazelcastInstance instance : instances) {
+            RaftNode raftNode = getRaftNode(instance, METADATA_RAFT);
+            assertEquals(leaderNode.getLocalEndpoint(), getLeaderEndpoint(raftNode));
+            assertEquals(leaderTerm, getTerm(raftNode));
+        }
+    }
+
+    @Test
+    public void testTwoNodes_commitEntry() throws ExecutionException, InterruptedException {
+        raftAddresses = createRaftAddresses(2);
+        instances = newInstances(raftAddresses);
+
+        RaftNode leader = getLeaderNode(METADATA_RAFT);
+        final Object val = "val";
+        Future f = leader.replicate(new TestRaftAddOperation(val));
+
+        f.get();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run()
+                    throws Exception {
+                for (HazelcastInstance instance : instances) {
+                    assertEquals(1, getCommitIndex(getRaftNode(instance, METADATA_RAFT)));
+                    RaftTestService service = getRaftTestService(instance);
+                    assertEquals(val, service.get(1));
+                }
+            }
+        });
+    }
+
+    @Test
+    public void testTwoNodes_doNotCommitUntilBothNodesAppend() throws ExecutionException, InterruptedException {
+        raftAddresses = createRaftAddresses(2);
+        instances = newInstances(raftAddresses);
+
+        RaftNode leader = getLeaderNode(METADATA_RAFT);
+
+        HazelcastInstance leaderInstance = getLeaderInstance(leader);
+        HazelcastInstance[] followers = getAllInstancesExcept(leaderInstance);
+
+        dropOperationsBetween(leaderInstance, followers[0], RaftDataSerializerHook.F_ID, singletonList(APPEND_REQUEST_OP));
+
+        final Object val = "val";
+        Future f = leader.replicate(new TestRaftAddOperation(val));
+
+        try {
+            f.get(10, TimeUnit.SECONDS);
+            fail();
+        } catch (TimeoutException ignored) {
+        }
+
+        for (HazelcastInstance instance : instances) {
+            assertEquals(0, getCommitIndex(getRaftNode(instance, METADATA_RAFT)));
+        }
+    }
+
+    @Test
+    public void testTwoNodes_commitMultipleEntriesSequentially() throws ExecutionException, InterruptedException {
+        raftAddresses = createRaftAddresses(2);
+        instances = newInstances(raftAddresses);
+
+        RaftNode leader = getLeaderNode(METADATA_RAFT);
+
+        final int entryCount = 100;
+        for (int i = 0; i < entryCount; i++) {
+            final Object val = "val" + i;
+            Future f = leader.replicate(new TestRaftAddOperation(val));
+            f.get();
+        }
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run()
+                    throws Exception {
+                for (HazelcastInstance instance : instances) {
+                    assertEquals(entryCount, getCommitIndex(getRaftNode(instance, METADATA_RAFT)));
+                    RaftTestService service = getRaftTestService(instance);
+                    for (int i = 0; i < entryCount; i++) {
+                        int commitIndex = i + 1;
+                        Object val = "val" + i;
+                        assertEquals(val, service.get(commitIndex));
+                    }
+                }
+            }
+        });
+    }
+
+    @Test
+    public void testTwoNodes_commitMultipleEntries() throws ExecutionException, InterruptedException {
+        raftAddresses = createRaftAddresses(2);
+        instances = newInstances(raftAddresses);
+
+        RaftNode leader = getLeaderNode(METADATA_RAFT);
+
+        final int entryCount = 100;
+        List<Future> futures = new ArrayList<Future>(entryCount);
+        for (int i = 0; i < entryCount; i++) {
+            final Object val = "val" + i;
+            futures.add(leader.replicate(new TestRaftAddOperation(val)));
+        }
+
+        for (Future f : futures) {
+            f.get();
+        }
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run()
+                    throws Exception {
+                for (HazelcastInstance instance : instances) {
+                    assertEquals(entryCount, getCommitIndex(getRaftNode(instance, METADATA_RAFT)));
+                    RaftTestService service = getRaftTestService(instance);
+                    Set<Object> values = service.values();
+                    for (int i = 0; i < entryCount; i++) {
+                        Object val = "val" + i;
+                        assertTrue(values.contains(val));
+                    }
+                }
+            }
+        });
     }
 
     @Test
@@ -255,6 +397,10 @@ public class RaftTest extends HazelcastTestSupport {
         }, 10);
     }
 
+    private RaftTestService getRaftTestService(HazelcastInstance instance) {
+        return getNodeEngineImpl(instance).getService(RaftTestService.SERVICE_NAME);
+    }
+
     private void assertLeaderNotEqualsEventually(final RaftNode leader, final HazelcastInstance... instances) {
         assertTrueEventually(new AssertTask() {
             @Override
@@ -414,6 +560,14 @@ public class RaftTest extends HazelcastTestSupport {
             values.put(commitIndex, value);
             System.out.println("ERROR VALUE APPLIED " + value + " AT INDEX: " + commitIndex);
             return value;
+        }
+
+        Object get(int commitIndex) {
+            return values.get(commitIndex);
+        }
+
+        Set<Object> values() {
+            return new HashSet<Object>(values.values());
         }
 
         @Override
