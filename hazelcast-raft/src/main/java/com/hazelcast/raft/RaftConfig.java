@@ -16,6 +16,10 @@ public class RaftConfig {
     }
 
     public RaftConfig setMembers(Collection<RaftMember> members) {
+        if (members.size() < 2) {
+            throw new IllegalArgumentException("Raft groups must have at least 2 members");
+        }
+
         this.members.clear();
         this.members.addAll(members);
         return this;
