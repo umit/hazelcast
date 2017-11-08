@@ -13,19 +13,23 @@ import java.io.IOException;
  */
 public class RaftEndpoint implements IdentifiedDataSerializable {
 
-    private String id;
+    private String uid;
     private Address address;
 
     public RaftEndpoint() {
     }
 
     public RaftEndpoint(String id, Address address) {
-        this.id = id;
+        this.uid = id;
         this.address = address;
     }
 
-    public void setId(String id) {
-        this.id = id;
+    public void setUid(String uid) {
+        this.uid = uid;
+    }
+
+    public String getUid() {
+        return uid;
     }
 
     public Address getAddress() {
@@ -48,13 +52,13 @@ public class RaftEndpoint implements IdentifiedDataSerializable {
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeUTF(id);
+        out.writeUTF(uid);
         out.writeObject(address);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
-        id = in.readUTF();
+        uid = in.readUTF();
         address = in.readObject();
     }
 
@@ -69,7 +73,7 @@ public class RaftEndpoint implements IdentifiedDataSerializable {
 
         RaftEndpoint that = (RaftEndpoint) o;
 
-        if (id != null ? !id.equals(that.id) : that.id != null) {
+        if (uid != null ? !uid.equals(that.uid) : that.uid != null) {
             return false;
         }
         return address != null ? address.equals(that.address) : that.address == null;
@@ -77,7 +81,7 @@ public class RaftEndpoint implements IdentifiedDataSerializable {
 
     @Override
     public int hashCode() {
-        int result = id != null ? id.hashCode() : 0;
+        int result = uid != null ? uid.hashCode() : 0;
         result = 31 * result + (address != null ? address.hashCode() : 0);
         return result;
     }
@@ -85,6 +89,6 @@ public class RaftEndpoint implements IdentifiedDataSerializable {
 
     @Override
     public String toString() {
-        return "RaftEndpoint{" + "id=" + id + ", address=" + address + '}';
+        return "RaftEndpoint{" + "uid=" + uid + ", address=" + address + '}';
     }
 }
