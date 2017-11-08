@@ -31,7 +31,7 @@ public class LeaderElectionTask implements StripedRunnable {
         RaftState state = raftNode.state();
 
         if (state.leader() != null) {
-            logger.severe("No election, we already have a LEADER: " + state.leader());
+            logger.severe("No new election round, we already have a LEADER: " + state.leader());
             return;
         }
 

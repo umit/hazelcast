@@ -32,68 +32,61 @@ public class VoteRequestHandlerTask implements StripedRunnable {
             return;
         }
 
-        VoteResponse resp = new VoteResponse();
-        resp.voter = raftNode.getLocalEndpoint();
-        try {
-
-            if (state.leader() != null && !req.candidate.equals(state.leader())) {
-                logger.warning("Rejecting vote request from " + req.candidate + " since we have a leader " + state.leader());
-                rejectVoteResponse(resp);
-                return;
-            }
-            // Reply false if term < currentTerm (§5.1)
-            if (state.term() > req.term) {
-                logger.warning("Rejecting vote request from " + req.candidate + " since current term: " + state.term()
-                        + " is greater than request term: " + req.term);
-                rejectVoteResponse(resp);
-                return;
-            }
-
-            // If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log,
-            // grant vote (§5.2, §5.4)
-
-            if (state.term() < req.term) {
-                // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
-                logger.warning("Demoting to FOLLOWER after vote request from " + req.candidate
-                        + " since current term: " + state.term() + " is lower than request term: " + req.term);
-                state.toFollower(req.term);
-                resp.term = req.term;
-            }
-
-            if (state.lastVoteTerm() == req.term && state.votedFor() != null) {
-                logger.warning("Duplicate RequestVote for same term: " + req.term + ", currently voted-for: " + state.votedFor());
-                if (req.candidate.equals(state.votedFor())) {
-                    logger.warning("Duplicate RequestVote from " + req.candidate);
-                    resp.granted = true;
-                }
-                return;
-            }
-
-            RaftLog raftLog = state.log();
-            if (raftLog.lastLogTerm() > req.lastLogTerm) {
-                logger.warning("Rejecting vote request from " + req.candidate + " since our last log term: "
-                        + raftLog.lastLogTerm() + " is greater than request last log term: " + req.lastLogTerm);
-                return;
-            }
-
-            if (raftLog.lastLogTerm() == req.lastLogTerm && raftLog.lastLogIndex() > req.lastLogIndex) {
-                logger.warning("Rejecting vote request from " + req.candidate + " since our last log index: "
-                        + raftLog.lastLogIndex() + " is greater than request last log index: " + req.lastLogIndex);
-                return;
-            }
-
-            logger.warning("Granted vote for " + req.candidate + ", term: " + req.term);
-            state.persistVote(req.term, req.candidate);
-            resp.granted = true;
-
-        } finally {
+        // Reply false if term < currentTerm (§5.1)
+        if (state.term() > req.term) {
+            logger.warning("Rejecting " + req + " since current term: " + state.term() + " is greater than request term: "
+                    + req.term);
+            VoteResponse resp = new VoteResponse(raftNode.getLocalEndpoint(), state.term(), false);
             raftNode.send(new VoteResponseOp(state.name(), resp), req.candidate);
+            return;
         }
-    }
 
-    private void rejectVoteResponse(VoteResponse response) {
-        response.granted = false;
-        response.term = raftNode.state().term();
+        if (state.term() < req.term) {
+            // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
+            logger.warning("Demoting to FOLLOWER after " + req + " since current term: " + state.term()
+                    + " is lower than request term: " + req.term);
+            state.toFollower(req.term);
+        }
+
+        if (state.leader() != null && !req.candidate.equals(state.leader())) {
+            logger.warning("Rejecting " + req + " since we have a leader " + state.leader());
+            VoteResponse resp = new VoteResponse(raftNode.getLocalEndpoint(), req.term, false);
+            raftNode.send(new VoteResponseOp(state.name(), resp), req.candidate);
+            return;
+        }
+
+        if (state.lastVoteTerm() == req.term && state.votedFor() != null) {
+            logger.warning("Duplicate RequestVote for same term: " + req.term + ", currently voted-for: " + state.votedFor());
+            boolean granted = (req.candidate.equals(state.votedFor()));
+            if (granted) {
+                logger.warning("Duplicate " + req);
+            }
+            VoteResponse resp = new VoteResponse(raftNode.getLocalEndpoint(), req.term, granted);
+            raftNode.send(new VoteResponseOp(state.name(), resp), req.candidate);
+            return;
+        }
+
+        RaftLog raftLog = state.log();
+        if (raftLog.lastLogTerm() > req.lastLogTerm) {
+            logger.warning("Rejecting " + req + " since our last log term: " + raftLog.lastLogTerm()
+                    + " is greater than request last log term: " + req.lastLogTerm);
+            VoteResponse resp = new VoteResponse(raftNode.getLocalEndpoint(), req.term, false);
+            raftNode.send(new VoteResponseOp(state.name(), resp), req.candidate);
+            return;
+        }
+
+        if (raftLog.lastLogTerm() == req.lastLogTerm && raftLog.lastLogIndex() > req.lastLogIndex) {
+            logger.warning("Rejecting " + req + " since our last log index: " + raftLog.lastLogIndex() + " is greater");
+            VoteResponse resp = new VoteResponse(raftNode.getLocalEndpoint(), req.term, false);
+            raftNode.send(new VoteResponseOp(state.name(), resp), req.candidate);
+            return;
+        }
+
+        logger.warning("Granted vote for " + req);
+        state.persistVote(req.term, req.candidate);
+
+        VoteResponse resp = new VoteResponse(raftNode.getLocalEndpoint(), req.term, true);
+        raftNode.send(new VoteResponseOp(state.name(), resp), req.candidate);
     }
 
     @Override
