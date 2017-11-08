@@ -38,12 +38,6 @@ public class LeaderElectionTask implements StripedRunnable {
         VoteRequest voteRequest = state.toCandidate();
         logger.warning("Leader election started at term: " + voteRequest.term);
 
-        if (state.memberCount() == 1) {
-            state.toLeader();
-            logger.warning("We are the only member! Setting us as the LEADER");
-            return;
-        }
-
         for (RaftEndpoint endpoint : state.remoteMembers()) {
             raftNode.send(new VoteRequestOp(state.name(), voteRequest), endpoint);
         }
