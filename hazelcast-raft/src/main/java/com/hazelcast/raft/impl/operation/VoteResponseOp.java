@@ -30,6 +30,10 @@ public class VoteResponseOp extends AsyncRaftOp {
         service.handleVoteResponse(name, voteResponse);
     }
 
+    public VoteResponse getVoteResponse() {
+        return voteResponse;
+    }
+
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);

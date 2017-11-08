@@ -26,6 +26,10 @@ public class AppendFailureResponseOp extends AsyncRaftOp {
         service.handleAppendResponse(name, appendResponse);
     }
 
+    public AppendFailureResponse getAppendResponse() {
+        return appendResponse;
+    }
+
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
