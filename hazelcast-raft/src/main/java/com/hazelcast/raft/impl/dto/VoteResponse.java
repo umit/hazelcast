@@ -21,6 +21,12 @@ public class VoteResponse implements IdentifiedDataSerializable {
     public VoteResponse() {
     }
 
+    public VoteResponse(RaftEndpoint voter, int term, boolean granted) {
+        this.voter = voter;
+        this.term = term;
+        this.granted = granted;
+    }
+
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeInt(term);

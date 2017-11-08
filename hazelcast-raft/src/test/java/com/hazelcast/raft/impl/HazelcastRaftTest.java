@@ -74,18 +74,32 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
 
     @Test
     public void testTwoNodes_electLeader() {
-        raftAddresses = createRaftAddresses(2);
+        testLeaderElection(2);
+    }
+
+    @Test
+    public void testThreeNodes_electLeader() {
+        testLeaderElection(3);
+    }
+
+    private void testLeaderElection(int nodeCount) {
+        raftAddresses = createRaftAddresses(nodeCount);
         instances = newInstances(raftAddresses);
 
-        RaftNode leaderNode = getLeaderNode(METADATA_RAFT);
-        assertNotNull(leaderNode);
-        int leaderTerm = getTerm(leaderNode);
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run()
+                    throws Exception {
+                RaftNode leaderNode = getLeaderNode(METADATA_RAFT);
+                int leaderTerm = getTerm(leaderNode);
 
-        for (HazelcastInstance instance : instances) {
-            RaftNode raftNode = getRaftNode(instance, METADATA_RAFT);
-            assertEquals(leaderNode.getLocalEndpoint(), getLeaderEndpoint(raftNode));
-            assertEquals(leaderTerm, getTerm(raftNode));
-        }
+                for (HazelcastInstance instance : instances) {
+                    RaftNode raftNode = getRaftNode(instance, METADATA_RAFT);
+                    assertEquals(leaderNode.getLocalEndpoint(), getLeaderEndpoint(raftNode));
+                    assertEquals(leaderTerm, getTerm(raftNode));
+                }
+            }
+        }, 30);
     }
 
     @Test
