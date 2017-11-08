@@ -3,6 +3,7 @@ package com.hazelcast.raft.impl.handler;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.impl.LeaderState;
 import com.hazelcast.raft.impl.LogEntry;
+import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftLog;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
@@ -33,7 +34,7 @@ public class AppendSuccessResponseHandlerTask implements StripedRunnable {
     @Override
     public void run() {
         RaftState state = raftNode.state();
-        if (!state.isKnownEndpoint(resp.follower)) {
+        if (!state.isKnownEndpoint(resp.follower())) {
             logger.warning("Ignoring " + resp + ", since sender is unknown to us");
             return;
         }
@@ -43,7 +44,7 @@ public class AppendSuccessResponseHandlerTask implements StripedRunnable {
             return;
         }
 
-        assert resp.term <= state.term() : "Invalid " + resp + " for current term: " + state.term();
+        assert resp.term() <= state.term() : "Invalid " + resp + " for current term: " + state.term();
 
         logger.warning("Success response " + resp);
 
@@ -83,18 +84,19 @@ public class AppendSuccessResponseHandlerTask implements StripedRunnable {
     }
 
     private void updateFollowerIndices(RaftState state) {
+        RaftEndpoint follower = resp.follower();
         LeaderState leaderState = state.leaderState();
-        int matchIndex = leaderState.getMatchIndex(resp.follower);
-        int followerLastLogIndex = resp.lastLogIndex;
+        int matchIndex = leaderState.getMatchIndex(follower);
+        int followerLastLogIndex = resp.lastLogIndex();
 
         if (followerLastLogIndex > matchIndex) {
             int newNextIndex = followerLastLogIndex + 1;
             logger.warning("Updating match index: " + followerLastLogIndex + " and next index: " + newNextIndex
-                    + " for follower: " + resp.follower);
-            leaderState.setMatchIndex(resp.follower, followerLastLogIndex);
-            leaderState.setNextIndex(resp.follower, newNextIndex);
+                    + " for follower: " + follower);
+            leaderState.setMatchIndex(follower, followerLastLogIndex);
+            leaderState.setNextIndex(follower, newNextIndex);
         } else if (followerLastLogIndex < matchIndex) {
-            logger.warning("Will not update match index for follower: " + resp.follower + ". follower last log index: "
+            logger.warning("Will not update match index for follower: " + follower + ". follower last log index: "
                     + followerLastLogIndex + ", match index: " + matchIndex);
         }
     }

@@ -16,12 +16,12 @@ import java.util.Arrays;
  */
 public class AppendRequest implements IdentifiedDataSerializable {
 
-    public RaftEndpoint leader;
-    public int term;
-    public int prevLogTerm;
-    public int prevLogIndex;
-    public int leaderCommitIndex;
-    public LogEntry[] entries;
+    private RaftEndpoint leader;
+    private int term;
+    private int prevLogTerm;
+    private int prevLogIndex;
+    private int leaderCommitIndex;
+    private LogEntry[] entries;
 
     public AppendRequest() {
     }
@@ -33,6 +33,40 @@ public class AppendRequest implements IdentifiedDataSerializable {
         this.prevLogIndex = prevLogIndex;
         this.leaderCommitIndex = leaderCommitIndex;
         this.entries = entries;
+    }
+
+    public RaftEndpoint leader() {
+        return leader;
+    }
+
+    public int term() {
+        return term;
+    }
+
+    public int prevLogTerm() {
+        return prevLogTerm;
+    }
+
+    public int prevLogIndex() {
+        return prevLogIndex;
+    }
+
+    public int leaderCommitIndex() {
+        return leaderCommitIndex;
+    }
+
+    public LogEntry[] entries() {
+        return entries;
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftDataSerializerHook.APPEND_REQUEST;
     }
 
     @Override
@@ -62,16 +96,6 @@ public class AppendRequest implements IdentifiedDataSerializable {
         for (int i = 0; i < len; i++) {
             entries[i] = in.readObject();
         }
-    }
-
-    @Override
-    public int getFactoryId() {
-        return RaftDataSerializerHook.F_ID;
-    }
-
-    @Override
-    public int getId() {
-        return RaftDataSerializerHook.APPEND_REQUEST;
     }
 
     @Override
