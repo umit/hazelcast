@@ -1,8 +1,9 @@
 package com.hazelcast.raft.impl.util;
 
-import com.hazelcast.raft.impl.RaftNode;
-import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.impl.AbstractCompletableFuture;
+
+import java.util.concurrent.Executor;
 
 /**
  * TODO: Javadoc Pending...
@@ -10,8 +11,8 @@ import com.hazelcast.spi.impl.AbstractCompletableFuture;
  */
 public class SimpleCompletableFuture<T> extends AbstractCompletableFuture<T> {
 
-    public SimpleCompletableFuture(NodeEngine nodeEngine) {
-        super(nodeEngine, nodeEngine.getLogger(RaftNode.class));
+    public SimpleCompletableFuture(Executor executor, ILogger logger) {
+        super(executor, logger);
     }
 
     @Override

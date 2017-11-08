@@ -65,7 +65,8 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         String threadPoolName = createThreadName(nodeEngine.getHazelcastInstance().getName(), "raft");
         this.executor = new StripedExecutor(logger, threadPoolName, RuntimeAvailableProcessors.get(), Integer.MAX_VALUE);
 
-        RaftNode node = new RaftNode(METADATA_RAFT, localEndpoint, endpoints, nodeEngine, executor);
+        RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine);
+        RaftNode node = new RaftNode(METADATA_RAFT, localEndpoint, endpoints, raftIntegration, executor);
         nodes.put(METADATA_RAFT, node);
         node.start();
     }

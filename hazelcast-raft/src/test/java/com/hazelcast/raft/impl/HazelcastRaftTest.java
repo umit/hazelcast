@@ -61,7 +61,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category(QuickTest.class)
-public class RaftTest extends HazelcastTestSupport {
+public class HazelcastRaftTest extends HazelcastTestSupport {
 
     private HazelcastInstance[] instances;
     private Address[] raftAddresses;

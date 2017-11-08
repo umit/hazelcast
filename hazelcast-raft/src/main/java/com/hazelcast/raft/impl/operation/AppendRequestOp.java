@@ -30,6 +30,10 @@ public class AppendRequestOp extends AsyncRaftOp {
         service.handleAppendEntries(name, appendRequest);
     }
 
+    public AppendRequest getAppendRequest() {
+        return appendRequest;
+    }
+
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);

@@ -1,6 +1,5 @@
 package com.hazelcast.raft.impl;
 
-import com.hazelcast.nio.Address;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
@@ -9,11 +8,12 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.HashSet;
 
+import static com.hazelcast.raft.impl.RaftUtil.majority;
+import static com.hazelcast.raft.impl.RaftUtil.newAddress;
+import static com.hazelcast.raft.impl.RaftUtil.newRaftEndpoint;
 import static com.hazelcast.test.HazelcastTestSupport.randomName;
 import static com.hazelcast.test.HazelcastTestSupport.randomString;
 import static java.util.Arrays.asList;
@@ -22,7 +22,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
@@ -214,19 +213,6 @@ public class RaftStateTest {
 
         state = new RaftState(name, localEndpoint, endpoints);
 
-        assertEquals(count / 2 + 1, state.majority());
-    }
-
-    static RaftEndpoint newRaftEndpoint(int port) {
-        return new RaftEndpoint(randomString(), newAddress(port));
-    }
-
-    static Address newAddress(int port) {
-        try {
-            return new Address(InetAddress.getByName("127.0.0.1"), port);
-        } catch (UnknownHostException e) {
-            fail("Could not create new Address: " + e.getMessage());
-        }
-        return null;
+        assertEquals(majority(count), state.majority());
     }
 }
