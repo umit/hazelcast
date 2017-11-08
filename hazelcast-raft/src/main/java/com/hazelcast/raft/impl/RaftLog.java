@@ -3,7 +3,6 @@ package com.hazelcast.raft.impl;
 import java.util.ArrayList;
 import java.util.List;
 
-import static java.util.Collections.addAll;
 import static java.util.Collections.reverse;
 
 /**
@@ -29,6 +28,9 @@ public class RaftLog {
     }
 
     public LogEntry getEntry(int entryIndex) {
+        if (entryIndex < 1) {
+            throw new IllegalArgumentException("Illegal index: " + entryIndex + ". Index starts from 1.");
+        }
         return logs.size() >= entryIndex ? logs.get(toArrayIndex(entryIndex)) : null;
     }
 
@@ -44,7 +46,22 @@ public class RaftLog {
     }
 
     public void appendEntries(LogEntry... newEntries) {
-        addAll(logs, newEntries);
+        int lastTerm = lastLogTerm();
+        int lastIndex = lastLogIndex();
+
+        for (LogEntry entry : newEntries) {
+            if (entry.term() < lastTerm) {
+                throw new IllegalArgumentException("Entry term is lower than lastLogTerm. "
+                        + entry.term() + " < " + lastTerm);
+            }
+            if (entry.index() != lastIndex + 1) {
+                throw new IllegalArgumentException("Entry index must be equal to (lasLogIndex + 1). "
+                        + entry.index() + " != " + (lastIndex + 1));
+            }
+            logs.add(entry);
+            lastIndex++;
+            lastTerm = Math.max(lastTerm, entry.term());
+        }
     }
 
     // both inclusive
