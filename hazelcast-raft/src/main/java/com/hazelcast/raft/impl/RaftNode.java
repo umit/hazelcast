@@ -1,6 +1,5 @@
 package com.hazelcast.raft.impl;
 
-import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
@@ -18,9 +17,7 @@ import com.hazelcast.raft.impl.handler.VoteResponseHandlerTask;
 import com.hazelcast.raft.impl.operation.AppendRequestOp;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.raft.impl.util.StripedExecutorConveyor;
-import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
-import com.hazelcast.spi.OperationAccessor;
 import com.hazelcast.spi.TaskScheduler;
 import com.hazelcast.util.Clock;
 import com.hazelcast.util.RandomPicker;
@@ -35,6 +32,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
+
 /**
  * TODO: Javadoc Pending...
  *
@@ -45,8 +44,8 @@ public class RaftNode {
 
     private final ILogger logger;
     private final RaftState state;
-    private final Executor executor;
-    private final NodeEngine nodeEngine;
+    private final StripedExecutor executor;
+    private final RaftIntegration raftIntegration;
     private final RaftEndpoint localEndpoint;
     private final TaskScheduler taskScheduler;
 
@@ -54,18 +53,18 @@ public class RaftNode {
     private long lastAppendEntriesTimestamp;
 
     public RaftNode(String name, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints,
-            NodeEngine nodeEngine, StripedExecutor executor) {
-        this.nodeEngine = nodeEngine;
+            RaftIntegration raftIntegration, StripedExecutor executor) {
+        this.raftIntegration = raftIntegration;
         this.executor = executor;
         this.localEndpoint = localEndpoint;
         this.state = new RaftState(name, localEndpoint, endpoints);
-        this.taskScheduler = nodeEngine.getExecutionService().getGlobalTaskScheduler();
+        this.taskScheduler = raftIntegration.getTaskScheduler();
         this.logger = getLogger(getClass());
     }
 
     public ILogger getLogger(Class clazz) {
         String name = state.name();
-        return nodeEngine.getLogger(clazz.getSimpleName() + "[" + name + "]");
+        return raftIntegration.getLogger(clazz.getSimpleName() + "[" + name + "]");
     }
 
     public RaftEndpoint getLocalEndpoint() {
@@ -73,11 +72,11 @@ public class RaftNode {
     }
 
     public void send(Operation operation, RaftEndpoint target) {
-        nodeEngine.getOperationService().send(operation, target.getAddress());
+        raftIntegration.send(operation, target);
     }
 
     public void start() {
-        if (nodeEngine.getClusterService().isJoined()) {
+        if (raftIntegration.isJoined()) {
             logger.warning("Starting raft group...");
             executor.execute(new LeaderElectionTask(this));
         } else {
@@ -189,36 +188,14 @@ public class RaftNode {
     private void processLog(LogEntry entry) {
         logger.severe("Processing " + entry);
         SimpleCompletableFuture future = futures.remove(entry.index());
-        Object response;
-        try {
-            RaftOperation operation = prepareOperation(entry);
-            operation.beforeRun();
-            operation.run();
-            operation.afterRun();
-            response = operation.getResponse();
-        } catch (Throwable t) {
-            response = t;
-        }
-
+        Object response = raftIntegration.runOperation(entry.operation(), entry.index());
         if (future != null) {
             future.setResult(response);
         }
     }
 
-    private RaftOperation prepareOperation(LogEntry entry) {
-        RaftOperation operation = entry.operation();
-        operation.setCommitIndex(entry.index()).setNodeEngine(getNodeEngine());
-        // TODO do we need this ???
-        OperationAccessor.setCallerAddress(operation, nodeEngine.getThisAddress());
-        return operation;
-    }
-
     public RaftState state() {
         return state;
-    }
-
-    public NodeEngine getNodeEngine() {
-        return nodeEngine;
     }
 
     public TaskScheduler taskScheduler() {
@@ -279,7 +256,7 @@ public class RaftNode {
     }
 
     public Future replicate(RaftOperation operation) {
-        SimpleCompletableFuture resultFuture = new SimpleCompletableFuture(nodeEngine);
+        SimpleCompletableFuture resultFuture = new SimpleCompletableFuture(raftIntegration.getExecutor(ASYNC_EXECUTOR), logger);
         executor.execute(new ReplicateTask(this, operation, resultFuture));
         return resultFuture;
     }
@@ -327,8 +304,7 @@ public class RaftNode {
                     return;
                 }
 
-                MemberImpl member = nodeEngine.getClusterService().getMember(leader.getAddress());
-                if (member == null) {
+                if (!raftIntegration.isReachable(leader)) {
                     logger.severe("Current leader " + leader + " is dead. Will start new election round...");
                     state.leader(null);
                     new LeaderElectionTask(RaftNode.this).run();

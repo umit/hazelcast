@@ -1,14 +1,19 @@
 package com.hazelcast.raft.impl;
 
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.nio.Address;
 import com.hazelcast.util.ExceptionUtil;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.FutureTask;
 
 import static com.hazelcast.test.HazelcastTestSupport.getNodeEngineImpl;
+import static com.hazelcast.test.HazelcastTestSupport.randomString;
 import static com.hazelcast.test.HazelcastTestSupport.sleepSeconds;
+import static org.junit.Assert.fail;
 
 public class RaftUtil {
 
@@ -91,5 +96,26 @@ public class RaftUtil {
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
+    }
+
+    public static RaftEndpoint newRaftEndpoint(int port) {
+        return new RaftEndpoint(randomString(), newAddress(port));
+    }
+
+    public static Address newAddress(int port) {
+        try {
+            return new Address(InetAddress.getByName("127.0.0.1"), port);
+        } catch (UnknownHostException e) {
+            fail("Could not create new Address: " + e.getMessage());
+        }
+        return null;
+    }
+
+    public static int majority(int count) {
+        return count / 2 + 1;
+    }
+
+    public static int minority(int count) {
+        return count - majority(count);
     }
 }

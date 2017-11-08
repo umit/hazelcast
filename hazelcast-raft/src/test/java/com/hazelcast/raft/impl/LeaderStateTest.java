@@ -15,7 +15,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static com.hazelcast.raft.impl.RaftStateTest.newRaftEndpoint;
+import static com.hazelcast.raft.impl.RaftUtil.newRaftEndpoint;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
