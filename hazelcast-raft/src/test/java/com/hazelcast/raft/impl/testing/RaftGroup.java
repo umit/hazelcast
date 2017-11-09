@@ -3,6 +3,7 @@ package com.hazelcast.raft.impl.testing;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftUtil;
+import com.hazelcast.test.AssertTask;
 import org.junit.Assert;
 
 import java.util.Arrays;
@@ -10,13 +11,17 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.hazelcast.raft.impl.RaftUtil.getTerm;
 import static com.hazelcast.raft.impl.RaftUtil.majority;
 import static com.hazelcast.raft.impl.RaftUtil.minority;
 import static com.hazelcast.raft.impl.RaftUtil.newRaftEndpoint;
+import static com.hazelcast.test.HazelcastTestSupport.assertTrueEventually;
 import static java.util.Arrays.asList;
 import static java.util.Collections.unmodifiableMap;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.lessThan;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
 public class RaftGroup {
@@ -78,6 +83,26 @@ public class RaftGroup {
         }
     }
 
+    public RaftNode[] getNodes() {
+        return nodes;
+    }
+
+    public RaftNode[] getNodesExcept(RaftEndpoint endpoint) {
+        RaftNode[] n = new RaftNode[nodes.length - 1];
+        int i = 0;
+        for (RaftNode node : nodes) {
+            if (!node.getLocalEndpoint().equals(endpoint)) {
+                n[i++] = node;
+            }
+        }
+
+        if (i != n.length) {
+            throw new IllegalArgumentException();
+        }
+
+        return n;
+    }
+
     public RaftNode getNode(int index) {
         return nodes[index];
     }
@@ -90,14 +115,43 @@ public class RaftGroup {
         return integrations[index];
     }
 
-    public void waitUntilLeaderElected() {
-        for (int i = 0; i < size(); i++) {
-            if (!integrations[i].isAlive()) {
-                continue;
+    public LocalRaftIntegration getIntegration(RaftEndpoint endpoint) {
+        return getIntegration(getIndexOf(endpoint));
+    }
+
+    public <T> T getService(RaftEndpoint endpoint, String serviceName) {
+        return getIntegration(getIndexOf(endpoint)).getService(serviceName);
+    }
+
+    public <T> T getService(RaftNode raftNode, String serviceName) {
+        return getIntegration(getIndexOf(raftNode.getLocalEndpoint())).getService(serviceName);
+    }
+
+    public RaftNode waitUntilLeaderElected() {
+        final RaftNode[] leaderRef = new RaftNode[1];
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run()
+                    throws Exception {
+                RaftNode leaderNode = getLeaderNode();
+                assertNotNull(leaderNode);
+
+                int leaderTerm = getTerm(leaderNode);
+
+                for (RaftNode raftNode : nodes) {
+                    if (!integrations[getIndexOf(raftNode.getLocalEndpoint())].isAlive()) {
+                        continue;
+                    }
+
+                    assertEquals(leaderNode.getLocalEndpoint(), RaftUtil.getLeaderEndpoint(raftNode));
+                    assertEquals(leaderTerm, getTerm(raftNode));
+                }
+
+                leaderRef[0] = leaderNode;
             }
-            RaftNode node = nodes[i];
-            RaftUtil.waitUntilLeaderElected(node);
-        }
+        });
+
+        return leaderRef[0];
     }
 
     public RaftEndpoint getLeaderEndpoint() {
@@ -111,7 +165,7 @@ public class RaftGroup {
             if (leader == null) {
                 leader = endpoint;
             } else if (!leader.equals(endpoint)) {
-                throw new IllegalStateException("Group doesn't have a single leader endpoint yet!");
+                throw new AssertionError("Group doesn't have a single leader endpoint yet!");
             }
         }
         return leader;
