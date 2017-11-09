@@ -1,19 +1,14 @@
 package com.hazelcast.raft.impl.testing;
 
-import com.hazelcast.logging.Logger;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftUtil;
-import com.hazelcast.util.executor.StripedExecutor;
 import org.junit.Assert;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 
 import static com.hazelcast.raft.impl.RaftUtil.majority;
 import static com.hazelcast.raft.impl.RaftUtil.minority;
@@ -26,21 +21,15 @@ import static org.junit.Assert.assertThat;
 
 public class RaftGroup {
 
-    private final StripedExecutor stripedExecutor;
-    private final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
-    private final ExecutorService cachedExecutor = Executors.newCachedThreadPool();
-
     private final RaftEndpoint[] endpoints;
     private final LocalRaftIntegration[] integrations;
     private final RaftNode[] nodes;
-
 
     public RaftGroup(int size) {
         this(size, Collections.<String, Class>emptyMap());
     }
 
     public RaftGroup(int size, Map<String, Class> serviceRegistrations) {
-        stripedExecutor = new StripedExecutor(Logger.getLogger("executor"), "test", size, Integer.MAX_VALUE);
         endpoints = new RaftEndpoint[size];
         integrations = new LocalRaftIntegration[size];
 
@@ -54,12 +43,13 @@ public class RaftGroup {
                     throw new AssertionError(e);
                 }
             }
-            integrations[i] = new LocalRaftIntegration(endpoints[i], unmodifiableMap(services), scheduledExecutor, cachedExecutor);
+            integrations[i] = new LocalRaftIntegration(endpoints[i], unmodifiableMap(services));
         }
 
         nodes = new RaftNode[size];
         for (int i = 0; i < size; i++) {
-            nodes[i] = new RaftNode("node-" + i, endpoints[i], asList(endpoints), integrations[i], stripedExecutor);
+            LocalRaftIntegration integration = integrations[i];
+            nodes[i] = new RaftNode("node-" + i, endpoints[i], asList(endpoints), integration, integration.getStripedExecutor());
         }
     }
 
@@ -152,9 +142,9 @@ public class RaftGroup {
     }
 
     public void destroy() {
-        stripedExecutor.shutdown();
-        scheduledExecutor.shutdown();
-        cachedExecutor.shutdown();
+        for (LocalRaftIntegration integration : integrations) {
+            integration.shutdown();
+        }
     }
 
     public int size() {
@@ -300,5 +290,13 @@ public class RaftGroup {
      */
     public void resetAllDropRulesFrom(RaftEndpoint endpoint) {
         getIntegration(getIndexOf(endpoint)).resetAllDropRules();
+    }
+
+    public void terminateNode(int index) {
+        getIntegration(index).shutdown();
+    }
+
+    public void terminateNode(RaftEndpoint endpoint) {
+        getIntegration(getIndexOf(endpoint)).shutdown();
     }
 }
