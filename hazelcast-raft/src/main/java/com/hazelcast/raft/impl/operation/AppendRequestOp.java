@@ -30,7 +30,8 @@ public class AppendRequestOp extends AsyncRaftOp {
         service.handleAppendEntries(name, appendRequest);
     }
 
-    public AppendRequest getAppendRequest() {
+    @Override
+    public AppendRequest getPayload() {
         return appendRequest;
     }
 

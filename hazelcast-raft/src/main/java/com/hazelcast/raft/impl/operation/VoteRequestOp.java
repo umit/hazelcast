@@ -30,7 +30,8 @@ public class VoteRequestOp extends AsyncRaftOp {
         service.handleVoteRequest(name, voteRequest);
     }
 
-    public VoteRequest getVoteRequest() {
+    @Override
+    public VoteRequest getPayload() {
         return voteRequest;
     }
 
