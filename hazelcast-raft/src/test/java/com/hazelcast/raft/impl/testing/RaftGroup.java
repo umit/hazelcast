@@ -238,4 +238,67 @@ public class RaftGroup {
     public void merge() {
         initDiscovery();
     }
+
+    /**
+     * Drops specific message type one-way between from -> to.
+     */
+    public void dropMessagesToEndpoint(RaftEndpoint from, RaftEndpoint to, Class messageType) {
+        getIntegration(getIndexOf(from)).dropMessagesToEndpoint(to, messageType);
+    }
+
+    /**
+     * Allows specific message type one-way between from -> to.
+     */
+    public void allowMessagesToEndpoint(RaftEndpoint from, RaftEndpoint to, Class messageType) {
+        LocalRaftIntegration integration = getIntegration(getIndexOf(from));
+        if (!integration.isReachable(to)) {
+            throw new IllegalStateException("Cannot allow " + messageType + " from " + from
+                    + " -> " + to + ", since all messages are dropped between.");
+        }
+        integration.allowMessagesToEndpoint(to, messageType);
+    }
+
+    /**
+     * Drops all kind of messages one-way between from -> to.
+     */
+    public void dropAllMessagesToEndpoint(RaftEndpoint from, RaftEndpoint to) {
+        getIntegration(getIndexOf(from)).removeNode(getNode(getIndexOf(to)));
+    }
+
+    /**
+     * Allows all kind of messages one-way between from -> to.
+     */
+    public void allowAllMessagesToEndpoint(RaftEndpoint from, RaftEndpoint to) {
+        LocalRaftIntegration integration = getIntegration(getIndexOf(from));
+        integration.allowAllMessagesToEndpoint(to);
+        integration.discoverNode(getNode(getIndexOf(to)));
+    }
+
+    /**
+     * Drops specific message type one-way from -> to all nodes.
+     */
+    public void dropMessagesToAll(RaftEndpoint from, Class messageType) {
+        getIntegration(getIndexOf(from)).dropMessagesToAll(messageType);
+    }
+
+    /**
+     * Allows specific message type one-way from -> to all nodes.
+     */
+    public void allowMessagesToAll(RaftEndpoint from, Class messageType) {
+        LocalRaftIntegration integration = getIntegration(getIndexOf(from));
+        for (RaftEndpoint endpoint : endpoints) {
+            if (!integration.isReachable(endpoint)) {
+                throw new IllegalStateException("Cannot allow " + messageType + " from " + from
+                        + " -> " + endpoint + ", since all messages are dropped between.");
+            }
+        }
+        integration.allowMessagesToAll(messageType);
+    }
+
+    /**
+     * Resets all drop rules from endpoint.
+     */
+    public void resetAllDropRulesFrom(RaftEndpoint endpoint) {
+        getIntegration(getIndexOf(endpoint)).resetAllDropRules();
+    }
 }
