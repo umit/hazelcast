@@ -235,6 +235,10 @@ public class LocalRaftIntegration implements RaftIntegration {
         endpointDropRules.clear();
     }
 
+    public <T> T getService(String serviceName) {
+        return (T) services.get(serviceName);
+    }
+
     private static class EndpointDropEntry {
         final Class messageType;
         final RaftEndpoint endpoint;
