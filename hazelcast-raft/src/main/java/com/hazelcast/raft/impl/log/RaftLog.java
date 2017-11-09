@@ -1,4 +1,4 @@
-package com.hazelcast.raft.impl;
+package com.hazelcast.raft.impl.log;
 
 import java.util.ArrayList;
 import java.util.List;

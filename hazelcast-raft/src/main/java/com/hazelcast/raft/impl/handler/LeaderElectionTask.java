@@ -3,7 +3,7 @@ package com.hazelcast.raft.impl.handler;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
-import com.hazelcast.raft.impl.RaftState;
+import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.util.RandomPicker;
 import com.hazelcast.util.executor.StripedRunnable;

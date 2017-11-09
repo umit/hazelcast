@@ -3,10 +3,10 @@ package com.hazelcast.raft.impl.handler;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.NotLeaderException;
 import com.hazelcast.raft.RaftOperation;
-import com.hazelcast.raft.impl.LogEntry;
+import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
-import com.hazelcast.raft.impl.RaftState;
+import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.util.executor.StripedRunnable;
 

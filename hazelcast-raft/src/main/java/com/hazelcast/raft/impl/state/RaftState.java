@@ -1,6 +1,9 @@
-package com.hazelcast.raft.impl;
+package com.hazelcast.raft.impl.state;
 
+import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.VoteRequest;
+import com.hazelcast.raft.impl.log.RaftLog;
 
 import java.util.Collection;
 import java.util.HashSet;

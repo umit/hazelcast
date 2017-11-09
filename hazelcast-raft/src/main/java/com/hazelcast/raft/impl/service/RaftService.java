@@ -1,4 +1,4 @@
-package com.hazelcast.raft.impl;
+package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.internal.util.RuntimeAvailableProcessors;
@@ -6,6 +6,9 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftMember;
+import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.impl.RaftIntegration;
+import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
@@ -33,7 +36,7 @@ import static com.hazelcast.util.ThreadUtil.createThreadName;
 public class RaftService implements ManagedService, ConfigurableService<RaftConfig> {
 
     public static final String SERVICE_NAME = "hz:core:raft";
-    static final String METADATA_RAFT = "METADATA";
+    public static final String METADATA_RAFT = "METADATA";
 
     private final Map<String, RaftNode> nodes = new ConcurrentHashMap<String, RaftNode>();
     private final NodeEngine nodeEngine;
@@ -151,7 +154,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         node.handleAppendResponse(response);
     }
 
-    RaftNode getRaftNode(String name) {
+    public RaftNode getRaftNode(String name) {
         return nodes.get(name);
     }
 }

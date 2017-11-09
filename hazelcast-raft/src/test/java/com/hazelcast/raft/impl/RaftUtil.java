@@ -2,6 +2,8 @@ package com.hazelcast.raft.impl;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
+import com.hazelcast.raft.impl.service.RaftService;
+import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.util.ExceptionUtil;
 
 import java.net.InetAddress;

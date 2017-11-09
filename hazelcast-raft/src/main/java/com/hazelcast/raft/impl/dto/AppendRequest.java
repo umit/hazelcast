@@ -3,7 +3,7 @@ package com.hazelcast.raft.impl.dto;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.impl.LogEntry;
+import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.impl.RaftEndpoint;
 

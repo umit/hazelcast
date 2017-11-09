@@ -1,10 +1,10 @@
 package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.impl.CandidateState;
+import com.hazelcast.raft.impl.state.CandidateState;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
-import com.hazelcast.raft.impl.RaftState;
+import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.util.executor.StripedRunnable;
 
