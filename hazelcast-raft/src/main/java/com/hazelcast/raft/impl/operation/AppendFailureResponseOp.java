@@ -26,7 +26,8 @@ public class AppendFailureResponseOp extends AsyncRaftOp {
         service.handleAppendResponse(name, appendResponse);
     }
 
-    public AppendFailureResponse getAppendResponse() {
+    @Override
+    public AppendFailureResponse getPayload() {
         return appendResponse;
     }
 

@@ -1,22 +1,26 @@
 package com.hazelcast.raft.impl.testing;
 
+import com.hazelcast.internal.serialization.impl.DefaultSerializationServiceBuilder;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.raft.impl.RaftNode;
-import com.hazelcast.raft.impl.operation.AppendFailureResponseOp;
-import com.hazelcast.raft.impl.operation.AppendRequestOp;
-import com.hazelcast.raft.impl.operation.AppendSuccessResponseOp;
+import com.hazelcast.raft.impl.dto.AppendFailureResponse;
+import com.hazelcast.raft.impl.dto.AppendRequest;
+import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
+import com.hazelcast.raft.impl.dto.VoteRequest;
+import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.operation.AsyncRaftOp;
-import com.hazelcast.raft.impl.operation.VoteRequestOp;
-import com.hazelcast.raft.impl.operation.VoteResponseOp;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.TaskScheduler;
 import com.hazelcast.spi.impl.executionservice.impl.DelegatingTaskScheduler;
+import com.hazelcast.spi.serialization.SerializationService;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
@@ -28,6 +32,7 @@ import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
 /**
@@ -37,13 +42,16 @@ import static org.junit.Assert.assertThat;
 public class LocalRaftIntegration implements RaftIntegration {
 
     private final RaftEndpoint localEndpoint;
+    private final Map<String, Object> services;
     private final ScheduledExecutorService scheduledExecutorService;
     private final ExecutorService executorService;
     private final ConcurrentMap<RaftEndpoint, RaftNode> nodes = new ConcurrentHashMap<RaftEndpoint, RaftNode>();
+    private final SerializationService serializationService = new DefaultSerializationServiceBuilder().build();
 
-    public LocalRaftIntegration(RaftEndpoint localEndpoint,
+    public LocalRaftIntegration(RaftEndpoint localEndpoint, Map<String, Object> services,
             ScheduledExecutorService scheduledExecutorService, ExecutorService executorService) {
         this.localEndpoint = localEndpoint;
+        this.services = services;
         this.scheduledExecutorService = scheduledExecutorService;
         this.executorService = executorService;
     }
@@ -106,24 +114,28 @@ public class LocalRaftIntegration implements RaftIntegration {
 
         assertInstanceOf(AsyncRaftOp.class, operation);
 
-        switch (((AsyncRaftOp) operation).getId()) {
-            case RaftDataSerializerHook.VOTE_REQUEST_OP:
-                node.handleVoteRequest(((VoteRequestOp) operation).getVoteRequest());
+        IdentifiedDataSerializable payload = ((AsyncRaftOp) operation).getPayload();
+        assertNotNull(payload);
+        payload = serializationService.toObject(serializationService.toData(payload));
+
+        switch (payload.getId()) {
+            case RaftDataSerializerHook.VOTE_REQUEST:
+                node.handleVoteRequest((VoteRequest) payload);
                 break;
-            case RaftDataSerializerHook.VOTE_RESPONSE_OP:
-                node.handleVoteResponse(((VoteResponseOp) operation).getVoteResponse());
+            case RaftDataSerializerHook.VOTE_RESPONSE:
+                node.handleVoteResponse((VoteResponse) payload);
                 break;
-            case RaftDataSerializerHook.APPEND_REQUEST_OP:
-                node.handleAppendRequest(((AppendRequestOp) operation).getAppendRequest());
+            case RaftDataSerializerHook.APPEND_REQUEST:
+                node.handleAppendRequest((AppendRequest) payload);
                 break;
-            case RaftDataSerializerHook.APPEND_SUCCESS_RESPONSE_OP:
-                node.handleAppendResponse(((AppendSuccessResponseOp) operation).getAppendResponse());
+            case RaftDataSerializerHook.APPEND_SUCCESS_RESPONSE:
+                node.handleAppendResponse((AppendSuccessResponse) payload);
                 break;
-            case RaftDataSerializerHook.APPEND_FAILURE_RESPONSE_OP:
-                node.handleAppendResponse(((AppendFailureResponseOp) operation).getAppendResponse());
+            case RaftDataSerializerHook.APPEND_FAILURE_RESPONSE:
+                node.handleAppendResponse((AppendFailureResponse) payload);
                 break;
             default:
-                throw new IllegalArgumentException("Unknown operation: " + operation);
+                throw new IllegalArgumentException("Unknown payload: " + payload);
         }
         return true;
     }
@@ -132,6 +144,9 @@ public class LocalRaftIntegration implements RaftIntegration {
     public Object runOperation(RaftOperation operation, int commitIndex) {
         if (operation == null) {
             return null;
+        }
+        if (operation.getServiceName() != null) {
+            operation.setService(services.get(operation.getServiceName()));
         }
         operation.setCommitIndex(commitIndex);
         try {
