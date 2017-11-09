@@ -27,11 +27,6 @@ public class AppendFailureResponseOp extends AsyncRaftOp {
     }
 
     @Override
-    public AppendFailureResponse getPayload() {
-        return appendResponse;
-    }
-
-    @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeObject(appendResponse);

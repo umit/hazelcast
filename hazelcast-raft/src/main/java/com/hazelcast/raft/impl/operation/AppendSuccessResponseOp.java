@@ -31,11 +31,6 @@ public class AppendSuccessResponseOp extends AsyncRaftOp {
     }
 
     @Override
-    public AppendSuccessResponse getPayload() {
-        return appendResponse;
-    }
-
-    @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeObject(appendResponse);
