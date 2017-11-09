@@ -8,6 +8,9 @@ import com.hazelcast.util.executor.StripedExecutor;
 import org.junit.Assert;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -16,6 +19,7 @@ import static com.hazelcast.raft.impl.RaftUtil.majority;
 import static com.hazelcast.raft.impl.RaftUtil.minority;
 import static com.hazelcast.raft.impl.RaftUtil.newRaftEndpoint;
 import static java.util.Arrays.asList;
+import static java.util.Collections.unmodifiableMap;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertThat;
@@ -30,14 +34,27 @@ public class RaftGroup {
     private final LocalRaftIntegration[] integrations;
     private final RaftNode[] nodes;
 
+
     public RaftGroup(int size) {
+        this(size, Collections.<String, Class>emptyMap());
+    }
+
+    public RaftGroup(int size, Map<String, Class> serviceRegistrations) {
         stripedExecutor = new StripedExecutor(Logger.getLogger("executor"), "test", size, Integer.MAX_VALUE);
         endpoints = new RaftEndpoint[size];
         integrations = new LocalRaftIntegration[size];
 
         for (int i = 0; i < size; i++) {
             endpoints[i] = newRaftEndpoint(5000 + i);
-            integrations[i] = new LocalRaftIntegration(endpoints[i], scheduledExecutor, cachedExecutor);
+            Map<String, Object> services = new HashMap<String, Object>(serviceRegistrations.size());
+            for (Map.Entry<String, Class> entry : serviceRegistrations.entrySet()) {
+                try {
+                    services.put(entry.getKey(), entry.getValue().newInstance());
+                } catch (Exception e) {
+                    throw new AssertionError(e);
+                }
+            }
+            integrations[i] = new LocalRaftIntegration(endpoints[i], unmodifiableMap(services), scheduledExecutor, cachedExecutor);
         }
 
         nodes = new RaftNode[size];

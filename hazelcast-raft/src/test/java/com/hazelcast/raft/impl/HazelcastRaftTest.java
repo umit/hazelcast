@@ -4,13 +4,10 @@ import com.hazelcast.config.Config;
 import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
-import com.hazelcast.nio.ObjectDataInput;
-import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftMember;
-import com.hazelcast.raft.RaftOperation;
-import com.hazelcast.spi.ManagedService;
-import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.raft.impl.service.RaftDataService;
+import com.hazelcast.raft.impl.service.RaftAddOperation;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
@@ -22,14 +19,9 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -109,7 +101,7 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
 
         RaftNode leader = getLeaderNode(METADATA_RAFT);
         final Object val = "val";
-        Future f = leader.replicate(new TestRaftAddOperation(val));
+        Future f = leader.replicate(new RaftAddOperation(val));
 
         f.get();
 
@@ -119,7 +111,7 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
                     throws Exception {
                 for (HazelcastInstance instance : instances) {
                     assertEquals(1, getCommitIndex(getRaftNode(instance, METADATA_RAFT)));
-                    RaftTestService service = getRaftTestService(instance);
+                    RaftDataService service = getRaftTestService(instance);
                     assertEquals(val, service.get(1));
                 }
             }
@@ -139,7 +131,7 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
         dropOperationsBetween(leaderInstance, followers[0], RaftDataSerializerHook.F_ID, singletonList(APPEND_REQUEST_OP));
 
         final Object val = "val";
-        Future f = leader.replicate(new TestRaftAddOperation(val));
+        Future f = leader.replicate(new RaftAddOperation(val));
 
         try {
             f.get(10, TimeUnit.SECONDS);
@@ -162,7 +154,7 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
         final int entryCount = 100;
         for (int i = 0; i < entryCount; i++) {
             final Object val = "val" + i;
-            Future f = leader.replicate(new TestRaftAddOperation(val));
+            Future f = leader.replicate(new RaftAddOperation(val));
             f.get();
         }
 
@@ -172,7 +164,7 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
                     throws Exception {
                 for (HazelcastInstance instance : instances) {
                     assertEquals(entryCount, getCommitIndex(getRaftNode(instance, METADATA_RAFT)));
-                    RaftTestService service = getRaftTestService(instance);
+                    RaftDataService service = getRaftTestService(instance);
                     for (int i = 0; i < entryCount; i++) {
                         int commitIndex = i + 1;
                         Object val = "val" + i;
@@ -194,7 +186,7 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
         List<Future> futures = new ArrayList<Future>(entryCount);
         for (int i = 0; i < entryCount; i++) {
             final Object val = "val" + i;
-            futures.add(leader.replicate(new TestRaftAddOperation(val)));
+            futures.add(leader.replicate(new RaftAddOperation(val)));
         }
 
         for (Future f : futures) {
@@ -207,7 +199,7 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
                     throws Exception {
                 for (HazelcastInstance instance : instances) {
                     assertEquals(entryCount, getCommitIndex(getRaftNode(instance, METADATA_RAFT)));
-                    RaftTestService service = getRaftTestService(instance);
+                    RaftDataService service = getRaftTestService(instance);
                     Set<Object> values = service.values();
                     for (int i = 0; i < entryCount; i++) {
                         Object val = "val" + i;
@@ -225,7 +217,7 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
 
         final RaftNode leader = getLeaderNode(METADATA_RAFT);
 
-        Future f1 = leader.replicate(new TestRaftAddOperation("val1"));
+        Future f1 = leader.replicate(new RaftAddOperation("val1"));
         f1.get();
 
         HazelcastInstance leaderInstance = getLeaderInstance(leader);
@@ -238,7 +230,7 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
                     APPEND_SUCCESS_RESPONSE_OP, VOTE_RESPONSE_OP));
         }
 
-        Future f2 = leader.replicate(new TestRaftAddOperation("val2"));
+        Future f2 = leader.replicate(new RaftAddOperation("val2"));
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -281,7 +273,7 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
 
         // the new leader appends f3 to the next index of f2, and commits both f2 and f3
         RaftNode newLeader = getLeaderNode(METADATA_RAFT);
-        Future f3 = newLeader.replicate(new TestRaftAddOperation("val3"));
+        Future f3 = newLeader.replicate(new RaftAddOperation("val3"));
 
         assertEquals("val3", f3.get());
         try {
@@ -298,7 +290,7 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
 
         final RaftNode leader = getLeaderNode(METADATA_RAFT);
 
-        Future f1 = leader.replicate(new TestRaftAddOperation("val1"));
+        Future f1 = leader.replicate(new RaftAddOperation("val1"));
         f1.get();
 
         HazelcastInstance leaderInstance = getLeaderInstance(leader);
@@ -320,7 +312,7 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
         block(leaderInstance, followerInstances);
 
         // the alone leader appends f2 but cannot replicate it to the others
-        Future f2 = leader.replicate(new TestRaftAddOperation("val2"));
+        Future f2 = leader.replicate(new RaftAddOperation("val2"));
 
         assertLeaderNotEqualsEventually(leader, followerInstances);
 
@@ -337,7 +329,7 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
         RaftNode newLeader = getLeaderNode(METADATA_RAFT);
 
         // the new leader overwrites f2 with the new entry f3 on the same log index
-        Future f3 = newLeader.replicate(new TestRaftAddOperation("val3"));
+        Future f3 = newLeader.replicate(new RaftAddOperation("val3"));
 
         assertEquals("val3", f3.get());
         try {
@@ -411,8 +403,8 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
         }, 10);
     }
 
-    private RaftTestService getRaftTestService(HazelcastInstance instance) {
-        return getNodeEngineImpl(instance).getService(RaftTestService.SERVICE_NAME);
+    private RaftDataService getRaftTestService(HazelcastInstance instance) {
+        return getNodeEngineImpl(instance).getService(RaftDataService.SERVICE_NAME);
     }
 
     private void assertLeaderNotEqualsEventually(final RaftNode leader, final HazelcastInstance... instances) {
@@ -501,8 +493,8 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
         config.getServicesConfig().addServiceConfig(raftServiceConfig);
 
         ServiceConfig raftTestServiceConfig = new ServiceConfig().setEnabled(true)
-                                                                 .setName(RaftTestService.SERVICE_NAME)
-                                                                 .setClassName(RaftTestService.class.getName());
+                                                                 .setName(RaftDataService.SERVICE_NAME)
+                                                                 .setClassName(RaftDataService.class.getName());
         config.getServicesConfig().addServiceConfig(raftTestServiceConfig);
         return config;
     }
@@ -551,89 +543,6 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
         }
 
         throw new IllegalStateException();
-    }
-
-    public static class RaftTestService implements ManagedService {
-
-        static final String SERVICE_NAME = "RaftTestService";
-
-        private final Map<Integer, Object> values = new ConcurrentHashMap<Integer, Object>();
-
-        public RaftTestService() {
-        }
-
-        @Override
-        public void init(NodeEngine nodeEngine, Properties properties) {
-
-        }
-
-        Object apply(int commitIndex, Object value) {
-            assert !values.containsKey(commitIndex) : "Cannot apply " + value +  "since commitIndex: " + commitIndex
-                    + " already contains: " + values.get(commitIndex);
-
-            values.put(commitIndex, value);
-            System.out.println("ERROR VALUE APPLIED " + value + " AT INDEX: " + commitIndex);
-            return value;
-        }
-
-        Object get(int commitIndex) {
-            return values.get(commitIndex);
-        }
-
-        Set<Object> values() {
-            return new HashSet<Object>(values.values());
-        }
-
-        @Override
-        public void reset() {
-
-        }
-
-        @Override
-        public void shutdown(boolean terminate) {
-
-        }
-
-    }
-
-    public static class TestRaftAddOperation extends RaftOperation {
-
-        private Object val;
-
-        public TestRaftAddOperation() {
-        }
-
-        public TestRaftAddOperation(Object val) {
-            this.val = val;
-        }
-
-        @Override
-        public Object doRun(int commitIndex) {
-            RaftTestService service = getService();
-            return service.apply(commitIndex, val);
-        }
-
-        @Override
-        public String getServiceName() {
-            return RaftTestService.SERVICE_NAME;
-        }
-
-        @Override
-        protected void writeInternal(ObjectDataOutput out) throws IOException {
-            super.writeInternal(out);
-            out.writeObject(val);
-        }
-
-        @Override
-        protected void readInternal(ObjectDataInput in) throws IOException {
-            super.readInternal(in);
-            val = in.readObject();
-        }
-
-        @Override
-        public String toString() {
-            return "TestRaftAddOperation{" + "val=" + val + '}';
-        }
     }
 
 }

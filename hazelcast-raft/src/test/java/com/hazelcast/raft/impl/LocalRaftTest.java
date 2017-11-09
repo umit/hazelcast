@@ -1,5 +1,7 @@
 package com.hazelcast.raft.impl;
 
+import com.hazelcast.raft.impl.service.RaftAddOperation;
+import com.hazelcast.raft.impl.service.RaftDataService;
 import com.hazelcast.raft.impl.testing.RaftGroup;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -13,6 +15,8 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.concurrent.Future;
 
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -54,6 +58,21 @@ public class LocalRaftTest extends HazelcastTestSupport {
 
         RaftNode leaderNode = group.getLeaderNode();
         assertNotNull(leaderNode);
+    }
+
+    @Test
+    public void startGroup_withService() throws Exception {
+        int nodeCount = 5;
+        group = new RaftGroup(nodeCount, Collections.<String, Class>singletonMap(RaftDataService.SERVICE_NAME, RaftDataService.class));
+        group.start();
+        group.waitUntilLeaderElected();
+
+        RaftNode leaderNode = group.getLeaderNode();
+
+        String value = "value";
+        Future future = leaderNode.replicate(new RaftAddOperation(value));
+
+        assertEquals(value, future.get());
     }
 
     @Test

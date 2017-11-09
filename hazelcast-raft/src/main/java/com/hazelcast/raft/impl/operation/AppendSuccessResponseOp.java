@@ -30,7 +30,8 @@ public class AppendSuccessResponseOp extends AsyncRaftOp {
         service.handleAppendResponse(name, appendResponse);
     }
 
-    public AppendSuccessResponse getAppendResponse() {
+    @Override
+    public AppendSuccessResponse getPayload() {
         return appendResponse;
     }
 
