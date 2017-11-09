@@ -81,7 +81,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     private void testSingleCommitEntry(final int nodeCount) throws Exception {
-        group = new RaftGroup(nodeCount, Collections.<String, Class>singletonMap(SERVICE_NAME, RaftDataService.class));
+        group = newGroupWithService(nodeCount);
         group.start();
         group.waitUntilLeaderElected();
 
@@ -102,6 +102,54 @@ public class LocalRaftTest extends HazelcastTestSupport {
                 }
             }
         });
+    }
+
+
+    @Test
+    public void testTerminateFollower() throws Exception {
+        group = newGroupWithService(3);
+        group.start();
+        group.waitUntilLeaderElected();
+
+        int leaderIndex = group.getLeaderIndex();
+        for (int i = 0; i < group.size(); i++) {
+            if (i != leaderIndex) {
+                group.terminateNode(i);
+                break;
+            }
+        }
+
+        String value = "value";
+        RaftNode leaderNode = group.getLeaderNode();
+        Future future = leaderNode.replicate(new RaftAddOperation(value));
+        assertEquals(value, future.get());
+    }
+
+    @Test
+    public void testTerminateLeader() throws Exception {
+        group = newGroupWithService(3);
+        group.start();
+        group.waitUntilLeaderElected();
+
+        final RaftEndpoint leaderEndpoint = group.getLeaderEndpoint();
+        final int leaderIndex = group.getLeaderIndex();
+        group.terminateNode(leaderIndex);
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() throws Exception {
+                for (int i = 0; i < group.size(); i++) {
+                    if (i != leaderIndex) {
+                        assertNotEquals(leaderEndpoint, getLeaderEndpoint(group.getNode(i)));
+                    }
+                }
+            }
+        });
+
+        String value = "value";
+        RaftNode leaderNode = group.getLeaderNode();
+        Future future = leaderNode.replicate(new RaftAddOperation(value));
+        assertEquals(value, future.get());
     }
 
     @Test
@@ -156,5 +204,9 @@ public class LocalRaftTest extends HazelcastTestSupport {
 
         group.merge();
         group.waitUntilLeaderElected();
+    }
+
+    private RaftGroup newGroupWithService(int nodeCount) {
+        return new RaftGroup(nodeCount, Collections.<String, Class>singletonMap(SERVICE_NAME, RaftDataService.class));
     }
 }

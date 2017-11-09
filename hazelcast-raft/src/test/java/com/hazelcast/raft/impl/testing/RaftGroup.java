@@ -66,7 +66,11 @@ public class RaftGroup {
 
     public void initDiscovery() {
         for (LocalRaftIntegration integration : integrations) {
-            for (RaftNode node : nodes) {
+            for (int i = 0; i < size(); i++) {
+                if (!integrations[i].isAlive()) {
+                    continue;
+                }
+                RaftNode node = nodes[i];
                 if (!node.getLocalEndpoint().equals(integration.getLocalEndpoint())) {
                     integration.discoverNode(node);
                 }
@@ -87,14 +91,22 @@ public class RaftGroup {
     }
 
     public void waitUntilLeaderElected() {
-        for (RaftNode node : nodes) {
+        for (int i = 0; i < size(); i++) {
+            if (!integrations[i].isAlive()) {
+                continue;
+            }
+            RaftNode node = nodes[i];
             RaftUtil.waitUntilLeaderElected(node);
         }
     }
 
     public RaftEndpoint getLeaderEndpoint() {
         RaftEndpoint leader = null;
-        for (RaftNode node : nodes) {
+        for (int i = 0; i < size(); i++) {
+            if (!integrations[i].isAlive()) {
+                continue;
+            }
+            RaftNode node = nodes[i];
             RaftEndpoint endpoint = RaftUtil.getLeaderEndpoint(node);
             if (leader == null) {
                 leader = endpoint;
@@ -110,7 +122,11 @@ public class RaftGroup {
         if (leaderEndpoint == null) {
             return null;
         }
-        for (RaftNode node : nodes) {
+        for (int i = 0; i < size(); i++) {
+            if (!integrations[i].isAlive()) {
+                continue;
+            }
+            RaftNode node = nodes[i];
             if (leaderEndpoint.equals(node.getLocalEndpoint())) {
                 return node;
             }
@@ -293,10 +309,11 @@ public class RaftGroup {
     }
 
     public void terminateNode(int index) {
+        split(index);
         getIntegration(index).shutdown();
     }
 
     public void terminateNode(RaftEndpoint endpoint) {
-        getIntegration(getIndexOf(endpoint)).shutdown();
+        terminateNode(getIndexOf(endpoint));
     }
 }
