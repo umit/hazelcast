@@ -2,7 +2,11 @@ package com.hazelcast.raft.impl;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftOperation;
-import com.hazelcast.spi.Operation;
+import com.hazelcast.raft.impl.dto.AppendFailureResponse;
+import com.hazelcast.raft.impl.dto.AppendRequest;
+import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
+import com.hazelcast.raft.impl.dto.VoteRequest;
+import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.spi.TaskScheduler;
 
 import java.util.concurrent.Executor;
@@ -14,7 +18,7 @@ public interface RaftIntegration {
 
     TaskScheduler getTaskScheduler();
 
-    Executor getExecutor(String name);
+    Executor getExecutor();
 
     ILogger getLogger(String name);
 
@@ -24,7 +28,15 @@ public interface RaftIntegration {
 
     boolean isReachable(RaftEndpoint endpoint);
 
-    boolean send(Operation operation, RaftEndpoint target);
+    boolean send(VoteRequest request, RaftEndpoint target);
+
+    boolean send(VoteResponse response, RaftEndpoint target);
+
+    boolean send(AppendRequest request, RaftEndpoint target);
+
+    boolean send(AppendSuccessResponse response, RaftEndpoint target);
+
+    boolean send(AppendFailureResponse response, RaftEndpoint target);
 
     Object runOperation(RaftOperation operation, int commitIndex);
 

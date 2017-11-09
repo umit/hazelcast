@@ -31,11 +31,6 @@ public class VoteRequestOp extends AsyncRaftOp {
     }
 
     @Override
-    public VoteRequest getPayload() {
-        return voteRequest;
-    }
-
-    @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeObject(voteRequest);

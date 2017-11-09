@@ -51,10 +51,8 @@ public class RaftLog {
 
         for (LogEntry entry : newEntries) {
             if (entry.term() < lastTerm) {
-                throw new IllegalArgumentException("Entry term is lower than lastLogTerm. "
-                        + entry.term() + " < " + lastTerm);
-            }
-            if (entry.index() != lastIndex + 1) {
+                throw new IllegalArgumentException("Entry term is lower than lastLogTerm. " + entry.term() + " < " + lastTerm);
+            } else if (entry.index() != lastIndex + 1) {
                 throw new IllegalArgumentException("Entry index must be equal to (lasLogIndex + 1). "
                         + entry.index() + " != " + (lastIndex + 1));
             }

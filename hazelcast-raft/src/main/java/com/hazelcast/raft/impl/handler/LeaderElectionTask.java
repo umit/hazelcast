@@ -5,7 +5,6 @@ import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftState;
 import com.hazelcast.raft.impl.dto.VoteRequest;
-import com.hazelcast.raft.impl.operation.VoteRequestOp;
 import com.hazelcast.util.RandomPicker;
 import com.hazelcast.util.executor.StripedRunnable;
 
@@ -39,7 +38,7 @@ public class LeaderElectionTask implements StripedRunnable {
         logger.warning("Leader election started at term: " + voteRequest.term());
 
         for (RaftEndpoint endpoint : state.remoteMembers()) {
-            raftNode.send(new VoteRequestOp(state.name(), voteRequest), endpoint);
+            raftNode.send(voteRequest, endpoint);
         }
 
         scheduleLeaderElectionTimeout(timeout);

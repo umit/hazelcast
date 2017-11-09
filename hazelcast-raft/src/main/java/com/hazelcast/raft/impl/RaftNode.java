@@ -1,6 +1,7 @@
 package com.hazelcast.raft.impl;
 
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.raft.LeaderDemotedException;
 import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
@@ -14,10 +15,8 @@ import com.hazelcast.raft.impl.handler.LeaderElectionTask;
 import com.hazelcast.raft.impl.handler.ReplicateTask;
 import com.hazelcast.raft.impl.handler.VoteRequestHandlerTask;
 import com.hazelcast.raft.impl.handler.VoteResponseHandlerTask;
-import com.hazelcast.raft.impl.operation.AppendRequestOp;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.raft.impl.util.StripedExecutorConveyor;
-import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.TaskScheduler;
 import com.hazelcast.util.Clock;
 import com.hazelcast.util.RandomPicker;
@@ -31,8 +30,6 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-
-import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 
 /**
  * TODO: Javadoc Pending...
@@ -71,8 +68,24 @@ public class RaftNode {
         return localEndpoint;
     }
 
-    public void send(Operation operation, RaftEndpoint target) {
-        raftIntegration.send(operation, target);
+    public void send(VoteRequest request, RaftEndpoint target) {
+        raftIntegration.send(request, target);
+    }
+
+    public void send(VoteResponse response, RaftEndpoint target) {
+        raftIntegration.send(response, target);
+    }
+
+    public void send(AppendRequest request, RaftEndpoint target) {
+        raftIntegration.send(request, target);
+    }
+
+    public void send(AppendSuccessResponse response, RaftEndpoint target) {
+        raftIntegration.send(response, target);
+    }
+
+    public void send(AppendFailureResponse response, RaftEndpoint target) {
+        raftIntegration.send(response, target);
     }
 
     public void start() {
@@ -157,7 +170,7 @@ public class RaftNode {
 
         logger.warning("Sending " + appendRequest + " to " + follower + " with next index: " + nextIndex);
 
-        send(new AppendRequestOp(state.name(), appendRequest), follower);
+        send(appendRequest, follower);
     }
 
     // If commitIndex > lastApplied: increment lastApplied, apply log[lastApplied] to state machine (§5.3)
@@ -239,7 +252,7 @@ public class RaftNode {
             long index = entry.getKey();
             if (index >= entryIndex) {
                 logger.severe("Invalidating log future at index: " + index);
-                entry.getValue().setResult(new IllegalStateException("Truncated: " + index));
+                entry.getValue().setResult(new LeaderDemotedException());
                 iterator.remove();
             }
         }
@@ -256,7 +269,7 @@ public class RaftNode {
     }
 
     public Future replicate(RaftOperation operation) {
-        SimpleCompletableFuture resultFuture = new SimpleCompletableFuture(raftIntegration.getExecutor(ASYNC_EXECUTOR), logger);
+        SimpleCompletableFuture resultFuture = new SimpleCompletableFuture(raftIntegration.getExecutor(), logger);
         executor.execute(new ReplicateTask(this, operation, resultFuture));
         return resultFuture;
     }
@@ -301,10 +314,11 @@ public class RaftNode {
             try {
                 RaftEndpoint leader = state.leader();
                 if (leader == null) {
-                    return;
-                }
-
-                if (!raftIntegration.isReachable(leader)) {
+                    if (state.role() == RaftRole.FOLLOWER) {
+                        logger.severe("We are FOLLOWER and current leader is null. Will start new election round...");
+                        new LeaderElectionTask(RaftNode.this).run();
+                    }
+                } else if (!raftIntegration.isReachable(leader)) {
                     logger.severe("Current leader " + leader + " is dead. Will start new election round...");
                     state.leader(null);
                     new LeaderElectionTask(RaftNode.this).run();
