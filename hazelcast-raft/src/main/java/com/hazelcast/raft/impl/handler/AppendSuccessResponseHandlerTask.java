@@ -54,20 +54,7 @@ public class AppendSuccessResponseHandlerTask implements StripedRunnable {
         // If there exists an N such that N > commitIndex, a majority of matchIndex[i] ≥ N, and log[N].term == currentTerm:
         // set commitIndex = N (§5.3, §5.4)
         int quorumMatchIndex = findQuorumMatchIndex(state);
-        if (quorumMatchIndex == 0) {
-            if (state.log().lastLogIndex() > 0) {
-                logger.severe("Just became the LEADER and still need to populate match indices...");
-            }
-            return;
-        }
-
         int commitIndex = state.commitIndex();
-        if (commitIndex == quorumMatchIndex) {
-            return;
-        }
-
-        assert commitIndex < quorumMatchIndex : "Commit: " + commitIndex + ", Match: " + quorumMatchIndex;
-
         RaftLog raftLog = state.log();
         for (; quorumMatchIndex > commitIndex; quorumMatchIndex--) {
             // Only log entries from the leader’s current term are committed by counting replicas; once an entry
