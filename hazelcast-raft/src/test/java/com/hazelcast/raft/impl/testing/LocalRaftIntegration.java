@@ -99,10 +99,7 @@ public class LocalRaftIntegration implements RaftIntegration {
 
     @Override
     public boolean isReachable(RaftEndpoint endpoint) {
-        if (localEndpoint.equals(endpoint)) {
-            return true;
-        }
-        return nodes.containsKey(endpoint);
+        return localEndpoint.equals(endpoint) || nodes.containsKey(endpoint);
     }
 
     @Override

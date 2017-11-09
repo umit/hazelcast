@@ -7,10 +7,10 @@ import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftMember;
+import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.service.RaftAddOperation;
 import com.hazelcast.raft.impl.service.RaftDataService;
 import com.hazelcast.raft.impl.service.RaftService;
-import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
@@ -22,19 +22,10 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.hazelcast.raft.impl.RaftDataSerializerHook.APPEND_REQUEST_OP;
 import static com.hazelcast.raft.impl.RaftDataSerializerHook.APPEND_SUCCESS_RESPONSE_OP;
 import static com.hazelcast.raft.impl.RaftDataSerializerHook.VOTE_RESPONSE_OP;
-import static com.hazelcast.raft.impl.service.RaftService.METADATA_RAFT;
 import static com.hazelcast.raft.impl.RaftUtil.getCommitIndex;
 import static com.hazelcast.raft.impl.RaftUtil.getLastLogEntry;
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
@@ -42,15 +33,13 @@ import static com.hazelcast.raft.impl.RaftUtil.getRaftNode;
 import static com.hazelcast.raft.impl.RaftUtil.getRole;
 import static com.hazelcast.raft.impl.RaftUtil.getTerm;
 import static com.hazelcast.raft.impl.RaftUtil.waitUntilLeaderElected;
+import static com.hazelcast.raft.impl.service.RaftService.METADATA_RAFT;
 import static com.hazelcast.spi.properties.GroupProperty.MERGE_FIRST_RUN_DELAY_SECONDS;
 import static com.hazelcast.spi.properties.GroupProperty.MERGE_NEXT_RUN_DELAY_SECONDS;
 import static com.hazelcast.test.PacketFiltersUtil.dropOperationsBetween;
-import static com.hazelcast.test.PacketFiltersUtil.dropOperationsFrom;
-import static com.hazelcast.test.PacketFiltersUtil.resetPacketFiltersFrom;
 import static com.hazelcast.test.SplitBrainTestSupport.blockCommunicationBetween;
 import static com.hazelcast.test.SplitBrainTestSupport.unblockCommunicationBetween;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
@@ -70,22 +59,6 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
         factory = createHazelcastInstanceFactory();
     }
 
-    @Test
-    public void testTwoNodes_electLeader() {
-        testLeaderElection(2);
-    }
-
-    @Test
-    public void testThreeNodes_electLeader() {
-        testLeaderElection(3);
-    }
-
-    private void testLeaderElection(int nodeCount) {
-        raftAddresses = createRaftAddresses(nodeCount);
-        instances = newInstances(raftAddresses);
-
-        waitAllForLeaderElection(instances, METADATA_RAFT);
-    }
 
     private RaftNode waitAllForLeaderElection(final HazelcastInstance[] instances, final String raftName) {
         assertTrueEventually(new AssertTask() {
@@ -107,155 +80,6 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testTwoNodes_commitSingleEntry() throws ExecutionException, InterruptedException {
-        testCommitSingleEntry(2);
-    }
-
-    @Test
-    public void testThreeNodes_commitSingleEntry() throws ExecutionException, InterruptedException {
-        testCommitSingleEntry(3);
-    }
-
-    private void testCommitSingleEntry(int nodeCount) throws ExecutionException, InterruptedException {
-        raftAddresses = createRaftAddresses(nodeCount);
-        instances = newInstances(raftAddresses);
-
-        RaftNode leader = waitAllForLeaderElection(instances, METADATA_RAFT);
-        final Object val = "val";
-        Future f = leader.replicate(new RaftAddOperation(val));
-
-        f.get();
-
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run()
-                    throws Exception {
-                for (HazelcastInstance instance : instances) {
-                    assertEquals(1, getCommitIndex(getRaftNode(instance, METADATA_RAFT)));
-                    RaftDataService service = getRaftDataService(instance);
-                    assertEquals(val, service.get(1));
-                }
-            }
-        });
-    }
-
-    @Test
-    public void testTwoNodes_noCommitWhenOnlyLeaderAppends() throws ExecutionException, InterruptedException {
-        testNoCommitWhenOnlyLeaderAppends(2);
-    }
-
-    @Test
-    public void testThreeNodes_noCommitWhenOnlyLeaderAppends() throws ExecutionException, InterruptedException {
-        testNoCommitWhenOnlyLeaderAppends(3);
-    }
-
-    private void testNoCommitWhenOnlyLeaderAppends(int nodeCount) throws ExecutionException, InterruptedException {
-        raftAddresses = createRaftAddresses(nodeCount);
-        instances = newInstances(raftAddresses);
-
-        RaftNode leader = waitAllForLeaderElection(instances, METADATA_RAFT);
-        HazelcastInstance leaderInstance = factory.getInstance(leader.getLocalEndpoint().getAddress());
-        dropOperationsFrom(leaderInstance, RaftDataSerializerHook.F_ID, singletonList(APPEND_REQUEST_OP));
-
-        final Object val = "val";
-        Future f = leader.replicate(new RaftAddOperation(val));
-
-        try {
-            f.get(10, TimeUnit.SECONDS);
-            fail();
-        } catch (TimeoutException ignored) {
-        }
-
-        for (HazelcastInstance instance : instances) {
-            assertEquals(0, getCommitIndex(getRaftNode(instance, METADATA_RAFT)));
-        }
-    }
-
-    @Test
-    public void testTwoNodes_commitMultipleEntriesSequentially() throws ExecutionException, InterruptedException {
-        testSequentialEntriesCommit(2);
-    }
-
-    @Test
-    public void testThreeNodes_commitMultipleEntriesSequentially() throws ExecutionException, InterruptedException {
-        testSequentialEntriesCommit(3);
-    }
-
-    private void testSequentialEntriesCommit(int nodeCount) throws ExecutionException, InterruptedException {
-        raftAddresses = createRaftAddresses(nodeCount);
-        instances = newInstances(raftAddresses);
-
-        RaftNode leader = waitAllForLeaderElection(instances, METADATA_RAFT);
-
-        final int entryCount = 100;
-        for (int i = 0; i < entryCount; i++) {
-            final Object val = "val" + i;
-            Future f = leader.replicate(new RaftAddOperation(val));
-            f.get();
-        }
-
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run()
-                    throws Exception {
-                for (HazelcastInstance instance : instances) {
-                    assertEquals(entryCount, getCommitIndex(getRaftNode(instance, METADATA_RAFT)));
-                    RaftDataService service = getRaftDataService(instance);
-                    for (int i = 0; i < entryCount; i++) {
-                        int commitIndex = i + 1;
-                        Object val = "val" + i;
-                        assertEquals(val, service.get(commitIndex));
-                    }
-                }
-            }
-        });
-    }
-
-    @Test
-    public void testTwoNodes_commitMultipleEntries() throws ExecutionException, InterruptedException {
-        testParallelEntriesCommit(2);
-    }
-
-    @Test
-    public void testThreeNodes_commitMultipleEntries() throws ExecutionException, InterruptedException {
-        testParallelEntriesCommit(3);
-    }
-
-    private void testParallelEntriesCommit(int nodeCount) throws ExecutionException, InterruptedException {
-        raftAddresses = createRaftAddresses(nodeCount);
-        instances = newInstances(raftAddresses);
-
-        RaftNode leader = waitAllForLeaderElection(instances, METADATA_RAFT);
-
-        final int entryCount = 100;
-        List<Future> futures = new ArrayList<Future>(entryCount);
-        for (int i = 0; i < entryCount; i++) {
-            final Object val = "val" + i;
-            futures.add(leader.replicate(new RaftAddOperation(val)));
-        }
-
-        for (Future f : futures) {
-            f.get();
-        }
-
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run()
-                    throws Exception {
-                for (HazelcastInstance instance : instances) {
-                    assertEquals(entryCount, getCommitIndex(getRaftNode(instance, METADATA_RAFT)));
-                    RaftDataService service = getRaftDataService(instance);
-                    Set<Object> values = service.values();
-                    for (int i = 0; i < entryCount; i++) {
-                        Object val = "val" + i;
-                        assertTrue(values.contains(val));
-                    }
-                }
-            }
-        });
-    }
-
-    @Test
     public void testLeaderCrash_majorityFollowersGoAheadWithNewLeader() {
         raftAddresses = createRaftAddresses(3);
         instances = newInstances(raftAddresses);
@@ -266,81 +90,6 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
         leaderInstance.getLifecycleService().terminate();
 
         waitAllForLeaderElection(followers, METADATA_RAFT);
-    }
-
-    @Test
-    public void test_slowFollower_catchesLeaderUp() throws ExecutionException, InterruptedException {
-        raftAddresses = createRaftAddresses(3);
-        instances = newInstances(raftAddresses);
-
-        RaftNode leader = waitAllForLeaderElection(instances, METADATA_RAFT);
-        HazelcastInstance leaderInstance = factory.getInstance(leader.getLocalEndpoint().getAddress());
-        HazelcastInstance[] followers = getAllInstancesExcept(instances, leaderInstance);
-        HazelcastInstance slowFollower = followers[0];
-
-        dropOperationsBetween(leaderInstance, slowFollower, RaftDataSerializerHook.F_ID, singletonList(APPEND_REQUEST_OP));
-
-        final int entryCount = 100;
-        for (int i = 0; i < entryCount; i++) {
-            final Object val = "val" + i;
-            Future f = leader.replicate(new RaftAddOperation(val));
-            f.get();
-        }
-
-        assertEquals(0, getCommitIndex(getRaftNode(slowFollower, METADATA_RAFT)));
-
-        resetPacketFiltersFrom(leaderInstance);
-
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() throws Exception {
-                for (HazelcastInstance instance : instances) {
-                    assertEquals(entryCount, getCommitIndex(getRaftNode(instance, METADATA_RAFT)));
-                    RaftDataService service = getRaftDataService(instance);
-                    Set<Object> values = service.values();
-                    for (int i = 0; i < entryCount; i++) {
-                        Object val = "val" + i;
-                        assertTrue(values.contains(val));
-                    }
-                }
-            }
-        });
-    }
-
-    @Test
-    public void test_disruptiveFollower_cannotTakeLeadershipFromLegitimateLeader() throws ExecutionException, InterruptedException {
-        raftAddresses = createRaftAddresses(3);
-        instances = newInstances(raftAddresses);
-
-        final RaftNode leader = waitAllForLeaderElection(instances, METADATA_RAFT);
-        final int leaderTerm = getTerm(leader);
-        HazelcastInstance leaderInstance = factory.getInstance(leader.getLocalEndpoint().getAddress());
-        HazelcastInstance[] followers = getAllInstancesExcept(instances, leaderInstance);
-        final HazelcastInstance disruptiveFollower = followers[0];
-
-        dropOperationsBetween(leaderInstance, disruptiveFollower, RaftDataSerializerHook.F_ID, singletonList(APPEND_REQUEST_OP));
-
-        Future f = leader.replicate(new RaftAddOperation("val"));
-        f.get();
-
-        block(new HazelcastInstance[]{disruptiveFollower}, getAllInstancesExcept(instances, disruptiveFollower));
-
-        final AtomicInteger disruptiveFollowerTerm = new AtomicInteger();
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run()
-                    throws Exception {
-                int followerTerm = getTerm(getRaftNode(disruptiveFollower, METADATA_RAFT));
-                assertTrue(leaderTerm < followerTerm);
-                disruptiveFollowerTerm.set(followerTerm);
-            }
-        });
-
-        unblock(new HazelcastInstance[]{disruptiveFollower}, getAllInstancesExcept(instances, disruptiveFollower));
-
-        RaftNode newLeader = waitAllForLeaderElection(instances, METADATA_RAFT);
-        assertNotEquals(getAddress(disruptiveFollower), newLeader.getLocalEndpoint().getAddress());
-        assertTrue(getTerm(newLeader) > disruptiveFollowerTerm.get());
     }
 
     @Test
@@ -534,10 +283,6 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
                 assertEquals(RaftRole.CANDIDATE, getRole(raftNode));
             }
         }, 10);
-    }
-
-    private RaftDataService getRaftDataService(HazelcastInstance instance) {
-        return getNodeEngineImpl(instance).getService(RaftDataService.SERVICE_NAME);
     }
 
     private void assertLeaderNotEqualsEventually(final RaftNode leader, final HazelcastInstance... instances) {
