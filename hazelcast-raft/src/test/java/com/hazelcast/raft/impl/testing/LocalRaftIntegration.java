@@ -250,6 +250,10 @@ public class LocalRaftIntegration implements RaftIntegration {
         return stripedExecutor;
     }
 
+    boolean isAlive() {
+        return stripedExecutor.isLive();
+    }
+
     private static class EndpointDropEntry {
         final Class messageType;
         final RaftEndpoint endpoint;
