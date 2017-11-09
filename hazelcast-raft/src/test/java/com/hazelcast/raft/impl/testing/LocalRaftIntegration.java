@@ -16,7 +16,10 @@ import com.hazelcast.spi.TaskScheduler;
 import com.hazelcast.spi.impl.executionservice.impl.DelegatingTaskScheduler;
 import com.hazelcast.spi.serialization.SerializationService;
 
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
@@ -41,6 +44,9 @@ public class LocalRaftIntegration implements RaftIntegration {
     private final ExecutorService executorService;
     private final ConcurrentMap<RaftEndpoint, RaftNode> nodes = new ConcurrentHashMap<RaftEndpoint, RaftNode>();
     private final SerializationService serializationService = new DefaultSerializationServiceBuilder().build();
+
+    private final Set<EndpointDropEntry> endpointDropRules = Collections.newSetFromMap(new ConcurrentHashMap<EndpointDropEntry, Boolean>());
+    private final Set<Class> dropAllRules = Collections.newSetFromMap(new ConcurrentHashMap<Class, Boolean>());
 
     public LocalRaftIntegration(RaftEndpoint localEndpoint, Map<String, Object> services,
             ScheduledExecutorService scheduledExecutorService, ExecutorService executorService) {
@@ -105,6 +111,9 @@ public class LocalRaftIntegration implements RaftIntegration {
         if (node == null) {
             return false;
         }
+        if (shouldDrop(request, target)) {
+            return true;
+        }
 
         node.handleVoteRequest(request);
         return true;
@@ -117,6 +126,9 @@ public class LocalRaftIntegration implements RaftIntegration {
         if (node == null) {
             return false;
         }
+        if (shouldDrop(response, target)) {
+            return true;
+        }
 
         node.handleVoteResponse(response);
         return true;
@@ -128,6 +140,9 @@ public class LocalRaftIntegration implements RaftIntegration {
         RaftNode node = nodes.get(target);
         if (node == null) {
             return false;
+        }
+        if (shouldDrop(request, target)) {
+            return true;
         }
 
         request = serializationService.toObject(serializationService.toData(request));
@@ -142,6 +157,9 @@ public class LocalRaftIntegration implements RaftIntegration {
         if (node == null) {
             return false;
         }
+        if (shouldDrop(response, target)) {
+            return true;
+        }
 
         node.handleAppendResponse(response);
         return true;
@@ -154,9 +172,17 @@ public class LocalRaftIntegration implements RaftIntegration {
         if (node == null) {
             return false;
         }
+        if (shouldDrop(response, target)) {
+            return true;
+        }
 
         node.handleAppendResponse(response);
         return true;
+    }
+
+    private boolean shouldDrop(Object message, RaftEndpoint target) {
+        return dropAllRules.contains(message.getClass())
+                || endpointDropRules.contains(new EndpointDropEntry(message.getClass(), target));
     }
 
     @Override
@@ -175,6 +201,65 @@ public class LocalRaftIntegration implements RaftIntegration {
             return operation.getResponse();
         } catch (Throwable t) {
             return t;
+        }
+    }
+
+    void dropMessagesToEndpoint(RaftEndpoint endpoint, Class messageType) {
+        endpointDropRules.add(new EndpointDropEntry(messageType, endpoint));
+    }
+
+    void allowMessagesToEndpoint(RaftEndpoint endpoint, Class messageType) {
+        endpointDropRules.remove(new EndpointDropEntry(messageType, endpoint));
+    }
+
+    void allowAllMessagesToEndpoint(RaftEndpoint endpoint) {
+        Iterator<EndpointDropEntry> iter = endpointDropRules.iterator();
+        while (iter.hasNext()) {
+            EndpointDropEntry entry = iter.next();
+            if (endpoint.equals(entry.endpoint)) {
+                iter.remove();
+            }
+        }
+    }
+
+    void dropMessagesToAll(Class messageType) {
+        dropAllRules.add(messageType);
+    }
+
+    void allowMessagesToAll(Class messageType) {
+        dropAllRules.remove(messageType);
+    }
+
+    void resetAllDropRules() {
+        dropAllRules.clear();
+        endpointDropRules.clear();
+    }
+
+    private static class EndpointDropEntry {
+        final Class messageType;
+        final RaftEndpoint endpoint;
+
+        private EndpointDropEntry(Class messageType, RaftEndpoint endpoint) {
+            this.messageType = messageType;
+            this.endpoint = endpoint;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof EndpointDropEntry)) return false;
+
+            EndpointDropEntry that = (EndpointDropEntry) o;
+            return messageType.equals(that.messageType) && endpoint.equals(that.endpoint);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = messageType.hashCode();
+            result = 31 * result + endpoint.hashCode();
+            return result;
         }
     }
 }
