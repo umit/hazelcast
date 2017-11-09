@@ -15,6 +15,7 @@ import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.spi.TaskScheduler;
 import com.hazelcast.spi.impl.executionservice.impl.DelegatingTaskScheduler;
 import com.hazelcast.spi.serialization.SerializationService;
+import com.hazelcast.util.executor.StripedExecutor;
 
 import java.util.Collections;
 import java.util.Iterator;
@@ -24,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
 import static org.hamcrest.Matchers.anyOf;
@@ -40,20 +42,19 @@ public class LocalRaftIntegration implements RaftIntegration {
 
     private final RaftEndpoint localEndpoint;
     private final Map<String, Object> services;
-    private final ScheduledExecutorService scheduledExecutorService;
-    private final ExecutorService executorService;
+    private final StripedExecutor stripedExecutor;
+    private final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final ConcurrentMap<RaftEndpoint, RaftNode> nodes = new ConcurrentHashMap<RaftEndpoint, RaftNode>();
     private final SerializationService serializationService = new DefaultSerializationServiceBuilder().build();
 
     private final Set<EndpointDropEntry> endpointDropRules = Collections.newSetFromMap(new ConcurrentHashMap<EndpointDropEntry, Boolean>());
     private final Set<Class> dropAllRules = Collections.newSetFromMap(new ConcurrentHashMap<Class, Boolean>());
 
-    public LocalRaftIntegration(RaftEndpoint localEndpoint, Map<String, Object> services,
-            ScheduledExecutorService scheduledExecutorService, ExecutorService executorService) {
+    public LocalRaftIntegration(RaftEndpoint localEndpoint, Map<String, Object> services) {
         this.localEndpoint = localEndpoint;
         this.services = services;
-        this.scheduledExecutorService = scheduledExecutorService;
-        this.executorService = executorService;
+        this.stripedExecutor = new StripedExecutor(Logger.getLogger("executor"), localEndpoint.getUid(), 1, Integer.MAX_VALUE);
     }
 
     public void discoverNode(RaftNode node) {
@@ -73,12 +74,12 @@ public class LocalRaftIntegration implements RaftIntegration {
 
     @Override
     public TaskScheduler getTaskScheduler() {
-        return new DelegatingTaskScheduler(scheduledExecutorService, executorService);
+        return new DelegatingTaskScheduler(scheduledExecutor, executor);
     }
 
     @Override
     public Executor getExecutor() {
-        return executorService;
+        return executor;
     }
 
     @Override
@@ -237,6 +238,16 @@ public class LocalRaftIntegration implements RaftIntegration {
 
     public <T> T getService(String serviceName) {
         return (T) services.get(serviceName);
+    }
+
+    void shutdown() {
+        stripedExecutor.shutdown();
+        scheduledExecutor.shutdown();
+        executor.shutdown();
+    }
+
+    StripedExecutor getStripedExecutor() {
+        return stripedExecutor;
     }
 
     private static class EndpointDropEntry {
