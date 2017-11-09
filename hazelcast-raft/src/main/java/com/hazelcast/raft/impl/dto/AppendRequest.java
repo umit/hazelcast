@@ -59,6 +59,10 @@ public class AppendRequest implements IdentifiedDataSerializable {
         return entries;
     }
 
+    public int entryCount() {
+        return entries.length;
+    }
+
     @Override
     public int getFactoryId() {
         return RaftDataSerializerHook.F_ID;

@@ -1,6 +1,7 @@
 package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.raft.NotLeaderException;
 import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.impl.LogEntry;
 import com.hazelcast.raft.impl.RaftNode;
@@ -28,10 +29,9 @@ public class ReplicateTask implements StripedRunnable {
 
     @Override
     public void run() {
-        // TODO: debug
         RaftState state = raftNode.state();
         if (state.role() != RaftRole.LEADER) {
-            resultFuture.setResult(new IllegalStateException("We are not the LEADER!"));
+            resultFuture.setResult(new NotLeaderException());
             return;
         }
 

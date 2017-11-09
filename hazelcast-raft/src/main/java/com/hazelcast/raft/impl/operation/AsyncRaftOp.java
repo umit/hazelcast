@@ -24,8 +24,6 @@ public abstract class AsyncRaftOp extends Operation implements IdentifiedDataSer
         this.name = name;
     }
 
-    public abstract IdentifiedDataSerializable getPayload();
-
     @Override
     public final boolean returnsResponse() {
         return false;

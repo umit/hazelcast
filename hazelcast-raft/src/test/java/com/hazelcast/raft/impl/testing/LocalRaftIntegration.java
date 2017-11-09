@@ -3,9 +3,7 @@ package com.hazelcast.raft.impl.testing;
 import com.hazelcast.internal.serialization.impl.DefaultSerializationServiceBuilder;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
-import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftOperation;
-import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.raft.impl.RaftNode;
@@ -14,8 +12,6 @@ import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
-import com.hazelcast.raft.impl.operation.AsyncRaftOp;
-import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.TaskScheduler;
 import com.hazelcast.spi.impl.executionservice.impl.DelegatingTaskScheduler;
 import com.hazelcast.spi.serialization.SerializationService;
@@ -27,12 +23,10 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
-import static com.hazelcast.test.HazelcastTestSupport.assertInstanceOf;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
 import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
 /**
@@ -77,7 +71,7 @@ public class LocalRaftIntegration implements RaftIntegration {
     }
 
     @Override
-    public Executor getExecutor(String name) {
+    public Executor getExecutor() {
         return executorService;
     }
 
@@ -105,38 +99,63 @@ public class LocalRaftIntegration implements RaftIntegration {
     }
 
     @Override
-    public boolean send(Operation operation, RaftEndpoint target) {
+    public boolean send(VoteRequest request, RaftEndpoint target) {
         assertNotEquals(localEndpoint, target);
         RaftNode node = nodes.get(target);
         if (node == null) {
             return false;
         }
 
-        assertInstanceOf(AsyncRaftOp.class, operation);
+        node.handleVoteRequest(request);
+        return true;
+    }
 
-        IdentifiedDataSerializable payload = ((AsyncRaftOp) operation).getPayload();
-        assertNotNull(payload);
-        payload = serializationService.toObject(serializationService.toData(payload));
-
-        switch (payload.getId()) {
-            case RaftDataSerializerHook.VOTE_REQUEST:
-                node.handleVoteRequest((VoteRequest) payload);
-                break;
-            case RaftDataSerializerHook.VOTE_RESPONSE:
-                node.handleVoteResponse((VoteResponse) payload);
-                break;
-            case RaftDataSerializerHook.APPEND_REQUEST:
-                node.handleAppendRequest((AppendRequest) payload);
-                break;
-            case RaftDataSerializerHook.APPEND_SUCCESS_RESPONSE:
-                node.handleAppendResponse((AppendSuccessResponse) payload);
-                break;
-            case RaftDataSerializerHook.APPEND_FAILURE_RESPONSE:
-                node.handleAppendResponse((AppendFailureResponse) payload);
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown payload: " + payload);
+    @Override
+    public boolean send(VoteResponse response, RaftEndpoint target) {
+        assertNotEquals(localEndpoint, target);
+        RaftNode node = nodes.get(target);
+        if (node == null) {
+            return false;
         }
+
+        node.handleVoteResponse(response);
+        return true;
+    }
+
+    @Override
+    public boolean send(AppendRequest request, RaftEndpoint target) {
+        assertNotEquals(localEndpoint, target);
+        RaftNode node = nodes.get(target);
+        if (node == null) {
+            return false;
+        }
+
+        request = serializationService.toObject(serializationService.toData(request));
+        node.handleAppendRequest(request);
+        return true;
+    }
+
+    @Override
+    public boolean send(AppendSuccessResponse response, RaftEndpoint target) {
+        assertNotEquals(localEndpoint, target);
+        RaftNode node = nodes.get(target);
+        if (node == null) {
+            return false;
+        }
+
+        node.handleAppendResponse(response);
+        return true;
+    }
+
+    @Override
+    public boolean send(AppendFailureResponse response, RaftEndpoint target) {
+        assertNotEquals(localEndpoint, target);
+        RaftNode node = nodes.get(target);
+        if (node == null) {
+            return false;
+        }
+
+        node.handleAppendResponse(response);
         return true;
     }
 

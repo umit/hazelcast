@@ -4,10 +4,10 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftLog;
 import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.RaftState;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
-import com.hazelcast.raft.impl.operation.VoteResponseOp;
 import com.hazelcast.util.executor.StripedRunnable;
 
 /**
@@ -39,22 +39,25 @@ public class VoteRequestHandlerTask implements StripedRunnable {
         if (state.term() > req.term()) {
             logger.warning("Rejecting " + req + " since current term: " + state.term() + " is greater than request term: "
                     + req.term());
-            VoteResponse resp = new VoteResponse(localEndpoint, state.term(), false);
-            raftNode.send(new VoteResponseOp(state.name(), resp), req.candidate());
+            raftNode.send(new VoteResponse(localEndpoint, state.term(), false), req.candidate());
             return;
         }
 
         if (state.term() < req.term()) {
             // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
-            logger.warning("Demoting to FOLLOWER after " + req + " since current term: " + state.term()
-                    + " is lower than request term: " + req.term());
+            if (state.role() != RaftRole.FOLLOWER) {
+                logger.warning("Demoting to FOLLOWER after " + req + " since current term: " + state.term()
+                        + " is lower than request term: " + req.term());
+            } else {
+                logger.warning("Term of " + req + " is bigger than current term: " + state.term());
+            }
+
             state.toFollower(req.term());
         }
 
         if (state.leader() != null && !req.candidate().equals(state.leader())) {
             logger.warning("Rejecting " + req + " since we have a leader " + state.leader());
-            VoteResponse resp = new VoteResponse(localEndpoint, req.term(), false);
-            raftNode.send(new VoteResponseOp(state.name(), resp), req.candidate());
+            raftNode.send(new VoteResponse(localEndpoint, req.term(), false), req.candidate());
             return;
         }
 
@@ -64,8 +67,7 @@ public class VoteRequestHandlerTask implements StripedRunnable {
             if (granted) {
                 logger.warning("Duplicate " + req);
             }
-            VoteResponse resp = new VoteResponse(localEndpoint, req.term(), granted);
-            raftNode.send(new VoteResponseOp(state.name(), resp), req.candidate());
+            raftNode.send(new VoteResponse(localEndpoint, req.term(), granted), req.candidate());
             return;
         }
 
@@ -73,23 +75,20 @@ public class VoteRequestHandlerTask implements StripedRunnable {
         if (raftLog.lastLogTerm() > req.lastLogTerm()) {
             logger.warning("Rejecting " + req + " since our last log term: " + raftLog.lastLogTerm()
                     + " is greater than request last log term: " + req.lastLogTerm());
-            VoteResponse resp = new VoteResponse(localEndpoint, req.term(), false);
-            raftNode.send(new VoteResponseOp(state.name(), resp), req.candidate());
+            raftNode.send(new VoteResponse(localEndpoint, req.term(), false), req.candidate());
             return;
         }
 
         if (raftLog.lastLogTerm() == req.lastLogTerm() && raftLog.lastLogIndex() > req.lastLogIndex()) {
             logger.warning("Rejecting " + req + " since our last log index: " + raftLog.lastLogIndex() + " is greater");
-            VoteResponse resp = new VoteResponse(localEndpoint, req.term(), false);
-            raftNode.send(new VoteResponseOp(state.name(), resp), req.candidate());
+            raftNode.send(new VoteResponse(localEndpoint, req.term(), false), req.candidate());
             return;
         }
 
         logger.warning("Granted vote for " + req);
         state.persistVote(req.term(), req.candidate());
 
-        VoteResponse resp = new VoteResponse(localEndpoint, req.term(), true);
-        raftNode.send(new VoteResponseOp(state.name(), resp), req.candidate());
+        raftNode.send(new VoteResponse(localEndpoint, req.term(), true), req.candidate());
     }
 
     @Override

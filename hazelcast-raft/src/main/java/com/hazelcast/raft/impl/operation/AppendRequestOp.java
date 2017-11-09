@@ -31,11 +31,6 @@ public class AppendRequestOp extends AsyncRaftOp {
     }
 
     @Override
-    public AppendRequest getPayload() {
-        return appendRequest;
-    }
-
-    @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeObject(appendRequest);
