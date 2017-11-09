@@ -182,10 +182,12 @@ public class RaftNode {
         // Reject logs we've applied already
         int commitIndex = state.commitIndex();
         int lastApplied = state.lastApplied();
-        if (commitIndex <= lastApplied) {
-            logger.warning("Skipping application of stale log commit index: " + commitIndex + ", last applied: " + lastApplied);
+
+        if (commitIndex == lastApplied) {
             return;
         }
+
+        assert commitIndex > lastApplied : "commit index: " + commitIndex + " cannot be smaller than last applied: " + lastApplied;
 
         // Apply all the preceding logs
         RaftLog raftLog = state.log();
