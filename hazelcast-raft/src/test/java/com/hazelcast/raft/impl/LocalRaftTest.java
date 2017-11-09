@@ -18,7 +18,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.Future;
 
+import static com.hazelcast.raft.impl.RaftUtil.getCommitIndex;
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
+import static com.hazelcast.raft.impl.service.RaftDataService.SERVICE_NAME;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -44,8 +46,16 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void startGroup() throws Exception {
-        int nodeCount = 5;
+    public void testLeaderElection_twoNodes() throws Exception {
+        testLeaderElection(2);
+    }
+
+    @Test
+    public void testLeaderElection_threeNodes() throws Exception {
+        testLeaderElection(3);
+    }
+
+    private void testLeaderElection(int nodeCount) throws Exception {
         group = new RaftGroup(nodeCount);
         group.start();
         group.waitUntilLeaderElected();
@@ -61,18 +71,37 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void startGroup_withService() throws Exception {
-        int nodeCount = 5;
-        group = new RaftGroup(nodeCount, Collections.<String, Class>singletonMap(RaftDataService.SERVICE_NAME, RaftDataService.class));
+    public void testSingleCommitEntry_twoNodes() throws Exception {
+        testSingleCommitEntry(2);
+    }
+
+    @Test
+    public void testSingleCommitEntry_threeNodes() throws Exception {
+        testSingleCommitEntry(3);
+    }
+
+    private void testSingleCommitEntry(final int nodeCount) throws Exception {
+        group = new RaftGroup(nodeCount, Collections.<String, Class>singletonMap(SERVICE_NAME, RaftDataService.class));
         group.start();
         group.waitUntilLeaderElected();
 
-        RaftNode leaderNode = group.getLeaderNode();
+        final Object val = "val";
+        Future f = group.getLeaderNode().replicate(new RaftAddOperation(val));
+        Object result = f.get();
+        assertEquals(result, val);
 
-        String value = "value";
-        Future future = leaderNode.replicate(new RaftAddOperation(value));
-
-        assertEquals(value, future.get());
+        final int commitIndex = 1;
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() throws Exception {
+                for (int i = 0; i < nodeCount; i++) {
+                    RaftNode node = group.getNode(i);
+                    assertEquals(commitIndex, getCommitIndex(node));
+                    RaftDataService service = group.getIntegration(i).getService(SERVICE_NAME);
+                    assertEquals(val, service.get(commitIndex));
+                }
+            }
+        });
     }
 
     @Test
