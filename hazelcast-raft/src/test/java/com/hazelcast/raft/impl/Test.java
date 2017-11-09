@@ -6,6 +6,7 @@ import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftMember;
+import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.spi.properties.GroupProperty;
 
 import java.util.concurrent.ExecutionException;

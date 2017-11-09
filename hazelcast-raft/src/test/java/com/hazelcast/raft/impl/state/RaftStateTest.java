@@ -1,8 +1,13 @@
-package com.hazelcast.raft.impl;
+package com.hazelcast.raft.impl.state;
 
+import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.impl.RaftRole;
+import com.hazelcast.raft.impl.log.LogEntry;
+import com.hazelcast.raft.impl.log.RaftLog;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -57,7 +62,7 @@ public class RaftStateTest {
         assertEquals(remoteMembers, state.remoteMembers());
 
         assertEquals(0, state.term());
-        assertEquals(RaftRole.FOLLOWER, state.role());
+        Assert.assertEquals(RaftRole.FOLLOWER, state.role());
         assertNull(state.leader());
         assertEquals(0, state.commitIndex());
         assertEquals(0, state.lastApplied());

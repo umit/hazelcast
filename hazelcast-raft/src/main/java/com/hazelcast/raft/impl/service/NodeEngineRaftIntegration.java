@@ -1,4 +1,4 @@
-package com.hazelcast.raft.impl;
+package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftOperation;
@@ -12,6 +12,8 @@ import com.hazelcast.raft.impl.operation.AppendRequestOp;
 import com.hazelcast.raft.impl.operation.AppendSuccessResponseOp;
 import com.hazelcast.raft.impl.operation.VoteRequestOp;
 import com.hazelcast.raft.impl.operation.VoteResponseOp;
+import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationAccessor;
@@ -25,13 +27,13 @@ import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
  * TODO: Javadoc Pending...
  *
  */
-public final class NodeEngineRaftIntegration implements RaftIntegration {
+final class NodeEngineRaftIntegration implements RaftIntegration {
 
     private final NodeEngine nodeEngine;
 
     private final String raftName;
 
-    public NodeEngineRaftIntegration(NodeEngine nodeEngine, String raftName) {
+    NodeEngineRaftIntegration(NodeEngine nodeEngine, String raftName) {
         this.nodeEngine = nodeEngine;
         this.raftName = raftName;
     }

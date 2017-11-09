@@ -4,7 +4,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.impl.dto.AppendRequest;
-import com.hazelcast.raft.impl.RaftService;
+import com.hazelcast.raft.impl.service.RaftService;
 
 import java.io.IOException;
 

@@ -14,6 +14,7 @@ import com.hazelcast.raft.impl.operation.AppendRequestOp;
 import com.hazelcast.raft.impl.operation.AppendSuccessResponseOp;
 import com.hazelcast.raft.impl.operation.VoteRequestOp;
 import com.hazelcast.raft.impl.operation.VoteResponseOp;
+import com.hazelcast.raft.impl.log.LogEntry;
 
 public final class RaftDataSerializerHook implements DataSerializerHook {
 
