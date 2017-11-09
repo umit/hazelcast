@@ -3,7 +3,7 @@ package com.hazelcast.raft.impl.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
-import com.hazelcast.raft.impl.RaftService;
+import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 
 import java.io.IOException;

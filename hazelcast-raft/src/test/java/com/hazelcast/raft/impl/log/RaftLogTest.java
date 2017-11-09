@@ -1,8 +1,9 @@
-package com.hazelcast.raft.impl;
+package com.hazelcast.raft.impl.log;
 
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -12,11 +13,6 @@ import org.junit.runner.RunWith;
 
 import java.util.Arrays;
 import java.util.List;
-
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
@@ -34,8 +30,8 @@ public class RaftLogTest {
 
     @Test
     public void test_initialState() throws Exception {
-        assertEquals(0, log.lastLogTerm());
-        assertEquals(0, log.lastLogIndex());
+        Assert.assertEquals(0, log.lastLogTerm());
+        Assert.assertEquals(0, log.lastLogIndex());
     }
 
     @Test
@@ -45,8 +41,8 @@ public class RaftLogTest {
         LogEntry last = new LogEntry(1, 3, null);
         log.appendEntries(last);
 
-        assertEquals(last.term(), log.lastLogTerm());
-        assertEquals(last.index(), log.lastLogIndex());
+        Assert.assertEquals(last.term(), log.lastLogTerm());
+        Assert.assertEquals(last.index(), log.lastLogIndex());
     }
 
     @Test
@@ -60,12 +56,12 @@ public class RaftLogTest {
         LogEntry last = new LogEntry(2, 4, null);
         log.appendEntries(last);
 
-        assertEquals(last.term(), log.lastLogTerm());
-        assertEquals(last.index(), log.lastLogIndex());
+        Assert.assertEquals(last.term(), log.lastLogTerm());
+        Assert.assertEquals(last.index(), log.lastLogIndex());
 
         LogEntry lastLogEntry = log.lastLogEntry();
-        assertEquals(last.term(), lastLogEntry.term());
-        assertEquals(last.index(), lastLogEntry.index());
+        Assert.assertEquals(last.term(), lastLogEntry.term());
+        Assert.assertEquals(last.index(), lastLogEntry.index());
     }
 
     @Test
@@ -131,14 +127,14 @@ public class RaftLogTest {
 
         for (int i = 1; i <= log.lastLogIndex(); i++) {
             LogEntry entry = log.getEntry(i);
-            assertEquals(1, entry.term());
-            assertEquals(i, entry.index());
+            Assert.assertEquals(1, entry.term());
+            Assert.assertEquals(i, entry.index());
         }
     }
 
     @Test
     public void getEntry_withUnknownIndex() throws Exception {
-        assertNull(log.getEntry(1));
+        Assert.assertNull(log.getEntry(1));
     }
 
     @Test
@@ -157,13 +153,13 @@ public class RaftLogTest {
         log.appendEntries(entries);
 
         LogEntry[] result = log.getEntriesBetween(1, 3);
-        assertArrayEquals(entries, result);
+        Assert.assertArrayEquals(entries, result);
 
         result = log.getEntriesBetween(1, 2);
-        assertArrayEquals(Arrays.copyOfRange(entries, 0, 2), result);
+        Assert.assertArrayEquals(Arrays.copyOfRange(entries, 0, 2), result);
 
         result = log.getEntriesBetween(2, 3);
-        assertArrayEquals(Arrays.copyOfRange(entries, 1, 3), result);
+        Assert.assertArrayEquals(Arrays.copyOfRange(entries, 1, 3), result);
     }
 
     @Test
@@ -176,7 +172,7 @@ public class RaftLogTest {
         log.appendEntries(entries);
 
         LogEntry[] result = log.getEntriesBetween(4, 10);
-        assertArrayEquals(new LogEntry[0], result);
+        Assert.assertArrayEquals(new LogEntry[0], result);
     }
 
     @Test
@@ -190,13 +186,13 @@ public class RaftLogTest {
         log.appendEntries(entries);
 
         List<LogEntry> truncated = log.truncateEntriesFrom(3);
-        assertEquals(2, truncated.size());
-        assertArrayEquals(Arrays.copyOfRange(entries, 2, 4), truncated.toArray());
+        Assert.assertEquals(2, truncated.size());
+        Assert.assertArrayEquals(Arrays.copyOfRange(entries, 2, 4), truncated.toArray());
 
         for (int i = 1; i <= 2; i++) {
-            assertEquals(entries[i - 1], log.getEntry(i));
+            Assert.assertEquals(entries[i - 1], log.getEntry(i));
         }
-        assertNull(log.getEntry(3));
+        Assert.assertNull(log.getEntry(3));
     }
 
     @Test
@@ -209,10 +205,10 @@ public class RaftLogTest {
         log.appendEntries(entries);
 
         List<LogEntry> truncated = log.truncateEntriesFrom(4);
-        assertTrue(truncated.isEmpty());
+        Assert.assertTrue(truncated.isEmpty());
 
         for (int i = 1; i <= entries.length; i++) {
-            assertEquals(entries[i - 1], log.getEntry(i));
+            Assert.assertEquals(entries[i - 1], log.getEntry(i));
         }
     }
 

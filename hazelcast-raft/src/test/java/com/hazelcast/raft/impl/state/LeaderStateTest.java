@@ -1,5 +1,7 @@
-package com.hazelcast.raft.impl;
+package com.hazelcast.raft.impl.state;
 
+import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
