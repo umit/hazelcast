@@ -1,6 +1,7 @@
 package com.hazelcast.raft.impl;
 
 import com.hazelcast.raft.LeaderDemotedException;
+import com.hazelcast.raft.NotLeaderException;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
@@ -118,6 +119,17 @@ public class LocalRaftTest extends HazelcastTestSupport {
         });
     }
 
+    @Test(expected = NotLeaderException.class)
+    public void test_followerCannotReplicate() throws ExecutionException, InterruptedException {
+        group = newGroupWithService(3);
+        group.start();
+        RaftNode leader = group.waitUntilLeaderElected();
+        RaftNode[] followers = group.getNodesExcept(leader.getLocalEndpoint());
+
+        Future f = followers[0].replicate(new RaftAddOperation("val"));
+        f.get();
+    }
+
     @Test
     public void testTwoNodes_noCommitWhenOnlyLeaderAppends() throws ExecutionException, InterruptedException {
         testNoCommitWhenOnlyLeaderAppends(2);
@@ -191,16 +203,16 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testTwoNodes_replicateEntriesInParallel() throws ExecutionException, InterruptedException {
-        testReplicateEntriesInParallel(2);
+    public void testTwoNodes_replicateEntriesConcurrently() throws ExecutionException, InterruptedException {
+        testReplicateEntriesConcurrently(2);
     }
 
     @Test
-    public void testThreeNodes_replicateEntriesInParallel() throws ExecutionException, InterruptedException {
-        testReplicateEntriesInParallel(3);
+    public void testThreeNodes_replicateEntriesConcurrently() throws ExecutionException, InterruptedException {
+        testReplicateEntriesConcurrently(3);
     }
 
-    private void testReplicateEntriesInParallel(int nodeCount) throws ExecutionException, InterruptedException {
+    private void testReplicateEntriesConcurrently(int nodeCount) throws ExecutionException, InterruptedException {
         group = newGroupWithService(nodeCount);
         group.start();
         RaftNode leader = group.waitUntilLeaderElected();
@@ -227,6 +239,73 @@ public class LocalRaftTest extends HazelcastTestSupport {
                     for (int i = 0; i < entryCount; i++) {
                         Object val = "val" + i;
                         assertTrue(values.contains(val));
+                    }
+                }
+            }
+        });
+    }
+
+    @Test
+    public void testFourNodes_replicateEntriesInParallel() throws ExecutionException, InterruptedException {
+        testReplicateEntriesInParallel(4);
+    }
+
+    @Test
+    public void testFiveNodes_replicateEntriesInParallel() throws ExecutionException, InterruptedException {
+        testReplicateEntriesInParallel(5);
+    }
+
+    private void testReplicateEntriesInParallel(int nodeCount) throws ExecutionException, InterruptedException {
+        group = newGroupWithService(nodeCount);
+        group.start();
+        final RaftNode leader = group.waitUntilLeaderElected();
+
+        int threadCount = 10;
+        final int opsPerThread = 20;
+        Thread[] threads = new Thread[threadCount];
+        for (int i = 0; i < threadCount; i++) {
+            final int start = i * opsPerThread;
+            threads[i] = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    final List<Future> futures = new ArrayList<Future>();
+                    for (int j = start; j < start + opsPerThread; j++) {
+                        futures.add(leader.replicate(new RaftAddOperation(j)));
+                    }
+
+                    for (Future f : futures) {
+                        try {
+                            f.get();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        } catch (ExecutionException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            });
+        }
+
+        for (Thread thread : threads) {
+            thread.start();
+        }
+
+        for (Thread thread : threads) {
+            thread.join();
+        }
+
+        final int entryCount = threadCount * opsPerThread;
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run()
+                    throws Exception {
+                for (RaftNode raftNode : group.getNodes()) {
+                    assertEquals(entryCount, getCommitIndex(raftNode));
+                    RaftDataService service = group.getService(raftNode, RaftDataService.SERVICE_NAME);
+                    Set<Object> values = service.values();
+                    for (int i = 0; i < entryCount; i++) {
+                        assertTrue(values.contains(i));
                     }
                 }
             }
@@ -307,7 +386,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
     public void testTerminateFollower() throws Exception {
         group = newGroupWithService(3);
         group.start();
-        group.waitUntilLeaderElected();
+        RaftNode leaderNode = group.waitUntilLeaderElected();
 
         int leaderIndex = group.getLeaderIndex();
         for (int i = 0; i < group.size(); i++) {
@@ -318,7 +397,6 @@ public class LocalRaftTest extends HazelcastTestSupport {
         }
 
         String value = "value";
-        RaftNode leaderNode = group.getLeaderNode();
         Future future = leaderNode.replicate(new RaftAddOperation(value));
         assertEquals(value, future.get());
     }
@@ -327,26 +405,27 @@ public class LocalRaftTest extends HazelcastTestSupport {
     public void testTerminateLeader() throws Exception {
         group = newGroupWithService(3);
         group.start();
-        group.waitUntilLeaderElected();
 
-        final RaftEndpoint leaderEndpoint = group.getLeaderEndpoint();
-        final int leaderIndex = group.getLeaderIndex();
-        group.terminateNode(leaderIndex);
+        final RaftNode leaderNode = group.waitUntilLeaderElected();
+        final RaftNode[] followers = group.getNodesExcept(leaderNode.getLocalEndpoint());
+        int leaderTerm = getTerm(leaderNode);
+
+        group.terminateNode(leaderNode.getLocalEndpoint());
 
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
-                for (int i = 0; i < group.size(); i++) {
-                    if (i != leaderIndex) {
-                        assertNotEquals(leaderEndpoint, getLeaderEndpoint(group.getNode(i)));
-                    }
+                for (RaftNode raftNode : followers) {
+                    assertNotEquals(leaderNode.getLocalEndpoint(), getLeaderEndpoint(raftNode));
                 }
             }
         });
 
+        RaftNode newLeader = group.waitUntilLeaderElected();
+        assertTrue(getTerm(newLeader) > leaderTerm);
+
         String value = "value";
-        RaftNode leaderNode = group.getLeaderNode();
-        Future future = leaderNode.replicate(new RaftAddOperation(value));
+        Future future = newLeader.replicate(new RaftAddOperation(value));
         assertEquals(value, future.get());
     }
 
