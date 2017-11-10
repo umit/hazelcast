@@ -61,12 +61,12 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testLeaderElection_twoNodes() throws Exception {
+    public void when_twoNodeCluster_then_leaderIsElected() throws Exception {
         testLeaderElection(2);
     }
 
     @Test
-    public void testLeaderElection_threeNodes() throws Exception {
+    public void when_threeNodeCluster_then_leaderIsElected() throws Exception {
         testLeaderElection(3);
     }
 
@@ -86,12 +86,12 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testSingleCommitEntry_twoNodes() throws Exception {
+    public void when_twoNodeCluster_then_singleEntryCommitted() throws Exception {
         testSingleCommitEntry(2);
     }
 
     @Test
-    public void testSingleCommitEntry_threeNodes() throws Exception {
+    public void when_threeNodeCluster_then_singleEntryCommitted() throws Exception {
         testSingleCommitEntry(3);
     }
 
@@ -120,7 +120,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test(expected = NotLeaderException.class)
-    public void test_followerCannotReplicate() throws ExecutionException, InterruptedException {
+    public void when_followerAttemptsToReplicate_then_itFails() throws ExecutionException, InterruptedException {
         group = newGroupWithService(3);
         group.start();
         RaftNode leader = group.waitUntilLeaderElected();
@@ -131,12 +131,12 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testTwoNodes_noCommitWhenOnlyLeaderAppends() throws ExecutionException, InterruptedException {
+    public void when_twoNodeCluster_then_leaderCannotCommitWithOnlyLocalAppend() throws ExecutionException, InterruptedException {
         testNoCommitWhenOnlyLeaderAppends(2);
     }
 
     @Test
-    public void testThreeNodes_noCommitWhenOnlyLeaderAppends() throws ExecutionException, InterruptedException {
+    public void when_threeNodeCluster_then_leaderCannotCommitWithOnlyLocalAppend() throws ExecutionException, InterruptedException {
         testNoCommitWhenOnlyLeaderAppends(3);
     }
 
@@ -148,8 +148,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
 
         group.dropMessagesToAll(leader.getLocalEndpoint(), AppendRequest.class);
 
-        final Object val = "val";
-        Future f = leader.replicate(new RaftAddOperation(val));
+        Future f = leader.replicate(new RaftAddOperation("val"));
 
         try {
             f.get(10, TimeUnit.SECONDS);
@@ -158,18 +157,50 @@ public class LocalRaftTest extends HazelcastTestSupport {
         }
 
         for (RaftNode raftNode : group.getNodes()) {
-            assertEquals(0, RaftUtil.getCommitIndex(raftNode));
+            assertEquals(0, getCommitIndex(raftNode));
         }
     }
 
     @Test
-    public void testTwoNodes_replicateEntriesSequentially() throws ExecutionException, InterruptedException {
-        testReplicateEntriesSequentially(2);
+    public void when_leaderAppendsToMinority_then_itCannotCommit() throws ExecutionException, InterruptedException {
+        group = newGroupWithService(5);
+        group.start();
+        final RaftNode leader = group.waitUntilLeaderElected();
+        final RaftNode[] followers = group.getNodesExcept(leader.getLocalEndpoint());
+
+        for (int i = 1; i < followers.length; i++) {
+            group.dropMessagesToEndpoint(leader.getLocalEndpoint(), followers[i].getLocalEndpoint(), AppendRequest.class);
+        }
+
+        Future f = leader.replicate(new RaftAddOperation("val"));
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() throws Exception {
+                assertEquals(1, getLastLogEntry(leader).index());
+                assertEquals(1, getLastLogEntry(followers[0]).index());
+            }
+        });
+
+        try {
+            f.get(10, TimeUnit.SECONDS);
+            fail();
+        } catch (TimeoutException ignored) {
+        }
+
+        for (RaftNode raftNode : group.getNodes()) {
+            assertEquals(0, getCommitIndex(raftNode));
+        }
     }
 
     @Test
-    public void testThreeNodes_replicateEntriesSequentially() throws ExecutionException, InterruptedException {
-        testReplicateEntriesSequentially(3);
+    public void when_fourNodeCluster_then_leaderReplicaEntriesSequentially() throws ExecutionException, InterruptedException {
+        testReplicateEntriesSequentially(4);
+    }
+
+    @Test
+    public void when_fiveNodeCluster_then_leaderReplicaEntriesSequentially() throws ExecutionException, InterruptedException {
+        testReplicateEntriesSequentially(5);
     }
 
 
@@ -203,13 +234,13 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testTwoNodes_replicateEntriesConcurrently() throws ExecutionException, InterruptedException {
-        testReplicateEntriesConcurrently(2);
+    public void when_fourNodeCluster_then_leaderReplicatesEntriesConcurrently() throws ExecutionException, InterruptedException {
+        testReplicateEntriesConcurrently(4);
     }
 
     @Test
-    public void testThreeNodes_replicateEntriesConcurrently() throws ExecutionException, InterruptedException {
-        testReplicateEntriesConcurrently(3);
+    public void when_fiveNodeCluster_then_leaderReplicatesEntriesConcurrently() throws ExecutionException, InterruptedException {
+        testReplicateEntriesConcurrently(5);
     }
 
     private void testReplicateEntriesConcurrently(int nodeCount) throws ExecutionException, InterruptedException {
@@ -246,12 +277,12 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testFourNodes_replicateEntriesInParallel() throws ExecutionException, InterruptedException {
+    public void when_fourNodeCluster_then_entriesAreSubmittedInParallel() throws ExecutionException, InterruptedException {
         testReplicateEntriesInParallel(4);
     }
 
     @Test
-    public void testFiveNodes_replicateEntriesInParallel() throws ExecutionException, InterruptedException {
+    public void when_fiveNodeCluster_then_entriesAreSubmittedInParallel() throws ExecutionException, InterruptedException {
         testReplicateEntriesInParallel(5);
     }
 
@@ -313,7 +344,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void test_slowFollower_catchesLeaderUp() throws ExecutionException, InterruptedException {
+    public void when_followerSlowsDown_then_itCatchesLeaderEventually() throws ExecutionException, InterruptedException {
         group = newGroupWithService(3);
         group.start();
         RaftNode leader = group.waitUntilLeaderElected();
@@ -349,7 +380,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void test_disruptiveFollower_cannotTakeLeadershipFromLegitimateLeader() throws ExecutionException, InterruptedException {
+    public void when_disruptiveFollowerStartsElection_then_itCannotTakeOverLeadershipFromLegitimateLeader() throws ExecutionException, InterruptedException {
         group = newGroupWithService(3);
         group.start();
         RaftNode leader = group.waitUntilLeaderElected();
@@ -383,7 +414,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
 
 
     @Test
-    public void testTerminateFollower() throws Exception {
+    public void when_followerTerminatesInMinority_then_clusterRemainsAvailable() throws Exception {
         group = newGroupWithService(3);
         group.start();
         RaftNode leaderNode = group.waitUntilLeaderElected();
@@ -402,7 +433,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testTerminateLeader() throws Exception {
+    public void when_leaderTerminatesInMinority_then_clusterRemainsAvailable() throws Exception {
         group = newGroupWithService(3);
         group.start();
 
@@ -430,7 +461,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void split_withLeaderOnMajority_AndMergeBack() throws Exception {
+    public void when_leaderStaysInMajorityDuringSplit_thenItMergesBackSuccessfully() throws Exception {
         group = new RaftGroup(5);
         group.start();
         group.waitUntilLeaderElected();
@@ -452,7 +483,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void split_withLeaderOnMinority_AndMergeBack() throws Exception {
+    public void when_leaderStaysInMinorityDuringSplit_thenItMergesBackSuccessfully() throws Exception {
         int nodeCount = 5;
         group = new RaftGroup(nodeCount);
         group.start();
@@ -481,7 +512,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testNextLeader_containsLongestLogOfMajority() throws Exception {
+    public void when_leaderCrashes_then_theFollowerWithLongestLogBecomesLeader() throws Exception {
         group = newGroupWithService(4);
         group.start();
 
@@ -552,7 +583,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testNextLeader_commitsLogEntryAppendedToMajorityByPreviousLeader() throws Exception {
+    public void when_followerBecomesLeaderWithUncommittedEntries_then_thoseEntriesAreCommittedWithANewEntryOfCurrentTerm() throws Exception {
         group = newGroupWithService(3);
         group.start();
 
@@ -628,7 +659,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testNextLeader_mayNotContainLongestLogIfLongestLogIsNotMajority() throws Exception {
+    public void when_leaderCrashes_then_theFollowerWithLongestLogMayNotBecomeLeaderIfItsLogIsNotMajority() throws Exception {
         group = newGroupWithService(5);
         group.start();
 
@@ -722,7 +753,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void test_isolatedLeader_cannotCommitEntries() throws ExecutionException, InterruptedException {
+    public void when_leaderStaysInMinorityDuringSplit_then_itCannotCommitNewEntries() throws ExecutionException, InterruptedException {
         group = newGroupWithService(3);
         group.start();
 
