@@ -37,7 +37,7 @@ public class VoteRequestHandlerTask implements StripedRunnable {
 
         // Reply false if term < currentTerm (§5.1)
         if (state.term() > req.term()) {
-            logger.warning("Rejecting " + req + " since current term: " + state.term() + " is greater than request term: "
+            logger.info("Rejecting " + req + " since current term: " + state.term() + " is greater than request term: "
                     + req.term());
             raftNode.send(new VoteResponse(localEndpoint, state.term(), false), req.candidate());
             return;
@@ -46,17 +46,17 @@ public class VoteRequestHandlerTask implements StripedRunnable {
         if (state.term() < req.term()) {
             // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
             if (state.role() != RaftRole.FOLLOWER) {
-                logger.warning("Demoting to FOLLOWER after " + req + " since current term: " + state.term()
+                logger.info("Demoting to FOLLOWER after " + req + " since current term: " + state.term()
                         + " is lower than request term: " + req.term());
             } else {
-                logger.warning("Term of " + req + " is bigger than current term: " + state.term());
+                logger.info("Term of " + req + " is bigger than current term: " + state.term());
             }
 
             state.toFollower(req.term());
         }
 
         if (state.leader() != null && !req.candidate().equals(state.leader())) {
-            logger.warning("Rejecting " + req + " since we have a leader " + state.leader());
+            logger.info("Rejecting " + req + " since we have a leader " + state.leader());
             raftNode.send(new VoteResponse(localEndpoint, req.term(), false), req.candidate());
             return;
         }
@@ -73,19 +73,19 @@ public class VoteRequestHandlerTask implements StripedRunnable {
 
         RaftLog raftLog = state.log();
         if (raftLog.lastLogTerm() > req.lastLogTerm()) {
-            logger.warning("Rejecting " + req + " since our last log term: " + raftLog.lastLogTerm()
+            logger.info("Rejecting " + req + " since our last log term: " + raftLog.lastLogTerm()
                     + " is greater than request last log term: " + req.lastLogTerm());
             raftNode.send(new VoteResponse(localEndpoint, req.term(), false), req.candidate());
             return;
         }
 
         if (raftLog.lastLogTerm() == req.lastLogTerm() && raftLog.lastLogIndex() > req.lastLogIndex()) {
-            logger.warning("Rejecting " + req + " since our last log index: " + raftLog.lastLogIndex() + " is greater");
+            logger.info("Rejecting " + req + " since our last log index: " + raftLog.lastLogIndex() + " is greater");
             raftNode.send(new VoteResponse(localEndpoint, req.term(), false), req.candidate());
             return;
         }
 
-        logger.warning("Granted vote for " + req);
+        logger.info("Granted vote for " + req);
         state.persistVote(req.term(), req.candidate());
 
         raftNode.send(new VoteResponse(localEndpoint, req.term(), true), req.candidate());

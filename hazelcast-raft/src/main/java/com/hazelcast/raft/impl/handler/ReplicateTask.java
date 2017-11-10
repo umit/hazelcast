@@ -35,7 +35,7 @@ public class ReplicateTask implements StripedRunnable {
             return;
         }
 
-        logger.info("Replicating: " + operation);
+        logger.fine("Replicating: " + operation);
 
         assert state.role() == RaftRole.LEADER;
 
