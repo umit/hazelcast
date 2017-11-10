@@ -32,12 +32,12 @@ public class VoteResponseHandlerTask implements StripedRunnable {
         }
 
         if (state.role() != RaftRole.CANDIDATE) {
-            logger.severe("Ignored " + resp + ". We are not CANDIDATE anymore.");
+            logger.warning("Ignored " + resp + ". We are not CANDIDATE anymore.");
             return;
         }
 
         if (resp.term() > state.term()) {
-            logger.warning("Demoting to FOLLOWER since newer term: " + resp.term() + " than current term: " + state.term()
+            logger.info("Demoting to FOLLOWER since newer term: " + resp.term() + " than current term: " + state.term()
                     + " is discovered");
             state.toFollower(resp.term());
             return;
@@ -50,12 +50,12 @@ public class VoteResponseHandlerTask implements StripedRunnable {
 
         CandidateState candidateState = state.candidateState();
         if (resp.granted() && candidateState.grantVote(resp.voter())) {
-            logger.warning("Vote granted from " + resp.voter() + " for term: " + state.term()
+            logger.info("Vote granted from " + resp.voter() + " for term: " + state.term()
                     + ", number of votes: " + candidateState.voteCount() + ", majority: " + candidateState.majority());
         }
 
         if (candidateState.isMajorityGranted()) {
-            logger.severe("We are the LEADER!");
+            logger.info("We are the LEADER!");
             state.toLeader();
             raftNode.scheduleLeaderLoop();
         }

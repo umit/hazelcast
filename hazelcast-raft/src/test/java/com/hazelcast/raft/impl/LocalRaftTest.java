@@ -128,7 +128,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
 
     private void testNoCommitWhenOnlyLeaderAppends(int nodeCount)
             throws InterruptedException, ExecutionException {
-        group = new RaftGroup(nodeCount, Collections.<String, Class>singletonMap(RaftDataService.SERVICE_NAME, RaftDataService.class));
+        group = newGroupWithService(nodeCount);
         group.start();
         RaftNode leader = group.waitUntilLeaderElected();
 
@@ -160,7 +160,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
 
 
     private void testReplicateEntriesSequentially(int nodeCount) throws ExecutionException, InterruptedException {
-        group = new RaftGroup(nodeCount, Collections.<String, Class>singletonMap(RaftDataService.SERVICE_NAME, RaftDataService.class));
+        group = newGroupWithService(nodeCount);
         group.start();
         RaftNode leader = group.waitUntilLeaderElected();
 
@@ -199,7 +199,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     private void testReplicateEntriesInParallel(int nodeCount) throws ExecutionException, InterruptedException {
-        group = new RaftGroup(nodeCount, Collections.<String, Class>singletonMap(RaftDataService.SERVICE_NAME, RaftDataService.class));
+        group = newGroupWithService(nodeCount);
         group.start();
         RaftNode leader = group.waitUntilLeaderElected();
 

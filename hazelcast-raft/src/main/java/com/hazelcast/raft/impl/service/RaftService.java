@@ -58,7 +58,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         } catch (UnknownHostException e) {
             throw new HazelcastException(e);
         }
-        logger.warning("CP nodes: " + endpoints);
+        logger.info("CP nodes: " + endpoints);
         RaftEndpoint localEndpoint = getLocalEndpoint(endpoints);
         if (localEndpoint == null) {
             logger.warning("We are not in CP nodes group :(");

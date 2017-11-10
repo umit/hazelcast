@@ -34,20 +34,20 @@ public class AppendFailureResponseHandlerTask implements StripedRunnable {
         }
 
         if (state.role() != RaftRole.LEADER) {
-            logger.severe("Ignored " + resp + ". We are not LEADER anymore.");
+            logger.warning("Ignored " + resp + ". We are not LEADER anymore.");
             return;
         }
 
         if (resp.term() > state.term()) {
             // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
-            logger.warning("Demoting to FOLLOWER after receiving " + resp + ", response term: " + resp.term()
+            logger.info("Demoting to FOLLOWER after receiving " + resp + ", response term: " + resp.term()
                     + ", current term: " + state.term());
             state.toFollower(resp.term());
             raftNode.invalidateFuturesFrom(state.commitIndex() + 1);
             return;
         }
 
-        logger.severe("Failure response " + resp);
+        logger.warning("Failure response " + resp);
 
         if (updateNextIndex(state)) {
             raftNode.sendAppendRequest(resp.follower());
@@ -63,12 +63,12 @@ public class AppendFailureResponseHandlerTask implements StripedRunnable {
             // this is the response of the request I have sent for this nextIndex
             nextIndex--;
             if (nextIndex <= matchIndex) {
-                logger.severe("Cannot decrement next index: " + nextIndex + " below match index: " + matchIndex
+                logger.warning("Cannot decrement next index: " + nextIndex + " below match index: " + matchIndex
                         + " for follower: " + resp.follower());
                 return false;
             }
 
-            logger.warning("Updating next index: " + nextIndex + " for follower: " + resp.follower());
+            logger.info("Updating next index: " + nextIndex + " for follower: " + resp.follower());
             leaderState.setNextIndex(resp.follower(), nextIndex);
             return true;
         }

@@ -28,5 +28,6 @@
         <Logger name="com.hazelcast.instance" level="debug" />
         <Logger name="com.hazelcast.cluster" level="debug" />
         <Logger name="com.hazelcast.internal.cluster" level="debug" />
+        <Logger name="com.hazelcast.raft" level="debug" />
     </Loggers>
 </Configuration>
