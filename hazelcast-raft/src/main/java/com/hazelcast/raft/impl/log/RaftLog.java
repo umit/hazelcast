@@ -51,10 +51,11 @@ public class RaftLog {
 
         for (LogEntry entry : newEntries) {
             if (entry.term() < lastTerm) {
-                throw new IllegalArgumentException("Entry term is lower than lastLogTerm. " + entry.term() + " < " + lastTerm);
+                throw new IllegalArgumentException("Cannot append " + entry + " since its term is lower than last log term: "
+                        + lastTerm);
             } else if (entry.index() != lastIndex + 1) {
-                throw new IllegalArgumentException("Entry index must be equal to (lasLogIndex + 1). "
-                        + entry.index() + " != " + (lastIndex + 1));
+                throw new IllegalArgumentException("Cannot append " + entry + "since its index is bigger than (lasLogIndex + 1): "
+                        + (lastIndex + 1));
             }
             logs.add(entry);
             lastIndex++;

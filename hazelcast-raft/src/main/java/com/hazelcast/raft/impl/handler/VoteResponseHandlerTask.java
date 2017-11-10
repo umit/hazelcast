@@ -27,18 +27,18 @@ public class VoteResponseHandlerTask implements StripedRunnable {
     public void run() {
         RaftState state = raftNode.state();
         if (!state.isKnownEndpoint(resp.voter())) {
-            logger.warning("Ignoring " + resp + ", since voter is unknown to us");
+            logger.warning("Ignored " + resp + ", since voter is unknown to us");
             return;
         }
 
         if (state.role() != RaftRole.CANDIDATE) {
-            logger.warning("Ignored " + resp + ". We are not CANDIDATE anymore.");
+            logger.info("Ignored " + resp + ". We are not CANDIDATE anymore.");
             return;
         }
 
         if (resp.term() > state.term()) {
-            logger.info("Demoting to FOLLOWER since newer term: " + resp.term() + " than current term: " + state.term()
-                    + " is discovered");
+            logger.info("Demoting to FOLLOWER from current term: " + state.term() + " to new term: " + resp.term()
+                    + " after " + resp);
             state.toFollower(resp.term());
             return;
         }

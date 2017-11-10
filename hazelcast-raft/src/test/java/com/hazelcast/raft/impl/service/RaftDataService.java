@@ -23,7 +23,6 @@ public class RaftDataService {
                 "Cannot apply " + value + "since commitIndex: " + commitIndex + " already contains: " + values.get(commitIndex);
 
         values.put(commitIndex, value);
-        System.out.println("ERROR VALUE APPLIED " + value + " AT INDEX: " + commitIndex);
         return value;
     }
 
