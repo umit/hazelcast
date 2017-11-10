@@ -29,7 +29,7 @@ public class VoteRequestHandlerTask implements StripedRunnable {
     public void run() {
         RaftState state = raftNode.state();
         if (!state.isKnownEndpoint(req.candidate())) {
-            logger.warning("Ignoring " + req + " since candidate is unknown to us");
+            logger.warning("Ignored " + req + " since candidate is unknown to us");
             return;
         }
 
@@ -37,8 +37,7 @@ public class VoteRequestHandlerTask implements StripedRunnable {
 
         // Reply false if term < currentTerm (§5.1)
         if (state.term() > req.term()) {
-            logger.info("Rejecting " + req + " since current term: " + state.term() + " is greater than request term: "
-                    + req.term());
+            logger.info("Rejecting " + req + " since current term: " + state.term() + " is bigger");
             raftNode.send(new VoteResponse(localEndpoint, state.term(), false), req.candidate());
             return;
         }
@@ -46,26 +45,26 @@ public class VoteRequestHandlerTask implements StripedRunnable {
         if (state.term() < req.term()) {
             // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
             if (state.role() != RaftRole.FOLLOWER) {
-                logger.info("Demoting to FOLLOWER after " + req + " since current term: " + state.term()
-                        + " is lower than request term: " + req.term());
+                logger.info("Demoting to FOLLOWER after " + req + " since current term: " + state.term() + " is smaller");
             } else {
-                logger.info("Term of " + req + " is bigger than current term: " + state.term());
+                logger.info("Moving to new term: " + req.term() + " from current term: " + state.term() + " after " + req);
             }
 
             state.toFollower(req.term());
         }
 
         if (state.leader() != null && !req.candidate().equals(state.leader())) {
-            logger.info("Rejecting " + req + " since we have a leader " + state.leader());
+            logger.warning("Rejecting " + req + " since we have a leader: " + state.leader());
             raftNode.send(new VoteResponse(localEndpoint, req.term(), false), req.candidate());
             return;
         }
 
         if (state.lastVoteTerm() == req.term() && state.votedFor() != null) {
-            logger.warning("Duplicate RequestVote for same term: " + req.term() + ", currently voted-for: " + state.votedFor());
             boolean granted = (req.candidate().equals(state.votedFor()));
             if (granted) {
-                logger.warning("Duplicate " + req);
+                logger.info("Vote granted for duplicate" + req);
+            } else {
+                logger.info("Duplicate " + req + ". currently voted-for: " + state.votedFor());
             }
             raftNode.send(new VoteResponse(localEndpoint, req.term(), granted), req.candidate());
             return;
@@ -73,8 +72,7 @@ public class VoteRequestHandlerTask implements StripedRunnable {
 
         RaftLog raftLog = state.log();
         if (raftLog.lastLogTerm() > req.lastLogTerm()) {
-            logger.info("Rejecting " + req + " since our last log term: " + raftLog.lastLogTerm()
-                    + " is greater than request last log term: " + req.lastLogTerm());
+            logger.info("Rejecting " + req + " since our last log term: " + raftLog.lastLogTerm() + " is greater");
             raftNode.send(new VoteResponse(localEndpoint, req.term(), false), req.candidate());
             return;
         }

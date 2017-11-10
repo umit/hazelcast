@@ -35,7 +35,7 @@ public class LeaderElectionTask implements StripedRunnable {
         }
 
         VoteRequest voteRequest = state.toCandidate();
-        logger.info("Leader election started at term: " + voteRequest.term());
+        logger.info("Leader election started for term: " + voteRequest.term());
 
         for (RaftEndpoint endpoint : state.remoteMembers()) {
             raftNode.send(voteRequest, endpoint);
