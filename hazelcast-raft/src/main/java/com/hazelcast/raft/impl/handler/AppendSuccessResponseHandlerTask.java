@@ -35,7 +35,7 @@ public class AppendSuccessResponseHandlerTask implements StripedRunnable {
     public void run() {
         RaftState state = raftNode.state();
         if (!state.isKnownEndpoint(resp.follower())) {
-            logger.warning("Ignoring " + resp + ", since sender is unknown to us");
+            logger.warning("Ignored " + resp + ", since sender is unknown to us");
             return;
         }
 
@@ -46,7 +46,9 @@ public class AppendSuccessResponseHandlerTask implements StripedRunnable {
 
         assert resp.term() <= state.term() : "Invalid " + resp + " for current term: " + state.term();
 
-        logger.fine("Success response " + resp);
+        if (logger.isFineEnabled()) {
+            logger.fine("Received " + resp);
+        }
 
         // If successful: update nextIndex and matchIndex for follower (§5.3)
         updateFollowerIndices(state);
@@ -62,10 +64,10 @@ public class AppendSuccessResponseHandlerTask implements StripedRunnable {
             // because of the Log Matching Property.
             LogEntry entry = raftLog.getEntry(quorumMatchIndex);
             if (entry.term() == state.term()) {
-                advanceCommitState(state, quorumMatchIndex);
+                commitEntries(state, quorumMatchIndex);
                 break;
-            } else {
-                logger.warning("Cannot commit " + entry + " since an entry from the current term: " + state.term() + " is needed");
+            } else if (logger.isFineEnabled()) {
+                logger.fine("Cannot commit " + entry + " since an entry from the current term: " + state.term() + " is needed.");
             }
         }
     }
@@ -101,11 +103,14 @@ public class AppendSuccessResponseHandlerTask implements StripedRunnable {
         sort(indices);
 
         int quorumMatchIndex = indices[(indices.length - 1) / 2];
-        logger.fine("Quorum match index: " + quorumMatchIndex + ", indices: " + Arrays.toString(indices));
+        if (logger.isFineEnabled()) {
+            logger.fine("Quorum match index: " + quorumMatchIndex + ", indices: " + Arrays.toString(indices));
+        }
+
         return quorumMatchIndex;
     }
 
-    private void advanceCommitState(RaftState state, int commitIndex) {
+    private void commitEntries(RaftState state, int commitIndex) {
         logger.info("Setting commit index: " + commitIndex);
         state.commitIndex(commitIndex);
         raftNode.broadcastAppendRequest();

@@ -94,7 +94,7 @@ public class RaftNode {
 
     public void start() {
         if (raftIntegration.isJoined()) {
-            logger.info("Starting raft node...");
+            logger.info("Starting raft node: " + localEndpoint + " for raft cluster: " + state.name());
             executor.execute(new LeaderElectionTask(this));
         } else {
             scheduleStart();
@@ -172,7 +172,9 @@ public class RaftNode {
         AppendRequest appendRequest = new AppendRequest(getLocalEndpoint(), state.term(), prevEntry.term(), prevEntry.index(),
                 state.commitIndex(), entries);
 
-        logger.fine("Sending " + appendRequest + " to " + follower + " with next index: " + nextIndex);
+        if (logger.isFineEnabled()) {
+            logger.fine("Sending " + appendRequest + " to " + follower + " with next index: " + nextIndex);
+        }
 
         send(appendRequest, follower);
     }
@@ -194,18 +196,23 @@ public class RaftNode {
         for (int idx = state.lastApplied() + 1; idx <= commitIndex; idx++) {
             LogEntry entry = raftLog.getEntry(idx);
             if (entry == null) {
-                logger.severe("Failed to get log entry at index: " + idx);
-                throw new AssertionError("Failed to get log entry at index: " + idx);
+                String msg = "Failed to get log entry at index: " + idx;
+                logger.severe(msg);
+                throw new AssertionError(msg);
             }
+
             processLog(entry);
 
-            // Update the lastApplied index and term
+            // Update the lastApplied index
             state.lastApplied(idx);
         }
     }
 
     private void processLog(LogEntry entry) {
-        logger.fine("Processing " + entry);
+        if (logger.isFineEnabled()) {
+            logger.fine("Processing " + entry);
+        }
+
         SimpleCompletableFuture future = futures.remove(entry.index());
         Object response = raftIntegration.runOperation(entry.operation(), entry.index());
         if (future != null) {
@@ -251,17 +258,19 @@ public class RaftNode {
     }
 
     public void invalidateFuturesFrom(int entryIndex) {
-        logger.fine("Invalidating futures from index: " + entryIndex);
+        int count = 0;
         Iterator<Map.Entry<Long, SimpleCompletableFuture>> iterator = futures.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<Long, SimpleCompletableFuture> entry = iterator.next();
             long index = entry.getKey();
             if (index >= entryIndex) {
-                logger.fine("Invalidating log future at index: " + index);
                 entry.getValue().setResult(new LeaderDemotedException());
                 iterator.remove();
+                count++;
             }
         }
+
+        logger.warning("Invalidated " + count + " futures from log index: " + entryIndex);
     }
 
     // for testing
@@ -321,11 +330,11 @@ public class RaftNode {
                 RaftEndpoint leader = state.leader();
                 if (leader == null) {
                     if (state.role() == RaftRole.FOLLOWER) {
-                        logger.warning("We are FOLLOWER and current leader is null. Will start new election round...");
+                        logger.warning("We are FOLLOWER and there is no current leader. Will start new election round...");
                         new LeaderElectionTask(RaftNode.this).run();
                     }
                 } else if (!raftIntegration.isReachable(leader)) {
-                    logger.warning("Current leader " + leader + " is dead. Will start new election round...");
+                    logger.warning("Current leader " + leader + " is not reachable. Will start new election round...");
                     state.leader(null);
                     new LeaderElectionTask(RaftNode.this).run();
                 }
