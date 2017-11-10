@@ -107,6 +107,10 @@ public class RaftGroup {
         return nodes[index];
     }
 
+    public RaftNode getNode(RaftEndpoint endpoint) {
+        return nodes[getIndexOf(endpoint)];
+    }
+
     public RaftEndpoint getEndpoint(int index) {
         return endpoints[index];
     }
