@@ -28,11 +28,8 @@ import static com.hazelcast.raft.impl.RaftUtil.waitUntilLeaderElected;
 import static com.hazelcast.raft.impl.service.RaftService.METADATA_RAFT;
 import static com.hazelcast.spi.properties.GroupProperty.MERGE_FIRST_RUN_DELAY_SECONDS;
 import static com.hazelcast.spi.properties.GroupProperty.MERGE_NEXT_RUN_DELAY_SECONDS;
-import static com.hazelcast.test.SplitBrainTestSupport.blockCommunicationBetween;
-import static com.hazelcast.test.SplitBrainTestSupport.unblockCommunicationBetween;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 
 @RunWith(HazelcastSerialClassRunner.class)
@@ -132,20 +129,6 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
         }, 10);
     }
 
-    private void assertLeaderNotEqualsEventually(final RaftNode leader, final HazelcastInstance... instances) {
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() throws Exception {
-                for (HazelcastInstance instance : instances) {
-                    RaftNode raftNode = getRaftNode(instance, METADATA_RAFT);
-                    RaftEndpoint leaderEndpoint = getLeaderEndpoint(raftNode);
-                    assertNotNull(leaderEndpoint);
-                    assertNotEquals(leader.getLocalEndpoint(), leaderEndpoint);
-                }
-            }
-        });
-    }
-
     private HazelcastInstance getRandomFollowerInstance(HazelcastInstance[] instances, RaftNode leader) {
         Address address = leader.getLocalEndpoint().getAddress();
         for (HazelcastInstance instance : instances) {
@@ -154,18 +137,6 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
             }
         }
         throw new AssertionError("Cannot find non-leader instance!");
-    }
-
-    private HazelcastInstance[] getAllInstancesExcept(HazelcastInstance[] instances, HazelcastInstance instance) {
-        HazelcastInstance[] newInstances = new HazelcastInstance[instances.length - 1];
-        Address address = getAddress(instance);
-        int k = 0;
-        for (HazelcastInstance hz : instances) {
-            if (!address.equals(getAddress(hz))) {
-                newInstances[k++] = hz;
-            }
-        }
-        return newInstances;
     }
 
     private Address[] createRaftAddresses(int count) {
@@ -218,34 +189,6 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
     private void configureSplitBrainDelay(Config config) {
         config.setProperty(MERGE_FIRST_RUN_DELAY_SECONDS.getName(), "15")
               .setProperty(MERGE_NEXT_RUN_DELAY_SECONDS.getName(), "5");
-    }
-
-    private void block(HazelcastInstance[] left, HazelcastInstance[] right) {
-        for (HazelcastInstance l : left) {
-            for (HazelcastInstance r : right) {
-                blockCommunicationBetween(l, r);
-            }
-        }
-
-        for (HazelcastInstance l : left) {
-            for (HazelcastInstance r : right) {
-                closeConnectionBetween(l, r);
-            }
-        }
-
-        assertClusterSizeEventually(right.length, right);
-        assertClusterSizeEventually(left.length, left);
-    }
-
-    private void unblock(HazelcastInstance[] left, HazelcastInstance[] right) {
-        for (HazelcastInstance l : left) {
-            for (HazelcastInstance r : right) {
-                unblockCommunicationBetween(l, r);
-            }
-        }
-
-        assertClusterSizeEventually(left.length + right.length, right);
-        assertClusterSizeEventually(left.length + right.length, left);
     }
 
     private RaftNode getLeaderNode(final HazelcastInstance[] instances, final String raftName) {
