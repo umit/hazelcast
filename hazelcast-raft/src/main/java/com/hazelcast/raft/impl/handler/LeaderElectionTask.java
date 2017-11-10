@@ -30,12 +30,12 @@ public class LeaderElectionTask implements StripedRunnable {
         RaftState state = raftNode.state();
 
         if (state.leader() != null) {
-            logger.severe("No new election round, we already have a LEADER: " + state.leader());
+            logger.warning("No new election round, we already have a LEADER: " + state.leader());
             return;
         }
 
         VoteRequest voteRequest = state.toCandidate();
-        logger.warning("Leader election started at term: " + voteRequest.term());
+        logger.info("Leader election started at term: " + voteRequest.term());
 
         for (RaftEndpoint endpoint : state.remoteMembers()) {
             raftNode.send(voteRequest, endpoint);
