@@ -16,17 +16,18 @@ import static com.hazelcast.raft.impl.service.RaftInvocationHelper.invokeOnLeade
  */
 public final class CreateRaftGroupHelper {
 
-    public static ICompletableFuture createRaftGroupAsync(NodeEngine nodeEngine, final String raftName, final int nodeCount) {
+    public static ICompletableFuture createRaftGroupAsync(NodeEngine nodeEngine, final String serviceName,
+            final String raftName, final int nodeCount) {
         return invokeOnLeader(nodeEngine, new Supplier<RaftReplicatingOperation>() {
             @Override
             public RaftReplicatingOperation get() {
-                return new CreateRaftGroupReplicatingOperation(raftName, nodeCount);
+                return new CreateRaftGroupReplicatingOperation(serviceName, raftName, nodeCount);
             }
         }, RaftService.METADATA_RAFT);
     }
 
-    public static void createRaftGroup(NodeEngine nodeEngine, final String raftName, final int nodeCount)
+    public static void createRaftGroup(NodeEngine nodeEngine, String serviceName, String raftName, int nodeCount)
             throws ExecutionException, InterruptedException {
-        createRaftGroupAsync(nodeEngine, raftName, nodeCount).get();
+        createRaftGroupAsync(nodeEngine, serviceName, raftName, nodeCount).get();
     }
 }

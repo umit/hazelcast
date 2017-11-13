@@ -43,6 +43,7 @@ public class RaftNode {
 
     private static final int HEARTBEAT_PERIOD = 5;
 
+    private final String serviceName;
     private final ILogger logger;
     private final RaftState state;
     private final StripedExecutor executor;
@@ -53,8 +54,9 @@ public class RaftNode {
     private final Long2ObjectHashMap<SimpleCompletableFuture> futures = new Long2ObjectHashMap<SimpleCompletableFuture>();
     private long lastAppendEntriesTimestamp;
 
-    public RaftNode(String name, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints,
+    public RaftNode(String serviceName, String name, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints,
             RaftIntegration raftIntegration, StripedExecutor executor) {
+        this.serviceName = serviceName;
         this.raftIntegration = raftIntegration;
         this.executor = executor;
         this.localEndpoint = localEndpoint;
@@ -293,6 +295,10 @@ public class RaftNode {
     public RaftEndpoint getLeader() {
         // read leader might be stale, since it's accessed without any synchronization
         return state.leader();
+    }
+
+    public String getServiceName() {
+        return serviceName;
     }
 
     private class HeartbeatTask implements StripedRunnable {

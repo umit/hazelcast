@@ -15,13 +15,15 @@ import java.util.Collection;
  */
 public class CreateRaftGroupOperation extends RaftOperation {
 
+    private String serviceName;
     private String name;
     private Collection<RaftEndpoint> endpoints;
 
     public CreateRaftGroupOperation() {
     }
 
-    public CreateRaftGroupOperation(String name, Collection<RaftEndpoint> endpoints) {
+    public CreateRaftGroupOperation(String serviceName, String name, Collection<RaftEndpoint> endpoints) {
+        this.serviceName = serviceName;
         this.name = name;
         this.endpoints = endpoints;
     }
@@ -29,7 +31,7 @@ public class CreateRaftGroupOperation extends RaftOperation {
     @Override
     public Object doRun(int commitIndex) {
         RaftService service = getService();
-        service.addRaftNode(name, endpoints);
+        service.addRaftNode(serviceName, name, endpoints);
         return true;
     }
 
@@ -41,6 +43,7 @@ public class CreateRaftGroupOperation extends RaftOperation {
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
+        out.writeUTF(serviceName);
         out.writeUTF(name);
         out.writeInt(endpoints.size());
         for (RaftEndpoint endpoint : endpoints) {
@@ -51,6 +54,7 @@ public class CreateRaftGroupOperation extends RaftOperation {
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
+        serviceName = in.readUTF();
         name = in.readUTF();
         int len = in.readInt();
         endpoints = new ArrayList<RaftEndpoint>(len);

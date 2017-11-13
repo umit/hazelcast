@@ -13,7 +13,18 @@ import com.hazelcast.spi.Operation;
  */
 public abstract class RaftReplicatingOperation extends Operation {
 
-    protected final void replicate(RaftOperation op, String raftName) {
+    @Override
+    public final void run() throws Exception {
+        RaftOperation op = getRaftOperation();
+        String raftName = getRaftName();
+        replicate(op, raftName);
+    }
+
+    protected abstract RaftOperation getRaftOperation();
+
+    protected abstract String getRaftName();
+
+    private void replicate(RaftOperation op, String raftName) {
         RaftService service = getService();
         RaftNode raftNode = service.getRaftNode(raftName);
 
@@ -21,7 +32,7 @@ public abstract class RaftReplicatingOperation extends Operation {
         future.andThen(new ExecutionCallback() {
             @Override
             public void onResponse(Object response) {
-                sendResponse(true);
+                sendResponse(response);
             }
 
             @Override
