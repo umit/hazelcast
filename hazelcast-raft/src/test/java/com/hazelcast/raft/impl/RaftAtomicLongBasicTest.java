@@ -20,7 +20,9 @@ import java.util.concurrent.ExecutionException;
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static com.hazelcast.raft.impl.RaftUtil.getRaftService;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category(QuickTest.class)
@@ -61,10 +63,55 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void incrementAndGet() {
+    public void testSet() {
+        atomicLong.set(271);
+        assertEquals(271, atomicLong.get());
+    }
+
+    @Test
+    public void testGet() {
         assertEquals(0, atomicLong.get());
+    }
+
+    @Test
+    public void testDecrementAndGet() {
+        assertEquals(-1, atomicLong.decrementAndGet());
+        assertEquals(-2, atomicLong.decrementAndGet());
+    }
+
+    @Test
+    public void testIncrementAndGet() {
         assertEquals(1, atomicLong.incrementAndGet());
-        assertEquals(1, atomicLong.get());
+        assertEquals(2, atomicLong.incrementAndGet());
+    }
+
+    @Test
+    public void testGetAndSet() {
+        assertEquals(0, atomicLong.getAndSet(271));
+        assertEquals(271, atomicLong.get());
+    }
+
+    @Test
+    public void testAddAndGet() {
+        assertEquals(271, atomicLong.addAndGet(271));
+    }
+
+    @Test
+    public void testGetAndAdd() {
+        assertEquals(0, atomicLong.getAndAdd(271));
+        assertEquals(271, atomicLong.get());
+    }
+
+    @Test
+    public void testCompareAndSet_whenSuccess() {
+        assertTrue(atomicLong.compareAndSet(0, 271));
+        assertEquals(271, atomicLong.get());
+    }
+
+    @Test
+    public void testCompareAndSet_whenNotSuccess() {
+        assertFalse(atomicLong.compareAndSet(172, 0));
+        assertEquals(0, atomicLong.get());
     }
 
     @Override
