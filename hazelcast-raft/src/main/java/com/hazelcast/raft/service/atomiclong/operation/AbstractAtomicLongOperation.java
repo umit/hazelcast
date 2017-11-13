@@ -27,8 +27,12 @@ public abstract class AbstractAtomicLongOperation extends RaftOperation {
         return service.getAtomicLong(name);
     }
 
+    public final String getName() {
+        return name;
+    }
+
     @Override
-    public String getServiceName() {
+    public final String getServiceName() {
         return RaftAtomicLongService.SERVICE_NAME;
     }
 
