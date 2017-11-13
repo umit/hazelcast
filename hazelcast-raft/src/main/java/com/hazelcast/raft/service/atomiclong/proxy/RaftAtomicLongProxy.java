@@ -5,6 +5,10 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicatingOperation;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
+import com.hazelcast.raft.service.atomiclong.operation.AddAndGetOperation;
+import com.hazelcast.raft.service.atomiclong.operation.CompareAndSetOperation;
+import com.hazelcast.raft.service.atomiclong.operation.GetAndAddOperation;
+import com.hazelcast.raft.service.atomiclong.operation.GetAndSetOperation;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.function.Supplier;
@@ -86,7 +90,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
         return invokeOnLeader(nodeEngine, new Supplier<RaftReplicatingOperation>() {
             @Override
             public RaftReplicatingOperation get() {
-                return new AddAndGetReplicatingOperation(name, delta);
+                return new AtomicLongReplicatingOperation(new AddAndGetOperation(name, delta));
             }
         }, raftName);
     }
@@ -106,7 +110,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
         return invokeOnLeader(nodeEngine, new Supplier<RaftReplicatingOperation>() {
             @Override
             public RaftReplicatingOperation get() {
-                return new CompareAndSetReplicatingOperation(name, expect, update);
+                return new AtomicLongReplicatingOperation(new CompareAndSetOperation(name, expect, update));
             }
         }, raftName);
     }
@@ -116,7 +120,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
         return invokeOnLeader(nodeEngine, new Supplier<RaftReplicatingOperation>() {
             @Override
             public RaftReplicatingOperation get() {
-                return new GetAndAddReplicatingOperation(name, delta);
+                return new AtomicLongReplicatingOperation(new GetAndAddOperation(name, delta));
             }
         }, raftName);
     }
@@ -136,7 +140,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
         return invokeOnLeader(nodeEngine, new Supplier<RaftReplicatingOperation>() {
             @Override
             public RaftReplicatingOperation get() {
-                return new GetAndSetReplicatingOperation(name, newValue);
+                return new AtomicLongReplicatingOperation(new GetAndSetOperation(name, newValue));
             }
         }, raftName);
     }

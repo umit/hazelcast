@@ -2,8 +2,10 @@ package com.hazelcast.raft.service.atomiclong.proxy;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicatingOperation;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
+import com.hazelcast.raft.service.atomiclong.operation.AbstractAtomicLongOperation;
 
 import java.io.IOException;
 
@@ -11,31 +13,36 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public abstract class AbstractAtomicLongReplicatingOperation extends RaftReplicatingOperation {
+public final class AtomicLongReplicatingOperation extends RaftReplicatingOperation {
 
-    protected String name;
+    private AbstractAtomicLongOperation operation;
 
-    public AbstractAtomicLongReplicatingOperation() {
+    public AtomicLongReplicatingOperation() {
     }
 
-    public AbstractAtomicLongReplicatingOperation(String name) {
-        this.name = name;
+    public AtomicLongReplicatingOperation(AbstractAtomicLongOperation operation) {
+        this.operation = operation;
+    }
+
+    @Override
+    protected RaftOperation getRaftOperation() {
+        return operation;
     }
 
     @Override
     protected final String getRaftName() {
-        return RaftAtomicLongService.PREFIX + name;
+        return RaftAtomicLongService.PREFIX + operation.getName();
     }
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeUTF(name);
+        out.writeObject(operation);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        name = in.readUTF();
+        operation = in.readObject();
     }
 }
