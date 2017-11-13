@@ -22,11 +22,12 @@ import com.hazelcast.util.executor.StripedExecutor;
 
 import java.net.UnknownHostException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import static com.hazelcast.util.ThreadUtil.createThreadName;
 
@@ -38,12 +39,14 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     public static final String SERVICE_NAME = "hz:core:raft";
     public static final String METADATA_RAFT = "METADATA";
 
-    private final Map<String, RaftNode> nodes = new ConcurrentHashMap<String, RaftNode>();
+    private final ConcurrentMap<String, RaftNode> nodes = new ConcurrentHashMap<String, RaftNode>();
     private final NodeEngine nodeEngine;
     private final ILogger logger;
 
     private volatile StripedExecutor executor;
     private volatile RaftConfig config;
+    private volatile Collection<RaftEndpoint> endpoints;
+    private volatile RaftEndpoint localEndpoint;
 
     public RaftService(NodeEngine nodeEngine) {
         this.nodeEngine = nodeEngine;
@@ -52,14 +55,13 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
-        Collection<RaftEndpoint> endpoints;
         try {
-            endpoints = getEndpoints();
+            endpoints = Collections.unmodifiableCollection(parseEndpoints());
         } catch (UnknownHostException e) {
             throw new HazelcastException(e);
         }
         logger.info("CP nodes: " + endpoints);
-        RaftEndpoint localEndpoint = getLocalEndpoint(endpoints);
+        localEndpoint = getLocalEndpoint(endpoints);
         if (localEndpoint == null) {
             logger.warning("We are not in CP nodes group :(");
             return;
@@ -83,7 +85,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         return null;
     }
 
-    private Collection<RaftEndpoint> getEndpoints() throws UnknownHostException {
+    private Collection<RaftEndpoint> parseEndpoints() throws UnknownHostException {
         Collection<RaftMember> members = config.getMembers();
         Set<RaftEndpoint> endpoints = new HashSet<RaftEndpoint>(members.size());
         for (RaftMember member : members) {
@@ -156,5 +158,23 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
 
     public RaftNode getRaftNode(String name) {
         return nodes.get(name);
+    }
+
+    public Collection<RaftEndpoint> getAllEndpoints() {
+        return endpoints;
+    }
+
+    void addRaftNode(String name, Collection<RaftEndpoint> endpoints) {
+        if (!endpoints.contains(localEndpoint)) {
+            // TODO: keep configuration on every metadata node
+            return;
+        }
+
+        RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, name);
+        RaftNode node = new RaftNode(name, localEndpoint, endpoints, raftIntegration, executor);
+        if (nodes.putIfAbsent(name, node) != null) {
+            throw new AssertionError("Raft node with name " + name + " already exists!");
+        }
+        node.start();
     }
 }

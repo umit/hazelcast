@@ -1,5 +1,6 @@
 package com.hazelcast.raft.impl;
 
+import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.LeaderDemotedException;
 import com.hazelcast.raft.RaftOperation;
@@ -15,9 +16,9 @@ import com.hazelcast.raft.impl.handler.LeaderElectionTask;
 import com.hazelcast.raft.impl.handler.ReplicateTask;
 import com.hazelcast.raft.impl.handler.VoteRequestHandlerTask;
 import com.hazelcast.raft.impl.handler.VoteResponseHandlerTask;
-import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.log.RaftLog;
+import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.raft.impl.util.StripedExecutorConveyor;
@@ -32,7 +33,6 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -94,7 +94,8 @@ public class RaftNode {
 
     public void start() {
         if (raftIntegration.isJoined()) {
-            logger.info("Starting raft node: " + localEndpoint + " for raft cluster: " + state.name());
+            logger.info("Starting raft node: " + localEndpoint + " for raft cluster: " + state.name()
+                + " with members[" + state.memberCount() + "]: " + state.members());
             executor.execute(new LeaderElectionTask(this));
         } else {
             scheduleStart();
@@ -283,12 +284,16 @@ public class RaftNode {
         return new StripedExecutorConveyor(getStripeKey(), executor);
     }
 
-    public Future replicate(RaftOperation operation) {
+    public ICompletableFuture replicate(RaftOperation operation) {
         SimpleCompletableFuture resultFuture = new SimpleCompletableFuture(raftIntegration.getExecutor(), logger);
         executor.execute(new ReplicateTask(this, operation, resultFuture));
         return resultFuture;
     }
 
+    public RaftEndpoint getLeader() {
+        // read leader might be stale, since it's accessed without any synchronization
+        return state.leader();
+    }
 
     private class HeartbeatTask implements StripedRunnable {
 

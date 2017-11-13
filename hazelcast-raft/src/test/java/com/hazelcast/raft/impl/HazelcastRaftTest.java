@@ -1,72 +1,33 @@
 package com.hazelcast.raft.impl;
 
-import com.hazelcast.config.Config;
-import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.instance.Node;
+import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.nio.Address;
-import com.hazelcast.raft.RaftConfig;
-import com.hazelcast.raft.RaftMember;
-import com.hazelcast.raft.impl.service.RaftDataService;
-import com.hazelcast.raft.impl.service.RaftService;
+import com.hazelcast.raft.impl.service.proxy.CreateRaftGroupReplicatingOperation;
+import com.hazelcast.raft.impl.service.proxy.RaftReplicatingOperation;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
-import com.hazelcast.test.HazelcastTestSupport;
-import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.QuickTest;
-import com.hazelcast.util.UuidUtil;
-import org.junit.Before;
+import com.hazelcast.util.function.Supplier;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static com.hazelcast.raft.impl.RaftUtil.getRaftNode;
+import static com.hazelcast.raft.impl.RaftUtil.getRaftService;
 import static com.hazelcast.raft.impl.RaftUtil.getRole;
-import static com.hazelcast.raft.impl.RaftUtil.getTerm;
-import static com.hazelcast.raft.impl.RaftUtil.waitUntilLeaderElected;
+import static com.hazelcast.raft.impl.service.RaftInvocationHelper.invokeOnLeader;
 import static com.hazelcast.raft.impl.service.RaftService.METADATA_RAFT;
-import static com.hazelcast.spi.properties.GroupProperty.MERGE_FIRST_RUN_DELAY_SECONDS;
-import static com.hazelcast.spi.properties.GroupProperty.MERGE_NEXT_RUN_DELAY_SECONDS;
-import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category(QuickTest.class)
-public class HazelcastRaftTest extends HazelcastTestSupport {
-
-    private HazelcastInstance[] instances;
-    private Address[] raftAddresses;
-    private TestHazelcastInstanceFactory factory;
-
-    @Before
-    public void init() {
-        factory = createHazelcastInstanceFactory();
-    }
-
-
-    private RaftNode waitAllForLeaderElection(final HazelcastInstance[] instances, final String raftName) {
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run()
-                    throws Exception {
-                RaftNode leaderNode = getLeaderNode(instances, raftName);
-                int leaderTerm = getTerm(leaderNode);
-
-                for (HazelcastInstance instance : instances) {
-                    RaftNode raftNode = getRaftNode(instance, raftName);
-                    assertEquals(leaderNode.getLocalEndpoint(), getLeaderEndpoint(raftNode));
-                    assertEquals(leaderTerm, getTerm(raftNode));
-                }
-            }
-        });
-
-        return getLeaderNode(instances, raftName);
-    }
+public class HazelcastRaftTest extends HazelcastRaftTestSupport {
 
     @Test
-    public void testCrashedLeader_cannotRecoverAndRejoinRaftGroup() throws Exception {
+    public void crashedLeader_cannotRecoverAndRejoinRaftGroup() throws Exception {
         raftAddresses = createRaftAddresses(2);
         instances = newInstances(raftAddresses);
 
@@ -102,7 +63,7 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testCrashedFollower_cannotRecoverAndRejoinRaftGroup() throws Exception {
+    public void crashedFollower_cannotRecoverAndRejoinRaftGroup() throws Exception {
         raftAddresses = createRaftAddresses(2);
         instances = newInstances(raftAddresses);
 
@@ -129,89 +90,38 @@ public class HazelcastRaftTest extends HazelcastTestSupport {
         }, 10);
     }
 
-    private HazelcastInstance getRandomFollowerInstance(HazelcastInstance[] instances, RaftNode leader) {
-        Address address = leader.getLocalEndpoint().getAddress();
-        for (HazelcastInstance instance : instances) {
-            if (!getAddress(instance).equals(address)) {
-                return instance;
-            }
-        }
-        throw new AssertionError("Cannot find non-leader instance!");
-    }
+    @Test
+    public void createNewRaftGroup() throws Exception {
+        raftAddresses = createRaftAddresses(5);
+        instances = newInstances(raftAddresses);
 
-    private Address[] createRaftAddresses(int count) {
-        Address[] addresses = new Address[count];
-        for (int i = 0; i < count; i++) {
-            Address address = factory.nextAddress();
-            addresses[i] = address;
-        }
-        return addresses;
-    }
+        final String name = "atomic";
+        final int raftGroupSize = 3;
 
-    private HazelcastInstance[] newInstances(Address[] addresses) {
-        Config config = createConfig(addresses);
+        ICompletableFuture future =
+                invokeOnLeader(getNodeEngineImpl(instances[0]), new Supplier<RaftReplicatingOperation>() {
+                    @Override
+                    public RaftReplicatingOperation get() {
+                        return new CreateRaftGroupReplicatingOperation(name, raftGroupSize);
+                    }
+                }, METADATA_RAFT);
 
-        int count = addresses.length;
-        HazelcastInstance[] instances = new HazelcastInstance[count];
-        for (int i = 0; i < count; i++) {
-            instances[i] = factory.newHazelcastInstance(addresses[i], config);
-        }
-        assertClusterSizeEventually(count, instances);
+        future.get();
 
-        return instances;
-    }
-
-    private Config createConfig(Address[] addresses) {
-        int count = addresses.length;
-        RaftMember[] raftMembers = new RaftMember[count];
-        for (int i = 0; i < count; i++) {
-            Address addr = addresses[i];
-            // assuming IPv4
-            String address = addr.getHost() + ":" + addr.getPort();
-            raftMembers[i] = new RaftMember(address, UuidUtil.newUnsecureUuidString());
-        }
-
-        Config config = new Config();
-        configureSplitBrainDelay(config);
-
-        RaftConfig raftConfig = new RaftConfig().setMembers(asList(raftMembers));
-        ServiceConfig raftServiceConfig = new ServiceConfig().setEnabled(true).setName(RaftService.SERVICE_NAME)
-                .setClassName(RaftService.class.getName()).setConfigObject(raftConfig);
-        config.getServicesConfig().addServiceConfig(raftServiceConfig);
-
-        ServiceConfig raftTestServiceConfig = new ServiceConfig().setEnabled(true)
-                                                                 .setName(RaftDataService.SERVICE_NAME)
-                                                                 .setClassName(RaftDataService.class.getName());
-        config.getServicesConfig().addServiceConfig(raftTestServiceConfig);
-        return config;
-    }
-
-    private void configureSplitBrainDelay(Config config) {
-        config.setProperty(MERGE_FIRST_RUN_DELAY_SECONDS.getName(), "15")
-              .setProperty(MERGE_NEXT_RUN_DELAY_SECONDS.getName(), "5");
-    }
-
-    private RaftNode getLeaderNode(final HazelcastInstance[] instances, final String raftName) {
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run()
-                    throws Exception {
-                assertNotNull(getRaftNode(instances[0], raftName));
+            public void run() throws Exception {
+                int count = 0;
+                for (HazelcastInstance instance : instances) {
+                    RaftNode raftNode = getRaftService(instance).getRaftNode(name);
+                    if (raftNode != null) {
+                        count++;
+                        assertNotNull(getLeaderEndpoint(raftNode));
+                    }
+                }
+                assertEquals(raftGroupSize, count);
             }
         });
 
-        RaftNode raftNode = getRaftNode(instances[0], raftName);
-        waitUntilLeaderElected(raftNode);
-        RaftEndpoint leaderEndpoint = getLeaderEndpoint(raftNode);
-
-        for (HazelcastInstance instance : instances) {
-            Node node = getNode(instance);
-            if (node != null && node.getThisAddress().equals(leaderEndpoint.getAddress())) {
-                return getRaftNode(instance, raftName);
-            }
-        }
-
-        throw new AssertionError();
     }
-
 }
