@@ -36,7 +36,7 @@ public class CreateRaftGroupReplicatingOperation extends RaftReplicatingOperatio
         List<RaftEndpoint> endpoints = new ArrayList<RaftEndpoint>(allEndpoints);
         Collections.shuffle(endpoints);
         endpoints = endpoints.subList(0, nodeCount);
-        replicate(new CreateRaftGroupOperation(name, endpoints));
+        replicate(new CreateRaftGroupOperation(name, endpoints), RaftService.METADATA_RAFT);
     }
 
     @Override
