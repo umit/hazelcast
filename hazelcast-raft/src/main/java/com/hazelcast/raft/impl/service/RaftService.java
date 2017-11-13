@@ -64,6 +64,8 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
             throw new HazelcastException(e);
         }
         logger.info("CP nodes: " + endpoints);
+        raftGroups.put(METADATA_RAFT, new RaftGroupInfo(SERVICE_NAME, METADATA_RAFT, endpoints));
+
         localEndpoint = getLocalEndpoint(endpoints);
         if (localEndpoint == null) {
             logger.warning("We are not in CP nodes group :(");
@@ -179,7 +181,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         // keep configuration on every metadata node
         RaftGroupInfo groupInfo = raftGroups.get(name);
         if (groupInfo != null) {
-            if (groupInfo.getMembers().size() == endpoints.size()) {
+            if (groupInfo.members().size() == endpoints.size()) {
                 logger.warning("Raft group " + name + " already exists. Ignoring add raft node request.");
                 return;
             }
