@@ -1,14 +1,16 @@
 package com.hazelcast.raft.impl;
 
+import com.hazelcast.config.Config;
+import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.ICompletableFuture;
+import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.nio.Address;
-import com.hazelcast.raft.impl.service.proxy.CreateRaftGroupReplicatingOperation;
-import com.hazelcast.raft.impl.service.proxy.RaftReplicatingOperation;
+import com.hazelcast.raft.impl.service.CreateRaftGroupHelper;
+import com.hazelcast.raft.service.atomiclong.RaftAtomicLongProxy;
+import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.QuickTest;
-import com.hazelcast.util.function.Supplier;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -17,7 +19,6 @@ import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static com.hazelcast.raft.impl.RaftUtil.getRaftNode;
 import static com.hazelcast.raft.impl.RaftUtil.getRaftService;
 import static com.hazelcast.raft.impl.RaftUtil.getRole;
-import static com.hazelcast.raft.impl.service.RaftInvocationHelper.invokeOnLeader;
 import static com.hazelcast.raft.impl.service.RaftService.METADATA_RAFT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -98,15 +99,7 @@ public class HazelcastRaftTest extends HazelcastRaftTestSupport {
         final String name = "atomic";
         final int raftGroupSize = 3;
 
-        ICompletableFuture future =
-                invokeOnLeader(getNodeEngineImpl(instances[0]), new Supplier<RaftReplicatingOperation>() {
-                    @Override
-                    public RaftReplicatingOperation get() {
-                        return new CreateRaftGroupReplicatingOperation(name, raftGroupSize);
-                    }
-                }, METADATA_RAFT);
-
-        future.get();
+        CreateRaftGroupHelper.createRaftGroup(getNodeEngineImpl(instances[0]), name, raftGroupSize);
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -123,5 +116,44 @@ public class HazelcastRaftTest extends HazelcastRaftTestSupport {
             }
         });
 
+    }
+
+    @Test
+    public void createNewAtomicLong() throws Exception {
+        raftAddresses = createRaftAddresses(5);
+        instances = newInstances(raftAddresses);
+
+        RaftAtomicLongService service = getNodeEngineImpl(instances[0]).getService(RaftAtomicLongService.SERVICE_NAME);
+        final int raftGroupSize = 3;
+        final String name = "id";
+
+        final IAtomicLong id = service.createNew(name, raftGroupSize);
+        assertNotNull(id);
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() throws Exception {
+                int count = 0;
+                RaftAtomicLongProxy proxy = (RaftAtomicLongProxy) id;
+                for (HazelcastInstance instance : instances) {
+                    RaftNode raftNode = getRaftService(instance).getRaftNode(proxy.getRaftName());
+                    if (raftNode != null) {
+                        count++;
+                        assertNotNull(getLeaderEndpoint(raftNode));
+                    }
+                }
+                assertEquals(raftGroupSize, count);
+            }
+        });
+    }
+
+    @Override
+    protected Config createConfig(Address[] addresses) {
+        ServiceConfig atomicLongServiceConfig = new ServiceConfig().setEnabled(true)
+                .setName(RaftAtomicLongService.SERVICE_NAME).setClassName(RaftAtomicLongService.class.getName());
+
+        Config config = super.createConfig(addresses);
+        config.getServicesConfig().addServiceConfig(atomicLongServiceConfig);
+        return config;
     }
 }
