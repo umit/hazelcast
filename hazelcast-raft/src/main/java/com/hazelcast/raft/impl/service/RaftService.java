@@ -24,6 +24,7 @@ import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,7 +40,9 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     public static final String SERVICE_NAME = "hz:core:raft";
     public static final String METADATA_RAFT = "METADATA";
 
-    private final ConcurrentMap<String, RaftNode> nodes = new ConcurrentHashMap<String, RaftNode>();
+    private final Map<String, RaftGroupInfo> raftGroups = new ConcurrentHashMap<String, RaftGroupInfo>();
+    private final Map<String, RaftNode> nodes = new ConcurrentHashMap<String, RaftNode>();
+    private final ConcurrentMap<String, RaftEndpoint> knownLeaders = new ConcurrentHashMap<String, RaftEndpoint>();
     private final NodeEngine nodeEngine;
     private final ILogger logger;
 
@@ -71,7 +74,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         this.executor = new StripedExecutor(logger, threadPoolName, RuntimeAvailableProcessors.get(), Integer.MAX_VALUE);
 
         RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, METADATA_RAFT);
-        RaftNode node = new RaftNode(METADATA_RAFT, localEndpoint, endpoints, raftIntegration, executor);
+        RaftNode node = new RaftNode(SERVICE_NAME, METADATA_RAFT, localEndpoint, endpoints, raftIntegration, executor);
         nodes.put(METADATA_RAFT, node);
         node.start();
     }
@@ -156,25 +159,59 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         node.handleAppendResponse(response);
     }
 
+    public ILogger getLogger(Class clazz, String raftName) {
+        return nodeEngine.getLogger(clazz.getName() + "(" + raftName + ")");
+    }
+
     public RaftNode getRaftNode(String name) {
         return nodes.get(name);
+    }
+
+    public RaftGroupInfo getRaftGroupInfo(String name) {
+        return raftGroups.get(name);
     }
 
     public Collection<RaftEndpoint> getAllEndpoints() {
         return endpoints;
     }
 
-    void addRaftNode(String name, Collection<RaftEndpoint> endpoints) {
+    void addRaftNode(String serviceName, String name, Collection<RaftEndpoint> endpoints) {
+        // keep configuration on every metadata node
+        RaftGroupInfo groupInfo = raftGroups.get(name);
+        if (groupInfo != null) {
+            if (groupInfo.getMembers().size() == endpoints.size()) {
+                logger.warning("Raft group " + name + " already exists. Ignoring add raft node request.");
+                return;
+            }
+            throw new IllegalStateException("Raft group " + name
+                    + " already exists with different group size. Ignoring add raft node request.");
+        }
+
+        raftGroups.put(name, new RaftGroupInfo(serviceName, name, endpoints));
+
         if (!endpoints.contains(localEndpoint)) {
-            // TODO: keep configuration on every metadata node
             return;
         }
 
+        assert nodes.get(name) == null : "Raft node with name " + name + " should not exist!";
+
         RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, name);
-        RaftNode node = new RaftNode(name, localEndpoint, endpoints, raftIntegration, executor);
-        if (nodes.putIfAbsent(name, node) != null) {
-            throw new AssertionError("Raft node with name " + name + " already exists!");
-        }
+        RaftNode node = new RaftNode(serviceName, name, localEndpoint, endpoints, raftIntegration, executor);
+        nodes.put(name, node);
         node.start();
+    }
+
+    void resetKnownLeader(String raftName) {
+        logger.fine("Resetting known leader for raft: " + raftName);
+        knownLeaders.remove(raftName);
+    }
+
+    void setKnownLeader(String raftName, RaftEndpoint leader) {
+        logger.fine("Setting known leader for raft: " + raftName + " to " + leader);
+        knownLeaders.put(raftName, leader);
+    }
+
+    RaftEndpoint getKnownLeader(String raftName) {
+        return knownLeaders.get(raftName);
     }
 }

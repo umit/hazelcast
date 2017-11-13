@@ -1,13 +1,8 @@
 package com.hazelcast.raft.impl;
 
-import com.hazelcast.config.Config;
-import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.service.CreateRaftGroupHelper;
-import com.hazelcast.raft.service.atomiclong.RaftAtomicLongProxy;
-import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.QuickTest;
@@ -99,7 +94,7 @@ public class HazelcastRaftTest extends HazelcastRaftTestSupport {
         final String name = "atomic";
         final int raftGroupSize = 3;
 
-        CreateRaftGroupHelper.createRaftGroup(getNodeEngineImpl(instances[0]), name, raftGroupSize);
+        CreateRaftGroupHelper.createRaftGroup(getNodeEngineImpl(instances[0]), "test", name, raftGroupSize);
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -116,44 +111,5 @@ public class HazelcastRaftTest extends HazelcastRaftTestSupport {
             }
         });
 
-    }
-
-    @Test
-    public void createNewAtomicLong() throws Exception {
-        raftAddresses = createRaftAddresses(5);
-        instances = newInstances(raftAddresses);
-
-        RaftAtomicLongService service = getNodeEngineImpl(instances[0]).getService(RaftAtomicLongService.SERVICE_NAME);
-        final int raftGroupSize = 3;
-        final String name = "id";
-
-        final IAtomicLong id = service.createNew(name, raftGroupSize);
-        assertNotNull(id);
-
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() throws Exception {
-                int count = 0;
-                RaftAtomicLongProxy proxy = (RaftAtomicLongProxy) id;
-                for (HazelcastInstance instance : instances) {
-                    RaftNode raftNode = getRaftService(instance).getRaftNode(proxy.getRaftName());
-                    if (raftNode != null) {
-                        count++;
-                        assertNotNull(getLeaderEndpoint(raftNode));
-                    }
-                }
-                assertEquals(raftGroupSize, count);
-            }
-        });
-    }
-
-    @Override
-    protected Config createConfig(Address[] addresses) {
-        ServiceConfig atomicLongServiceConfig = new ServiceConfig().setEnabled(true)
-                .setName(RaftAtomicLongService.SERVICE_NAME).setClassName(RaftAtomicLongService.class.getName());
-
-        Config config = super.createConfig(addresses);
-        config.getServicesConfig().addServiceConfig(atomicLongServiceConfig);
-        return config;
     }
 }
