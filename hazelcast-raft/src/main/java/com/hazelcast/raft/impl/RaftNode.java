@@ -147,6 +147,8 @@ public class RaftNode {
 
         int nextIndex = leaderState.getNextIndex(follower);
 
+        // TODO basri if nextIndex is in my snapshot, send the snapshot
+
         LogEntry prevEntry;
         LogEntry[] entries;
         // TODO: define a max batch size
@@ -157,10 +159,12 @@ public class RaftNode {
                 // Until the leader has discovered where it and the follower's logs match,
                 // the leader can send AppendEntries with no entries (like heartbeats) to save bandwidth.
                 entries = new LogEntry[0];
-            } else {
+            } else if (nextIndex <= raftLog.lastLogIndex()){
                 // Then, once the matchIndex immediately precedes the nextIndex,
                 // the leader should begin to send the actual entries
                 entries = raftLog.getEntriesBetween(nextIndex, raftLog.lastLogIndex());
+            } else {
+                entries = new LogEntry[0];
             }
         } else if (nextIndex == 1 && raftLog.lastLogIndex() > 0) {
             prevEntry = new LogEntry();
