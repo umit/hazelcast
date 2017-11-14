@@ -4,20 +4,25 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.LeaderDemotedException;
 import com.hazelcast.raft.RaftOperation;
+import com.hazelcast.raft.StaleAppendRequestException;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
+import com.hazelcast.raft.impl.dto.InstallSnapshot;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.handler.AppendFailureResponseHandlerTask;
 import com.hazelcast.raft.impl.handler.AppendRequestHandlerTask;
 import com.hazelcast.raft.impl.handler.AppendSuccessResponseHandlerTask;
+import com.hazelcast.raft.impl.handler.InstallSnapshotHandlerTask;
 import com.hazelcast.raft.impl.handler.LeaderElectionTask;
 import com.hazelcast.raft.impl.handler.ReplicateTask;
 import com.hazelcast.raft.impl.handler.VoteRequestHandlerTask;
 import com.hazelcast.raft.impl.handler.VoteResponseHandlerTask;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.log.RaftLog;
+import com.hazelcast.raft.impl.operation.RestoreSnapshotOp;
+import com.hazelcast.raft.impl.operation.TakeSnapshotOp;
 import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
@@ -31,6 +36,7 @@ import com.hazelcast.util.executor.StripedRunnable;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
@@ -104,6 +110,7 @@ public class RaftNode {
         }
 
         scheduleLeaderFailureDetection();
+        scheduleSnapshotTask();
     }
 
     private void scheduleLeaderFailureDetection() {
@@ -113,6 +120,17 @@ public class RaftNode {
             @Override
             public void run() {
                 executor.execute(new LeaderFailureDetectionTask());
+            }
+        }, delay, TimeUnit.MILLISECONDS);
+    }
+
+    private void scheduleSnapshotTask() {
+        // TODO: Delay should be configurable.
+        long delay = RandomPicker.getInt(500, 1000);
+        taskScheduler.schedule(new Runnable() {
+            @Override
+            public void run() {
+                executor.execute(new SnapshotTask());
             }
         }, delay, TimeUnit.MILLISECONDS);
     }
@@ -147,28 +165,33 @@ public class RaftNode {
 
         int nextIndex = leaderState.getNextIndex(follower);
 
-        // TODO basri if nextIndex is in my snapshot, send the snapshot
+        if (nextIndex < raftLog.snapshotIndex()) {
+            raftIntegration.send(new InstallSnapshot(localEndpoint, raftLog.snapshot()), follower);
+            return;
+        }
 
         LogEntry prevEntry;
         LogEntry[] entries;
         // TODO: define a max batch size
         if (nextIndex > 1) {
-            prevEntry = raftLog.getEntry(nextIndex - 1);
+            int prevEntryIndex = nextIndex - 1;
+            prevEntry = (prevEntryIndex == raftLog.snapshotIndex()) ? raftLog.snapshot() : raftLog.getLogEntry(prevEntryIndex);
+
             int matchIndex = leaderState.getMatchIndex(follower);
             if (matchIndex == 0 && nextIndex > (matchIndex + 1)) {
                 // Until the leader has discovered where it and the follower's logs match,
                 // the leader can send AppendEntries with no entries (like heartbeats) to save bandwidth.
                 entries = new LogEntry[0];
-            } else if (nextIndex <= raftLog.lastLogIndex()){
+            } else if (nextIndex <= raftLog.lastLogOrSnapshotIndex()) {
                 // Then, once the matchIndex immediately precedes the nextIndex,
                 // the leader should begin to send the actual entries
-                entries = raftLog.getEntriesBetween(nextIndex, raftLog.lastLogIndex());
+                entries = raftLog.getEntriesBetween(nextIndex, raftLog.lastLogOrSnapshotIndex());
             } else {
                 entries = new LogEntry[0];
             }
-        } else if (nextIndex == 1 && raftLog.lastLogIndex() > 0) {
+        } else if (nextIndex == 1 && raftLog.lastLogOrSnapshotIndex() > 0) {
             prevEntry = new LogEntry();
-            entries = raftLog.getEntriesBetween(nextIndex, raftLog.lastLogIndex());
+            entries = raftLog.getEntriesBetween(nextIndex, raftLog.lastLogOrSnapshotIndex());
         } else {
             prevEntry = new LogEntry();
             entries = new LogEntry[0];
@@ -201,7 +224,7 @@ public class RaftNode {
         // Apply all the preceding logs
         RaftLog raftLog = state.log();
         for (int idx = state.lastApplied() + 1; idx <= commitIndex; idx++) {
-            LogEntry entry = raftLog.getEntry(idx);
+            LogEntry entry = raftLog.getLogEntry(idx);
             if (entry == null) {
                 String msg = "Failed to get log entry at index: " + idx;
                 logger.severe(msg);
@@ -259,11 +282,16 @@ public class RaftNode {
         executor.execute(new AppendFailureResponseHandlerTask(this, response));
     }
 
+    public void handleInstallSnapshot(InstallSnapshot request) {
+        executor.execute(new InstallSnapshotHandlerTask(this, request));
+    }
+
     public void registerFuture(int entryIndex, SimpleCompletableFuture future) {
         SimpleCompletableFuture f = futures.put(entryIndex, future);
         assert f == null : "Future object is already registered for entry index: " + entryIndex;
     }
 
+    // entryIndex is inclusive
     public void invalidateFuturesFrom(int entryIndex) {
         int count = 0;
         Iterator<Map.Entry<Long, SimpleCompletableFuture>> iterator = futures.entrySet().iterator();
@@ -278,6 +306,62 @@ public class RaftNode {
         }
 
         logger.warning("Invalidated " + count + " futures from log index: " + entryIndex);
+    }
+
+    private void invalidateFuturesUntil(int entryIndex) {
+        int count = 0;
+        Iterator<Map.Entry<Long, SimpleCompletableFuture>> iterator = futures.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<Long, SimpleCompletableFuture> entry = iterator.next();
+            long index = entry.getKey();
+            if (index <= entryIndex) {
+                entry.getValue().setResult(new StaleAppendRequestException());
+                iterator.remove();
+                count++;
+            }
+        }
+
+        logger.warning("Invalidated " + count + " futures until log index: " + entryIndex);
+    }
+
+    public void takeSnapshotIfCommitIndexAdvanced() {
+        int commitIndex = state.commitIndex();
+        // TODO basri define config param
+        if ((commitIndex - state.log().snapshotIndex()) < 50) {
+            return;
+        }
+
+        Object snapshot = raftIntegration.runOperation(new TakeSnapshotOp(serviceName), commitIndex);
+        RestoreSnapshotOp snapshotOp = new RestoreSnapshotOp(serviceName, commitIndex, snapshot);
+        LogEntry committedEntry = state.log().getLogEntry(commitIndex);
+        LogEntry snapshotLogEntry = new LogEntry(committedEntry.term(), commitIndex, snapshotOp);
+        state.log().setSnapshot(snapshotLogEntry);
+
+        logger.info("Snapshot: "  + snapshotLogEntry + " is taken.");
+    }
+
+    public void installSnapshot(LogEntry snapshot) {
+        int commitIndex = state.commitIndex();
+        if (commitIndex > snapshot.index()) {
+            logger.severe("Cannot install snapshot: " + snapshot + " since commit index: " + commitIndex + " is larger.");
+            return;
+        }
+
+        state.commitIndex(snapshot.index());
+        List<LogEntry> truncated = state.log().setSnapshot(snapshot);
+        if (logger.isFineEnabled()) {
+            logger.fine(truncated.size() + " entries are truncated to install snapshot: " + snapshot + " => " + truncated);
+        } else if (truncated.size() > 0) {
+            logger.info(truncated.size() + " entries are truncated to install snapshot: " + snapshot);
+        }
+
+        raftIntegration.runOperation(snapshot.operation(), snapshot.index());
+        state.lastApplied(snapshot.index());
+
+        // TODO basri not sure about this
+        invalidateFuturesUntil(snapshot.index());
+
+        logger.info("Snapshot: " + snapshot + " is installed.");
     }
 
     // for testing
@@ -355,6 +439,24 @@ public class RaftNode {
                 }
             } finally {
                 scheduleLeaderFailureDetection();
+            }
+        }
+    }
+
+    private class SnapshotTask implements StripedRunnable {
+        @Override
+        public int getKey() {
+            return getStripeKey();
+        }
+
+        @Override
+        public void run() {
+            try {
+                if (state.role() == RaftRole.LEADER || state.role() == RaftRole.FOLLOWER) {
+                    takeSnapshotIfCommitIndexAdvanced();
+                }
+            } finally {
+                scheduleSnapshotTask();
             }
         }
     }

@@ -5,11 +5,13 @@ import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
+import com.hazelcast.raft.impl.dto.InstallSnapshot;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.operation.AppendFailureResponseOp;
 import com.hazelcast.raft.impl.operation.AppendRequestOp;
 import com.hazelcast.raft.impl.operation.AppendSuccessResponseOp;
+import com.hazelcast.raft.impl.operation.InstallSnapshotOp;
 import com.hazelcast.raft.impl.operation.VoteRequestOp;
 import com.hazelcast.raft.impl.operation.VoteResponseOp;
 import com.hazelcast.raft.impl.RaftEndpoint;
@@ -91,6 +93,11 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
     @Override
     public boolean send(AppendFailureResponse response, RaftEndpoint target) {
         return send(new AppendFailureResponseOp(raftName, response), target);
+    }
+
+    @Override
+    public boolean send(InstallSnapshot request, RaftEndpoint target) {
+        return send(new InstallSnapshotOp(raftName, request), target);
     }
 
     @Override

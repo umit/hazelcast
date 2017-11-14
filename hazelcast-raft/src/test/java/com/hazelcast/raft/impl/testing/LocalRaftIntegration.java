@@ -4,12 +4,14 @@ import com.hazelcast.internal.serialization.impl.DefaultSerializationServiceBuil
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazelcast.raft.RaftOperation;
+import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
+import com.hazelcast.raft.impl.dto.InstallSnapshot;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.spi.TaskScheduler;
@@ -19,7 +21,6 @@ import com.hazelcast.util.executor.StripedExecutor;
 
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -41,7 +42,7 @@ import static org.junit.Assert.assertThat;
 public class LocalRaftIntegration implements RaftIntegration {
 
     private final RaftEndpoint localEndpoint;
-    private final Map<String, Object> services;
+    private final SnapshotAwareService service;
     private final StripedExecutor stripedExecutor;
     private final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -51,9 +52,9 @@ public class LocalRaftIntegration implements RaftIntegration {
     private final Set<EndpointDropEntry> endpointDropRules = Collections.newSetFromMap(new ConcurrentHashMap<EndpointDropEntry, Boolean>());
     private final Set<Class> dropAllRules = Collections.newSetFromMap(new ConcurrentHashMap<Class, Boolean>());
 
-    public LocalRaftIntegration(RaftEndpoint localEndpoint, Map<String, Object> services) {
+    public LocalRaftIntegration(RaftEndpoint localEndpoint, SnapshotAwareService service) {
         this.localEndpoint = localEndpoint;
-        this.services = services;
+        this.service = service;
         this.stripedExecutor = new StripedExecutor(Logger.getLogger("executor"), localEndpoint.getUid(), 1, Integer.MAX_VALUE);
     }
 
@@ -178,6 +179,21 @@ public class LocalRaftIntegration implements RaftIntegration {
         return true;
     }
 
+    @Override
+    public boolean send(InstallSnapshot request, RaftEndpoint target) {
+        assertNotEquals(localEndpoint, target);
+        RaftNode node = nodes.get(target);
+        if (node == null) {
+            return false;
+        }
+        if (shouldDrop(request, target)) {
+            return true;
+        }
+
+        node.handleInstallSnapshot(request);
+        return true;
+    }
+
     private boolean shouldDrop(Object message, RaftEndpoint target) {
         return dropAllRules.contains(message.getClass())
                 || endpointDropRules.contains(new EndpointDropEntry(message.getClass(), target));
@@ -188,9 +204,7 @@ public class LocalRaftIntegration implements RaftIntegration {
         if (operation == null) {
             return null;
         }
-        if (operation.getServiceName() != null) {
-            operation.setService(services.get(operation.getServiceName()));
-        }
+        operation.setService(service);
         operation.setCommitIndex(commitIndex);
         try {
             operation.beforeRun();
@@ -233,8 +247,8 @@ public class LocalRaftIntegration implements RaftIntegration {
         endpointDropRules.clear();
     }
 
-    public <T> T getService(String serviceName) {
-        return (T) services.get(serviceName);
+    public <T extends SnapshotAwareService> T getService() {
+        return (T) service;
     }
 
     void shutdown() {

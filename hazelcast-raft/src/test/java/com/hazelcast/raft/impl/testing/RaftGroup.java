@@ -1,5 +1,6 @@
 package com.hazelcast.raft.impl.testing;
 
+import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftUtil;
@@ -7,9 +8,6 @@ import com.hazelcast.test.AssertTask;
 import org.junit.Assert;
 
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 import static com.hazelcast.raft.impl.RaftUtil.getTerm;
 import static com.hazelcast.raft.impl.RaftUtil.majority;
@@ -17,7 +15,6 @@ import static com.hazelcast.raft.impl.RaftUtil.minority;
 import static com.hazelcast.raft.impl.RaftUtil.newRaftEndpoint;
 import static com.hazelcast.test.HazelcastTestSupport.assertTrueEventually;
 import static java.util.Arrays.asList;
-import static java.util.Collections.unmodifiableMap;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertEquals;
@@ -31,30 +28,33 @@ public class RaftGroup {
     private final RaftNode[] nodes;
 
     public RaftGroup(int size) {
-        this(size, Collections.<String, Class>emptyMap());
+        this(size, null, null);
     }
 
-    public RaftGroup(int size, Map<String, Class> serviceRegistrations) {
+    public RaftGroup(int size, String serviceName, Class<? extends SnapshotAwareService> serviceClazz) {
         endpoints = new RaftEndpoint[size];
         integrations = new LocalRaftIntegration[size];
 
         for (int i = 0; i < size; i++) {
             endpoints[i] = newRaftEndpoint(5000 + i);
-            Map<String, Object> services = new HashMap<String, Object>(serviceRegistrations.size());
-            for (Map.Entry<String, Class> entry : serviceRegistrations.entrySet()) {
+            SnapshotAwareService service;
+            if (serviceName != null && serviceClazz != null) {
                 try {
-                    services.put(entry.getKey(), entry.getValue().newInstance());
+                    service = serviceClazz.newInstance();
                 } catch (Exception e) {
                     throw new AssertionError(e);
                 }
+            } else {
+                service = null;
             }
-            integrations[i] = new LocalRaftIntegration(endpoints[i], unmodifiableMap(services));
+
+            integrations[i] = new LocalRaftIntegration(endpoints[i], service);
         }
 
         nodes = new RaftNode[size];
         for (int i = 0; i < size; i++) {
             LocalRaftIntegration integration = integrations[i];
-            nodes[i] = new RaftNode("TEST", "node-" + i, endpoints[i], asList(endpoints), integration, integration.getStripedExecutor());
+            nodes[i] = new RaftNode(serviceName, "node-" + i, endpoints[i], asList(endpoints), integration, integration.getStripedExecutor());
         }
     }
 
@@ -123,12 +123,12 @@ public class RaftGroup {
         return getIntegration(getIndexOf(endpoint));
     }
 
-    public <T> T getService(RaftEndpoint endpoint, String serviceName) {
-        return getIntegration(getIndexOf(endpoint)).getService(serviceName);
+    public <T> T getService(RaftEndpoint endpoint) {
+        return getIntegration(getIndexOf(endpoint)).getService();
     }
 
-    public <T> T getService(RaftNode raftNode, String serviceName) {
-        return getIntegration(getIndexOf(raftNode.getLocalEndpoint())).getService(serviceName);
+    public <T> T getService(RaftNode raftNode) {
+        return getIntegration(getIndexOf(raftNode.getLocalEndpoint())).getService();
     }
 
     public RaftNode waitUntilLeaderElected() {

@@ -59,7 +59,6 @@ public class AppendRequestHandlerTask implements StripedRunnable {
             logger.info("Demoting to FOLLOWER from current term: " + state.term() + " to new term: " + req.term() + " and leader: " + req.leader());
             state.toFollower(req.term());
             state.leader(req.leader());
-            raftNode.invalidateFuturesFrom(state.commitIndex() + 1);
             raftNode.send(createFailureResponse(req.term()), req.leader());
             return;
         }
@@ -71,15 +70,15 @@ public class AppendRequestHandlerTask implements StripedRunnable {
 
         // Verify the last log entry
         if (req.prevLogIndex() > 0) {
-            int lastLogIndex = raftLog.lastLogIndex();
-            int lastLogTerm = raftLog.lastLogTerm();
+            int lastLogIndex = raftLog.lastLogOrSnapshotIndex();
+            int lastLogTerm = raftLog.lastLogOrSnapshotTerm();
 
             int prevLogTerm;
             if (req.prevLogIndex() == lastLogIndex) {
                 prevLogTerm = lastLogTerm;
             } else {
                 // Reply false if log does not contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
-                LogEntry prevLog = raftLog.getEntry(req.prevLogIndex());
+                LogEntry prevLog = raftLog.getLogEntry(req.prevLogIndex());
                 if (prevLog == null) {
                     logger.warning("Failed to get previous log index for " + req + ", last log index: " + lastLogIndex);
                     raftNode.send(createFailureResponse(req.term()), req.leader());
@@ -98,7 +97,7 @@ public class AppendRequestHandlerTask implements StripedRunnable {
         // Process any new entries
         if (req.entryCount() > 0) {
             // Delete any conflicting entries, skip any duplicates
-            int lastLogIndex = raftLog.lastLogIndex();
+            int lastLogIndex = raftLog.lastLogOrSnapshotIndex();
 
             LogEntry[] newEntries = null;
             for (int i = 0; i < req.entryCount(); i++) {
@@ -109,7 +108,7 @@ public class AppendRequestHandlerTask implements StripedRunnable {
                     break;
                 }
 
-                LogEntry localEntry = raftLog.getEntry(reqEntry.index());
+                LogEntry localEntry = raftLog.getLogEntry(reqEntry.index());
 
                 assert localEntry != null : "Entry not found on log index: " + reqEntry.index() + " for " + req;
 
@@ -150,10 +149,12 @@ public class AppendRequestHandlerTask implements StripedRunnable {
             }
         }
 
+        int lastLogIndex = req.prevLogIndex() + req.entryCount();
+
         // Update the commit index
         if (req.leaderCommitIndex() > state.commitIndex()) {
             // If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
-            int newCommitIndex = min(req.leaderCommitIndex(), raftLog.lastLogIndex());
+            int newCommitIndex = min(req.leaderCommitIndex(), lastLogIndex);
             logger.info("Setting commit index: " + newCommitIndex);
             state.commitIndex(newCommitIndex);
             //                    if r.configurations.latestIndex <= newCommitIndex {
@@ -163,7 +164,6 @@ public class AppendRequestHandlerTask implements StripedRunnable {
             raftNode.processLogs();
         }
 
-        int lastLogIndex = req.prevLogIndex() + req.entryCount();
         AppendSuccessResponse resp = new AppendSuccessResponse(raftNode.getLocalEndpoint(), state.term(), lastLogIndex);
         raftNode.send(resp, req.leader());
     }
