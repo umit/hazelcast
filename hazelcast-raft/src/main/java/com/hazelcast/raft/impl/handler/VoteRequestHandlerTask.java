@@ -51,6 +51,7 @@ public class VoteRequestHandlerTask implements StripedRunnable {
             }
 
             state.toFollower(req.term());
+            raftNode.printMemberState();
         }
 
         if (state.leader() != null && !req.candidate().equals(state.leader())) {

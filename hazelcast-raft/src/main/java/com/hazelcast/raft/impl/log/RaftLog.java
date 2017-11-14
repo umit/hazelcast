@@ -34,7 +34,8 @@ public class RaftLog {
     public LogEntry getLogEntry(int entryIndex) {
         if (entryIndex < 1) {
             throw new IllegalArgumentException("Illegal index: " + entryIndex + ". Index starts from 1.");
-        } else if (entryIndex > lastLogOrSnapshotIndex() || snapshotIndex() >= entryIndex) {
+        }
+        if (entryIndex > lastLogOrSnapshotIndex() || snapshotIndex() >= entryIndex) {
             return null;
         }
 
@@ -44,7 +45,8 @@ public class RaftLog {
     public List<LogEntry> truncateEntriesFrom(int entryIndex) {
         if (entryIndex <= snapshotIndex()) {
             throw new IllegalArgumentException("Illegal index: " + entryIndex + ", snapshot index: " + snapshotIndex());
-        } else if (entryIndex > lastLogOrSnapshotIndex()) {
+        }
+        if (entryIndex > lastLogOrSnapshotIndex()) {
             throw new IllegalArgumentException("Illegal index: " + entryIndex + ", last log index: " + lastLogOrSnapshotIndex());
         }
 
@@ -66,7 +68,8 @@ public class RaftLog {
             if (entry.term() < lastTerm) {
                 throw new IllegalArgumentException("Cannot append " + entry + " since its term is lower than last log term: "
                         + lastTerm);
-            } else if (entry.index() != lastIndex + 1) {
+            }
+            if (entry.index() != lastIndex + 1) {
                 throw new IllegalArgumentException("Cannot append " + entry + "since its index is bigger than (lasLogIndex + 1): "
                         + (lastIndex + 1));
             }
@@ -80,11 +83,14 @@ public class RaftLog {
     public LogEntry[] getEntriesBetween(int fromEntryIndex, int toEntryIndex) {
         if (fromEntryIndex > toEntryIndex) {
             throw new IllegalArgumentException("Illegal from entry index: " + fromEntryIndex + ", to entry index: " + toEntryIndex);
-        } else if (fromEntryIndex <= snapshotIndex()) {
+        }
+        if (fromEntryIndex <= snapshotIndex()) {
             throw new IllegalArgumentException("Illegal from entry index: " + fromEntryIndex + ", snapshot index: " + snapshotIndex());
-        } else if (fromEntryIndex > lastLogOrSnapshotIndex()) {
+        }
+        if (fromEntryIndex > lastLogOrSnapshotIndex()) {
             throw new IllegalArgumentException("Illegal from entry index: " + fromEntryIndex + ", last log index: " + lastLogOrSnapshotIndex());
-        } else if (toEntryIndex > lastLogOrSnapshotIndex()) {
+        }
+        if (toEntryIndex > lastLogOrSnapshotIndex()) {
             throw new IllegalArgumentException("Illegal to entry index: " + toEntryIndex + ", last log index: " + lastLogOrSnapshotIndex());
         }
 

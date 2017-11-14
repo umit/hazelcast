@@ -81,7 +81,7 @@ public class RaftState {
         return term;
     }
 
-    public int incrementTerm() {
+    int incrementTerm() {
         return ++term;
     }
 
