@@ -258,6 +258,31 @@ public class LocalRaftIntegration implements RaftIntegration {
         }
     }
 
+    @Override
+    public long getLeaderElectionTimeoutInMillis() {
+        return 2000;
+    }
+
+    @Override
+    public long getHeartbeatPeriodInMillis() {
+        return 5000;
+    }
+
+    @Override
+    public int getAppendRequestMaxEntryCount() {
+        return 20;
+    }
+
+    @Override
+    public int getCommitIndexAdvanceCountToSnapshot() {
+        return 50;
+    }
+
+    @Override
+    public int getUncommittedEntryCountToRejectNewAppends() {
+        return 10000;
+    }
+
     void dropMessagesToEndpoint(RaftEndpoint endpoint, Class messageType) {
         endpointDropRules.add(new EndpointDropEntry(messageType, endpoint));
     }
