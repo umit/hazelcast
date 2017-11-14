@@ -43,7 +43,7 @@ public class RaftDataService implements SnapshotAwareService {
     }
 
     @Override
-    public Object takeSnapshot(int commitIndex) {
+    public Object takeSnapshot(String raftName, int commitIndex) {
         Map<Integer, Object> snapshot = new HashMap<Integer, Object>();
         for (Entry<Integer, Object> e : values.entrySet()) {
             if (e.getKey() <= commitIndex) {
@@ -55,7 +55,7 @@ public class RaftDataService implements SnapshotAwareService {
     }
 
     @Override
-    public void restoreSnapshot(int commitIndex, Object snapshot) {
+    public void restoreSnapshot(String raftName, int commitIndex, Object snapshot) {
         values.clear();
         values.putAll((Map<Integer, Object>) snapshot);
     }

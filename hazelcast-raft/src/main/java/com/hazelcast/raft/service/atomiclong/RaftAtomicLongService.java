@@ -1,6 +1,7 @@
 package com.hazelcast.raft.service.atomiclong;
 
 import com.hazelcast.core.IAtomicLong;
+import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.service.CreateRaftGroupHelper;
 import com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy;
 import com.hazelcast.spi.ManagedService;
@@ -15,7 +16,7 @@ import java.util.concurrent.ExecutionException;
  * TODO: Javadoc Pending...
  *
  */
-public class RaftAtomicLongService implements ManagedService {
+public class RaftAtomicLongService implements ManagedService, SnapshotAwareService<Long> {
 
     public static final String SERVICE_NAME = "hz:raft:atomicLongService";
     public static final String PREFIX = "atomiclong:";
@@ -34,6 +35,27 @@ public class RaftAtomicLongService implements ManagedService {
 
     @Override
     public void shutdown(boolean terminate) {
+    }
+
+    @Override
+    public Long takeSnapshot(String raftName, int commitIndex) {
+        String name = nameWithoutPrefix(raftName);
+        RaftAtomicLong atomicLong = map.get(name);
+        assert atomicLong != null : "Name: " + name;
+        assert atomicLong.commitIndex() == commitIndex : "Value: " + atomicLong + ", Commit-Index: " + commitIndex;
+        return atomicLong.value();
+    }
+
+    @Override
+    public void restoreSnapshot(String raftName, int commitIndex, Long snapshot) {
+        String name = nameWithoutPrefix(raftName);
+        RaftAtomicLong atomicLong = new RaftAtomicLong(name, snapshot, commitIndex);
+        map.put(name, atomicLong);
+    }
+
+    private String nameWithoutPrefix(String raftName) {
+        assert raftName.startsWith(PREFIX) : "Raft-Name: " + raftName;
+        return raftName.substring(PREFIX.length());
     }
 
     // TODO: in config, nodeCount or failure tolerance ?
