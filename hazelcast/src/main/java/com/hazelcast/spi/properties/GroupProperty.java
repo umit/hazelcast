@@ -883,36 +883,6 @@ public final class GroupProperty {
     public static final HazelcastProperty TASK_SCHEDULER_REMOVE_ON_CANCEL =
             new HazelcastProperty("hazelcast.executionservice.taskscheduler.remove.oncancel", false);
 
-    /**
-     * TODO Javadoc pending
-     */
-    public static final HazelcastProperty RAFT_LEADER_ELECTION_TIMEOUT_IN_MILLIS =
-            new HazelcastProperty("hazelcast.raft.leader.election.timeout", 2000);
-
-    /**
-     * TODO Javadoc pending
-     */
-    public static final HazelcastProperty RAFT_LEADER_HEARTBEAT_PERIOD_IN_MILLIS =
-            new HazelcastProperty("hazelcast.raft.leader.heartbeat.period", 5000);
-
-    /**
-     * TODO Javadoc pending
-     */
-    public static final HazelcastProperty RAFT_APPEND_REQUEST_MAX_ENTRY_COUNT =
-            new HazelcastProperty("hazelcast.raft.append.request.max.entries", 50);
-
-    /**
-     * TODO Javadoc pending
-     */
-    public static final HazelcastProperty RAFT_COMMIT_INDEX_ADVANCE_COUNT_TO_SNAPSHOT =
-            new HazelcastProperty("hazelcast.raft.commit.index.advance.count", 1000);
-
-    /**
-     * TODO Javadoc pending
-     */
-    public static final HazelcastProperty RAFT_UNCOMMITTED_ENTRY_COUNT_TO_REJECT_NEW_APPENDS =
-            new HazelcastProperty("hazelcast.raft.append.max.uncommitted.entries", 100);
-
     private GroupProperty() {
     }
 }

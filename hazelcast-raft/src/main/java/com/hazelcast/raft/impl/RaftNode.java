@@ -84,7 +84,7 @@ public class RaftNode {
     }
 
     public long getLeaderElectionTimeoutInMillis() {
-        int leaderElectionTimeout = (int) max(2000, raftIntegration.getLeaderElectionTimeoutInMillis());
+        int leaderElectionTimeout = (int) raftIntegration.getLeaderElectionTimeoutInMillis();
         return RandomPicker.getInt(leaderElectionTimeout, leaderElectionTimeout + 1000);
     }
 
