@@ -21,7 +21,7 @@ public abstract class RaftOperation extends Operation {
     public final RaftOperation setCommitIndex(int commitIndex) {
         checkTrue(commitIndex > NA_COMMIT_INDEX, "Cannot set commit index:" + commitIndex);
         checkTrue(this.commitIndex == NA_COMMIT_INDEX, "cannot set commit index: " + commitIndex
-                + " because it is already set to: " + this.commitIndex);
+                + " because it is already set to: " + this.commitIndex + " -> " + this);
         this.commitIndex = commitIndex;
         return this;
     }

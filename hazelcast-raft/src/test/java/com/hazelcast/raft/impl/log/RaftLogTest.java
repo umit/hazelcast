@@ -36,8 +36,8 @@ public class RaftLogTest {
 
     @Test
     public void test_initialState() throws Exception {
-        assertEquals(0, log.lastLogTerm());
-        assertEquals(0, log.lastLogIndex());
+        assertEquals(0, log.lastLogOrSnapshotTerm());
+        assertEquals(0, log.lastLogOrSnapshotIndex());
     }
 
     @Test
@@ -47,8 +47,8 @@ public class RaftLogTest {
         LogEntry last = new LogEntry(1, 3, null);
         log.appendEntries(last);
 
-        assertEquals(last.term(), log.lastLogTerm());
-        assertEquals(last.index(), log.lastLogIndex());
+        assertEquals(last.term(), log.lastLogOrSnapshotTerm());
+        assertEquals(last.index(), log.lastLogOrSnapshotIndex());
     }
 
     @Test
@@ -62,10 +62,10 @@ public class RaftLogTest {
         LogEntry last = new LogEntry(2, 4, null);
         log.appendEntries(last);
 
-        assertEquals(last.term(), log.lastLogTerm());
-        assertEquals(last.index(), log.lastLogIndex());
+        assertEquals(last.term(), log.lastLogOrSnapshotTerm());
+        assertEquals(last.index(), log.lastLogOrSnapshotIndex());
 
-        LogEntry lastLogEntry = log.lastLogEntry();
+        LogEntry lastLogEntry = log.lastLogOrSnapshotEntry();
         assertEquals(last.term(), lastLogEntry.term());
         assertEquals(last.index(), lastLogEntry.index());
     }
@@ -130,13 +130,13 @@ public class RaftLogTest {
                 new LogEntry(1, 3, null)
         };
         log.appendEntries(entries);
-        log.setSnapshot(3, null);
+        log.setSnapshot(new LogEntry(1, 3, null));
 
         LogEntry last = new LogEntry(1, 4, null);
         log.appendEntries(last);
 
-        assertEquals(last.term(), log.lastLogTerm());
-        assertEquals(last.index(), log.lastLogIndex());
+        assertEquals(last.term(), log.lastLogOrSnapshotTerm());
+        assertEquals(last.index(), log.lastLogOrSnapshotIndex());
     }
 
     @Test
@@ -147,13 +147,13 @@ public class RaftLogTest {
                 new LogEntry(1, 3, null)
         };
         log.appendEntries(entries);
-        log.setSnapshot(3, null);
+        log.setSnapshot(new LogEntry(1, 3, null));
 
         LogEntry last = new LogEntry(2, 4, null);
         log.appendEntries(last);
 
-        assertEquals(last.term(), log.lastLogTerm());
-        assertEquals(last.index(), log.lastLogIndex());
+        assertEquals(last.term(), log.lastLogOrSnapshotTerm());
+        assertEquals(last.index(), log.lastLogOrSnapshotIndex());
     }
 
     @Test
@@ -164,7 +164,7 @@ public class RaftLogTest {
                 new LogEntry(2, 3, null)
         };
         log.appendEntries(entries);
-        log.setSnapshot(3, null);
+        log.setSnapshot(new LogEntry(2, 3, null));
 
         exception.expect(IllegalArgumentException.class);
         log.appendEntries(new LogEntry(1, 4, null));
@@ -178,7 +178,7 @@ public class RaftLogTest {
                 new LogEntry(2, 3, null)
         };
         log.appendEntries(entries);
-        log.setSnapshot(3, null);
+        log.setSnapshot(new LogEntry(2, 3, null));
 
         exception.expect(IllegalArgumentException.class);
         log.appendEntries(new LogEntry(2, 2, null));
@@ -192,7 +192,7 @@ public class RaftLogTest {
                 new LogEntry(2, 3, null)
         };
         log.appendEntries(entries);
-        log.setSnapshot(3, null);
+        log.setSnapshot(new LogEntry(2, 3, null));
 
         exception.expect(IllegalArgumentException.class);
         log.appendEntries(new LogEntry(2, 3, null));
@@ -206,7 +206,7 @@ public class RaftLogTest {
                 new LogEntry(2, 3, null)
         };
         log.appendEntries(entries);
-        log.setSnapshot(3, null);
+        log.setSnapshot(new LogEntry(2, 3, null));
 
         exception.expect(IllegalArgumentException.class);
         log.appendEntries(new LogEntry(2, 5, null));
@@ -221,8 +221,8 @@ public class RaftLogTest {
         };
         log.appendEntries(entries);
 
-        for (int i = 1; i <= log.lastLogIndex(); i++) {
-            LogEntry entry = log.getEntry(i);
+        for (int i = 1; i <= log.lastLogOrSnapshotIndex(); i++) {
+            LogEntry entry = log.getLogEntry(i);
             assertEquals(1, entry.term());
             assertEquals(i, entry.index());
         }
@@ -236,17 +236,17 @@ public class RaftLogTest {
                 new LogEntry(1, 3, null)
         };
         log.appendEntries(entries);
-        log.setSnapshot(3, null);
+        log.setSnapshot(new LogEntry(1, 3, null));
 
         log.appendEntries(new LogEntry(1, 4, null));
         log.appendEntries(new LogEntry(1, 5, null));
 
         for (int i = 1; i <= 3; i++) {
-            assertNull(log.getEntry(i));
+            assertNull(log.getLogEntry(i));
         }
 
-        for (int i = 4; i <= log.lastLogIndex(); i++) {
-            LogEntry entry = log.getEntry(i);
+        for (int i = 4; i <= log.lastLogOrSnapshotIndex(); i++) {
+            LogEntry entry = log.getLogEntry(i);
             assertEquals(1, entry.term());
             assertEquals(i, entry.index());
         }
@@ -254,13 +254,13 @@ public class RaftLogTest {
 
     @Test
     public void getEntry_withUnknownIndex() throws Exception {
-        assertNull(log.getEntry(1));
+        assertNull(log.getLogEntry(1));
     }
 
     @Test
     public void getEntry_withZeroIndex() throws Exception {
         exception.expect(IllegalArgumentException.class);
-        log.getEntry(0);
+        log.getLogEntry(0);
     }
 
     @Test
@@ -290,7 +290,7 @@ public class RaftLogTest {
                 new LogEntry(1, 3, null)
         };
         log.appendEntries(entries);
-        log.setSnapshot(2, null);
+        log.setSnapshot(new LogEntry(1, 2, null));
 
         LogEntry[] result = log.getEntriesBetween(3, 3);
         assertArrayEquals(Arrays.copyOfRange(entries, 2, 3), result);
@@ -304,7 +304,7 @@ public class RaftLogTest {
                 new LogEntry(1, 3, null)
         };
         log.appendEntries(entries);
-        log.setSnapshot(2, null);
+        log.setSnapshot(new LogEntry(1, 2, null));
 
         exception.expect(IllegalArgumentException.class);
         log.getEntriesBetween(2, 3);
@@ -325,10 +325,10 @@ public class RaftLogTest {
         assertArrayEquals(Arrays.copyOfRange(entries, 2, 4), truncated.toArray());
 
         for (int i = 1; i <= 2; i++) {
-            assertEquals(entries[i - 1], log.getEntry(i));
+            assertEquals(entries[i - 1], log.getLogEntry(i));
         }
 
-        assertNull(log.getEntry(3));
+        assertNull(log.getLogEntry(3));
     }
 
     @Test
@@ -340,13 +340,13 @@ public class RaftLogTest {
                 new LogEntry(1, 4, null)
         };
         log.appendEntries(entries);
-        log.setSnapshot(2, null);
+        log.setSnapshot(new LogEntry(1, 2, null));
 
         List<LogEntry> truncated = log.truncateEntriesFrom(3);
         assertEquals(2, truncated.size());
         assertArrayEquals(Arrays.copyOfRange(entries, 2, 4), truncated.toArray());
 
-        assertNull(log.getEntry(3));
+        assertNull(log.getLogEntry(3));
     }
 
     @Test
@@ -370,7 +370,7 @@ public class RaftLogTest {
                 new LogEntry(1, 3, null),
                 };
         log.appendEntries(entries);
-        log.setSnapshot(2, null);
+        log.setSnapshot(new LogEntry(1, 2, null));
 
         exception.expect(IllegalArgumentException.class);
         log.truncateEntriesFrom(1);
@@ -381,13 +381,13 @@ public class RaftLogTest {
         LogEntry[] entries = new LogEntry[] { new LogEntry(1, 1, null) };
         log.appendEntries(entries);
         RaftOperation snapshotOp = mock(RaftOperation.class);
-        log.setSnapshot(1, snapshotOp);
+        log.setSnapshot(new LogEntry(1, 1, snapshotOp));
 
-        LogEntry lastLogEntry = log.lastLogEntry();
+        LogEntry lastLogEntry = log.lastLogOrSnapshotEntry();
         assertEquals(1, lastLogEntry.index());
         assertEquals(1, lastLogEntry.term());
-        assertEquals(log.lastLogIndex(), 1);
-        assertEquals(log.lastLogTerm(), 1);
+        assertEquals(log.lastLogOrSnapshotIndex(), 1);
+        assertEquals(log.lastLogOrSnapshotTerm(), 1);
         assertEquals(log.snapshotIndex(), 1);
 
         LogEntry snapshot = log.snapshot();
@@ -408,13 +408,13 @@ public class RaftLogTest {
                 };
         log.appendEntries(entries);
 
-        log.setSnapshot(5, null);
+        log.setSnapshot(new LogEntry(1, 5, null));
 
-        LogEntry lastLogEntry = log.lastLogEntry();
+        LogEntry lastLogEntry = log.lastLogOrSnapshotEntry();
         assertEquals(5, lastLogEntry.index());
         assertEquals(1, lastLogEntry.term());
-        assertEquals(log.lastLogIndex(), 5);
-        assertEquals(log.lastLogTerm(), 1);
+        assertEquals(log.lastLogOrSnapshotIndex(), 5);
+        assertEquals(log.lastLogOrSnapshotTerm(), 1);
         assertEquals(log.snapshotIndex(), 5);
 
         LogEntry snapshot = log.snapshot();
@@ -433,14 +433,14 @@ public class RaftLogTest {
                 };
         log.appendEntries(entries);
 
-        log.setSnapshot(3, null);
+        log.setSnapshot(new LogEntry(1, 3, null));
 
-        LogEntry lastLogEntry = log.lastLogEntry();
+        LogEntry lastLogEntry = log.lastLogOrSnapshotEntry();
         assertEquals(5, lastLogEntry.index());
         assertEquals(1, lastLogEntry.term());
-        assertTrue(lastLogEntry == log.getEntry(lastLogEntry.index()));
-        assertEquals(log.lastLogIndex(), 5);
-        assertEquals(log.lastLogTerm(), 1);
+        assertTrue(lastLogEntry == log.getLogEntry(lastLogEntry.index()));
+        assertEquals(log.lastLogOrSnapshotIndex(), 5);
+        assertEquals(log.lastLogOrSnapshotTerm(), 1);
         assertEquals(log.snapshotIndex(), 3);
 
         LogEntry snapshot = log.snapshot();
@@ -459,16 +459,16 @@ public class RaftLogTest {
                 };
         log.appendEntries(entries);
 
-        log.setSnapshot(2, null);
+        log.setSnapshot(new LogEntry(1, 2, null));
         RaftOperation snapshotOp = mock(RaftOperation.class);
-        log.setSnapshot(4, snapshotOp);
+        log.setSnapshot(new LogEntry(1, 4, snapshotOp));
 
-        LogEntry lastLogEntry = log.lastLogEntry();
+        LogEntry lastLogEntry = log.lastLogOrSnapshotEntry();
         assertEquals(5, lastLogEntry.index());
         assertEquals(1, lastLogEntry.term());
-        assertTrue(lastLogEntry == log.getEntry(lastLogEntry.index()));
-        assertEquals(log.lastLogIndex(), 5);
-        assertEquals(log.lastLogTerm(), 1);
+        assertTrue(lastLogEntry == log.getLogEntry(lastLogEntry.index()));
+        assertEquals(log.lastLogOrSnapshotIndex(), 5);
+        assertEquals(log.lastLogOrSnapshotTerm(), 1);
         assertEquals(log.snapshotIndex(), 4);
 
         LogEntry snapshot = log.snapshot();

@@ -73,8 +73,8 @@ public class RaftStateTest {
         assertNull(state.candidateState());
 
         RaftLog log = state.log();
-        assertEquals(0, log.lastLogIndex());
-        assertEquals(0, log.lastLogTerm());
+        assertEquals(0, log.lastLogOrSnapshotIndex());
+        assertEquals(0, log.lastLogOrSnapshotTerm());
     }
 
     @Test
@@ -166,7 +166,7 @@ public class RaftStateTest {
         int term = state.term();
         RaftLog log = state.log();
         log.appendEntries(new LogEntry(term, 1, null), new LogEntry(term, 2, null), new LogEntry(term, 3, null));
-        int lastLogIndex = log.lastLogIndex();
+        int lastLogIndex = log.lastLogOrSnapshotIndex();
 
         state.toLeader();
 

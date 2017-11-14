@@ -47,11 +47,22 @@ public class RaftUtil {
         return readRaftState(node, task);
     }
 
-    public static LogEntry getLastLogEntry(final RaftNode node) {
+    public static LogEntry getLastLogOrSnapshotEntry(final RaftNode node) {
         Callable<LogEntry> task = new Callable<LogEntry>() {
             @Override
             public LogEntry call() throws Exception {
-                return node.getState().log().lastLogEntry();
+                return node.getState().log().lastLogOrSnapshotEntry();
+            }
+        };
+
+        return readRaftState(node, task);
+    }
+
+    public static LogEntry getSnapshotEntry(final RaftNode node) {
+        Callable<LogEntry> task = new Callable<LogEntry>() {
+            @Override
+            public LogEntry call() throws Exception {
+                return node.getState().log().snapshot();
             }
         };
 

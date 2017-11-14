@@ -1,7 +1,5 @@
 package com.hazelcast.raft.impl.log;
 
-import com.hazelcast.raft.RaftOperation;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,23 +17,24 @@ public class RaftLog {
 
     private LogEntry snapshot = new LogEntry();
 
-    public int lastLogIndex() {
-        return lastLogEntry().index();
+    public int lastLogOrSnapshotIndex() {
+        return lastLogOrSnapshotEntry().index();
     }
 
-    public int lastLogTerm() {
-        return lastLogEntry().term();
+    public int lastLogOrSnapshotTerm() {
+        return lastLogOrSnapshotEntry().term();
     }
 
-    // lastLogEntry returns the last index and term, either from the last log or from the last snapshot
-    public LogEntry lastLogEntry() {
+    // lastLogOrSnapshotEntry returns the last index and term, either from the last log or from the last snapshot
+    public LogEntry lastLogOrSnapshotEntry() {
         return logs.size() > 0 ? logs.get(logs.size() - 1) : (snapshot != null ? snapshot : new LogEntry());
     }
 
-    public LogEntry getEntry(int entryIndex) {
+    // returns only from the current log, not from the snapshot entry
+    public LogEntry getLogEntry(int entryIndex) {
         if (entryIndex < 1) {
             throw new IllegalArgumentException("Illegal index: " + entryIndex + ". Index starts from 1.");
-        } else if (entryIndex > lastLogIndex() || snapshotIndex() >= entryIndex) {
+        } else if (entryIndex > lastLogOrSnapshotIndex() || snapshotIndex() >= entryIndex) {
             return null;
         }
 
@@ -45,8 +44,8 @@ public class RaftLog {
     public List<LogEntry> truncateEntriesFrom(int entryIndex) {
         if (entryIndex <= snapshotIndex()) {
             throw new IllegalArgumentException("Illegal index: " + entryIndex + ", snapshot index: " + snapshotIndex());
-        } else if (entryIndex > lastLogIndex()) {
-            throw new IllegalArgumentException("Illegal index: " + entryIndex + ", last log index: " + lastLogIndex());
+        } else if (entryIndex > lastLogOrSnapshotIndex()) {
+            throw new IllegalArgumentException("Illegal index: " + entryIndex + ", last log index: " + lastLogOrSnapshotIndex());
         }
 
         List<LogEntry> truncated = new ArrayList<LogEntry>();
@@ -60,8 +59,8 @@ public class RaftLog {
     }
 
     public void appendEntries(LogEntry... newEntries) {
-        int lastTerm = lastLogTerm();
-        int lastIndex = lastLogIndex();
+        int lastTerm = lastLogOrSnapshotTerm();
+        int lastIndex = lastLogOrSnapshotIndex();
 
         for (LogEntry entry : newEntries) {
             if (entry.term() < lastTerm) {
@@ -83,33 +82,36 @@ public class RaftLog {
             throw new IllegalArgumentException("Illegal from entry index: " + fromEntryIndex + ", to entry index: " + toEntryIndex);
         } else if (fromEntryIndex <= snapshotIndex()) {
             throw new IllegalArgumentException("Illegal from entry index: " + fromEntryIndex + ", snapshot index: " + snapshotIndex());
-        } else if (fromEntryIndex > lastLogIndex()) {
-            throw new IllegalArgumentException("Illegal from entry index: " + fromEntryIndex + ", last log index: " + lastLogIndex());
-        } else if (toEntryIndex > lastLogIndex()) {
-            throw new IllegalArgumentException("Illegal to entry index: " + toEntryIndex + ", last log index: " + lastLogIndex());
+        } else if (fromEntryIndex > lastLogOrSnapshotIndex()) {
+            throw new IllegalArgumentException("Illegal from entry index: " + fromEntryIndex + ", last log index: " + lastLogOrSnapshotIndex());
+        } else if (toEntryIndex > lastLogOrSnapshotIndex()) {
+            throw new IllegalArgumentException("Illegal to entry index: " + toEntryIndex + ", last log index: " + lastLogOrSnapshotIndex());
         }
 
         return logs.subList(toArrayIndex(fromEntryIndex), toArrayIndex(toEntryIndex + 1)).toArray(new LogEntry[0]);
     }
 
-    public void setSnapshot(int entryIndex, RaftOperation operation) {
-        if (entryIndex <= snapshotIndex()) {
-            throw new IllegalArgumentException("Illegal index: " + entryIndex + ", snapshot index: " + snapshotIndex());
-        } else if (entryIndex > lastLogIndex()) {
-            throw new IllegalArgumentException("Illegal index: " + entryIndex + ", last log index: " + lastLogIndex());
+    public List<LogEntry> setSnapshot(LogEntry snapshot) {
+        if (snapshot.index() <= snapshotIndex()) {
+            throw new IllegalArgumentException("Illegal index: " + snapshot.index() + ", current snapshot index: " + snapshotIndex());
         }
 
-        LogEntry snapshotLogEntry = getEntry(entryIndex);
-        LogEntry snapshot = new LogEntry(snapshotLogEntry.term(), entryIndex, operation);
-
+        List<LogEntry> truncated = new ArrayList<LogEntry>();
         reverse(logs);
-        int removeCount = (entryIndex - snapshotIndex());
-        for (int i = logs.size() - 1, j = i - removeCount; i > j; i--) {
+        for (int i = logs.size() - 1; i >= 0; i--) {
+            LogEntry logEntry = logs.get(i);
+            if (logEntry.index() > snapshot.index()) {
+                break;
+            }
+
             logs.remove(i);
         }
+
         reverse(logs);
 
         this.snapshot = snapshot;
+
+        return truncated;
     }
 
     public int snapshotIndex() {

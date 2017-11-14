@@ -5,6 +5,7 @@ import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
+import com.hazelcast.raft.impl.dto.InstallSnapshot;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.spi.TaskScheduler;
@@ -37,6 +38,8 @@ public interface RaftIntegration {
     boolean send(AppendSuccessResponse response, RaftEndpoint target);
 
     boolean send(AppendFailureResponse response, RaftEndpoint target);
+
+    boolean send(InstallSnapshot request, RaftEndpoint target);
 
     Object runOperation(RaftOperation operation, int commitIndex);
 

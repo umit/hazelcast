@@ -71,14 +71,14 @@ public class VoteRequestHandlerTask implements StripedRunnable {
         }
 
         RaftLog raftLog = state.log();
-        if (raftLog.lastLogTerm() > req.lastLogTerm()) {
-            logger.info("Rejecting " + req + " since our last log term: " + raftLog.lastLogTerm() + " is greater");
+        if (raftLog.lastLogOrSnapshotTerm() > req.lastLogTerm()) {
+            logger.info("Rejecting " + req + " since our last log term: " + raftLog.lastLogOrSnapshotTerm() + " is greater");
             raftNode.send(new VoteResponse(localEndpoint, req.term(), false), req.candidate());
             return;
         }
 
-        if (raftLog.lastLogTerm() == req.lastLogTerm() && raftLog.lastLogIndex() > req.lastLogIndex()) {
-            logger.info("Rejecting " + req + " since our last log index: " + raftLog.lastLogIndex() + " is greater");
+        if (raftLog.lastLogOrSnapshotTerm() == req.lastLogTerm() && raftLog.lastLogOrSnapshotIndex() > req.lastLogIndex()) {
+            logger.info("Rejecting " + req + " since our last log index: " + raftLog.lastLogOrSnapshotIndex() + " is greater");
             raftNode.send(new VoteResponse(localEndpoint, req.term(), false), req.candidate());
             return;
         }
