@@ -11,8 +11,14 @@ public class RaftAtomicLong {
     private long value;
     private int commitIndex;
 
-    public RaftAtomicLong(String name) {
+    RaftAtomicLong(String name) {
         this.name = name;
+    }
+
+    RaftAtomicLong(String name, long value, int commitIndex) {
+        this.name = name;
+        this.value = value;
+        this.commitIndex = commitIndex;
     }
 
     public long addAndGet(long delta, int commitIndex) {
@@ -42,4 +48,18 @@ public class RaftAtomicLong {
         }
         return false;
     }
+
+    int commitIndex() {
+        return commitIndex;
+    }
+
+    long value() {
+        return value;
+    }
+
+    @Override
+    public String toString() {
+        return "AtomicLong{" + "name='" + name + '\'' + ", value=" + value + ", commitIndex=" + commitIndex + '}';
+    }
+
 }
