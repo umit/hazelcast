@@ -41,13 +41,16 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
+import static java.lang.Math.max;
+import static java.lang.Math.min;
+
 /**
  * TODO: Javadoc Pending...
  *
  */
 public class RaftNode {
 
-    private static final int HEARTBEAT_PERIOD = 5;
+    private static final long SNAPSHOT_TASK_PERIOD_IN_SECONDS = 1;
 
     private final String serviceName;
     private final ILogger logger;
@@ -78,6 +81,17 @@ public class RaftNode {
 
     public RaftEndpoint getLocalEndpoint() {
         return localEndpoint;
+    }
+
+    public long getLeaderElectionTimeoutInMillis() {
+        int leaderElectionTimeout = (int) max(2000, raftIntegration.getLeaderElectionTimeoutInMillis());
+        return RandomPicker.getInt(leaderElectionTimeout, leaderElectionTimeout + 1000);
+    }
+
+    public boolean shouldAllowNewAppends() {
+        int lastLogIndex = state.log().lastLogOrSnapshotIndex();
+        int uncommittedEntryCount = raftIntegration.getUncommittedEntryCountToRejectNewAppends();
+        return (lastLogIndex - state.commitIndex() < uncommittedEntryCount);
     }
 
     public void send(VoteRequest request, RaftEndpoint target) {
@@ -114,25 +128,21 @@ public class RaftNode {
     }
 
     private void scheduleLeaderFailureDetection() {
-        // TODO: Delay should be configurable.
-        long delay = RandomPicker.getInt(1000, 1500);
         taskScheduler.schedule(new Runnable() {
             @Override
             public void run() {
                 executor.execute(new LeaderFailureDetectionTask());
             }
-        }, delay, TimeUnit.MILLISECONDS);
+        }, getLeaderElectionTimeoutInMillis(), TimeUnit.MILLISECONDS);
     }
 
     private void scheduleSnapshotTask() {
-        // TODO: Delay should be configurable.
-        long delay = RandomPicker.getInt(500, 1000);
         taskScheduler.schedule(new Runnable() {
             @Override
             public void run() {
                 executor.execute(new SnapshotTask());
             }
-        }, delay, TimeUnit.MILLISECONDS);
+        }, SNAPSHOT_TASK_PERIOD_IN_SECONDS, TimeUnit.MILLISECONDS);
     }
 
     private void scheduleStart() {
@@ -172,7 +182,7 @@ public class RaftNode {
 
         LogEntry prevEntry;
         LogEntry[] entries;
-        // TODO: define a max batch size
+        int appendRequestMaxEntryCount = raftIntegration.getAppendRequestMaxEntryCount();
         if (nextIndex > 1) {
             int prevEntryIndex = nextIndex - 1;
             prevEntry = (prevEntryIndex == raftLog.snapshotIndex()) ? raftLog.snapshot() : raftLog.getLogEntry(prevEntryIndex);
@@ -185,13 +195,15 @@ public class RaftNode {
             } else if (nextIndex <= raftLog.lastLogOrSnapshotIndex()) {
                 // Then, once the matchIndex immediately precedes the nextIndex,
                 // the leader should begin to send the actual entries
-                entries = raftLog.getEntriesBetween(nextIndex, raftLog.lastLogOrSnapshotIndex());
+                int end = min(nextIndex + appendRequestMaxEntryCount, raftLog.lastLogOrSnapshotIndex());
+                entries = raftLog.getEntriesBetween(nextIndex, end);
             } else {
                 entries = new LogEntry[0];
             }
         } else if (nextIndex == 1 && raftLog.lastLogOrSnapshotIndex() > 0) {
             prevEntry = new LogEntry();
-            entries = raftLog.getEntriesBetween(nextIndex, raftLog.lastLogOrSnapshotIndex());
+            int end = min(nextIndex + appendRequestMaxEntryCount, raftLog.lastLogOrSnapshotIndex());
+            entries = raftLog.getEntriesBetween(nextIndex, end);
         } else {
             prevEntry = new LogEntry();
             entries = new LogEntry[0];
@@ -326,8 +338,8 @@ public class RaftNode {
 
     public void takeSnapshotIfCommitIndexAdvanced() {
         int commitIndex = state.commitIndex();
-        // TODO basri define config param
-        if ((commitIndex - state.log().snapshotIndex()) < 50) {
+        int commitIndexAdvanceCountToSnapshot = raftIntegration.getCommitIndexAdvanceCountToSnapshot();
+        if ((commitIndex - state.log().snapshotIndex()) < commitIndexAdvanceCountToSnapshot) {
             return;
         }
 
@@ -358,7 +370,6 @@ public class RaftNode {
         raftIntegration.runOperation(snapshot.operation(), snapshot.index());
         state.lastApplied(snapshot.index());
 
-        // TODO basri not sure about this
         invalidateFuturesUntil(snapshot.index());
 
         logger.info("Snapshot: " + snapshot + " is installed.");
@@ -413,7 +424,7 @@ public class RaftNode {
         @Override
         public void run() {
             if (state.role() == RaftRole.LEADER) {
-                if (lastAppendEntriesTimestamp < Clock.currentTimeMillis() - TimeUnit.SECONDS.toMillis(HEARTBEAT_PERIOD)) {
+                if (lastAppendEntriesTimestamp < Clock.currentTimeMillis() - raftIntegration.getHeartbeatPeriodInMillis()) {
                     broadcastAppendRequest();
                 }
 
@@ -427,7 +438,7 @@ public class RaftNode {
                 public void run() {
                     executor.execute(new HeartbeatTask());
                 }
-            }, HEARTBEAT_PERIOD, TimeUnit.SECONDS);
+            }, raftIntegration.getHeartbeatPeriodInMillis(), TimeUnit.MILLISECONDS);
         }
 
         @Override

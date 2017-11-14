@@ -3,9 +3,8 @@ package com.hazelcast.raft.impl.handler;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
-import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.dto.VoteRequest;
-import com.hazelcast.util.RandomPicker;
+import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.util.executor.StripedRunnable;
 
 import java.util.concurrent.TimeUnit;
@@ -25,8 +24,6 @@ public class LeaderElectionTask implements StripedRunnable {
 
     @Override
     public void run() {
-        // TODO: Timeout should be configurable.
-        int timeout = RandomPicker.getInt(1000, 3000);
         RaftState state = raftNode.state();
 
         if (state.leader() != null) {
@@ -42,16 +39,16 @@ public class LeaderElectionTask implements StripedRunnable {
             raftNode.send(voteRequest, endpoint);
         }
 
-        scheduleLeaderElectionTimeout(timeout);
+        scheduleLeaderElectionTimeout();
     }
 
-    private void scheduleLeaderElectionTimeout(long timeout) {
+    private void scheduleLeaderElectionTimeout() {
         raftNode.taskScheduler().schedule(new Runnable() {
             @Override
             public void run() {
                 raftNode.executor().execute(new LeaderElectionTimeoutTask(raftNode));
             }
-        }, timeout, TimeUnit.MILLISECONDS);
+        }, raftNode.getLeaderElectionTimeoutInMillis(), TimeUnit.MILLISECONDS);
     }
 
     @Override

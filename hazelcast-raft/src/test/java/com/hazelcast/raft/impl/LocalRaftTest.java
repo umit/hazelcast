@@ -152,7 +152,6 @@ public class LocalRaftTest extends HazelcastTestSupport {
 
         group.dropMessagesToAll(leader.getLocalEndpoint(), AppendRequest.class);
 
-
         try {
             leader.replicate(new RaftAddOperation("val")).get(10, TimeUnit.SECONDS);
             fail();
@@ -300,7 +299,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
         final RaftNode leader = group.waitUntilLeaderElected();
 
         int threadCount = 10;
-        final int opsPerThread = 20;
+        final int opsPerThread = 5;
         Thread[] threads = new Thread[threadCount];
         for (int i = 0; i < threadCount; i++) {
             final int start = i * opsPerThread;
@@ -361,7 +360,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
 
         group.dropMessagesToEndpoint(leader.getLocalEndpoint(), slowFollower.getLocalEndpoint(), AppendRequest.class);
 
-        final int entryCount = 100;
+        final int entryCount = 40;
         for (int i = 0; i < entryCount; i++) {
             final Object val = "val" + i;
             leader.replicate(new RaftAddOperation(val)).get();
