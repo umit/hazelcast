@@ -331,8 +331,8 @@ public class RaftNode {
             return;
         }
 
-        Object snapshot = raftIntegration.runOperation(new TakeSnapshotOp(serviceName), commitIndex);
-        RestoreSnapshotOp snapshotOp = new RestoreSnapshotOp(serviceName, commitIndex, snapshot);
+        Object snapshot = raftIntegration.runOperation(new TakeSnapshotOp(serviceName, state.name()), commitIndex);
+        RestoreSnapshotOp snapshotOp = new RestoreSnapshotOp(serviceName, state.name(), commitIndex, snapshot);
         LogEntry committedEntry = state.log().getLogEntry(commitIndex);
         LogEntry snapshotLogEntry = new LogEntry(committedEntry.term(), commitIndex, snapshotOp);
         state.log().setSnapshot(snapshotLogEntry);

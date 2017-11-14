@@ -9,14 +9,17 @@ import java.io.IOException;
 
 public class TakeSnapshotOp extends RaftOperation {
 
-    public TakeSnapshotOp(String serviceName) {
+    private final String name;
+
+    public TakeSnapshotOp(String serviceName, String name) {
+        this.name = name;
         setServiceName(serviceName);
     }
 
     @Override
     public Object doRun(int commitIndex) {
         SnapshotAwareService service = getService();
-        return service.takeSnapshot(commitIndex);
+        return service.takeSnapshot(name, commitIndex);
     }
 
     @Override

@@ -1,9 +1,9 @@
 package com.hazelcast.raft;
 
-public interface SnapshotAwareService {
+public interface SnapshotAwareService<T> {
 
-    Object takeSnapshot(int commitIndex);
+    T takeSnapshot(String raftName, int commitIndex);
 
-    void restoreSnapshot(int commitIndex, Object snapshot);
+    void restoreSnapshot(String raftName, int commitIndex, T snapshot);
 
 }

@@ -1,15 +1,20 @@
 package com.hazelcast.raft.impl.operation;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.SnapshotAwareService;
 
+import java.io.IOException;
+
 public class RestoreSnapshotOp extends RaftOperation {
 
+    private String name;
     private int commitIndex;
-
     private Object snapshot;
 
-    public RestoreSnapshotOp(String serviceName, int commitIndex, Object snapshot) {
+    public RestoreSnapshotOp(String serviceName, String name, int commitIndex, Object snapshot) {
+        this.name = name;
         setServiceName(serviceName);
         this.commitIndex = commitIndex;
         this.snapshot = snapshot;
@@ -21,8 +26,24 @@ public class RestoreSnapshotOp extends RaftOperation {
                 + commitIndex;
 
         SnapshotAwareService service = getService();
-        service.restoreSnapshot(commitIndex, snapshot);
+        service.restoreSnapshot(name, commitIndex, snapshot);
         return null;
+    }
+
+    @Override
+    protected void writeInternal(ObjectDataOutput out) throws IOException {
+        super.writeInternal(out);
+        out.writeUTF(name);
+        out.writeInt(commitIndex);
+        out.writeObject(snapshot);
+    }
+
+    @Override
+    protected void readInternal(ObjectDataInput in) throws IOException {
+        super.readInternal(in);
+        name = in.readUTF();
+        commitIndex = in.readInt();
+        snapshot = in.readObject();
     }
 
     @Override
