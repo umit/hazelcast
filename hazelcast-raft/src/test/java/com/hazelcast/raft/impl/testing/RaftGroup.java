@@ -54,7 +54,7 @@ public class RaftGroup {
         nodes = new RaftNode[size];
         for (int i = 0; i < size; i++) {
             LocalRaftIntegration integration = integrations[i];
-            nodes[i] = new RaftNode(serviceName, "node-" + i, endpoints[i], asList(endpoints), integration, integration.getStripedExecutor());
+            nodes[i] = new RaftNode(serviceName, "test", endpoints[i], asList(endpoints), integration, integration.getStripedExecutor());
         }
     }
 

@@ -7,6 +7,7 @@ import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.util.function.Supplier;
 
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.raft.impl.service.RaftInvocationHelper.invokeOnLeader;
 
@@ -29,5 +30,13 @@ public final class CreateRaftGroupHelper {
     public static void createRaftGroup(NodeEngine nodeEngine, String serviceName, String raftName, int nodeCount)
             throws ExecutionException, InterruptedException {
         createRaftGroupAsync(nodeEngine, serviceName, raftName, nodeCount).get();
+        ensureRaftGroupOnLocal(nodeEngine, raftName);
+    }
+
+    public static void ensureRaftGroupOnLocal(NodeEngine nodeEngine, String raftName) throws InterruptedException {
+        RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
+        while (raftService.getRaftGroupInfo(raftName) == null) {
+            Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+        }
     }
 }

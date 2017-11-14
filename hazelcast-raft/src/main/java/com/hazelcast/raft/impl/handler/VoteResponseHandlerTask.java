@@ -40,6 +40,7 @@ public class VoteResponseHandlerTask implements StripedRunnable {
             logger.info("Demoting to FOLLOWER from current term: " + state.term() + " to new term: " + resp.term()
                     + " after " + resp);
             state.toFollower(resp.term());
+            raftNode.printMemberState();
             return;
         }
 
@@ -57,6 +58,7 @@ public class VoteResponseHandlerTask implements StripedRunnable {
         if (candidateState.isMajorityGranted()) {
             logger.info("We are the LEADER!");
             state.toLeader();
+            raftNode.printMemberState();
             raftNode.scheduleLeaderLoop();
         }
     }

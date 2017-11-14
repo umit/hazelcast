@@ -59,6 +59,7 @@ public class AppendRequestHandlerTask implements StripedRunnable {
             logger.info("Demoting to FOLLOWER from current term: " + state.term() + " to new term: " + req.term() + " and leader: " + req.leader());
             state.toFollower(req.term());
             state.leader(req.leader());
+            raftNode.printMemberState();
             raftNode.send(createFailureResponse(req.term()), req.leader());
             return;
         }
@@ -66,6 +67,7 @@ public class AppendRequestHandlerTask implements StripedRunnable {
         if (!req.leader().equals(state.leader())) {
             logger.info("Setting leader: " + req.leader());
             state.leader(req.leader());
+            raftNode.printMemberState();
         }
 
         // Verify the last log entry

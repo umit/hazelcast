@@ -1,8 +1,11 @@
 package com.hazelcast.raft.impl.testing;
 
+import com.hazelcast.instance.BuildInfoProvider;
+import com.hazelcast.instance.MemberImpl;
+import com.hazelcast.internal.cluster.Versions;
 import com.hazelcast.internal.serialization.impl.DefaultSerializationServiceBuilder;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.Logger;
+import com.hazelcast.logging.LoggingServiceImpl;
 import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftEndpoint;
@@ -18,6 +21,7 @@ import com.hazelcast.spi.TaskScheduler;
 import com.hazelcast.spi.impl.executionservice.impl.DelegatingTaskScheduler;
 import com.hazelcast.spi.serialization.SerializationService;
 import com.hazelcast.util.executor.StripedExecutor;
+import com.hazelcast.version.MemberVersion;
 
 import java.util.Collections;
 import java.util.Iterator;
@@ -48,6 +52,7 @@ public class LocalRaftIntegration implements RaftIntegration {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final ConcurrentMap<RaftEndpoint, RaftNode> nodes = new ConcurrentHashMap<RaftEndpoint, RaftNode>();
     private final SerializationService serializationService = new DefaultSerializationServiceBuilder().build();
+    private final LoggingServiceImpl loggingService;
 
     private final Set<EndpointDropEntry> endpointDropRules = Collections.newSetFromMap(new ConcurrentHashMap<EndpointDropEntry, Boolean>());
     private final Set<Class> dropAllRules = Collections.newSetFromMap(new ConcurrentHashMap<Class, Boolean>());
@@ -55,7 +60,13 @@ public class LocalRaftIntegration implements RaftIntegration {
     public LocalRaftIntegration(RaftEndpoint localEndpoint, SnapshotAwareService service) {
         this.localEndpoint = localEndpoint;
         this.service = service;
-        this.stripedExecutor = new StripedExecutor(Logger.getLogger("executor"), localEndpoint.getUid(), 1, Integer.MAX_VALUE);
+        this.loggingService = new LoggingServiceImpl("dev", "log4j2", BuildInfoProvider.getBuildInfo());
+        loggingService.setThisMember(getThisMember(localEndpoint));
+        this.stripedExecutor = new StripedExecutor(getLogger("executor"), "executor", 1, Integer.MAX_VALUE);
+    }
+
+    private MemberImpl getThisMember(RaftEndpoint localEndpoint) {
+        return new MemberImpl(localEndpoint.getAddress(), MemberVersion.of(Versions.CURRENT_CLUSTER_VERSION.toString()), true, localEndpoint.getUid());
     }
 
     public void discoverNode(RaftNode node) {
@@ -85,12 +96,12 @@ public class LocalRaftIntegration implements RaftIntegration {
 
     @Override
     public ILogger getLogger(String name) {
-        return Logger.getLogger(name);
+        return loggingService.getLogger(name);
     }
 
     @Override
     public ILogger getLogger(Class clazz) {
-        return Logger.getLogger(clazz);
+        return loggingService.getLogger(clazz);
     }
 
     @Override

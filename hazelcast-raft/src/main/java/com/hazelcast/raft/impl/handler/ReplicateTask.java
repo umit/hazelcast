@@ -37,7 +37,7 @@ public class ReplicateTask implements StripedRunnable {
 
         RaftState state = raftNode.state();
         if (state.role() != RaftRole.LEADER) {
-            resultFuture.setResult(new NotLeaderException());
+            resultFuture.setResult(new NotLeaderException(raftNode.getLocalEndpoint(), state.leader()));
             return;
         }
 
