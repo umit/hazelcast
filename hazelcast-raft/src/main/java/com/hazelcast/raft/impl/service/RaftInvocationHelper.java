@@ -6,6 +6,7 @@ import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.LeaderDemotedException;
 import com.hazelcast.raft.NotLeaderException;
+import com.hazelcast.raft.RaftException;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicatingOperation;
@@ -85,9 +86,12 @@ public final class RaftInvocationHelper {
                     || cause instanceof CallerNotMemberException
                     || cause instanceof TargetNotMemberException) {
 
-                try {
+                if (cause instanceof RaftException) {
+                    setKnownLeader((RaftException) cause);
+                } else {
                     raftService.resetKnownLeader(groupInfo.name());
-                    // TODO: needs a back-off strategy
+                }
+                try {
                     scheduleRetry();
                 } catch (Throwable e) {
                     logger.warning(e);
@@ -98,7 +102,17 @@ public final class RaftInvocationHelper {
             }
         }
 
+        private void setKnownLeader(RaftException cause) {
+            RaftEndpoint leader = cause.getLeader();
+            if (leader != null) {
+                raftService.setKnownLeader(groupInfo.name(), leader);
+            } else {
+                raftService.resetKnownLeader(groupInfo.name());
+            }
+        }
+
         private void scheduleRetry() {
+            // TODO: needs a back-off strategy
             nodeEngine.getExecutionService().schedule(new Runnable() {
                 @Override
                 public void run() {

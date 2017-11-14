@@ -299,7 +299,7 @@ public class RaftNode {
             Map.Entry<Long, SimpleCompletableFuture> entry = iterator.next();
             long index = entry.getKey();
             if (index >= entryIndex) {
-                entry.getValue().setResult(new LeaderDemotedException());
+                entry.getValue().setResult(new LeaderDemotedException(localEndpoint, state.leader()));
                 iterator.remove();
                 count++;
             }
@@ -315,7 +315,7 @@ public class RaftNode {
             Map.Entry<Long, SimpleCompletableFuture> entry = iterator.next();
             long index = entry.getKey();
             if (index <= entryIndex) {
-                entry.getValue().setResult(new StaleAppendRequestException());
+                entry.getValue().setResult(new StaleAppendRequestException(state.leader()));
                 iterator.remove();
                 count++;
             }
@@ -389,6 +389,25 @@ public class RaftNode {
         return serviceName;
     }
 
+    public void printMemberState() {
+        StringBuilder sb = new StringBuilder("\n\nRaft Members {")
+                .append("name: ").append(state.name())
+                .append(", size:").append(state.memberCount())
+                .append(", term:").append(state.term())
+                .append("} [");
+
+        for (RaftEndpoint endpoint : state.members()) {
+            sb.append("\n\t").append(endpoint.getAddress()).append(" - ").append(endpoint.getUid());
+            if (localEndpoint.equals(endpoint)) {
+                sb.append(" - ").append(state.role()).append(" this");
+            } else if (endpoint.equals(state.leader())) {
+                sb.append(" - ").append(RaftRole.LEADER);
+            }
+        }
+        sb.append("\n]\n");
+        logger.info(sb.toString());
+    }
+
     private class HeartbeatTask implements StripedRunnable {
 
         @Override
@@ -430,16 +449,21 @@ public class RaftNode {
                 if (leader == null) {
                     if (state.role() == RaftRole.FOLLOWER) {
                         logger.warning("We are FOLLOWER and there is no current leader. Will start new election round...");
-                        new LeaderElectionTask(RaftNode.this).run();
+                        runLeaderElectionTask();
                     }
                 } else if (!raftIntegration.isReachable(leader)) {
                     logger.warning("Current leader " + leader + " is not reachable. Will start new election round...");
                     state.leader(null);
-                    new LeaderElectionTask(RaftNode.this).run();
+                    printMemberState();
+                    runLeaderElectionTask();
                 }
             } finally {
                 scheduleLeaderFailureDetection();
             }
+        }
+
+        private void runLeaderElectionTask() {
+            new LeaderElectionTask(RaftNode.this).run();
         }
     }
 
