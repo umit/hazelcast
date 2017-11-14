@@ -45,15 +45,13 @@ public class ReplicateTask implements StripedRunnable {
             logger.fine("Replicating: " + operation + " in term: " + state.term());
         }
 
-        int lastLogIndex = state.log().lastLogOrSnapshotIndex();
-        // TODO basri define a config param
-        if (lastLogIndex - state.commitIndex() >= 10000) {
+        if (!raftNode.shouldAllowNewAppends()) {
             // TODO basri define a new exception class
             resultFuture.setResult(new RetryableHazelcastException("too much non-committed entries"));
             return;
         }
 
-        int newEntryLogIndex = lastLogIndex + 1;
+        int newEntryLogIndex = state.log().lastLogOrSnapshotIndex() + 1;
         raftNode.registerFuture(newEntryLogIndex, resultFuture);
         state.log().appendEntries(new LogEntry(state.term(), newEntryLogIndex, operation));
         raftNode.broadcastAppendRequest();

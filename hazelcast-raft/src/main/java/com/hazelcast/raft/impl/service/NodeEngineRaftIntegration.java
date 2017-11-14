@@ -2,6 +2,8 @@ package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftOperation;
+import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
@@ -14,8 +16,6 @@ import com.hazelcast.raft.impl.operation.AppendSuccessResponseOp;
 import com.hazelcast.raft.impl.operation.InstallSnapshotOp;
 import com.hazelcast.raft.impl.operation.VoteRequestOp;
 import com.hazelcast.raft.impl.operation.VoteResponseOp;
-import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationAccessor;
@@ -24,6 +24,11 @@ import com.hazelcast.spi.TaskScheduler;
 import java.util.concurrent.Executor;
 
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
+import static com.hazelcast.spi.properties.GroupProperty.RAFT_APPEND_REQUEST_MAX_ENTRY_COUNT;
+import static com.hazelcast.spi.properties.GroupProperty.RAFT_COMMIT_INDEX_ADVANCE_COUNT_TO_SNAPSHOT;
+import static com.hazelcast.spi.properties.GroupProperty.RAFT_LEADER_ELECTION_TIMEOUT_IN_MILLIS;
+import static com.hazelcast.spi.properties.GroupProperty.RAFT_LEADER_HEARTBEAT_PERIOD_IN_MILLIS;
+import static com.hazelcast.spi.properties.GroupProperty.RAFT_UNCOMMITTED_ENTRY_COUNT_TO_REJECT_NEW_APPENDS;
 
 /**
  * TODO: Javadoc Pending...
@@ -113,6 +118,31 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
         } catch (Throwable t) {
             return t;
         }
+    }
+
+    @Override
+    public long getLeaderElectionTimeoutInMillis() {
+        return nodeEngine.getProperties().getLong(RAFT_LEADER_ELECTION_TIMEOUT_IN_MILLIS);
+    }
+
+    @Override
+    public long getHeartbeatPeriodInMillis() {
+        return nodeEngine.getProperties().getLong(RAFT_LEADER_HEARTBEAT_PERIOD_IN_MILLIS);
+    }
+
+    @Override
+    public int getAppendRequestMaxEntryCount() {
+        return nodeEngine.getProperties().getInteger(RAFT_APPEND_REQUEST_MAX_ENTRY_COUNT);
+    }
+
+    @Override
+    public int getCommitIndexAdvanceCountToSnapshot() {
+        return nodeEngine.getProperties().getInteger(RAFT_COMMIT_INDEX_ADVANCE_COUNT_TO_SNAPSHOT);
+    }
+
+    @Override
+    public int getUncommittedEntryCountToRejectNewAppends() {
+        return nodeEngine.getProperties().getInteger(RAFT_UNCOMMITTED_ENTRY_COUNT_TO_REJECT_NEW_APPENDS);
     }
 
     private boolean send(Operation operation, RaftEndpoint target) {
