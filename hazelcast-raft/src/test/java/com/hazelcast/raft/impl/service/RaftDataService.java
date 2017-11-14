@@ -34,6 +34,10 @@ public class RaftDataService implements SnapshotAwareService {
         return values.get(commitIndex);
     }
 
+    public int size() {
+        return values.size();
+    }
+
     public Set<Object> values() {
         return new HashSet<Object>(values.values());
     }
