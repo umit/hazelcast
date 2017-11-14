@@ -151,14 +151,14 @@ public class RaftState {
         candidateState.grantVote(localEndpoint);
         persistVote(incrementTerm(), localEndpoint);
 
-        return new VoteRequest(localEndpoint, term, log.lastLogTerm(), log.lastLogIndex());
+        return new VoteRequest(localEndpoint, term, log.lastLogOrSnapshotTerm(), log.lastLogOrSnapshotIndex());
     }
 
     public void toLeader() {
         role = RaftRole.LEADER;
         leader(localEndpoint);
         candidateState = null;
-        leaderState = new LeaderState(remoteMembers, log.lastLogIndex());
+        leaderState = new LeaderState(remoteMembers, log.lastLogOrSnapshotIndex());
     }
 
     public boolean isKnownEndpoint(RaftEndpoint endpoint) {

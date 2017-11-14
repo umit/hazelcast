@@ -8,6 +8,7 @@ import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
+import com.hazelcast.spi.exception.RetryableHazelcastException;
 import com.hazelcast.util.executor.StripedRunnable;
 
 /**
@@ -29,6 +30,11 @@ public class ReplicateTask implements StripedRunnable {
 
     @Override
     public void run() {
+        if (!raftNode.getServiceName().equals(operation.getServiceName())) {
+            resultFuture.setResult(new IllegalArgumentException("operation service name: " + operation.getServiceName()
+                    + " is different than expected service name: " + raftNode.getServiceName()));
+        }
+
         RaftState state = raftNode.state();
         if (state.role() != RaftRole.LEADER) {
             resultFuture.setResult(new NotLeaderException());
@@ -39,11 +45,17 @@ public class ReplicateTask implements StripedRunnable {
             logger.fine("Replicating: " + operation + " in term: " + state.term());
         }
 
-        assert state.role() == RaftRole.LEADER;
+        int lastLogIndex = state.log().lastLogOrSnapshotIndex();
+        // TODO basri define a config param
+        if (lastLogIndex - state.commitIndex() >= 10000) {
+            // TODO basri define a new exception class
+            resultFuture.setResult(new RetryableHazelcastException("too much non-committed entries"));
+            return;
+        }
 
-        int logIndex = state.log().lastLogIndex() + 1;
-        raftNode.registerFuture(logIndex, resultFuture);
-        state.log().appendEntries(new LogEntry(state.term(), logIndex, operation));
+        int newEntryLogIndex = lastLogIndex + 1;
+        raftNode.registerFuture(newEntryLogIndex, resultFuture);
+        state.log().appendEntries(new LogEntry(state.term(), newEntryLogIndex, operation));
         raftNode.broadcastAppendRequest();
     }
 

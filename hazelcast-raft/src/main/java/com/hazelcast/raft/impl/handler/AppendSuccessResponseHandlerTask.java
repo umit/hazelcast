@@ -62,7 +62,7 @@ public class AppendSuccessResponseHandlerTask implements StripedRunnable {
             // Only log entries from the leader’s current term are committed by counting replicas; once an entry
             // from the current term has been committed in this way, then all prior entries are committed indirectly
             // because of the Log Matching Property.
-            LogEntry entry = raftLog.getEntry(quorumMatchIndex);
+            LogEntry entry = raftLog.getLogEntry(quorumMatchIndex);
             if (entry.term() == state.term()) {
                 commitEntries(state, quorumMatchIndex);
                 break;
@@ -94,7 +94,7 @@ public class AppendSuccessResponseHandlerTask implements StripedRunnable {
         LeaderState leaderState = state.leaderState();
         Collection<Integer> matchIndices = leaderState.matchIndices();
         int[] indices = new int[matchIndices.size() + 1];
-        indices[0] = state.log().lastLogIndex();
+        indices[0] = state.log().lastLogOrSnapshotIndex();
 
         int k = 1;
         for (int index : matchIndices) {

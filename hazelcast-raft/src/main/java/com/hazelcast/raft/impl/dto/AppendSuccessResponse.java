@@ -65,7 +65,7 @@ public class AppendSuccessResponse implements IdentifiedDataSerializable {
 
     @Override
     public String toString() {
-        return "AppendResponse{" + "follower=" + follower + ", term=" + term  + ", lastLogIndex="
+        return "AppendSuccessResponse{" + "follower=" + follower + ", term=" + term  + ", lastLogIndex="
                 + lastLogIndex + '}';
     }
 

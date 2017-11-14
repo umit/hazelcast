@@ -7,14 +7,16 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
+import com.hazelcast.raft.impl.dto.InstallSnapshot;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
+import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.operation.AppendFailureResponseOp;
 import com.hazelcast.raft.impl.operation.AppendRequestOp;
 import com.hazelcast.raft.impl.operation.AppendSuccessResponseOp;
+import com.hazelcast.raft.impl.operation.InstallSnapshotOp;
 import com.hazelcast.raft.impl.operation.VoteRequestOp;
 import com.hazelcast.raft.impl.operation.VoteResponseOp;
-import com.hazelcast.raft.impl.log.LogEntry;
 
 public final class RaftDataSerializerHook implements DataSerializerHook {
 
@@ -33,8 +35,10 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
     public static final int APPEND_SUCCESS_RESPONSE_OP = 8;
     public static final int APPEND_FAILURE_RESPONSE = 9;
     public static final int APPEND_FAILURE_RESPONSE_OP = 10;
-    public static final int LOG_ENTRY = 11;
-    public static final int ENDPOINT = 12;
+    public static final int INSTALL_SNAPSHOT = 11;
+    public static final int INSTALL_SNAPSHOT_OP = 12;
+    public static final int LOG_ENTRY = 13;
+    public static final int ENDPOINT = 14;
 
     @Override
     public int getFactoryId() {
@@ -67,6 +71,10 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
                         return new AppendFailureResponse();
                     case APPEND_FAILURE_RESPONSE_OP:
                         return new AppendFailureResponseOp();
+                    case INSTALL_SNAPSHOT:
+                        return new InstallSnapshot();
+                    case INSTALL_SNAPSHOT_OP:
+                        return new InstallSnapshotOp();
                     case LOG_ENTRY:
                         return new LogEntry();
                     case ENDPOINT:

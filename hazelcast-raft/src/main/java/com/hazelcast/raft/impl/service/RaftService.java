@@ -12,6 +12,7 @@ import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
+import com.hazelcast.raft.impl.dto.InstallSnapshot;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.spi.ConfigurableService;
@@ -160,6 +161,16 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         }
         node.handleAppendResponse(response);
     }
+
+    public void handleSnapshot(String name, InstallSnapshot request) {
+        RaftNode node = nodes.get(name);
+        if (node == null) {
+            logger.severe("RaftNode[" + name + "] does not exist to handle: " + request);
+            return;
+        }
+        node.handleInstallSnapshot(request);
+    }
+
 
     public ILogger getLogger(Class clazz, String raftName) {
         return nodeEngine.getLogger(clazz.getName() + "(" + raftName + ")");
