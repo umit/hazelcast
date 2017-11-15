@@ -3,6 +3,7 @@ package com.hazelcast.raft.impl;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.LeaderDemotedException;
+import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.StaleAppendRequestException;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
@@ -69,7 +70,7 @@ public class RaftNode {
     private long lastAppendEntriesTimestamp;
 
     public RaftNode(String serviceName, String name, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints,
-            RaftIntegration raftIntegration, StripedExecutor executor) {
+                    RaftConfig raftConfig, RaftIntegration raftIntegration, StripedExecutor executor) {
         this.serviceName = serviceName;
         this.raftIntegration = raftIntegration;
         this.executor = executor;
@@ -77,11 +78,11 @@ public class RaftNode {
         this.state = new RaftState(name, localEndpoint, endpoints);
         this.taskScheduler = raftIntegration.getTaskScheduler();
         this.logger = getLogger(getClass());
-        this.maxUncommittedEntryCount = raftIntegration.getUncommittedEntryCountToRejectNewAppends();
-        this.appendRequestMaxEntryCount = raftIntegration.getAppendRequestMaxEntryCount();
-        this.commitIndexAdvanceCountToSnapshot = raftIntegration.getCommitIndexAdvanceCountToSnapshot();
-        this.leaderElectionTimeout = (int) raftIntegration.getLeaderElectionTimeoutInMillis();
-        this.heartbeatPeriodInMillis = raftIntegration.getHeartbeatPeriodInMillis();
+        this.maxUncommittedEntryCount = raftConfig.getUncommittedEntryCountToRejectNewAppends();
+        this.appendRequestMaxEntryCount = raftConfig.getAppendRequestMaxEntryCount();
+        this.commitIndexAdvanceCountToSnapshot = raftConfig.getCommitIndexAdvanceCountToSnapshot();
+        this.leaderElectionTimeout = (int) raftConfig.getLeaderElectionTimeoutInMillis();
+        this.heartbeatPeriodInMillis = raftConfig.getLeaderHeartbeatPeriodInMillis();
     }
 
     public ILogger getLogger(Class clazz) {
