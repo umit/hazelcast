@@ -1,9 +1,10 @@
 package com.hazelcast.raft.impl;
 
-import com.hazelcast.raft.LeaderDemotedException;
-import com.hazelcast.raft.NotLeaderException;
 import com.hazelcast.raft.RaftConfig;
-import com.hazelcast.raft.StaleAppendRequestException;
+import com.hazelcast.raft.exception.LeaderDemotedException;
+import com.hazelcast.raft.exception.NotLeaderException;
+import com.hazelcast.raft.exception.UncommittedEntryLimitExceededException;
+import com.hazelcast.raft.exception.StaleAppendRequestException;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
@@ -1040,6 +1041,29 @@ public class LocalRaftTest extends HazelcastTestSupport {
                 }
             }
         });
+    }
+
+    @Test
+    public void when_thereAreTooManyInflightAppendedEntries_then_newAppendsAreRejected() throws ExecutionException, InterruptedException {
+        int uncommittedEntryCount = 10;
+        RaftConfig raftConfig = new RaftConfig().setUncommittedEntryCountToRejectNewAppends(uncommittedEntryCount);
+        group = newGroupWithService(2, raftConfig);
+        group.start();
+
+        RaftNode leader = group.waitUntilLeaderElected();
+        RaftNode follower = group.getNodesExcept(leader.getLocalEndpoint())[0];
+        group.terminateNode(follower.getLocalEndpoint());
+
+        for (int i = 0; i < uncommittedEntryCount; i++) {
+            leader.replicate(new RaftAddOperation("val" + i));
+        }
+
+        Future f = leader.replicate(new RaftAddOperation("valFinal"));
+        try {
+            f.get();
+            fail();
+        } catch (UncommittedEntryLimitExceededException ignored) {
+        }
     }
 
     private RaftGroup newGroupWithService(int nodeCount, RaftConfig raftConfig) {

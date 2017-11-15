@@ -1,14 +1,14 @@
 package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.NotLeaderException;
 import com.hazelcast.raft.RaftOperation;
-import com.hazelcast.raft.impl.log.LogEntry;
+import com.hazelcast.raft.exception.NotLeaderException;
+import com.hazelcast.raft.exception.UncommittedEntryLimitExceededException;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
+import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
-import com.hazelcast.spi.exception.RetryableHazelcastException;
 import com.hazelcast.util.executor.StripedRunnable;
 
 /**
@@ -46,8 +46,7 @@ public class ReplicateTask implements StripedRunnable {
         }
 
         if (!raftNode.shouldAllowNewAppends()) {
-            // TODO basri define a new exception class
-            resultFuture.setResult(new RetryableHazelcastException("too much non-committed entries"));
+            resultFuture.setResult(new UncommittedEntryLimitExceededException(raftNode.getLocalEndpoint()));
             return;
         }
 
