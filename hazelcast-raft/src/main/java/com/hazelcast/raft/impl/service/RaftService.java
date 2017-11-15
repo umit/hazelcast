@@ -214,6 +214,10 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         return raftGroups.get(name);
     }
 
+    public RaftConfig getConfig() {
+        return config;
+    }
+
     public Collection<RaftEndpoint> getAllEndpoints() {
         return endpoints;
     }
