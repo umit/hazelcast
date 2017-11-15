@@ -2,10 +2,10 @@ package com.hazelcast.raft.impl;
 
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.LeaderDemotedException;
+import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftOperation;
-import com.hazelcast.raft.StaleAppendRequestException;
+import com.hazelcast.raft.exception.StaleAppendRequestException;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;

@@ -1,4 +1,4 @@
-package com.hazelcast.raft;
+package com.hazelcast.raft.exception;
 
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.nio.Address;
