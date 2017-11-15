@@ -2,14 +2,13 @@ package com.hazelcast.raft.impl;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
-import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.log.LogEntry;
+import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.util.ExceptionUtil;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Executor;
 import java.util.concurrent.FutureTask;
 
 import static com.hazelcast.test.HazelcastTestSupport.getNodeEngineImpl;
@@ -31,7 +30,7 @@ public class RaftUtil {
         Callable<RaftRole> task = new Callable<RaftRole>() {
             @Override
             public RaftRole call() throws Exception {
-                return node.getState().role();
+                return node.state().role();
             }
         };
         return readRaftState(node, task);
@@ -41,7 +40,7 @@ public class RaftUtil {
         Callable<RaftEndpoint> task = new Callable<RaftEndpoint>() {
             @Override
             public RaftEndpoint call() throws Exception {
-                return node.getState().leader();
+                return node.state().leader();
             }
         };
         return readRaftState(node, task);
@@ -51,7 +50,7 @@ public class RaftUtil {
         Callable<LogEntry> task = new Callable<LogEntry>() {
             @Override
             public LogEntry call() throws Exception {
-                return node.getState().log().lastLogOrSnapshotEntry();
+                return node.state().log().lastLogOrSnapshotEntry();
             }
         };
 
@@ -62,7 +61,7 @@ public class RaftUtil {
         Callable<LogEntry> task = new Callable<LogEntry>() {
             @Override
             public LogEntry call() throws Exception {
-                return node.getState().log().snapshot();
+                return node.state().log().snapshot();
             }
         };
 
@@ -74,7 +73,7 @@ public class RaftUtil {
             @Override
             public Integer call()
                     throws Exception {
-                return node.getState().commitIndex();
+                return node.state().commitIndex();
             }
         };
 
@@ -86,7 +85,7 @@ public class RaftUtil {
             @Override
             public Integer call()
                     throws Exception {
-                return node.getState().term();
+                return node.state().term();
             }
         };
 
@@ -100,10 +99,8 @@ public class RaftUtil {
     }
 
     private static <T> T readRaftState(RaftNode node, Callable<T> task) {
-        Executor executor = node.getExecutor();
         FutureTask<T> futureTask = new FutureTask<T>(task);
-
-        executor.execute(futureTask);
+        node.execute(futureTask);
         try {
             return futureTask.get();
         } catch (Exception e) {

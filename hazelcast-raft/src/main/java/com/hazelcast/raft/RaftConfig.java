@@ -24,7 +24,6 @@ public class RaftConfig {
     public static final int DEFAULT_UNCOMMITTED_ENTRY_COUNT_TO_REJECT_NEW_APPENDS = 100;
 
 
-
     private long leaderElectionTimeoutInMillis = DEFAULT_LEADER_ELECTION_TIMEOUT_IN_MILLIS;
 
     private long leaderHeartbeatPeriodInMillis = DEFAULT_LEADER_HEARTBEAT_PERIOD_IN_MILLIS;
@@ -36,6 +35,20 @@ public class RaftConfig {
     private int uncommittedEntryCountToRejectNewAppends = DEFAULT_UNCOMMITTED_ENTRY_COUNT_TO_REJECT_NEW_APPENDS;
 
     private final Collection<RaftMember> members = new HashSet<RaftMember>();
+
+    public RaftConfig() {
+    }
+
+    public RaftConfig(RaftConfig config) {
+        this.leaderElectionTimeoutInMillis = config.leaderElectionTimeoutInMillis;
+        this.leaderHeartbeatPeriodInMillis = config.leaderHeartbeatPeriodInMillis;
+        this.appendRequestMaxEntryCount = config.appendRequestMaxEntryCount;
+        this.commitIndexAdvanceCountToSnapshot = config.commitIndexAdvanceCountToSnapshot;
+        this.uncommittedEntryCountToRejectNewAppends = config.uncommittedEntryCountToRejectNewAppends;
+        for (RaftMember member : config.members) {
+            this.members.add(new RaftMember(member));
+        }
+    }
 
     public long getLeaderElectionTimeoutInMillis() {
         return leaderElectionTimeoutInMillis;
@@ -97,7 +110,7 @@ public class RaftConfig {
     }
 
     public RaftConfig setMembers(Collection<RaftMember> members) {
-        checkTrue(members.size() < 2, "Raft groups must have at least 2 members");
+        checkTrue(members.size() > 1, "Raft groups must have at least 2 members");
 
         this.members.clear();
         this.members.addAll(members);

@@ -46,7 +46,7 @@ public class LeaderElectionTask implements StripedRunnable {
         raftNode.taskScheduler().schedule(new Runnable() {
             @Override
             public void run() {
-                raftNode.executor().execute(new LeaderElectionTimeoutTask(raftNode));
+                raftNode.execute(new LeaderElectionTimeoutTask(raftNode));
             }
         }, raftNode.getLeaderElectionTimeoutInMillis(), TimeUnit.MILLISECONDS);
     }
