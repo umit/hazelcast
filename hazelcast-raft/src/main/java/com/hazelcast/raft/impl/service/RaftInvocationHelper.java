@@ -55,6 +55,7 @@ public final class RaftInvocationHelper {
         private final NodeEngine nodeEngine;
         private final Supplier<RaftReplicatingOperation> operationSupplier;
         private final ILogger logger;
+        private final boolean failOnIndeterminateOperationState;
         private volatile RaftEndpoint lastInvocationEndpoint;
         private volatile int endPointIndex;
 
@@ -67,6 +68,7 @@ public final class RaftInvocationHelper {
             this.nodeEngine = nodeEngine;
             this.operationSupplier = operationSupplier;
             this.logger = logger;
+            this.failOnIndeterminateOperationState = raftService.getConfig().isFailOnIndeterminateOperationState();
         }
 
         @Override
@@ -80,12 +82,7 @@ public final class RaftInvocationHelper {
         @Override
         public void onFailure(Throwable cause) {
             logger.warning(cause);
-            if (cause instanceof NotLeaderException
-                    || cause instanceof LeaderDemotedException
-                    || cause instanceof MemberLeftException
-                    || cause instanceof CallerNotMemberException
-                    || cause instanceof TargetNotMemberException) {
-
+            if (isRetryable(cause)) {
                 if (cause instanceof RaftException) {
                     setKnownLeader((RaftException) cause);
                 } else {
@@ -100,6 +97,17 @@ public final class RaftInvocationHelper {
             } else {
                 setResult(cause);
             }
+        }
+
+        private boolean isRetryable(Throwable cause) {
+            if (failOnIndeterminateOperationState && cause instanceof MemberLeftException) {
+                return false;
+            }
+            return cause instanceof NotLeaderException
+                    || cause instanceof LeaderDemotedException
+                    || cause instanceof MemberLeftException
+                    || cause instanceof CallerNotMemberException
+                    || cause instanceof TargetNotMemberException;
         }
 
         private void setKnownLeader(RaftException cause) {
