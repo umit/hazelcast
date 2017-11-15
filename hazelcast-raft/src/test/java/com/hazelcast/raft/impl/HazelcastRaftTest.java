@@ -2,7 +2,6 @@ package com.hazelcast.raft.impl;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
-import com.hazelcast.raft.impl.service.CreateRaftGroupHelper;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.QuickTest;
@@ -14,6 +13,7 @@ import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static com.hazelcast.raft.impl.RaftUtil.getRaftNode;
 import static com.hazelcast.raft.impl.RaftUtil.getRaftService;
 import static com.hazelcast.raft.impl.RaftUtil.getRole;
+import static com.hazelcast.raft.impl.service.CreateRaftGroupHelper.createRaftGroup;
 import static com.hazelcast.raft.impl.service.RaftService.METADATA_RAFT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -94,7 +94,7 @@ public class HazelcastRaftTest extends HazelcastRaftTestSupport {
         final String name = "atomic";
         final int raftGroupSize = 3;
 
-        CreateRaftGroupHelper.createRaftGroup(getNodeEngineImpl(instances[0]), "test", name, raftGroupSize);
+        createRaftGroup(getNodeEngineImpl(instances[0]), "test", name, raftGroupSize);
 
         assertTrueEventually(new AssertTask() {
             @Override

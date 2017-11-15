@@ -12,6 +12,10 @@ public class RaftMember {
     public RaftMember() {
     }
 
+    public RaftMember(RaftMember member) {
+        this(member.address, member.id);
+    }
+
     public RaftMember(String address, String id) {
         this.address = address;
         this.id = id;
