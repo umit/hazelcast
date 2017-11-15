@@ -43,14 +43,4 @@ public interface RaftIntegration {
 
     Object runOperation(RaftOperation operation, int commitIndex);
 
-    long getLeaderElectionTimeoutInMillis();
-
-    long getHeartbeatPeriodInMillis();
-
-    int getAppendRequestMaxEntryCount();
-
-    int getCommitIndexAdvanceCountToSnapshot();
-
-    int getUncommittedEntryCountToRejectNewAppends();
-
 }

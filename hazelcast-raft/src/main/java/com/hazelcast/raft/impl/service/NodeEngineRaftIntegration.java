@@ -1,7 +1,6 @@
 package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftIntegration;
@@ -36,12 +35,9 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
 
     private final String raftName;
 
-    private final RaftConfig raftConfig;
-
-    NodeEngineRaftIntegration(NodeEngine nodeEngine, String raftName, RaftConfig config) {
+    NodeEngineRaftIntegration(NodeEngine nodeEngine, String raftName) {
         this.nodeEngine = nodeEngine;
         this.raftName = raftName;
-        this.raftConfig = config;
     }
 
     @Override
@@ -117,31 +113,6 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
         } catch (Throwable t) {
             return t;
         }
-    }
-
-    @Override
-    public long getLeaderElectionTimeoutInMillis() {
-        return raftConfig.getLeaderElectionTimeoutInMillis();
-    }
-
-    @Override
-    public long getHeartbeatPeriodInMillis() {
-        return raftConfig.getLeaderHeartbeatPeriodInMillis();
-    }
-
-    @Override
-    public int getAppendRequestMaxEntryCount() {
-        return raftConfig.getAppendRequestMaxEntryCount();
-    }
-
-    @Override
-    public int getCommitIndexAdvanceCountToSnapshot() {
-        return raftConfig.getCommitIndexAdvanceCountToSnapshot();
-    }
-
-    @Override
-    public int getUncommittedEntryCountToRejectNewAppends() {
-        return raftConfig.getUncommittedEntryCountToRejectNewAppends();
     }
 
     private boolean send(Operation operation, RaftEndpoint target) {

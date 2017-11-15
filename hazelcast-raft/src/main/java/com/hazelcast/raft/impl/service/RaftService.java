@@ -79,8 +79,10 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         String threadPoolName = createThreadName(nodeEngine.getHazelcastInstance().getName(), "raft");
         this.executor = new StripedExecutor(logger, threadPoolName, RuntimeAvailableProcessors.get(), Integer.MAX_VALUE);
 
-        RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, METADATA_RAFT, config);
-        RaftNode node = new RaftNode(SERVICE_NAME, METADATA_RAFT, localEndpoint, endpoints, raftIntegration, executor);
+        RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, METADATA_RAFT);
+        RaftConfig metadataRaftConfig = new RaftConfig(config).setCommitIndexAdvanceCountToSnapshot(Integer.MAX_VALUE);
+        RaftNode node = new RaftNode(SERVICE_NAME, METADATA_RAFT, localEndpoint, endpoints, metadataRaftConfig, raftIntegration,
+                executor);
         nodes.put(METADATA_RAFT, node);
         node.start();
     }
@@ -238,8 +240,8 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
 
         assert nodes.get(name) == null : "Raft node with name " + name + " should not exist!";
 
-        RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, name, config);
-        RaftNode node = new RaftNode(serviceName, name, localEndpoint, endpoints, raftIntegration, executor);
+        RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, name);
+        RaftNode node = new RaftNode(serviceName, name, localEndpoint, endpoints, config, raftIntegration, executor);
         nodes.put(name, node);
         node.start();
     }

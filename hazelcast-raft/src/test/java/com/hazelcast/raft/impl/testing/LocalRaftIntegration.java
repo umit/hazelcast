@@ -6,6 +6,7 @@ import com.hazelcast.internal.cluster.Versions;
 import com.hazelcast.internal.serialization.impl.DefaultSerializationServiceBuilder;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.LoggingServiceImpl;
+import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftEndpoint;
@@ -46,6 +47,7 @@ import static org.junit.Assert.assertThat;
 public class LocalRaftIntegration implements RaftIntegration {
 
     private final RaftEndpoint localEndpoint;
+    private final RaftConfig raftConfig;
     private final SnapshotAwareService service;
     private final StripedExecutor stripedExecutor;
     private final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
@@ -57,8 +59,9 @@ public class LocalRaftIntegration implements RaftIntegration {
     private final Set<EndpointDropEntry> endpointDropRules = Collections.newSetFromMap(new ConcurrentHashMap<EndpointDropEntry, Boolean>());
     private final Set<Class> dropAllRules = Collections.newSetFromMap(new ConcurrentHashMap<Class, Boolean>());
 
-    public LocalRaftIntegration(RaftEndpoint localEndpoint, SnapshotAwareService service) {
+    public LocalRaftIntegration(RaftEndpoint localEndpoint, RaftConfig raftConfig, SnapshotAwareService service) {
         this.localEndpoint = localEndpoint;
+        this.raftConfig = raftConfig;
         this.service = service;
         this.loggingService = new LoggingServiceImpl("dev", "log4j2", BuildInfoProvider.getBuildInfo());
         loggingService.setThisMember(getThisMember(localEndpoint));
@@ -225,31 +228,6 @@ public class LocalRaftIntegration implements RaftIntegration {
         } catch (Throwable t) {
             return t;
         }
-    }
-
-    @Override
-    public long getLeaderElectionTimeoutInMillis() {
-        return 2000;
-    }
-
-    @Override
-    public long getHeartbeatPeriodInMillis() {
-        return 5000;
-    }
-
-    @Override
-    public int getAppendRequestMaxEntryCount() {
-        return 20;
-    }
-
-    @Override
-    public int getCommitIndexAdvanceCountToSnapshot() {
-        return 50;
-    }
-
-    @Override
-    public int getUncommittedEntryCountToRejectNewAppends() {
-        return 10000;
     }
 
     void dropMessagesToEndpoint(RaftEndpoint endpoint, Class messageType) {
