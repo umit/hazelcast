@@ -15,8 +15,11 @@ import com.hazelcast.raft.impl.operation.AppendFailureResponseOp;
 import com.hazelcast.raft.impl.operation.AppendRequestOp;
 import com.hazelcast.raft.impl.operation.AppendSuccessResponseOp;
 import com.hazelcast.raft.impl.operation.InstallSnapshotOp;
+import com.hazelcast.raft.impl.operation.RestoreSnapshotOp;
 import com.hazelcast.raft.impl.operation.VoteRequestOp;
 import com.hazelcast.raft.impl.operation.VoteResponseOp;
+import com.hazelcast.raft.impl.service.CreateRaftGroupOperation;
+import com.hazelcast.raft.impl.service.proxy.CreateRaftGroupReplicatingOperation;
 
 public final class RaftDataSerializerHook implements DataSerializerHook {
 
@@ -37,8 +40,11 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
     public static final int APPEND_FAILURE_RESPONSE_OP = 10;
     public static final int INSTALL_SNAPSHOT = 11;
     public static final int INSTALL_SNAPSHOT_OP = 12;
-    public static final int LOG_ENTRY = 13;
-    public static final int ENDPOINT = 14;
+    public static final int RESTORE_SNAPSHOT_OP = 13;
+    public static final int LOG_ENTRY = 14;
+    public static final int ENDPOINT = 15;
+    public static final int CREATE_RAFT_GROUP_OP = 16;
+    public static final int CREATE_RAFT_GROUP_REPLICATING_OP = 17;
 
     @Override
     public int getFactoryId() {
@@ -75,10 +81,16 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
                         return new InstallSnapshot();
                     case INSTALL_SNAPSHOT_OP:
                         return new InstallSnapshotOp();
+                    case RESTORE_SNAPSHOT_OP:
+                        return new RestoreSnapshotOp();
                     case LOG_ENTRY:
                         return new LogEntry();
                     case ENDPOINT:
                         return new RaftEndpoint();
+                    case CREATE_RAFT_GROUP_OP:
+                        return new CreateRaftGroupOperation();
+                    case CREATE_RAFT_GROUP_REPLICATING_OP:
+                        return new CreateRaftGroupReplicatingOperation();
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
             }

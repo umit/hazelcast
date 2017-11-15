@@ -2,7 +2,9 @@ package com.hazelcast.raft.service.atomiclong.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftOperation;
+import com.hazelcast.raft.service.atomiclong.AtomicLongDataSerializerHook;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLong;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 
@@ -11,7 +13,7 @@ import java.io.IOException;
 /**
  * TODO: Javadoc Pending...
  */
-public abstract class AbstractAtomicLongOperation extends RaftOperation {
+public abstract class AbstractAtomicLongOperation extends RaftOperation implements IdentifiedDataSerializable {
 
     private String name;
 
@@ -46,5 +48,10 @@ public abstract class AbstractAtomicLongOperation extends RaftOperation {
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         name = in.readUTF();
+    }
+
+    @Override
+    public final int getFactoryId() {
+        return AtomicLongDataSerializerHook.F_ID;
     }
 }
