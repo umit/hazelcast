@@ -2,6 +2,7 @@ package com.hazelcast.raft.impl.service.proxy;
 
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.service.RaftService;
@@ -11,7 +12,7 @@ import com.hazelcast.spi.Operation;
  * TODO: Javadoc Pending...
  *
  */
-public abstract class RaftReplicatingOperation extends Operation {
+public abstract class RaftReplicatingOperation extends Operation implements IdentifiedDataSerializable {
 
     @Override
     public final void run() throws Exception {

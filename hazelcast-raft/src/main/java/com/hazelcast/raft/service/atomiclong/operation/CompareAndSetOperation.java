@@ -2,6 +2,7 @@ package com.hazelcast.raft.service.atomiclong.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.raft.service.atomiclong.AtomicLongDataSerializerHook;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLong;
 
 import java.io.IOException;
@@ -41,5 +42,10 @@ public class CompareAndSetOperation extends AbstractAtomicLongOperation {
         super.readInternal(in);
         currentValue = in.readLong();
         newValue = in.readLong();
+    }
+
+    @Override
+    public int getId() {
+        return AtomicLongDataSerializerHook.COMPARE_AND_SET_OP;
     }
 }

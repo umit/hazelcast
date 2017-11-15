@@ -4,6 +4,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicatingOperation;
+import com.hazelcast.raft.service.atomiclong.AtomicLongDataSerializerHook;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.raft.service.atomiclong.operation.AbstractAtomicLongOperation;
 
@@ -44,5 +45,15 @@ public final class AtomicLongReplicatingOperation extends RaftReplicatingOperati
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         operation = in.readObject();
+    }
+
+    @Override
+    public int getFactoryId() {
+        return AtomicLongDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return AtomicLongDataSerializerHook.REPLICATING_OP;
     }
 }
