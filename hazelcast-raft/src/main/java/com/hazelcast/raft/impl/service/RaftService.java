@@ -80,9 +80,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         this.executor = new StripedExecutor(logger, threadPoolName, RuntimeAvailableProcessors.get(), Integer.MAX_VALUE);
 
         RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, METADATA_RAFT);
-        RaftConfig metadataRaftConfig = new RaftConfig(config).setCommitIndexAdvanceCountToSnapshot(Integer.MAX_VALUE);
-        RaftNode node = new RaftNode(SERVICE_NAME, METADATA_RAFT, localEndpoint, endpoints, metadataRaftConfig, raftIntegration,
-                executor);
+        RaftNode node = new RaftNode(SERVICE_NAME, METADATA_RAFT, localEndpoint, endpoints, config, raftIntegration, executor);
         nodes.put(METADATA_RAFT, node);
         node.start();
     }
