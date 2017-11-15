@@ -31,5 +31,4 @@ public class TakeSnapshotOp extends RaftOperation {
     protected void readInternal(ObjectDataInput in) throws IOException {
         throw new UnsupportedOperationException();
     }
-
 }

@@ -2,16 +2,21 @@ package com.hazelcast.raft.impl.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.SnapshotAwareService;
+import com.hazelcast.raft.impl.RaftDataSerializerHook;
 
 import java.io.IOException;
 
-public class RestoreSnapshotOp extends RaftOperation {
+public class RestoreSnapshotOp extends RaftOperation implements IdentifiedDataSerializable {
 
     private String name;
     private int commitIndex;
     private Object snapshot;
+
+    public RestoreSnapshotOp() {
+    }
 
     public RestoreSnapshotOp(String serviceName, String name, int commitIndex, Object snapshot) {
         this.name = name;
@@ -44,6 +49,16 @@ public class RestoreSnapshotOp extends RaftOperation {
         name = in.readUTF();
         commitIndex = in.readInt();
         snapshot = in.readObject();
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftDataSerializerHook.RESTORE_SNAPSHOT_OP;
     }
 
     @Override

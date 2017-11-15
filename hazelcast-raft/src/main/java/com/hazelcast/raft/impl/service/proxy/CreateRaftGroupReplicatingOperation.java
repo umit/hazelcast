@@ -3,6 +3,7 @@ package com.hazelcast.raft.impl.service.proxy;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftOperation;
+import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.service.CreateRaftGroupOperation;
 import com.hazelcast.raft.impl.service.RaftService;
@@ -61,5 +62,15 @@ public class CreateRaftGroupReplicatingOperation extends RaftReplicatingOperatio
         serviceName = in.readUTF();
         name = in.readUTF();
         nodeCount = in.readInt();
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftDataSerializerHook.CREATE_RAFT_GROUP_REPLICATING_OP;
     }
 }

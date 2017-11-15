@@ -2,7 +2,9 @@ package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftOperation;
+import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.impl.RaftEndpoint;
 
 import java.io.IOException;
@@ -13,7 +15,7 @@ import java.util.Collection;
  * TODO: Javadoc Pending...
  *
  */
-public class CreateRaftGroupOperation extends RaftOperation {
+public class CreateRaftGroupOperation extends RaftOperation implements IdentifiedDataSerializable {
 
     private String serviceName;
     private String name;
@@ -62,5 +64,15 @@ public class CreateRaftGroupOperation extends RaftOperation {
             RaftEndpoint endpoint = in.readObject();
             endpoints.add(endpoint);
         }
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftDataSerializerHook.CREATE_RAFT_GROUP_OP;
     }
 }
