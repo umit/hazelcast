@@ -1,5 +1,6 @@
 package com.hazelcast.raft.impl.testing;
 
+import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
@@ -28,10 +29,14 @@ public class RaftGroup {
     private final RaftNode[] nodes;
 
     public RaftGroup(int size) {
-        this(size, null, null);
+        this(size, new RaftConfig());
     }
 
-    public RaftGroup(int size, String serviceName, Class<? extends SnapshotAwareService> serviceClazz) {
+    public RaftGroup(int size, RaftConfig raftConfig) {
+        this(size,raftConfig,  null, null);
+    }
+
+    public RaftGroup(int size, RaftConfig raftConfig, String serviceName, Class<? extends SnapshotAwareService> serviceClazz) {
         endpoints = new RaftEndpoint[size];
         integrations = new LocalRaftIntegration[size];
 
@@ -48,13 +53,14 @@ public class RaftGroup {
                 service = null;
             }
 
-            integrations[i] = new LocalRaftIntegration(endpoints[i], service);
+            integrations[i] = new LocalRaftIntegration(endpoints[i], raftConfig, service);
         }
 
         nodes = new RaftNode[size];
         for (int i = 0; i < size; i++) {
             LocalRaftIntegration integration = integrations[i];
-            nodes[i] = new RaftNode(serviceName, "test", endpoints[i], asList(endpoints), integration, integration.getStripedExecutor());
+            nodes[i] = new RaftNode(serviceName, "test", endpoints[i], asList(endpoints), raftConfig, integration,
+                    integration.getStripedExecutor());
         }
     }
 
