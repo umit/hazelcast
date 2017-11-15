@@ -350,12 +350,20 @@ public class RaftNode {
     }
 
     public void takeSnapshotIfCommitIndexAdvanced() {
+        if (commitIndexAdvanceCountToSnapshot == Integer.MAX_VALUE) {
+            return;
+        }
         int commitIndex = state.commitIndex();
         if ((commitIndex - state.log().snapshotIndex()) < commitIndexAdvanceCountToSnapshot) {
             return;
         }
 
         Object snapshot = raftIntegration.runOperation(new TakeSnapshotOp(serviceName, state.name()), commitIndex);
+        if (snapshot instanceof Throwable) {
+            Throwable t = (Throwable) snapshot;
+            logger.severe("Could not take snapshot from service '" + serviceName + "', commit index: " + commitIndex, t);
+            return;
+        }
         RestoreSnapshotOp snapshotOp = new RestoreSnapshotOp(serviceName, state.name(), commitIndex, snapshot);
         LogEntry committedEntry = state.log().getLogEntry(commitIndex);
         LogEntry snapshotLogEntry = new LogEntry(committedEntry.term(), commitIndex, snapshotOp);
