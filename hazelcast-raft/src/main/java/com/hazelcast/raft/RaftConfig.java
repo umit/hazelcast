@@ -34,6 +34,8 @@ public class RaftConfig {
 
     private int uncommittedEntryCountToRejectNewAppends = DEFAULT_UNCOMMITTED_ENTRY_COUNT_TO_REJECT_NEW_APPENDS;
 
+    private boolean failOnIndeterminateOperationState;
+
     private final Collection<RaftMember> members = new HashSet<RaftMember>();
 
     public RaftConfig() {
@@ -45,6 +47,7 @@ public class RaftConfig {
         this.appendRequestMaxEntryCount = config.appendRequestMaxEntryCount;
         this.commitIndexAdvanceCountToSnapshot = config.commitIndexAdvanceCountToSnapshot;
         this.uncommittedEntryCountToRejectNewAppends = config.uncommittedEntryCountToRejectNewAppends;
+        this.failOnIndeterminateOperationState = config.failOnIndeterminateOperationState;
         for (RaftMember member : config.members) {
             this.members.add(new RaftMember(member));
         }
@@ -102,6 +105,15 @@ public class RaftConfig {
         checkPositive(uncommittedEntryCountToRejectNewAppends, "uncommitted entry count to reject new appends: "
                 + uncommittedEntryCountToRejectNewAppends + " should be positive");
         this.uncommittedEntryCountToRejectNewAppends = uncommittedEntryCountToRejectNewAppends;
+        return this;
+    }
+
+    public boolean isFailOnIndeterminateOperationState() {
+        return failOnIndeterminateOperationState;
+    }
+
+    public RaftConfig setFailOnIndeterminateOperationState(boolean failOnIndeterminateOperationState) {
+        this.failOnIndeterminateOperationState = failOnIndeterminateOperationState;
         return this;
     }
 
