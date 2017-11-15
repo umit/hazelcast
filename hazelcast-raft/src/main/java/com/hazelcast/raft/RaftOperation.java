@@ -16,7 +16,7 @@ public abstract class RaftOperation extends Operation {
 
     private Object response;
 
-    public abstract Object doRun(int commitIndex);
+    protected abstract Object doRun(int commitIndex);
 
     public final RaftOperation setCommitIndex(int commitIndex) {
         checkTrue(commitIndex > NA_COMMIT_INDEX, "Cannot set commit index:" + commitIndex);

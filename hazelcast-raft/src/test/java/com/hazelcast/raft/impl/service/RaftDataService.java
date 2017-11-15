@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * TODO: Javadoc Pending...
  *
  */
-public class RaftDataService implements SnapshotAwareService {
+public class RaftDataService implements SnapshotAwareService<Map<Integer, Object>> {
 
     public static final String SERVICE_NAME = "RaftTestService";
 
@@ -43,20 +43,19 @@ public class RaftDataService implements SnapshotAwareService {
     }
 
     @Override
-    public Object takeSnapshot(String raftName, int commitIndex) {
+    public Map<Integer, Object> takeSnapshot(String raftName, int commitIndex) {
         Map<Integer, Object> snapshot = new HashMap<Integer, Object>();
         for (Entry<Integer, Object> e : values.entrySet()) {
-            if (e.getKey() <= commitIndex) {
-                snapshot.put(e.getKey(), e.getValue());
-            }
+            assert e.getKey() <= commitIndex : "Key: " + e.getKey() + ", commit-index: " + commitIndex;
+            snapshot.put(e.getKey(), e.getValue());
         }
 
         return snapshot;
     }
 
     @Override
-    public void restoreSnapshot(String raftName, int commitIndex, Object snapshot) {
+    public void restoreSnapshot(String raftName, int commitIndex, Map<Integer, Object> snapshot) {
         values.clear();
-        values.putAll((Map<Integer, Object>) snapshot);
+        values.putAll(snapshot);
     }
 }
