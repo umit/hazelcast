@@ -19,6 +19,7 @@ import com.hazelcast.raft.impl.operation.RestoreSnapshotOp;
 import com.hazelcast.raft.impl.operation.VoteRequestOp;
 import com.hazelcast.raft.impl.operation.VoteResponseOp;
 import com.hazelcast.raft.impl.service.CreateRaftGroupOperation;
+import com.hazelcast.raft.impl.service.RaftGroupInfo;
 import com.hazelcast.raft.impl.service.proxy.CreateRaftGroupReplicatingOperation;
 
 public final class RaftDataSerializerHook implements DataSerializerHook {
@@ -45,6 +46,7 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
     public static final int ENDPOINT = 15;
     public static final int CREATE_RAFT_GROUP_OP = 16;
     public static final int CREATE_RAFT_GROUP_REPLICATING_OP = 17;
+    public static final int GROUP_INFO = 18;
 
     @Override
     public int getFactoryId() {
@@ -91,6 +93,8 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
                         return new CreateRaftGroupOperation();
                     case CREATE_RAFT_GROUP_REPLICATING_OP:
                         return new CreateRaftGroupReplicatingOperation();
+                    case GROUP_INFO:
+                        return new RaftGroupInfo();
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
             }

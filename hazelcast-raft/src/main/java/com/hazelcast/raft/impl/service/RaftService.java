@@ -6,6 +6,7 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftMember;
+import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.raft.impl.RaftNode;
@@ -22,6 +23,7 @@ import com.hazelcast.util.AddressUtil;
 import com.hazelcast.util.executor.StripedExecutor;
 
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -36,7 +38,8 @@ import static com.hazelcast.util.ThreadUtil.createThreadName;
 /**
  * TODO: Javadoc Pending...
  */
-public class RaftService implements ManagedService, ConfigurableService<RaftConfig> {
+public class RaftService implements ManagedService, ConfigurableService<RaftConfig>,
+        SnapshotAwareService<Collection<RaftGroupInfo>> {
 
     public static final String SERVICE_NAME = "hz:core:raft";
     public static final String METADATA_RAFT = "METADATA";
@@ -65,7 +68,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
             throw new HazelcastException(e);
         }
         logger.info("CP nodes: " + endpoints);
-        raftGroups.put(METADATA_RAFT, new RaftGroupInfo(SERVICE_NAME, METADATA_RAFT, endpoints));
+        raftGroups.put(METADATA_RAFT, new RaftGroupInfo(SERVICE_NAME, METADATA_RAFT, endpoints, 0));
 
         localEndpoint = getLocalEndpoint(endpoints);
         if (localEndpoint == null) {
@@ -76,8 +79,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         String threadPoolName = createThreadName(nodeEngine.getHazelcastInstance().getName(), "raft");
         this.executor = new StripedExecutor(logger, threadPoolName, RuntimeAvailableProcessors.get(), Integer.MAX_VALUE);
 
-        RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, METADATA_RAFT,
-                new RaftConfig(config).setCommitIndexAdvanceCountToSnapshot(Integer.MAX_VALUE));
+        RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, METADATA_RAFT, config);
         RaftNode node = new RaftNode(SERVICE_NAME, METADATA_RAFT, localEndpoint, endpoints, raftIntegration, executor);
         nodes.put(METADATA_RAFT, node);
         node.start();
@@ -117,6 +119,32 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     public void configure(RaftConfig config) {
         // cloning given RaftConfig to avoid further mutations
         this.config = new RaftConfig(config);
+    }
+
+    @Override
+    public Collection<RaftGroupInfo> takeSnapshot(String raftName, int commitIndex) {
+        assert METADATA_RAFT.equals(raftName);
+
+        Collection<RaftGroupInfo> groupInfos = new ArrayList<RaftGroupInfo>();
+        for (RaftGroupInfo groupInfo : raftGroups.values()) {
+            assert groupInfo.commitIndex() <= commitIndex
+                    : "Group commit index: " + groupInfo.commitIndex() + ", snapshot commit index: " + commitIndex;
+            if (!METADATA_RAFT.equals(groupInfo.name())) {
+                groupInfos.add(groupInfo);
+            }
+        }
+        return groupInfos;
+    }
+
+    @Override
+    public void restoreSnapshot(String raftName, int commitIndex, Collection<RaftGroupInfo> snapshot) {
+        assert METADATA_RAFT.equals(raftName);
+
+        for (RaftGroupInfo groupInfo : snapshot) {
+            if (!raftGroups.containsKey(groupInfo.name())) {
+                addRaftNode(groupInfo.serviceName(), groupInfo.name(), groupInfo.members(), groupInfo.commitIndex());
+            }
+        }
     }
 
     public void handleVoteRequest(String name, VoteRequest request) {
@@ -190,7 +218,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         return endpoints;
     }
 
-    void addRaftNode(String serviceName, String name, Collection<RaftEndpoint> endpoints) {
+    void addRaftNode(String serviceName, String name, Collection<RaftEndpoint> endpoints, int commitIndex) {
         // keep configuration on every metadata node
         RaftGroupInfo groupInfo = raftGroups.get(name);
         if (groupInfo != null) {
@@ -202,7 +230,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
                     + " already exists with different group size. Ignoring add raft node request.");
         }
 
-        raftGroups.put(name, new RaftGroupInfo(serviceName, name, endpoints));
+        raftGroups.put(name, new RaftGroupInfo(serviceName, name, endpoints, commitIndex));
 
         if (!endpoints.contains(localEndpoint)) {
             return;
