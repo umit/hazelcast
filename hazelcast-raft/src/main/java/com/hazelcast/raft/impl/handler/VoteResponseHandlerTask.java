@@ -59,7 +59,7 @@ public class VoteResponseHandlerTask implements StripedRunnable {
             logger.info("We are the LEADER!");
             state.toLeader();
             raftNode.printMemberState();
-            raftNode.scheduleLeaderLoop();
+            raftNode.startPeriodicHeartbeatTask();
         }
     }
 

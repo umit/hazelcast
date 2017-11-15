@@ -38,11 +38,10 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
 
     private final RaftConfig raftConfig;
 
-    NodeEngineRaftIntegration(NodeEngine nodeEngine, String raftName) {
+    NodeEngineRaftIntegration(NodeEngine nodeEngine, String raftName, RaftConfig config) {
         this.nodeEngine = nodeEngine;
         this.raftName = raftName;
-        this.raftConfig = (RaftConfig) nodeEngine.getConfig().getServicesConfig().getServiceConfig(RaftService.SERVICE_NAME)
-                                                 .getConfigObject();
+        this.raftConfig = config;
     }
 
     @Override
