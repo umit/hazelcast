@@ -15,6 +15,8 @@ import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.util.UuidUtil;
 import org.junit.Before;
 
+import java.util.Arrays;
+
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static com.hazelcast.raft.impl.RaftUtil.getRaftNode;
 import static com.hazelcast.raft.impl.RaftUtil.getTerm;
@@ -27,8 +29,6 @@ import static org.junit.Assert.assertNotNull;
 
 public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
 
-    protected HazelcastInstance[] instances;
-    protected Address[] raftAddresses;
     protected TestHazelcastInstanceFactory factory;
 
     @Before
@@ -65,7 +65,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         throw new AssertionError("Cannot find non-leader instance!");
     }
 
-    protected Address[] createRaftAddresses(int count) {
+    protected Address[] createAddresses(int count) {
         Address[] addresses = new Address[count];
         for (int i = 0; i < count; i++) {
             Address address = factory.nextAddress();
@@ -74,24 +74,37 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         return addresses;
     }
 
-    protected HazelcastInstance[] newInstances(Address[] addresses) {
-        Config config = createConfig(addresses);
+    protected HazelcastInstance[] newInstances(Address[] raftAddresses) {
+        return newInstances(raftAddresses, raftAddresses.length);
+    }
 
-        int count = addresses.length;
-        HazelcastInstance[] instances = new HazelcastInstance[count];
-        for (int i = 0; i < count; i++) {
-            instances[i] = factory.newHazelcastInstance(addresses[i], config);
+    protected HazelcastInstance[] newInstances(Address[] raftAddresses, int nodeCount) {
+        if (nodeCount < raftAddresses.length) {
+            throw new IllegalArgumentException("node count: " + nodeCount + " must be bigger than number of raft addresses: "
+                    + Arrays.toString(raftAddresses));
         }
-        assertClusterSizeEventually(count, instances);
+
+        Config config = createConfig(raftAddresses);
+
+        HazelcastInstance[] instances = new HazelcastInstance[nodeCount];
+        for (int i = 0; i < nodeCount; i++) {
+            if (i < raftAddresses.length) {
+                instances[i] = factory.newHazelcastInstance(raftAddresses[i], config);
+            } else {
+                instances[i] = factory.newHazelcastInstance(config);
+            }
+        }
+
+        assertClusterSizeEventually(nodeCount, instances);
 
         return instances;
     }
 
-    protected Config createConfig(Address[] addresses) {
-        int count = addresses.length;
+    protected Config createConfig(Address[] raftAddresses) {
+        int count = raftAddresses.length;
         RaftMember[] raftMembers = new RaftMember[count];
         for (int i = 0; i < count; i++) {
-            Address addr = addresses[i];
+            Address addr = raftAddresses[i];
             // assuming IPv4
             String address = addr.getHost() + ":" + addr.getPort();
             raftMembers[i] = new RaftMember(address, UuidUtil.newUnsecureUuidString());

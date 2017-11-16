@@ -5,6 +5,7 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftOperation;
+import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.spi.ExceptionAction;
@@ -32,6 +33,10 @@ public abstract class RaftReplicatingOperation extends Operation implements Iden
     private void replicate(RaftOperation op, String raftName) {
         RaftService service = getService();
         RaftNode raftNode = service.getRaftNode(raftName);
+        if (raftNode == null) {
+            sendResponse(new NotLeaderException(service.getLocalEndpoint(), null));
+            return;
+        }
 
         ICompletableFuture future = raftNode.replicate(op);
         future.andThen(new ExecutionCallback() {
