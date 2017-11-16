@@ -32,25 +32,20 @@ public final class RaftInvocationHelper {
             Supplier<RaftReplicatingOperation> operationSupplier, String raftName) {
 
         RaftService raftService = nodeEngine.getService(SERVICE_NAME);
-        RaftNode raftNode = raftService.getRaftNode(raftName);
-        RaftGroupInfo groupInfo = raftService.getRaftGroupInfo(raftName);
-        if (raftNode == null && groupInfo == null) {
-            throw new IllegalArgumentException(raftName + " raft group does not exist!");
-        }
-
         ILogger logger = raftService.getLogger(RaftInvocationHelper.class, raftName);
         Executor executor = nodeEngine.getExecutionService().getExecutor(ExecutionService.ASYNC_EXECUTOR);
 
-        RaftInvocationFuture<T>  invocationFuture = new RaftInvocationFuture<T>(raftNode, groupInfo, raftService,
-                nodeEngine, operationSupplier, executor, logger);
+        RaftInvocationFuture<T>  invocationFuture = new RaftInvocationFuture<T>(raftName, raftService, nodeEngine,
+                operationSupplier, executor, logger);
         invocationFuture.invoke();
         return invocationFuture;
     }
 
     private static class RaftInvocationFuture<T> extends AbstractCompletableFuture<T> implements ExecutionCallback<T> {
 
+        private final String raftName;
         private final RaftNode raftNode;
-        private final RaftGroupInfo groupInfo;
+        private final RaftEndpoint[] endpoints;
         private final RaftService raftService;
         private final NodeEngine nodeEngine;
         private final Supplier<RaftReplicatingOperation> operationSupplier;
@@ -59,22 +54,34 @@ public final class RaftInvocationHelper {
         private volatile RaftEndpoint lastInvocationEndpoint;
         private volatile int endPointIndex;
 
-        RaftInvocationFuture(RaftNode raftNode, RaftGroupInfo groupInfo, RaftService raftService, NodeEngine nodeEngine,
+        RaftInvocationFuture(String raftName, RaftService raftService, NodeEngine nodeEngine,
                 Supplier<RaftReplicatingOperation> operationSupplier, Executor executor, ILogger logger) {
             super(executor, logger);
-            this.raftNode = raftNode;
-            this.groupInfo = groupInfo;
+            this.raftName = raftName;
+            this.raftNode = raftService.getRaftNode(raftName);
             this.raftService = raftService;
             this.nodeEngine = nodeEngine;
             this.operationSupplier = operationSupplier;
             this.logger = logger;
             this.failOnIndeterminateOperationState = raftService.getConfig().isFailOnIndeterminateOperationState();
+            this.endpoints = findEndpoints();
+        }
+
+        private RaftEndpoint[] findEndpoints() {
+            if (raftNode != null) {
+                return null;
+            }
+            RaftGroupInfo groupInfo = raftService.getRaftGroupInfo(raftName);
+            if (groupInfo != null) {
+                return groupInfo.membersArray();
+            }
+            return raftService.getAllEndpoints().toArray(new RaftEndpoint[0]);
         }
 
         @Override
         public void onResponse(T response) {
             if (raftNode == null) {
-                raftService.setKnownLeader(groupInfo.name(), lastInvocationEndpoint);
+                raftService.setKnownLeader(raftName, lastInvocationEndpoint);
             }
             setResult(response);
         }
@@ -86,7 +93,7 @@ public final class RaftInvocationHelper {
                 if (cause instanceof RaftException) {
                     setKnownLeader((RaftException) cause);
                 } else {
-                    raftService.resetKnownLeader(groupInfo.name());
+                    raftService.resetKnownLeader(raftName);
                 }
                 try {
                     scheduleRetry();
@@ -113,9 +120,9 @@ public final class RaftInvocationHelper {
         private void setKnownLeader(RaftException cause) {
             RaftEndpoint leader = cause.getLeader();
             if (leader != null) {
-                raftService.setKnownLeader(groupInfo.name(), leader);
+                raftService.setKnownLeader(raftName, leader);
             } else {
-                raftService.resetKnownLeader(groupInfo.name());
+                raftService.resetKnownLeader(raftName);
             }
         }
 
@@ -147,12 +154,11 @@ public final class RaftInvocationHelper {
         }
 
         private RaftEndpoint getLeader() {
-            RaftEndpoint leader;
             if (raftNode != null) {
                 return raftNode.getLeader();
             }
-            leader = raftService.getKnownLeader(groupInfo.name());
-            return leader != null ? leader : groupInfo.member(endPointIndex++ % groupInfo.memberCount());
+            RaftEndpoint leader = raftService.getKnownLeader(raftName);
+            return leader != null ? leader : endpoints[endPointIndex++ % endpoints.length];
         }
     }
 }

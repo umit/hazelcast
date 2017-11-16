@@ -9,14 +9,10 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static com.hazelcast.raft.impl.RaftUtil.getRaftNode;
-import static com.hazelcast.raft.impl.RaftUtil.getRaftService;
 import static com.hazelcast.raft.impl.RaftUtil.getRole;
-import static com.hazelcast.raft.impl.service.CreateRaftGroupHelper.createRaftGroup;
 import static com.hazelcast.raft.impl.service.RaftService.METADATA_RAFT;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category(QuickTest.class)
@@ -24,8 +20,8 @@ public class HazelcastRaftTest extends HazelcastRaftTestSupport {
 
     @Test
     public void crashedLeader_cannotRecoverAndRejoinRaftGroup() throws Exception {
-        raftAddresses = createRaftAddresses(2);
-        instances = newInstances(raftAddresses);
+        Address[] raftAddresses = createAddresses(2);
+        HazelcastInstance[] instances = newInstances(raftAddresses);
 
         RaftNode leader = waitAllForLeaderElection(instances, METADATA_RAFT);
 
@@ -60,8 +56,8 @@ public class HazelcastRaftTest extends HazelcastRaftTestSupport {
 
     @Test
     public void crashedFollower_cannotRecoverAndRejoinRaftGroup() throws Exception {
-        raftAddresses = createRaftAddresses(2);
-        instances = newInstances(raftAddresses);
+        Address[] raftAddresses = createAddresses(2);
+        HazelcastInstance[] instances = newInstances(raftAddresses);
 
         final RaftNode leader = waitAllForLeaderElection(instances, METADATA_RAFT);
 
@@ -84,32 +80,5 @@ public class HazelcastRaftTest extends HazelcastRaftTestSupport {
                 assertEquals(RaftRole.CANDIDATE, getRole(raftNode));
             }
         }, 10);
-    }
-
-    @Test
-    public void createNewRaftGroup() throws Exception {
-        raftAddresses = createRaftAddresses(5);
-        instances = newInstances(raftAddresses);
-
-        final String name = "atomic";
-        final int raftGroupSize = 3;
-
-        createRaftGroup(getNodeEngineImpl(instances[0]), "test", name, raftGroupSize);
-
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() throws Exception {
-                int count = 0;
-                for (HazelcastInstance instance : instances) {
-                    RaftNode raftNode = getRaftService(instance).getRaftNode(name);
-                    if (raftNode != null) {
-                        count++;
-                        assertNotNull(getLeaderEndpoint(raftNode));
-                    }
-                }
-                assertEquals(raftGroupSize, count);
-            }
-        });
-
     }
 }

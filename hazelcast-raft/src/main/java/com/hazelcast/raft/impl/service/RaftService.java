@@ -70,7 +70,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         logger.info("CP nodes: " + endpoints);
         raftGroups.put(METADATA_RAFT, new RaftGroupInfo(SERVICE_NAME, METADATA_RAFT, endpoints, 0));
 
-        localEndpoint = getLocalEndpoint(endpoints);
+        localEndpoint = findLocalEndpoint(endpoints);
         if (localEndpoint == null) {
             logger.warning("We are not in CP nodes group :(");
             return;
@@ -85,7 +85,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         node.start();
     }
 
-    private RaftEndpoint getLocalEndpoint(Collection<RaftEndpoint> endpoints) {
+    private RaftEndpoint findLocalEndpoint(Collection<RaftEndpoint> endpoints) {
         for (RaftEndpoint endpoint : endpoints) {
             if (nodeEngine.getThisAddress().equals(endpoint.getAddress())) {
                 return endpoint;
@@ -122,10 +122,6 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     public void configure(RaftConfig config) {
         // cloning given RaftConfig to avoid further mutations
         this.config = new RaftConfig(config);
-    }
-
-    public RaftEndpoint getLocalEndpoint() {
-        return localEndpoint;
     }
 
     @Override
@@ -227,6 +223,10 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
 
     public Collection<RaftEndpoint> getAllEndpoints() {
         return endpoints;
+    }
+
+    public RaftEndpoint getLocalEndpoint() {
+        return localEndpoint;
     }
 
     void createRaftGroup(String serviceName, String name, Collection<RaftEndpoint> endpoints, int commitIndex) {
