@@ -112,13 +112,20 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
 
     @Override
     public void shutdown(boolean terminate) {
-        executor.shutdown();
+        if (executor != null) {
+            executor.shutdown();
+            executor = null;
+        }
     }
 
     @Override
     public void configure(RaftConfig config) {
         // cloning given RaftConfig to avoid further mutations
         this.config = new RaftConfig(config);
+    }
+
+    public RaftEndpoint getLocalEndpoint() {
+        return localEndpoint;
     }
 
     @Override
@@ -142,7 +149,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
 
         for (RaftGroupInfo groupInfo : snapshot) {
             if (!raftGroups.containsKey(groupInfo.name())) {
-                addRaftNode(groupInfo.serviceName(), groupInfo.name(), groupInfo.members(), groupInfo.commitIndex());
+                createRaftGroup(groupInfo.serviceName(), groupInfo.name(), groupInfo.members(), groupInfo.commitIndex());
             }
         }
     }
@@ -222,7 +229,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         return endpoints;
     }
 
-    void addRaftNode(String serviceName, String name, Collection<RaftEndpoint> endpoints, int commitIndex) {
+    void createRaftGroup(String serviceName, String name, Collection<RaftEndpoint> endpoints, int commitIndex) {
         // keep configuration on every metadata node
         RaftGroupInfo groupInfo = raftGroups.get(name);
         if (groupInfo != null) {

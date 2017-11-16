@@ -33,8 +33,8 @@ public class CreateRaftGroupOperation extends RaftOperation implements Identifie
     @Override
     public Object doRun(int commitIndex) {
         RaftService service = getService();
-        service.addRaftNode(serviceName, name, endpoints, commitIndex);
-        return true;
+        service.createRaftGroup(serviceName, name, endpoints, commitIndex);
+        return endpoints;
     }
 
     @Override
