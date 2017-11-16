@@ -6,6 +6,9 @@ import com.hazelcast.core.IFunction;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicatingOperation;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.raft.service.atomiclong.operation.AddAndGetOperation;
+import com.hazelcast.raft.service.atomiclong.operation.AlterOperation;
+import com.hazelcast.raft.service.atomiclong.operation.AlterOperation.AlterResultType;
+import com.hazelcast.raft.service.atomiclong.operation.ApplyOperation;
 import com.hazelcast.raft.service.atomiclong.operation.CompareAndSetOperation;
 import com.hazelcast.raft.service.atomiclong.operation.GetAndAddOperation;
 import com.hazelcast.raft.service.atomiclong.operation.GetAndSetOperation;
@@ -15,6 +18,8 @@ import com.hazelcast.util.function.Supplier;
 
 import static com.hazelcast.raft.impl.service.RaftInvocationHelper.invokeOnLeader;
 import static com.hazelcast.raft.service.atomiclong.RaftAtomicLongService.PREFIX;
+import static com.hazelcast.raft.service.atomiclong.operation.AlterOperation.AlterResultType.AFTER_VALUE;
+import static com.hazelcast.raft.service.atomiclong.operation.AlterOperation.AlterResultType.BEFORE_VALUE;
 
 public class RaftAtomicLongProxy implements IAtomicLong {
 
@@ -152,43 +157,66 @@ public class RaftAtomicLongProxy implements IAtomicLong {
     }
 
     @Override
-    public void alter(IFunction<Long, Long> function) {
-        throw new UnsupportedOperationException();
+    public void alter(final IFunction<Long, Long> function) {
+        doAlter(function, AFTER_VALUE);
     }
 
     @Override
     public long alterAndGet(IFunction<Long, Long> function) {
-        throw new UnsupportedOperationException();
+        return doAlter(function, AFTER_VALUE);
     }
 
     @Override
     public long getAndAlter(IFunction<Long, Long> function) {
-        throw new UnsupportedOperationException();
+        return doAlter(function, BEFORE_VALUE);
+    }
+
+    private long doAlter(IFunction<Long, Long> function, AlterResultType alterResultType) {
+        ICompletableFuture<Long> future = doAlterAsync(function, alterResultType);
+        return join(future);
+    }
+
+    private ICompletableFuture<Long> doAlterAsync(final IFunction<Long, Long> function, final AlterResultType alterResultType) {
+        return invokeOnLeader(nodeEngine,
+                    new Supplier<RaftReplicatingOperation>() {
+                        @Override
+                        public RaftReplicatingOperation get() {
+                            return new AtomicLongReplicatingOperation(new AlterOperation(name, function, alterResultType));
+                        }
+                    }, raftName);
     }
 
     @Override
     public <R> R apply(IFunction<Long, R> function) {
-        throw new UnsupportedOperationException();
+        ICompletableFuture<R> future = applyAsync(function);
+        return join(future);
     }
 
     @Override
     public ICompletableFuture<Void> alterAsync(IFunction<Long, Long> function) {
-        throw new UnsupportedOperationException();
+        ICompletableFuture future = doAlterAsync(function, AFTER_VALUE);
+        return future;
     }
 
     @Override
     public ICompletableFuture<Long> alterAndGetAsync(IFunction<Long, Long> function) {
-        throw new UnsupportedOperationException();
+        return doAlterAsync(function, AFTER_VALUE);
     }
 
     @Override
     public ICompletableFuture<Long> getAndAlterAsync(IFunction<Long, Long> function) {
-        throw new UnsupportedOperationException();
+        return doAlterAsync(function, BEFORE_VALUE);
     }
 
     @Override
-    public <R> ICompletableFuture<R> applyAsync(IFunction<Long, R> function) {
-        throw new UnsupportedOperationException();
+    public <R> ICompletableFuture<R> applyAsync(final IFunction<Long, R> function) {
+        return invokeOnLeader(nodeEngine,
+                new Supplier<RaftReplicatingOperation>() {
+                    @Override
+                    public RaftReplicatingOperation get() {
+                        return new AtomicLongReplicatingOperation(new ApplyOperation<R>(name, function));
+                    }
+                }, raftName);
     }
 
     @Override
