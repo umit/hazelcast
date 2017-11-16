@@ -20,14 +20,14 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     private String serviceName;
     private String name;
     private Collection<RaftEndpoint> members;
-    private RaftEndpoint[] membersArray;
     private int commitIndex;
+
+    private transient RaftEndpoint[] membersArray;
 
     public RaftGroupInfo(String serviceName, String name, Collection<RaftEndpoint> members, int commitIndex) {
         this.serviceName = serviceName;
         this.name = name;
         this.members = Collections.unmodifiableCollection(members);
-        this.membersArray = members.toArray(new RaftEndpoint[0]);
         this.commitIndex = commitIndex;
     }
 
@@ -47,15 +47,18 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     }
 
     public int memberCount() {
-        return membersArray.length;
-    }
-
-    public RaftEndpoint member(int index) {
-        return membersArray[index];
+        return members.size();
     }
 
     public int commitIndex() {
         return commitIndex;
+    }
+
+    public RaftEndpoint[] membersArray() {
+        if (membersArray == null) {
+            membersArray = members.toArray(new RaftEndpoint[0]);
+        }
+        return membersArray;
     }
 
     @Override
@@ -63,8 +66,8 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
         out.writeUTF(serviceName);
         out.writeUTF(name);
         out.writeInt(commitIndex);
-        out.writeInt(membersArray.length);
-        for (RaftEndpoint endpoint : membersArray) {
+        out.writeInt(members.size());
+        for (RaftEndpoint endpoint : members) {
             out.writeObject(endpoint);
         }
     }
@@ -75,12 +78,10 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
         name = in.readUTF();
         commitIndex = in.readInt();
         int len = in.readInt();
-        membersArray = new RaftEndpoint[len];
         members = new ArrayList<RaftEndpoint>(len);
         for (int i = 0; i < len; i++) {
             RaftEndpoint endpoint = in.readObject();
             members.add(endpoint);
-            membersArray[i] = endpoint;
         }
     }
 

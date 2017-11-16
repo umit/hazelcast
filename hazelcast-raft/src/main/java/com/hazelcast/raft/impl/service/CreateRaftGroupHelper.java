@@ -41,6 +41,9 @@ public final class CreateRaftGroupHelper {
 
     public static void ensureRaftGroupOnLocal(NodeEngine nodeEngine, String raftName) throws InterruptedException {
         RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
+        if (raftService.getLocalEndpoint() == null) {
+            return;
+        }
         while (raftService.getRaftGroupInfo(raftName) == null) {
             Thread.sleep(TimeUnit.SECONDS.toMillis(1));
         }
