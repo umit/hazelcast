@@ -42,10 +42,15 @@ public class CreateRaftGroupReplicatingOperation extends RaftReplicatingOperatio
     protected RaftOperation getRaftOperation() {
         RaftService service = getService();
         Collection<RaftEndpoint> allEndpoints = service.getAllEndpoints();
+        if (nodeCount > allEndpoints.size()) {
+            throw new IllegalArgumentException("There are " + allEndpoints.size()
+                    + " CP nodes. You cannot create a raft group of " + nodeCount + " nodes.");
+        }
+
         List<RaftEndpoint> endpoints = new ArrayList<RaftEndpoint>(allEndpoints);
         Collections.shuffle(endpoints);
         endpoints = endpoints.subList(0, nodeCount);
-        return new CreateRaftGroupOperation(serviceName, name, endpoints);
+        return new CreateRaftGroupOperation(serviceName, name, new ArrayList<RaftEndpoint>(endpoints));
     }
 
     @Override
