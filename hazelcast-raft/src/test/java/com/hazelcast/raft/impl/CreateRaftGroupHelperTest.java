@@ -44,12 +44,25 @@ public class CreateRaftGroupHelperTest extends HazelcastRaftTestSupport {
 
     @Test
     public void when_raftGroupIsCreatedWithSomeCPNodes_then_raftNodeIsCreatedOnOnlyTheSelectedEndpoints() throws ExecutionException, InterruptedException {
-        final int cpNodeCount = 3;
-        int nodeCount = 5;
+        when_raftGroupIsCreatedWithSomeCPNodes_then_raftNodeIsCreatedOnOnlyTheSelectedEndpoints(true);
+    }
+
+    @Test
+    public void when_raftGroupIsCreatedFromNonCPNode_then_raftNodeIsCreatedOnOnlyTheSelectedEndpoints() throws ExecutionException, InterruptedException {
+        when_raftGroupIsCreatedWithSomeCPNodes_then_raftNodeIsCreatedOnOnlyTheSelectedEndpoints(false);
+    }
+
+    private void when_raftGroupIsCreatedWithSomeCPNodes_then_raftNodeIsCreatedOnOnlyTheSelectedEndpoints(boolean invokeOnCP)
+            throws ExecutionException, InterruptedException {
+        int cpNodeCount = 4;
+        int nodeCount = 6;
         Address[] raftAddresses = createAddresses(cpNodeCount);
         instances = newInstances(raftAddresses, nodeCount);
 
-        createRaftGroup(getNodeEngineImpl(instances[0]), RaftDataService.SERVICE_NAME, "test", cpNodeCount);
+        final int newGroupCount = 3;
+
+        HazelcastInstance instance = instances[invokeOnCP ? 0 : instances.length - 1];
+        createRaftGroup(getNodeEngineImpl(instance), RaftDataService.SERVICE_NAME, "test", newGroupCount);
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -63,7 +76,7 @@ public class CreateRaftGroupHelperTest extends HazelcastRaftTestSupport {
                     }
                 }
 
-                assertEquals(cpNodeCount, count);
+                assertEquals(newGroupCount, count);
             }
         });
     }
