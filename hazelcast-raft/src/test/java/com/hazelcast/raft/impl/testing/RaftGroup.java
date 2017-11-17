@@ -129,11 +129,11 @@ public class RaftGroup {
         return getIntegration(getIndexOf(endpoint));
     }
 
-    public <T> T getService(RaftEndpoint endpoint) {
+    public <T extends SnapshotAwareService> T getService(RaftEndpoint endpoint) {
         return getIntegration(getIndexOf(endpoint)).getService();
     }
 
-    public <T> T getService(RaftNode raftNode) {
+    public <T extends SnapshotAwareService> T getService(RaftNode raftNode) {
         return getIntegration(getIndexOf(raftNode.getLocalEndpoint())).getService();
     }
 
