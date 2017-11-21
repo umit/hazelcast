@@ -9,10 +9,8 @@ import com.hazelcast.core.IFunction;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.HazelcastRaftTestSupport;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
-import com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.QuickTest;
-import com.hazelcast.util.RandomPicker;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,15 +33,14 @@ public class RaftAtomicLongClientBasicTest extends HazelcastRaftTestSupport {
     public void setup() throws ExecutionException, InterruptedException {
         factory = new TestHazelcastFactory();
         Address[] raftAddresses = createAddresses(5);
-        HazelcastInstance[] instances = newInstances(raftAddresses, raftAddresses.length + 2);
-
-        String name = "id";
-        int raftGroupSize = 3;
-        RaftAtomicLongProxy.create(instances[RandomPicker.getInt(instances.length)], name, raftGroupSize);
+        newInstances(raftAddresses, raftAddresses.length + 2);
 
         TestHazelcastFactory f = (TestHazelcastFactory) factory;
         HazelcastInstance client = f.newHazelcastClient();
-        atomicLong = new RaftAtomicLong(client, name);
+
+        String name = "id";
+        int raftGroupSize = 3;
+        atomicLong = RaftAtomicLong.create(client, name, raftGroupSize);
     }
 
     @After

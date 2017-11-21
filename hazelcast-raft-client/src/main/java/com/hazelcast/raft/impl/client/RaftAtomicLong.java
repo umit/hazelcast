@@ -4,7 +4,6 @@ import com.hazelcast.client.impl.ClientMessageDecoder;
 import com.hazelcast.client.impl.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.HazelcastClientProxy;
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.client.impl.protocol.util.ParameterUtil;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
@@ -16,8 +15,10 @@ import com.hazelcast.nio.Bits;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.util.ExceptionUtil;
 
+import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
 import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.ADD_AND_GET_TYPE;
 import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.COMPARE_AND_SET_TYPE;
+import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.CREATE_TYPE;
 import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.GET_AND_ADD_TYPE;
 import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.GET_AND_SET_TYPE;
 
@@ -29,6 +30,26 @@ public class RaftAtomicLong implements IAtomicLong {
 
     private static final ClientMessageDecoder LONG_RESPONSE_DECODER = new LongResponseDecoder();
     private static final ClientMessageDecoder BOOLEAN_RESPONSE_DECODER = new BooleanResponseDecoder();
+
+    public static IAtomicLong create(HazelcastInstance instance, String name, int nodeCount) {
+        RaftAtomicLong atomicLong = new RaftAtomicLong(instance, name);
+
+        int dataSize = ClientMessage.HEADER_SIZE
+                + calculateDataSize(name) + Bits.INT_SIZE_IN_BYTES;
+        ClientMessage clientMessage = prepareClientMessage(name, dataSize, CREATE_TYPE);
+        clientMessage.set(nodeCount);
+        clientMessage.updateFrameLength();
+
+        ICompletableFuture<Object> future = atomicLong.invoke(clientMessage, new ClientMessageDecoder() {
+            @Override
+            public <T> T decodeClientMessage(ClientMessage clientMessage) {
+                return null;
+            }
+        });
+        atomicLong.join(future);
+
+        return atomicLong;
+    }
 
     private final HazelcastClientInstanceImpl client;
     private final String name;
@@ -214,7 +235,7 @@ public class RaftAtomicLong implements IAtomicLong {
 
     private static ClientMessage encodeRequest(String name, long value, int messageTypeId) {
         int dataSize = ClientMessage.HEADER_SIZE
-                + ParameterUtil.calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES;
+                + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES;
         ClientMessage clientMessage = prepareClientMessage(name, dataSize, messageTypeId);
         clientMessage.set(value);
         clientMessage.updateFrameLength();
@@ -223,7 +244,7 @@ public class RaftAtomicLong implements IAtomicLong {
 
     private static ClientMessage encodeRequest(String name, long value1, long value2, int messageTypeId) {
         int dataSize = ClientMessage.HEADER_SIZE
-                + ParameterUtil.calculateDataSize(name) + 2 * Bits.LONG_SIZE_IN_BYTES;
+                + calculateDataSize(name) + 2 * Bits.LONG_SIZE_IN_BYTES;
         ClientMessage clientMessage = prepareClientMessage(name, dataSize, messageTypeId);
         clientMessage.set(value1);
         clientMessage.set(value2);
