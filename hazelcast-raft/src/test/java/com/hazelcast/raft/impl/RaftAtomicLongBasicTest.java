@@ -23,6 +23,7 @@ import java.util.concurrent.Future;
 
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static com.hazelcast.raft.impl.RaftUtil.getRaftService;
+import static com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy.create;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -41,11 +42,8 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(5);
         instances = newInstances(raftAddresses, raftAddresses.length + 2);
 
-        RaftAtomicLongService service = getNodeEngineImpl(instances[RandomPicker.getInt(instances.length)])
-                .getService(RaftAtomicLongService.SERVICE_NAME);
         String name = "id";
-
-        atomicLong = service.createNew(name, raftGroupSize);
+        atomicLong = create(instances[RandomPicker.getInt(instances.length)], name, raftGroupSize);
         assertNotNull(atomicLong);
     }
 
