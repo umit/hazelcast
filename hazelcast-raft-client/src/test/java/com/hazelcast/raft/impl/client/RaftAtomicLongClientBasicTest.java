@@ -1,6 +1,5 @@
 package com.hazelcast.raft.impl.client;
 
-import com.hazelcast.client.impl.HazelcastClientProxy;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.ServiceConfig;
@@ -10,6 +9,7 @@ import com.hazelcast.core.IFunction;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.HazelcastRaftTestSupport;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
+import com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.QuickTest;
 import com.hazelcast.util.RandomPicker;
@@ -37,15 +37,13 @@ public class RaftAtomicLongClientBasicTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(5);
         HazelcastInstance[] instances = newInstances(raftAddresses, raftAddresses.length + 2);
 
-        RaftAtomicLongService service = getNodeEngineImpl(instances[RandomPicker.getInt(instances.length)])
-                .getService(RaftAtomicLongService.SERVICE_NAME);
         String name = "id";
         int raftGroupSize = 3;
-        service.createNew(name, raftGroupSize);
+        RaftAtomicLongProxy.create(instances[RandomPicker.getInt(instances.length)], name, raftGroupSize);
 
         TestHazelcastFactory f = (TestHazelcastFactory) factory;
         HazelcastInstance client = f.newHazelcastClient();
-        atomicLong = new RaftAtomicLong((HazelcastClientProxy) client, name);
+        atomicLong = new RaftAtomicLong(client, name);
     }
 
     @After

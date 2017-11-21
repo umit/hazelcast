@@ -1,8 +1,11 @@
 package com.hazelcast.raft.service.atomiclong.proxy;
 
+import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.IFunction;
+import com.hazelcast.instance.HazelcastInstanceImpl;
+import com.hazelcast.instance.HazelcastInstanceProxy;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicatingOperation;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.raft.service.atomiclong.operation.AddAndGetOperation;
@@ -18,6 +21,7 @@ import com.hazelcast.util.function.Supplier;
 
 import static com.hazelcast.raft.impl.service.RaftInvocationHelper.invokeOnLeader;
 import static com.hazelcast.raft.service.atomiclong.RaftAtomicLongService.PREFIX;
+import static com.hazelcast.raft.service.atomiclong.RaftAtomicLongService.SERVICE_NAME;
 import static com.hazelcast.raft.service.atomiclong.operation.AlterOperation.AlterResultType.AFTER_VALUE;
 import static com.hazelcast.raft.service.atomiclong.operation.AlterOperation.AlterResultType.BEFORE_VALUE;
 
@@ -26,6 +30,28 @@ public class RaftAtomicLongProxy implements IAtomicLong {
     private final String name;
     private final String raftName;
     private final NodeEngine nodeEngine;
+
+    public static IAtomicLong create(HazelcastInstance instance, String name, int nodeCount) {
+        NodeEngine nodeEngine = getNodeEngine(instance);
+        RaftAtomicLongService service = nodeEngine.getService(SERVICE_NAME);
+        try {
+            return service.createNew(name, nodeCount);
+        } catch (Exception e) {
+            throw ExceptionUtil.rethrow(e);
+        }
+    }
+
+    private static NodeEngine getNodeEngine(HazelcastInstance instance) {
+        HazelcastInstanceImpl instanceImpl;
+        if (instance instanceof HazelcastInstanceProxy) {
+            instanceImpl = ((HazelcastInstanceProxy) instance).getOriginal();
+        } else if (instance instanceof HazelcastInstanceImpl) {
+            instanceImpl = (HazelcastInstanceImpl) instance;
+        } else {
+            throw new IllegalArgumentException("Unknown instance! " + instance);
+        }
+        return instanceImpl.node.getNodeEngine();
+    }
 
     public RaftAtomicLongProxy(String name, NodeEngine nodeEngine) {
         this.name = name;
