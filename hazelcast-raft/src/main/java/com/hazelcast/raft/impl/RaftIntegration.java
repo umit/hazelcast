@@ -6,6 +6,8 @@ import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.InstallSnapshot;
+import com.hazelcast.raft.impl.dto.PreVoteRequest;
+import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.spi.TaskScheduler;
@@ -28,6 +30,10 @@ public interface RaftIntegration {
     boolean isJoined();
 
     boolean isReachable(RaftEndpoint endpoint);
+
+    boolean send(PreVoteRequest request, RaftEndpoint target);
+
+    boolean send(PreVoteResponse response, RaftEndpoint target);
 
     boolean send(VoteRequest request, RaftEndpoint target);
 

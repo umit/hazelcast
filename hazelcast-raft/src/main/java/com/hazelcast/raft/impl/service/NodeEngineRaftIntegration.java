@@ -8,12 +8,16 @@ import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.InstallSnapshot;
+import com.hazelcast.raft.impl.dto.PreVoteRequest;
+import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.operation.AppendFailureResponseOp;
 import com.hazelcast.raft.impl.operation.AppendRequestOp;
 import com.hazelcast.raft.impl.operation.AppendSuccessResponseOp;
 import com.hazelcast.raft.impl.operation.InstallSnapshotOp;
+import com.hazelcast.raft.impl.operation.PreVoteRequestOp;
+import com.hazelcast.raft.impl.operation.PreVoteResponseOp;
 import com.hazelcast.raft.impl.operation.VoteRequestOp;
 import com.hazelcast.raft.impl.operation.VoteResponseOp;
 import com.hazelcast.spi.NodeEngine;
@@ -68,6 +72,16 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
     @Override
     public boolean isReachable(RaftEndpoint endpoint) {
         return nodeEngine.getClusterService().getMember(endpoint.getAddress()) != null;
+    }
+
+    @Override
+    public boolean send(PreVoteRequest request, RaftEndpoint target) {
+        return send(new PreVoteRequestOp(raftName, request), target);
+    }
+
+    @Override
+    public boolean send(PreVoteResponse response, RaftEndpoint target) {
+        return send(new PreVoteResponseOp(raftName, response), target);
     }
 
     @Override

@@ -14,6 +14,8 @@ import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.InstallSnapshot;
+import com.hazelcast.raft.impl.dto.PreVoteRequest;
+import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.spi.ConfigurableService;
@@ -148,6 +150,24 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
                 createRaftGroup(groupInfo.serviceName(), groupInfo.name(), groupInfo.members(), groupInfo.commitIndex());
             }
         }
+    }
+
+    public void handlePreVoteRequest(String name, PreVoteRequest request) {
+        RaftNode node = nodes.get(name);
+        if (node == null) {
+            logger.severe("RaftNode[" + name + "] does not exist to handle: " + request);
+            return;
+        }
+        node.handlePreVoteRequest(request);
+    }
+
+    public void handlePreVoteResponse(String name, PreVoteResponse response) {
+        RaftNode node = nodes.get(name);
+        if (node == null) {
+            logger.severe("RaftNode[" + name + "] does not exist to handle: " + response);
+            return;
+        }
+        node.handlePreVoteResponse(response);
     }
 
     public void handleVoteRequest(String name, VoteRequest request) {
