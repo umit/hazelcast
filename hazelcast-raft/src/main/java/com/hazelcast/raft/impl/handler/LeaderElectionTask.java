@@ -31,12 +31,13 @@ public class LeaderElectionTask implements StripedRunnable {
             return;
         }
 
-        VoteRequest voteRequest = state.toCandidate();
-        logger.info("Leader election started for term: " + voteRequest.term());
+        VoteRequest request = state.toCandidate();
+        logger.info("Leader election started for term: " + request.term() + ", last log index: " + request.lastLogIndex()
+                + ", last log term: " + request.lastLogTerm());
         raftNode.printMemberState();
 
         for (RaftEndpoint endpoint : state.remoteMembers()) {
-            raftNode.send(voteRequest, endpoint);
+            raftNode.send(request, endpoint);
         }
 
         scheduleLeaderElectionTimeout();
