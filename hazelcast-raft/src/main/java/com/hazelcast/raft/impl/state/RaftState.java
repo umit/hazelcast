@@ -41,6 +41,7 @@ public class RaftState {
     private RaftLog log = new RaftLog();
 
     private LeaderState leaderState;
+    private CandidateState preCandidateState;
     private CandidateState candidateState;
 
     public RaftState(String name, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints) {
@@ -139,6 +140,7 @@ public class RaftState {
     public void toFollower(int term) {
         role = RaftRole.FOLLOWER;
         leader = null;
+        preCandidateState = null;
         leaderState = null;
         candidateState = null;
         this.term = term;
@@ -146,6 +148,7 @@ public class RaftState {
 
     public VoteRequest toCandidate() {
         role = RaftRole.CANDIDATE;
+        preCandidateState = null;
         leaderState = null;
         candidateState = new CandidateState(majority());
         candidateState.grantVote(localEndpoint);
@@ -157,11 +160,20 @@ public class RaftState {
     public void toLeader() {
         role = RaftRole.LEADER;
         leader(localEndpoint);
+        preCandidateState = null;
         candidateState = null;
         leaderState = new LeaderState(remoteMembers, log.lastLogOrSnapshotIndex());
     }
 
     public boolean isKnownEndpoint(RaftEndpoint endpoint) {
         return members.contains(endpoint);
+    }
+
+    public CandidateState preCandidateState() {
+        if (preCandidateState == null) {
+            preCandidateState = new CandidateState(majority());
+            preCandidateState.grantVote(localEndpoint);
+        }
+        return preCandidateState;
     }
 }

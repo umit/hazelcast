@@ -166,6 +166,7 @@ public class AppendRequestHandlerTask implements StripedRunnable {
             raftNode.processLogs();
         }
 
+        raftNode.updateLastAppendEntriesTimestamp();
         AppendSuccessResponse resp = new AppendSuccessResponse(raftNode.getLocalEndpoint(), state.term(), lastLogIndex);
         raftNode.send(resp, req.leader());
     }

@@ -390,7 +390,8 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void when_disruptiveFollowerStartsElection_then_itCannotTakeOverLeadershipFromLegitimateLeader() throws ExecutionException, InterruptedException {
+    public void when_disruptiveFollowerStartsElection_then_itCannotTakeOverLeadershipFromLegitimateLeader()
+            throws ExecutionException, InterruptedException {
         group = newGroupWithService(3, new RaftConfig());
         group.start();
         RaftNode leader = group.waitUntilLeaderElected();
@@ -404,21 +405,21 @@ public class LocalRaftTest extends HazelcastTestSupport {
         group.split(disruptiveFollower.getLocalEndpoint());
 
         final int[] disruptiveFollowerTermRef = new int[1];
-        assertTrueEventually(new AssertTask() {
+        assertTrueAllTheTime(new AssertTask() {
             @Override
-            public void run()
-                    throws Exception {
+            public void run() throws Exception {
                 int followerTerm = getTerm(disruptiveFollower);
-                assertTrue(leaderTerm < followerTerm);
+                assertEquals(leaderTerm, followerTerm);
                 disruptiveFollowerTermRef[0] = followerTerm;
             }
-        });
+        }, 5);
 
+        group.resetAllDropRulesFrom(leader.getLocalEndpoint());
         group.merge();
 
         RaftNode newLeader = group.waitUntilLeaderElected();
         assertNotEquals(disruptiveFollower.getLocalEndpoint(), newLeader.getLocalEndpoint());
-        assertTrue(getTerm(newLeader) > disruptiveFollowerTermRef[0]);
+        assertEquals(getTerm(newLeader), disruptiveFollowerTermRef[0]);
     }
 
 

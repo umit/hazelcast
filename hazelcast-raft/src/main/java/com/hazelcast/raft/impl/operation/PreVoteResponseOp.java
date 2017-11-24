@@ -3,43 +3,47 @@ package com.hazelcast.raft.impl.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
-import com.hazelcast.raft.impl.dto.InstallSnapshot;
+import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.service.RaftService;
 
 import java.io.IOException;
 
-public class InstallSnapshotOp extends AsyncRaftOp {
+/**
+ * TODO: Javadoc Pending...
+ *
+ */
+public class PreVoteResponseOp extends AsyncRaftOp {
 
-    private InstallSnapshot installSnapshot;
+    private PreVoteResponse voteResponse;
 
-    public InstallSnapshotOp() {
+    public PreVoteResponseOp() {
     }
 
-    public InstallSnapshotOp(String name, InstallSnapshot installSnapshot) {
+    public PreVoteResponseOp(String name, PreVoteResponse voteResponse) {
         super(name);
-        this.installSnapshot = installSnapshot;
+        this.voteResponse = voteResponse;
     }
 
     @Override
     public void run() throws Exception {
         RaftService service = getService();
-        service.handleSnapshot(name, installSnapshot);
-    }
-
-    @Override
-    public int getId() {
-        return RaftDataSerializerHook.INSTALL_SNAPSHOT_OP;
+        service.handlePreVoteResponse(name, voteResponse);
     }
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeObject(installSnapshot);
+        out.writeObject(voteResponse);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        installSnapshot = in.readObject();
+        voteResponse = in.readObject();
+    }
+
+    @Override
+    public int getId() {
+        return RaftDataSerializerHook.PRE_VOTE_RESPONSE_OP;
     }
 }
