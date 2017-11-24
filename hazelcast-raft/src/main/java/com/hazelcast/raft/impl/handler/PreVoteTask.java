@@ -34,14 +34,15 @@ public class PreVoteTask implements StripedRunnable {
 
         int nextTerm = state.term() + 1;
         RaftLog log = state.log();
-        PreVoteRequest voteRequest = new PreVoteRequest(raftNode.getLocalEndpoint(), nextTerm,
+        PreVoteRequest request = new PreVoteRequest(raftNode.getLocalEndpoint(), nextTerm,
                 log.lastLogOrSnapshotTerm(), log.lastLogOrSnapshotIndex());
 
-        logger.info("Pre-vote started for next-term: " + voteRequest.nextTerm());
+        logger.info("Pre-vote started for next term: " + request.nextTerm() + ", last log index: " + request.lastLogIndex()
+                + ", last log term: " + request.lastLogTerm());
         raftNode.printMemberState();
 
         for (RaftEndpoint endpoint : state.remoteMembers()) {
-            raftNode.send(voteRequest, endpoint);
+            raftNode.send(request, endpoint);
         }
 
         schedulePreVoteTimeout();

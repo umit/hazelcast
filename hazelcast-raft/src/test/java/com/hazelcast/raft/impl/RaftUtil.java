@@ -4,6 +4,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.service.RaftService;
+import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.util.ExceptionUtil;
 
 import java.net.InetAddress;
@@ -90,6 +91,30 @@ public class RaftUtil {
         };
 
         return readRaftState(node, task);
+    }
+
+    public static int getNextIndex(final RaftNode leader, final RaftEndpoint follower) {
+        Callable<Integer> task = new Callable<Integer>() {
+            @Override
+            public Integer call() throws Exception {
+                LeaderState leaderState = leader.state().leaderState();
+                return leaderState.getNextIndex(follower);
+            }
+        };
+
+        return readRaftState(leader, task);
+    }
+
+    public static int getMatchIndex(final RaftNode leader, final RaftEndpoint follower) {
+        Callable<Integer> task = new Callable<Integer>() {
+            @Override
+            public Integer call() throws Exception {
+                LeaderState leaderState = leader.state().leaderState();
+                return leaderState.getMatchIndex(follower);
+            }
+        };
+
+        return readRaftState(leader, task);
     }
 
     public static void waitUntilLeaderElected(RaftNode node) {

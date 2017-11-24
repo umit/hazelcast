@@ -193,8 +193,13 @@ public class RaftNode {
 
         int nextIndex = leaderState.getNextIndex(follower);
 
-        if (nextIndex < raftLog.snapshotIndex()) {
-            raftIntegration.send(new InstallSnapshot(localEndpoint, raftLog.snapshot()), follower);
+        if (nextIndex <= raftLog.snapshotIndex()) {
+            InstallSnapshot installSnapshot = new InstallSnapshot(localEndpoint, raftLog.snapshot());
+            if (logger.isFineEnabled()) {
+                logger.fine("Sending " + installSnapshot + " to " + follower + " since next index: " + nextIndex
+                        + " <= snapshot index: " + raftLog.snapshotIndex());
+            }
+            raftIntegration.send(installSnapshot, follower);
             return;
         }
 
@@ -405,6 +410,9 @@ public class RaftNode {
         int commitIndex = state.commitIndex();
         if (commitIndex > snapshot.index()) {
             logger.severe("Cannot install snapshot: " + snapshot + " since commit index: " + commitIndex + " is larger.");
+            return;
+        } else if (commitIndex == snapshot.index()) {
+            logger.warning("Ignoring snapshot: " + snapshot + " since commit index is same.");
             return;
         }
 
