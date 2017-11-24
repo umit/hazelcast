@@ -2,21 +2,25 @@ package com.hazelcast.raft.impl;
 
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftOperation;
+import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.StaleAppendRequestException;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.InstallSnapshot;
+import com.hazelcast.raft.impl.dto.PreVoteRequest;
+import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.handler.AppendFailureResponseHandlerTask;
 import com.hazelcast.raft.impl.handler.AppendRequestHandlerTask;
 import com.hazelcast.raft.impl.handler.AppendSuccessResponseHandlerTask;
 import com.hazelcast.raft.impl.handler.InstallSnapshotHandlerTask;
-import com.hazelcast.raft.impl.handler.LeaderElectionTask;
+import com.hazelcast.raft.impl.handler.PreVoteRequestHandlerTask;
+import com.hazelcast.raft.impl.handler.PreVoteResponseHandlerTask;
+import com.hazelcast.raft.impl.handler.PreVoteTask;
 import com.hazelcast.raft.impl.handler.ReplicateTask;
 import com.hazelcast.raft.impl.handler.VoteRequestHandlerTask;
 import com.hazelcast.raft.impl.handler.VoteResponseHandlerTask;
@@ -103,6 +107,14 @@ public class RaftNode {
         return (lastLogIndex - state.commitIndex() < maxUncommittedEntryCount);
     }
 
+    public void send(PreVoteRequest request, RaftEndpoint target) {
+        raftIntegration.send(request, target);
+    }
+
+    public void send(PreVoteResponse response, RaftEndpoint target) {
+        raftIntegration.send(response, target);
+    }
+
     public void send(VoteRequest request, RaftEndpoint target) {
         raftIntegration.send(request, target);
     }
@@ -136,7 +148,7 @@ public class RaftNode {
 
         logger.info("Starting raft node: " + localEndpoint + " for raft cluster: " + state.name()
                 + " with members[" + state.memberCount() + "]: " + state.members());
-        executor.execute(new LeaderElectionTask(this));
+        executor.execute(new PreVoteTask(this));
 
         scheduleLeaderFailureDetection();
         schedulePeriodicSnapshotTask();
@@ -172,7 +184,7 @@ public class RaftNode {
         for (RaftEndpoint follower : state.remoteMembers()) {
             sendAppendRequest(follower);
         }
-        lastAppendEntriesTimestamp = Clock.currentTimeMillis();
+        updateLastAppendEntriesTimestamp();
     }
 
     public void sendAppendRequest(RaftEndpoint follower) {
@@ -267,6 +279,14 @@ public class RaftNode {
         }
     }
 
+    public void updateLastAppendEntriesTimestamp() {
+        lastAppendEntriesTimestamp = Clock.currentTimeMillis();
+    }
+
+    public long lastAppendEntriesTimestamp() {
+        return lastAppendEntriesTimestamp;
+    }
+
     public RaftState state() {
         return state;
     }
@@ -286,6 +306,14 @@ public class RaftNode {
         } else {
             executor.execute(new StripedRunnableAdaptor(task, getStripeKey()));
         }
+    }
+
+    public void handlePreVoteRequest(PreVoteRequest request) {
+        executor.execute(new PreVoteRequestHandlerTask(this, request));
+    }
+
+    public void handlePreVoteResponse(PreVoteResponse response) {
+        executor.execute(new PreVoteResponseHandlerTask(this, response));
     }
 
     public void handleVoteRequest(VoteRequest request) {
@@ -471,21 +499,21 @@ public class RaftNode {
                 if (leader == null) {
                     if (state.role() == RaftRole.FOLLOWER) {
                         logger.warning("We are FOLLOWER and there is no current leader. Will start new election round...");
-                        runLeaderElectionTask();
+                        runPreVoteTask();
                     }
                 } else if (!raftIntegration.isReachable(leader)) {
                     logger.warning("Current leader " + leader + " is not reachable. Will start new election round...");
                     state.leader(null);
                     printMemberState();
-                    runLeaderElectionTask();
+                    runPreVoteTask();
                 }
             } finally {
                 scheduleLeaderFailureDetection();
             }
         }
 
-        private void runLeaderElectionTask() {
-            new LeaderElectionTask(RaftNode.this).run();
+        private void runPreVoteTask() {
+            new PreVoteTask(RaftNode.this).run();
         }
     }
 

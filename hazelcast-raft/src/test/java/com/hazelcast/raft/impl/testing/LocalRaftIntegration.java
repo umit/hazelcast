@@ -16,6 +16,8 @@ import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.InstallSnapshot;
+import com.hazelcast.raft.impl.dto.PreVoteRequest;
+import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.spi.TaskScheduler;
@@ -115,6 +117,36 @@ public class LocalRaftIntegration implements RaftIntegration {
     @Override
     public boolean isReachable(RaftEndpoint endpoint) {
         return localEndpoint.equals(endpoint) || nodes.containsKey(endpoint);
+    }
+
+    @Override
+    public boolean send(PreVoteRequest request, RaftEndpoint target) {
+        assertNotEquals(localEndpoint, target);
+        RaftNode node = nodes.get(target);
+        if (node == null) {
+            return false;
+        }
+        if (shouldDrop(request, target)) {
+            return true;
+        }
+
+        node.handlePreVoteRequest(request);
+        return true;
+    }
+
+    @Override
+    public boolean send(PreVoteResponse response, RaftEndpoint target) {
+        assertNotEquals(localEndpoint, target);
+        RaftNode node = nodes.get(target);
+        if (node == null) {
+            return false;
+        }
+        if (shouldDrop(response, target)) {
+            return true;
+        }
+
+        node.handlePreVoteResponse(response);
+        return true;
     }
 
     @Override

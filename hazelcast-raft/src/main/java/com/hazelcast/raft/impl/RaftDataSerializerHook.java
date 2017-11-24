@@ -8,6 +8,8 @@ import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.InstallSnapshot;
+import com.hazelcast.raft.impl.dto.PreVoteRequest;
+import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.log.LogEntry;
@@ -15,6 +17,8 @@ import com.hazelcast.raft.impl.operation.AppendFailureResponseOp;
 import com.hazelcast.raft.impl.operation.AppendRequestOp;
 import com.hazelcast.raft.impl.operation.AppendSuccessResponseOp;
 import com.hazelcast.raft.impl.operation.InstallSnapshotOp;
+import com.hazelcast.raft.impl.operation.PreVoteRequestOp;
+import com.hazelcast.raft.impl.operation.PreVoteResponseOp;
 import com.hazelcast.raft.impl.operation.RestoreSnapshotOp;
 import com.hazelcast.raft.impl.operation.VoteRequestOp;
 import com.hazelcast.raft.impl.operation.VoteResponseOp;
@@ -47,6 +51,10 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
     public static final int CREATE_RAFT_GROUP_OP = 16;
     public static final int CREATE_RAFT_GROUP_REPLICATING_OP = 17;
     public static final int GROUP_INFO = 18;
+    public static final int PRE_VOTE_REQUEST = 19;
+    public static final int PRE_VOTE_RESPONSE = 20;
+    public static final int PRE_VOTE_REQUEST_OP = 21;
+    public static final int PRE_VOTE_RESPONSE_OP = 22;
 
     @Override
     public int getFactoryId() {
@@ -95,6 +103,14 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
                         return new CreateRaftGroupReplicatingOperation();
                     case GROUP_INFO:
                         return new RaftGroupInfo();
+                    case PRE_VOTE_REQUEST:
+                        return new PreVoteRequest();
+                    case PRE_VOTE_RESPONSE:
+                        return new PreVoteResponse();
+                    case PRE_VOTE_REQUEST_OP:
+                        return new PreVoteRequestOp();
+                    case PRE_VOTE_RESPONSE_OP:
+                        return new PreVoteResponseOp();
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
             }

@@ -2,12 +2,13 @@ package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.impl.log.RaftLog;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
-import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
+import com.hazelcast.raft.impl.log.RaftLog;
+import com.hazelcast.raft.impl.state.RaftState;
+import com.hazelcast.util.Clock;
 import com.hazelcast.util.executor.StripedRunnable;
 
 /**
@@ -16,7 +17,7 @@ import com.hazelcast.util.executor.StripedRunnable;
  */
 public class VoteRequestHandlerTask implements StripedRunnable {
     private final ILogger logger;
-    private RaftNode raftNode;
+    private final RaftNode raftNode;
     private final VoteRequest req;
 
     public VoteRequestHandlerTask(RaftNode raftNode, VoteRequest req) {
@@ -34,6 +35,13 @@ public class VoteRequestHandlerTask implements StripedRunnable {
         }
 
         RaftEndpoint localEndpoint = raftNode.getLocalEndpoint();
+
+        // Reply false if last AppendEntries call was received less than election timeout ago (leader stickiness)
+        if (raftNode.lastAppendEntriesTimestamp() > Clock.currentTimeMillis() - raftNode.getLeaderElectionTimeoutInMillis()) {
+            logger.info("Rejecting " + req + " since received append entries recently.");
+            raftNode.send(new VoteResponse(localEndpoint, state.term(), false), req.candidate());
+            return;
+        }
 
         // Reply false if term < currentTerm (§5.1)
         if (state.term() > req.term()) {
