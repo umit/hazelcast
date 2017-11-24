@@ -34,6 +34,7 @@ import java.util.concurrent.TimeoutException;
 import static com.hazelcast.raft.impl.RaftUtil.getCommitIndex;
 import static com.hazelcast.raft.impl.RaftUtil.getLastLogOrSnapshotEntry;
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
+import static com.hazelcast.raft.impl.RaftUtil.getMatchIndex;
 import static com.hazelcast.raft.impl.RaftUtil.getSnapshotEntry;
 import static com.hazelcast.raft.impl.RaftUtil.getTerm;
 import static com.hazelcast.raft.impl.service.RaftDataService.SERVICE_NAME;
@@ -791,7 +792,9 @@ public class LocalRaftTest extends HazelcastTestSupport {
             public void run()
                     throws Exception {
                 for (RaftNode raftNode : followers) {
-                    assertNotEquals(leader.getLocalEndpoint(), getLeaderEndpoint(raftNode));
+                    RaftEndpoint leaderEndpoint = getLeaderEndpoint(raftNode);
+                    assertNotNull(leaderEndpoint);
+                    assertNotEquals(leader.getLocalEndpoint(), leaderEndpoint);
                 }
             }
         });
@@ -961,6 +964,63 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
+    public void when_followerMissesTheLastEntryThatGoesIntoTheSnapshot_then_itInstallsSnapshot() throws ExecutionException, InterruptedException {
+        final int entryCount = 50;
+        RaftConfig raftConfig = new RaftConfig().setCommitIndexAdvanceCountToSnapshot(entryCount);
+        group = newGroupWithService(3, raftConfig);
+        group.start();
+
+        final RaftNode leader = group.waitUntilLeaderElected();
+
+        RaftNode[] followers = group.getNodesExcept(leader.getLocalEndpoint());
+        final RaftNode slowFollower = followers[1];
+
+        for (int i = 0; i < entryCount - 1; i++) {
+            leader.replicate(new RaftAddOperation("val" + i)).get();
+        }
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() throws Exception {
+                for (RaftNode follower : group.getNodesExcept(leader.getLocalEndpoint())) {
+                    assertEquals(entryCount - 1, getMatchIndex(leader, follower.getLocalEndpoint()));
+                }
+            }
+        });
+
+        group.dropMessagesToEndpoint(leader.getLocalEndpoint(), slowFollower.getLocalEndpoint(), AppendRequest.class);
+
+        leader.replicate(new RaftAddOperation("val" + (entryCount - 1))).get();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() throws Exception {
+                assertEquals(entryCount, getSnapshotEntry(leader).index());
+            }
+        });
+
+        leader.replicate(new RaftAddOperation("valFinal")).get();
+
+        group.resetAllDropRulesFrom(leader.getLocalEndpoint());
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() throws Exception {
+                for (RaftNode raftNode : group.getNodes()) {
+                    assertEquals(entryCount + 1, getCommitIndex(raftNode));
+                    RaftDataService service = group.getService(raftNode);
+                    assertEquals(entryCount + 1, service.size());
+                    for (int i = 0; i < entryCount; i++) {
+                        assertEquals(("val" + i), service.get(i + 1));
+                    }
+                    assertEquals("valFinal", service.get(51));
+                }
+            }
+        });
+    }
+
+
+    @Test
     public void when_isolatedLeaderAppendsEntries_then_itInvalidatesTheirFeaturesUponInstallSnapshot() throws ExecutionException, InterruptedException {
         final int entryCount = 50;
         RaftConfig raftConfig = new RaftConfig().setCommitIndexAdvanceCountToSnapshot(entryCount);
@@ -989,7 +1049,9 @@ public class LocalRaftTest extends HazelcastTestSupport {
             @Override
             public void run() throws Exception {
                 for (RaftNode raftNode : followers) {
-                    assertNotEquals(leader.getLocalEndpoint(), getLeaderEndpoint(raftNode));
+                    RaftEndpoint leaderEndpoint = getLeaderEndpoint(raftNode);
+                    assertNotNull(leaderEndpoint);
+                    assertNotEquals(leader.getLocalEndpoint(), leaderEndpoint);
                 }
             }
         });
