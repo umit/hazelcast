@@ -1,14 +1,13 @@
 package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.impl.log.LogEntry;
-import com.hazelcast.raft.impl.log.RaftLog;
 import com.hazelcast.raft.impl.RaftNode;
-import com.hazelcast.raft.impl.RaftRole;
-import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
+import com.hazelcast.raft.impl.log.LogEntry;
+import com.hazelcast.raft.impl.log.RaftLog;
+import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.util.executor.StripedRunnable;
 
 import java.util.Arrays;
@@ -52,16 +51,12 @@ public class AppendRequestHandlerTask implements StripedRunnable {
 
         RaftLog raftLog = state.log();
 
-        // Increase the term if we see a newer one, also transition to follower
-        // if we ever get an appendEntries call
-        if (req.term() > state.term() || state.role() != RaftRole.FOLLOWER) {
+        // Increase the term if we see a newer one, also transform to follower
+        if (req.term() > state.term()) {
             // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
             logger.info("Demoting to FOLLOWER from current term: " + state.term() + " to new term: " + req.term() + " and leader: " + req.leader());
             state.toFollower(req.term());
-            state.leader(req.leader());
             raftNode.printMemberState();
-            raftNode.send(createFailureResponse(req.term()), req.leader());
-            return;
         }
 
         if (!req.leader().equals(state.leader())) {
