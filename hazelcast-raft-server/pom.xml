@@ -18,9 +18,9 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <name>hazelcast raft client</name>
-    <artifactId>hazelcast-raft-client</artifactId>
-    <description>Hazelcast Raft Client Module</description>
+    <name>hazelcast raft server</name>
+    <artifactId>hazelcast-raft-server</artifactId>
+    <description>Hazelcast Raft Server Module</description>
     <packaging>jar</packaging>
 
     <parent>
@@ -199,14 +199,7 @@
     <dependencies>
         <dependency>
             <groupId>com.hazelcast</groupId>
-            <artifactId>hazelcast-raft-server</artifactId>
-            <version>${project.version}</version>
-            <scope>compile</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>com.hazelcast</groupId>
-            <artifactId>hazelcast-client</artifactId>
+            <artifactId>hazelcast</artifactId>
             <version>${project.version}</version>
             <scope>compile</scope>
         </dependency>
@@ -221,15 +214,14 @@
 
         <dependency>
             <groupId>com.hazelcast</groupId>
-            <artifactId>hazelcast-raft-server</artifactId>
+            <artifactId>hazelcast-raft</artifactId>
             <version>${project.version}</version>
-            <classifier>tests</classifier>
-            <scope>test</scope>
+            <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>com.hazelcast</groupId>
-            <artifactId>hazelcast-client</artifactId>
+            <artifactId>hazelcast-raft</artifactId>
             <version>${project.version}</version>
             <classifier>tests</classifier>
             <scope>test</scope>
