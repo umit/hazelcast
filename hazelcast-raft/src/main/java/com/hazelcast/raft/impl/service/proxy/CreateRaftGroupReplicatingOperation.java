@@ -6,6 +6,7 @@ import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.service.CreateRaftGroupOperation;
+import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
 
 import java.io.IOException;
@@ -34,8 +35,8 @@ public class CreateRaftGroupReplicatingOperation extends RaftReplicatingOperatio
     }
 
     @Override
-    protected String getRaftName() {
-        return RaftService.METADATA_RAFT;
+    protected RaftGroupId getRaftGroupId() {
+        return RaftService.METADATA_GROUP_ID;
     }
 
     @Override
@@ -50,7 +51,7 @@ public class CreateRaftGroupReplicatingOperation extends RaftReplicatingOperatio
         List<RaftEndpoint> endpoints = new ArrayList<RaftEndpoint>(allEndpoints);
         Collections.shuffle(endpoints);
         endpoints = endpoints.subList(0, nodeCount);
-        return new CreateRaftGroupOperation(serviceName, name, new ArrayList<RaftEndpoint>(endpoints));
+        return new CreateRaftGroupOperation(serviceName, name, endpoints);
     }
 
     @Override

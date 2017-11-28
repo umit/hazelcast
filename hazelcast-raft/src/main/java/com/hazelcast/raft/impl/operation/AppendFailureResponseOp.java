@@ -3,8 +3,9 @@ package com.hazelcast.raft.impl.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
-import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
+import com.hazelcast.raft.impl.service.RaftGroupId;
+import com.hazelcast.raft.impl.service.RaftService;
 
 import java.io.IOException;
 
@@ -15,15 +16,15 @@ public class AppendFailureResponseOp extends AsyncRaftOp {
     public AppendFailureResponseOp() {
     }
 
-    public AppendFailureResponseOp(String name, AppendFailureResponse appendResponse) {
-        super(name);
+    public AppendFailureResponseOp(RaftGroupId groupId, AppendFailureResponse appendResponse) {
+        super(groupId);
         this.appendResponse = appendResponse;
     }
 
     @Override
     public void run() throws Exception {
         RaftService service = getService();
-        service.handleAppendResponse(name, appendResponse);
+        service.handleAppendResponse(groupId, appendResponse);
     }
 
     @Override

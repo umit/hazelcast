@@ -3,6 +3,7 @@ package com.hazelcast.raft.impl;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.log.LogEntry;
+import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.util.ExceptionUtil;
@@ -23,8 +24,8 @@ public class RaftUtil {
         return getNodeEngineImpl(instance).getService(RaftService.SERVICE_NAME);
     }
 
-    public static RaftNode getRaftNode(HazelcastInstance instance, String name) {
-        return getRaftService(instance).getRaftNode(name);
+    public static RaftNode getRaftNode(HazelcastInstance instance, RaftGroupId groupId) {
+        return getRaftService(instance).getRaftNode(groupId);
     }
 
     public static RaftRole getRole(final RaftNode node) {

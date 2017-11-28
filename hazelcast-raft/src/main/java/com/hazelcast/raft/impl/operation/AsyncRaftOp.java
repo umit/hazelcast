@@ -4,6 +4,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
+import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.spi.Operation;
 
@@ -15,13 +16,13 @@ import java.io.IOException;
  */
 public abstract class AsyncRaftOp extends Operation implements IdentifiedDataSerializable {
 
-    protected String name;
+    protected RaftGroupId groupId;
 
     public AsyncRaftOp() {
     }
 
-    public AsyncRaftOp(String name) {
-        this.name = name;
+    public AsyncRaftOp(RaftGroupId groupId) {
+        this.groupId = groupId;
     }
 
     @Override
@@ -42,13 +43,13 @@ public abstract class AsyncRaftOp extends Operation implements IdentifiedDataSer
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeUTF(name);
+        out.writeObject(groupId);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        name = in.readUTF();
+        groupId = in.readObject();
     }
 
     @Override

@@ -8,6 +8,7 @@ import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftMember;
 import com.hazelcast.raft.impl.service.RaftDataService;
+import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastTestSupport;
@@ -36,23 +37,23 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         factory = createHazelcastInstanceFactory();
     }
 
-    protected RaftNode waitAllForLeaderElection(final HazelcastInstance[] instances, final String raftName) {
+    protected RaftNode waitAllForLeaderElection(final HazelcastInstance[] instances, final RaftGroupId groupId) {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run()
                     throws Exception {
-                RaftNode leaderNode = getLeaderNode(instances, raftName);
+                RaftNode leaderNode = getLeaderNode(instances, groupId);
                 int leaderTerm = getTerm(leaderNode);
 
                 for (HazelcastInstance instance : instances) {
-                    RaftNode raftNode = getRaftNode(instance, raftName);
+                    RaftNode raftNode = getRaftNode(instance, groupId);
                     assertEquals(leaderNode.getLocalEndpoint(), getLeaderEndpoint(raftNode));
                     assertEquals(leaderTerm, getTerm(raftNode));
                 }
             }
         });
 
-        return getLeaderNode(instances, raftName);
+        return getLeaderNode(instances, groupId);
     }
 
     protected HazelcastInstance getRandomFollowerInstance(HazelcastInstance[] instances, RaftNode leader) {
@@ -130,23 +131,23 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
               .setProperty(MERGE_NEXT_RUN_DELAY_SECONDS.getName(), "5");
     }
 
-    protected RaftNode getLeaderNode(final HazelcastInstance[] instances, final String raftName) {
+    protected RaftNode getLeaderNode(final HazelcastInstance[] instances, final RaftGroupId groupId) {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run()
                     throws Exception {
-                assertNotNull(getRaftNode(instances[0], raftName));
+                assertNotNull(getRaftNode(instances[0], groupId));
             }
         });
 
-        RaftNode raftNode = getRaftNode(instances[0], raftName);
+        RaftNode raftNode = getRaftNode(instances[0], groupId);
         waitUntilLeaderElected(raftNode);
         RaftEndpoint leaderEndpoint = getLeaderEndpoint(raftNode);
 
         for (HazelcastInstance instance : instances) {
             Node node = getNode(instance);
             if (node != null && node.getThisAddress().equals(leaderEndpoint.getAddress())) {
-                return getRaftNode(instance, raftName);
+                return getRaftNode(instance, groupId);
             }
         }
 

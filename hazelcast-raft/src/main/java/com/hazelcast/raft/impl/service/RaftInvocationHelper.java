@@ -29,13 +29,13 @@ import static com.hazelcast.raft.impl.service.RaftService.SERVICE_NAME;
 public final class RaftInvocationHelper {
 
     public static <T> ICompletableFuture<T> invokeOnLeader(NodeEngine nodeEngine,
-            Supplier<RaftReplicatingOperation> operationSupplier, String raftName) {
+            Supplier<RaftReplicatingOperation> operationSupplier, RaftGroupId groupId) {
 
         RaftService raftService = nodeEngine.getService(SERVICE_NAME);
-        ILogger logger = raftService.getLogger(RaftInvocationHelper.class, raftName);
+        ILogger logger = raftService.getLogger(RaftInvocationHelper.class, groupId.name());
         Executor executor = nodeEngine.getExecutionService().getExecutor(ExecutionService.ASYNC_EXECUTOR);
 
-        RaftInvocationFuture<T>  invocationFuture = new RaftInvocationFuture<T>(raftName, raftService, nodeEngine,
+        RaftInvocationFuture<T>  invocationFuture = new RaftInvocationFuture<T>(groupId, raftService, nodeEngine,
                 operationSupplier, executor, logger);
         invocationFuture.invoke();
         return invocationFuture;
@@ -54,11 +54,11 @@ public final class RaftInvocationHelper {
         private volatile RaftEndpoint lastInvocationEndpoint;
         private volatile int endPointIndex;
 
-        RaftInvocationFuture(String raftName, RaftService raftService, NodeEngine nodeEngine,
+        RaftInvocationFuture(RaftGroupId groupId, RaftService raftService, NodeEngine nodeEngine,
                 Supplier<RaftReplicatingOperation> operationSupplier, Executor executor, ILogger logger) {
             super(executor, logger);
-            this.raftName = raftName;
-            this.raftNode = raftService.getRaftNode(raftName);
+            this.raftName = groupId.name();
+            this.raftNode = raftService.getRaftNode(groupId);
             this.raftService = raftService;
             this.nodeEngine = nodeEngine;
             this.operationSupplier = operationSupplier;

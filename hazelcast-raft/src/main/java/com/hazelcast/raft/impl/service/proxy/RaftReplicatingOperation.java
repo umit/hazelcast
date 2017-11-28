@@ -7,6 +7,7 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.spi.ExceptionAction;
 import com.hazelcast.spi.Operation;
@@ -22,17 +23,17 @@ public abstract class RaftReplicatingOperation extends Operation implements Iden
     @Override
     public final void run() throws Exception {
         RaftOperation op = getRaftOperation();
-        String raftName = getRaftName();
-        replicate(op, raftName);
+        RaftGroupId groupId = getRaftGroupId();
+        replicate(op, groupId);
     }
+
+    protected abstract RaftGroupId getRaftGroupId();
 
     protected abstract RaftOperation getRaftOperation();
 
-    protected abstract String getRaftName();
-
-    private void replicate(RaftOperation op, String raftName) {
+    private void replicate(RaftOperation op, RaftGroupId groupId) {
         RaftService service = getService();
-        RaftNode raftNode = service.getRaftNode(raftName);
+        RaftNode raftNode = service.getRaftNode(groupId);
         if (raftNode == null) {
             sendResponse(new NotLeaderException(service.getLocalEndpoint(), null));
             return;

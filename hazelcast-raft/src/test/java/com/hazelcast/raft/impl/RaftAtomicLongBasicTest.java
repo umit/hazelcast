@@ -56,7 +56,7 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
                 int count = 0;
                 RaftAtomicLongProxy proxy = (RaftAtomicLongProxy) atomicLong;
                 for (HazelcastInstance instance : instances) {
-                    RaftNode raftNode = getRaftService(instance).getRaftNode(proxy.getRaftName());
+                    RaftNode raftNode = getRaftService(instance).getRaftNode(proxy.getGroupId());
                     if (raftNode != null) {
                         count++;
                         assertNotNull(getLeaderEndpoint(raftNode));
