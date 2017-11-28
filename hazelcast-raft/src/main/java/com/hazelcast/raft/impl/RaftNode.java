@@ -524,7 +524,9 @@ public class RaftNode {
         }
 
         private void runPreVoteTask() {
-            new PreVoteTask(RaftNode.this).run();
+            if (state.preCandidateState() == null) {
+                new PreVoteTask(RaftNode.this).run();
+            }
         }
     }
 
