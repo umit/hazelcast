@@ -4,6 +4,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.impl.dto.PreVoteRequest;
+import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
 
 import java.io.IOException;
@@ -19,15 +20,15 @@ public class PreVoteRequestOp extends AsyncRaftOp {
     public PreVoteRequestOp() {
     }
 
-    public PreVoteRequestOp(String name, PreVoteRequest voteRequest) {
-        super(name);
+    public PreVoteRequestOp(RaftGroupId groupId, PreVoteRequest voteRequest) {
+        super(groupId);
         this.voteRequest = voteRequest;
     }
 
     @Override
     public void run() throws Exception {
         RaftService service = getService();
-        service.handlePreVoteRequest(name, voteRequest);
+        service.handlePreVoteRequest(groupId, voteRequest);
     }
 
     @Override

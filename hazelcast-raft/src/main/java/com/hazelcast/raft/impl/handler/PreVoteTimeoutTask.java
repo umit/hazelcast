@@ -17,7 +17,7 @@ public class PreVoteTimeoutTask implements StripedRunnable {
 
     @Override
     public void run() {
-        if (raftNode.state().role() != RaftRole.CANDIDATE) {
+        if (raftNode.state().role() != RaftRole.FOLLOWER) {
             return;
         }
         raftNode.getLogger(getClass()).warning("Pre-vote for term: " + raftNode.state().term() + " has timed out!");

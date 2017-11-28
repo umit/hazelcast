@@ -2,7 +2,7 @@ package com.hazelcast.raft.service.atomiclong;
 
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.raft.SnapshotAwareService;
-import com.hazelcast.raft.impl.service.CreateRaftGroupHelper;
+import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+
+import static com.hazelcast.raft.impl.service.CreateRaftGroupHelper.createRaftGroup;
 
 /**
  * TODO: Javadoc Pending...
@@ -39,37 +41,34 @@ public class RaftAtomicLongService implements ManagedService, SnapshotAwareServi
 
     @Override
     public Long takeSnapshot(String raftName, int commitIndex) {
-        String name = nameWithoutPrefix(raftName);
-        RaftAtomicLong atomicLong = map.get(name);
-        assert atomicLong != null : "Name: " + name;
+        RaftAtomicLong atomicLong = map.get(raftName);
+        assert atomicLong != null : "Name: " + raftName;
         assert atomicLong.commitIndex() == commitIndex : "Value: " + atomicLong + ", Commit-Index: " + commitIndex;
         return atomicLong.value();
     }
 
     @Override
     public void restoreSnapshot(String raftName, int commitIndex, Long snapshot) {
-        String name = nameWithoutPrefix(raftName);
-        RaftAtomicLong atomicLong = new RaftAtomicLong(name, snapshot, commitIndex);
-        map.put(name, atomicLong);
+        RaftAtomicLong atomicLong = new RaftAtomicLong(raftName, snapshot, commitIndex);
+        map.put(raftName, atomicLong);
     }
 
-    private String nameWithoutPrefix(String raftName) {
+    public static String nameWithoutPrefix(String raftName) {
         assert raftName.startsWith(PREFIX) : "Raft-Name: " + raftName;
         return raftName.substring(PREFIX.length());
     }
 
     // TODO: in config, nodeCount or failure tolerance ?
     public IAtomicLong createNew(String name, int nodeCount) throws ExecutionException, InterruptedException {
-        String raftName = PREFIX + name;
-        CreateRaftGroupHelper.createRaftGroup(nodeEngine, SERVICE_NAME, raftName, nodeCount);
-        return new RaftAtomicLongProxy(name, nodeEngine);
+        RaftGroupId groupId = createRaftGroup(nodeEngine, SERVICE_NAME, PREFIX + name, nodeCount);
+        return new RaftAtomicLongProxy(groupId, nodeEngine);
     }
 
-    public RaftAtomicLong getAtomicLong(String name) {
-        RaftAtomicLong atomicLong = map.get(name);
+    public RaftAtomicLong getAtomicLong(RaftGroupId groupId) {
+        RaftAtomicLong atomicLong = map.get(groupId.name());
         if (atomicLong == null) {
-            atomicLong = new RaftAtomicLong(name);
-            map.put(name, atomicLong);
+            atomicLong = new RaftAtomicLong(groupId.name());
+            map.put(groupId.name(), atomicLong);
         }
         return atomicLong;
     }

@@ -4,6 +4,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.impl.dto.InstallSnapshot;
+import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
 
 import java.io.IOException;
@@ -15,15 +16,15 @@ public class InstallSnapshotOp extends AsyncRaftOp {
     public InstallSnapshotOp() {
     }
 
-    public InstallSnapshotOp(String name, InstallSnapshot installSnapshot) {
-        super(name);
+    public InstallSnapshotOp(RaftGroupId groupId, InstallSnapshot installSnapshot) {
+        super(groupId);
         this.installSnapshot = installSnapshot;
     }
 
     @Override
     public void run() throws Exception {
         RaftService service = getService();
-        service.handleSnapshot(name, installSnapshot);
+        service.handleSnapshot(groupId, installSnapshot);
     }
 
     @Override

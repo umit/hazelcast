@@ -2,6 +2,7 @@ package com.hazelcast.raft.service.atomiclong.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.service.atomiclong.AtomicLongDataSerializerHook;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLong;
 
@@ -17,8 +18,8 @@ public class GetAndAddOperation extends AbstractAtomicLongOperation {
     public GetAndAddOperation() {
     }
 
-    public GetAndAddOperation(String name, long delta) {
-        super(name);
+    public GetAndAddOperation(RaftGroupId groupId, long delta) {
+        super(groupId);
         this.delta = delta;
     }
 

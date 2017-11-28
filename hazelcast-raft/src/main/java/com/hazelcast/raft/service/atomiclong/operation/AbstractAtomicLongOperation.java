@@ -4,6 +4,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftOperation;
+import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.service.atomiclong.AtomicLongDataSerializerHook;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLong;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
@@ -15,22 +16,22 @@ import java.io.IOException;
  */
 public abstract class AbstractAtomicLongOperation extends RaftOperation implements IdentifiedDataSerializable {
 
-    private String name;
+    private RaftGroupId groupId;
 
     public AbstractAtomicLongOperation() {
     }
 
-    public AbstractAtomicLongOperation(String name) {
-        this.name = name;
+    public AbstractAtomicLongOperation(RaftGroupId groupId) {
+        this.groupId = groupId;
     }
 
     protected RaftAtomicLong getAtomicLong() {
         RaftAtomicLongService service = getService();
-        return service.getAtomicLong(name);
+        return service.getAtomicLong(groupId);
     }
 
-    public final String getName() {
-        return name;
+    public final RaftGroupId getRaftGroupId() {
+        return groupId;
     }
 
     @Override
@@ -41,13 +42,13 @@ public abstract class AbstractAtomicLongOperation extends RaftOperation implemen
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeUTF(name);
+        out.writeObject(groupId);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        name = in.readUTF();
+        groupId = in.readObject();
     }
 
     @Override

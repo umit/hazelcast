@@ -3,8 +3,9 @@ package com.hazelcast.raft.impl.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
-import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.dto.VoteRequest;
+import com.hazelcast.raft.impl.service.RaftGroupId;
+import com.hazelcast.raft.impl.service.RaftService;
 
 import java.io.IOException;
 
@@ -19,15 +20,15 @@ public class VoteRequestOp extends AsyncRaftOp {
     public VoteRequestOp() {
     }
 
-    public VoteRequestOp(String name, VoteRequest voteRequest) {
-        super(name);
+    public VoteRequestOp(RaftGroupId groupId, VoteRequest voteRequest) {
+        super(groupId);
         this.voteRequest = voteRequest;
     }
 
     @Override
     public void run() throws Exception {
         RaftService service = getService();
-        service.handleVoteRequest(name, voteRequest);
+        service.handleVoteRequest(groupId, voteRequest);
     }
 
     @Override

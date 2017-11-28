@@ -44,10 +44,11 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         SnapshotAwareService<Collection<RaftGroupInfo>> {
 
     public static final String SERVICE_NAME = "hz:core:raft";
-    public static final String METADATA_RAFT = "METADATA";
+    private static final String METADATA_RAFT = "METADATA";
+    public static final RaftGroupId METADATA_GROUP_ID = new RaftGroupId(METADATA_RAFT, 0);
 
     private final Map<String, RaftGroupInfo> raftGroups = new ConcurrentHashMap<String, RaftGroupInfo>();
-    private final Map<String, RaftNode> nodes = new ConcurrentHashMap<String, RaftNode>();
+    private final Map<RaftGroupId, RaftNode> nodes = new ConcurrentHashMap<RaftGroupId, RaftNode>();
     private final ConcurrentMap<String, RaftEndpoint> knownLeaders = new ConcurrentHashMap<String, RaftEndpoint>();
     private final NodeEngine nodeEngine;
     private final ILogger logger;
@@ -81,9 +82,9 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         String threadPoolName = createThreadName(nodeEngine.getHazelcastInstance().getName(), "raft");
         this.executor = new StripedExecutor(logger, threadPoolName, RuntimeAvailableProcessors.get(), Integer.MAX_VALUE);
 
-        RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, METADATA_RAFT);
+        RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, METADATA_GROUP_ID);
         RaftNode node = new RaftNode(SERVICE_NAME, METADATA_RAFT, localEndpoint, endpoints, config, raftIntegration, executor);
-        nodes.put(METADATA_RAFT, node);
+        nodes.put(METADATA_GROUP_ID, node);
         node.start();
     }
 
@@ -152,73 +153,73 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         }
     }
 
-    public void handlePreVoteRequest(String name, PreVoteRequest request) {
-        RaftNode node = nodes.get(name);
+    public void handlePreVoteRequest(RaftGroupId groupId, PreVoteRequest request) {
+        RaftNode node = nodes.get(groupId);
         if (node == null) {
-            logger.severe("RaftNode[" + name + "] does not exist to handle: " + request);
+            logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
             return;
         }
         node.handlePreVoteRequest(request);
     }
 
-    public void handlePreVoteResponse(String name, PreVoteResponse response) {
-        RaftNode node = nodes.get(name);
+    public void handlePreVoteResponse(RaftGroupId groupId, PreVoteResponse response) {
+        RaftNode node = nodes.get(groupId);
         if (node == null) {
-            logger.severe("RaftNode[" + name + "] does not exist to handle: " + response);
+            logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
             return;
         }
         node.handlePreVoteResponse(response);
     }
 
-    public void handleVoteRequest(String name, VoteRequest request) {
-        RaftNode node = nodes.get(name);
+    public void handleVoteRequest(RaftGroupId groupId, VoteRequest request) {
+        RaftNode node = nodes.get(groupId);
         if (node == null) {
-            logger.severe("RaftNode[" + name + "] does not exist to handle: " + request);
+            logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
             return;
         }
         node.handleVoteRequest(request);
     }
 
-    public void handleVoteResponse(String name, VoteResponse response) {
-        RaftNode node = nodes.get(name);
+    public void handleVoteResponse(RaftGroupId groupId, VoteResponse response) {
+        RaftNode node = nodes.get(groupId);
         if (node == null) {
-            logger.severe("RaftNode[" + name + "] does not exist to handle: " + response);
+            logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
             return;
         }
         node.handleVoteResponse(response);
     }
 
-    public void handleAppendEntries(String name, AppendRequest request) {
-        RaftNode node = nodes.get(name);
+    public void handleAppendEntries(RaftGroupId groupId, AppendRequest request) {
+        RaftNode node = nodes.get(groupId);
         if (node == null) {
-            logger.severe("RaftNode[" + name + "] does not exist to handle: " + request);
+            logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
             return;
         }
         node.handleAppendRequest(request);
     }
 
-    public void handleAppendResponse(String name, AppendSuccessResponse response) {
-        RaftNode node = nodes.get(name);
+    public void handleAppendResponse(RaftGroupId groupId, AppendSuccessResponse response) {
+        RaftNode node = nodes.get(groupId);
         if (node == null) {
-            logger.severe("RaftNode[" + name + "] does not exist to handle: " + response);
+            logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
             return;
         }
         node.handleAppendResponse(response);
     }
 
-    public void handleAppendResponse(String name, AppendFailureResponse response) {
-        RaftNode node = nodes.get(name);
+    public void handleAppendResponse(RaftGroupId groupId, AppendFailureResponse response) {
+        RaftNode node = nodes.get(groupId);
         if (node == null) {
-            logger.severe("RaftNode[" + name + "] does not exist to handle: " + response);
+            logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
             return;
         }
         node.handleAppendResponse(response);
     }
 
-    public void handleSnapshot(String name, InstallSnapshot request) {
-        RaftNode node = nodes.get(name);
+    public void handleSnapshot(RaftGroupId groupId, InstallSnapshot request) {
+        RaftNode node = nodes.get(groupId);
         if (node == null) {
-            logger.severe("RaftNode[" + name + "] does not exist to handle: " + request);
+            logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
             return;
         }
         node.handleInstallSnapshot(request);
@@ -229,8 +230,8 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         return nodeEngine.getLogger(clazz.getName() + "(" + raftName + ")");
     }
 
-    public RaftNode getRaftNode(String name) {
-        return nodes.get(name);
+    public RaftNode getRaftNode(RaftGroupId groupId) {
+        return nodes.get(groupId);
     }
 
     public RaftGroupInfo getRaftGroupInfo(String name) {
@@ -249,13 +250,13 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         return localEndpoint;
     }
 
-    void createRaftGroup(String serviceName, String name, Collection<RaftEndpoint> endpoints, int commitIndex) {
+    RaftGroupId createRaftGroup(String serviceName, String name, Collection<RaftEndpoint> endpoints, int commitIndex) {
         // keep configuration on every metadata node
         RaftGroupInfo groupInfo = raftGroups.get(name);
         if (groupInfo != null) {
             if (groupInfo.members().size() == endpoints.size()) {
                 logger.warning("Raft group " + name + " already exists. Ignoring add raft node request.");
-                return;
+                return new RaftGroupId(name, groupInfo.commitIndex());
             }
             throw new IllegalStateException("Raft group " + name
                     + " already exists with different group size. Ignoring add raft node request.");
@@ -263,16 +264,18 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
 
         raftGroups.put(name, new RaftGroupInfo(serviceName, name, endpoints, commitIndex));
 
+        RaftGroupId groupId = new RaftGroupId(name, commitIndex);
         if (!endpoints.contains(localEndpoint)) {
-            return;
+            return groupId;
         }
 
-        assert nodes.get(name) == null : "Raft node with name " + name + " should not exist!";
+        assert nodes.get(groupId) == null : "Raft node with name " + name + " should not exist!";
 
-        RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, name);
+        RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, groupId);
         RaftNode node = new RaftNode(serviceName, name, localEndpoint, endpoints, config, raftIntegration, executor);
-        nodes.put(name, node);
+        nodes.put(groupId, node);
         node.start();
+        return groupId;
     }
 
     void resetKnownLeader(String raftName) {

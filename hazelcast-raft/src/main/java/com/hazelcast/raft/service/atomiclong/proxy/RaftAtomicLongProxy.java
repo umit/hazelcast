@@ -6,6 +6,7 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.instance.HazelcastInstanceImpl;
 import com.hazelcast.instance.HazelcastInstanceProxy;
+import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicatingOperation;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.raft.service.atomiclong.operation.AddAndGetOperation;
@@ -20,15 +21,13 @@ import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.function.Supplier;
 
 import static com.hazelcast.raft.impl.service.RaftInvocationHelper.invokeOnLeader;
-import static com.hazelcast.raft.service.atomiclong.RaftAtomicLongService.PREFIX;
 import static com.hazelcast.raft.service.atomiclong.RaftAtomicLongService.SERVICE_NAME;
 import static com.hazelcast.raft.service.atomiclong.operation.AlterOperation.AlterResultType.AFTER_VALUE;
 import static com.hazelcast.raft.service.atomiclong.operation.AlterOperation.AlterResultType.BEFORE_VALUE;
 
 public class RaftAtomicLongProxy implements IAtomicLong {
 
-    private final String name;
-    private final String raftName;
+    private final RaftGroupId groupId;
     private final NodeEngine nodeEngine;
 
     public static IAtomicLong create(HazelcastInstance instance, String name, int nodeCount) {
@@ -53,9 +52,8 @@ public class RaftAtomicLongProxy implements IAtomicLong {
         return instanceImpl.node.getNodeEngine();
     }
 
-    public RaftAtomicLongProxy(String name, NodeEngine nodeEngine) {
-        this.name = name;
-        this.raftName = PREFIX + name;
+    public RaftAtomicLongProxy(RaftGroupId groupId, NodeEngine nodeEngine) {
+        this.groupId = groupId;
         this.nodeEngine = nodeEngine;
     }
 
@@ -121,9 +119,9 @@ public class RaftAtomicLongProxy implements IAtomicLong {
         return invokeOnLeader(nodeEngine, new Supplier<RaftReplicatingOperation>() {
             @Override
             public RaftReplicatingOperation get() {
-                return new AtomicLongReplicatingOperation(new AddAndGetOperation(name, delta));
+                return new AtomicLongReplicatingOperation(new AddAndGetOperation(groupId, delta));
             }
-        }, raftName);
+        }, groupId);
     }
 
     @Override
@@ -141,9 +139,9 @@ public class RaftAtomicLongProxy implements IAtomicLong {
         return invokeOnLeader(nodeEngine, new Supplier<RaftReplicatingOperation>() {
             @Override
             public RaftReplicatingOperation get() {
-                return new AtomicLongReplicatingOperation(new CompareAndSetOperation(name, expect, update));
+                return new AtomicLongReplicatingOperation(new CompareAndSetOperation(groupId, expect, update));
             }
-        }, raftName);
+        }, groupId);
     }
 
     @Override
@@ -151,9 +149,9 @@ public class RaftAtomicLongProxy implements IAtomicLong {
         return invokeOnLeader(nodeEngine, new Supplier<RaftReplicatingOperation>() {
             @Override
             public RaftReplicatingOperation get() {
-                return new AtomicLongReplicatingOperation(new GetAndAddOperation(name, delta));
+                return new AtomicLongReplicatingOperation(new GetAndAddOperation(groupId, delta));
             }
-        }, raftName);
+        }, groupId);
     }
 
     @Override
@@ -171,9 +169,9 @@ public class RaftAtomicLongProxy implements IAtomicLong {
         return invokeOnLeader(nodeEngine, new Supplier<RaftReplicatingOperation>() {
             @Override
             public RaftReplicatingOperation get() {
-                return new AtomicLongReplicatingOperation(new GetAndSetOperation(name, newValue));
+                return new AtomicLongReplicatingOperation(new GetAndSetOperation(groupId, newValue));
             }
-        }, raftName);
+        }, groupId);
     }
 
     @Override
@@ -207,9 +205,9 @@ public class RaftAtomicLongProxy implements IAtomicLong {
                     new Supplier<RaftReplicatingOperation>() {
                         @Override
                         public RaftReplicatingOperation get() {
-                            return new AtomicLongReplicatingOperation(new AlterOperation(name, function, alterResultType));
+                            return new AtomicLongReplicatingOperation(new AlterOperation(groupId, function, alterResultType));
                         }
-                    }, raftName);
+                    }, groupId);
     }
 
     @Override
@@ -240,9 +238,9 @@ public class RaftAtomicLongProxy implements IAtomicLong {
                 new Supplier<RaftReplicatingOperation>() {
                     @Override
                     public RaftReplicatingOperation get() {
-                        return new AtomicLongReplicatingOperation(new ApplyOperation<R>(name, function));
+                        return new AtomicLongReplicatingOperation(new ApplyOperation<R>(groupId, function));
                     }
-                }, raftName);
+                }, groupId);
     }
 
     @Override
@@ -252,7 +250,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public String getName() {
-        return name;
+        return RaftAtomicLongService.nameWithoutPrefix(groupId.name());
     }
 
     @Override
@@ -265,7 +263,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
         throw new UnsupportedOperationException();
     }
 
-    public String getRaftName() {
-        return raftName;
+    public RaftGroupId getGroupId() {
+        return groupId;
     }
 }

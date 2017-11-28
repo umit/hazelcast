@@ -3,6 +3,7 @@ package com.hazelcast.raft.service.atomiclong.operation;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.service.atomiclong.AtomicLongDataSerializerHook;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLong;
 
@@ -15,8 +16,8 @@ public class ApplyOperation<R> extends AbstractAtomicLongOperation {
     public ApplyOperation() {
     }
 
-    public ApplyOperation(String name, IFunction<Long, R> function) {
-        super(name);
+    public ApplyOperation(RaftGroupId groupId, IFunction<Long, R> function) {
+        super(groupId);
         this.function = function;
     }
 
