@@ -37,11 +37,11 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
 
     private final NodeEngine nodeEngine;
 
-    private final String raftName;
+    private final RaftGroupId raftGroupId;
 
-    NodeEngineRaftIntegration(NodeEngine nodeEngine, String raftName) {
+    NodeEngineRaftIntegration(NodeEngine nodeEngine, RaftGroupId groupId) {
         this.nodeEngine = nodeEngine;
-        this.raftName = raftName;
+        this.raftGroupId = groupId;
     }
 
     @Override
@@ -76,42 +76,42 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
 
     @Override
     public boolean send(PreVoteRequest request, RaftEndpoint target) {
-        return send(new PreVoteRequestOp(raftName, request), target);
+        return send(new PreVoteRequestOp(raftGroupId, request), target);
     }
 
     @Override
     public boolean send(PreVoteResponse response, RaftEndpoint target) {
-        return send(new PreVoteResponseOp(raftName, response), target);
+        return send(new PreVoteResponseOp(raftGroupId, response), target);
     }
 
     @Override
     public boolean send(VoteRequest request, RaftEndpoint target) {
-        return send(new VoteRequestOp(raftName, request), target);
+        return send(new VoteRequestOp(raftGroupId, request), target);
     }
 
     @Override
     public boolean send(VoteResponse response, RaftEndpoint target) {
-        return send(new VoteResponseOp(raftName, response), target);
+        return send(new VoteResponseOp(raftGroupId, response), target);
     }
 
     @Override
     public boolean send(AppendRequest request, RaftEndpoint target) {
-        return send(new AppendRequestOp(raftName, request), target);
+        return send(new AppendRequestOp(raftGroupId, request), target);
     }
 
     @Override
     public boolean send(AppendSuccessResponse response, RaftEndpoint target) {
-        return send(new AppendSuccessResponseOp(raftName, response), target);
+        return send(new AppendSuccessResponseOp(raftGroupId, response), target);
     }
 
     @Override
     public boolean send(AppendFailureResponse response, RaftEndpoint target) {
-        return send(new AppendFailureResponseOp(raftName, response), target);
+        return send(new AppendFailureResponseOp(raftGroupId, response), target);
     }
 
     @Override
     public boolean send(InstallSnapshot request, RaftEndpoint target) {
-        return send(new InstallSnapshotOp(raftName, request), target);
+        return send(new InstallSnapshotOp(raftGroupId, request), target);
     }
 
     @Override

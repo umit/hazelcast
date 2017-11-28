@@ -3,6 +3,7 @@ package com.hazelcast.raft.impl;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.service.RaftDataService;
+import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -31,13 +32,14 @@ public class CreateRaftGroupHelperTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
 
-        createRaftGroup(getNodeEngineImpl(instances[0]), RaftDataService.SERVICE_NAME, "test", nodeCount);
+        final RaftGroupId groupId =
+                createRaftGroup(getNodeEngineImpl(instances[0]), RaftDataService.SERVICE_NAME, "test", nodeCount);
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
                 for (HazelcastInstance instance : instances) {
                     RaftService service = getNodeEngineImpl(instance).getService(RaftService.SERVICE_NAME);
-                    assertNotNull(service.getRaftNode("test"));
+                    assertNotNull(service.getRaftNode(groupId));
                 }
             }
         });
@@ -63,7 +65,8 @@ public class CreateRaftGroupHelperTest extends HazelcastRaftTestSupport {
         final int newGroupCount = 3;
 
         HazelcastInstance instance = instances[invokeOnCP ? 0 : instances.length - 1];
-        createRaftGroup(getNodeEngineImpl(instance), RaftDataService.SERVICE_NAME, "test", newGroupCount);
+        final RaftGroupId groupId =
+                createRaftGroup(getNodeEngineImpl(instance), RaftDataService.SERVICE_NAME, "test", newGroupCount);
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -71,7 +74,7 @@ public class CreateRaftGroupHelperTest extends HazelcastRaftTestSupport {
                 int count = 0;
                 for (HazelcastInstance instance : instances) {
                     RaftService service = getNodeEngineImpl(instance).getService(RaftService.SERVICE_NAME);
-                    RaftNode raftNode = service.getRaftNode("test");
+                    RaftNode raftNode = service.getRaftNode(groupId);
                     if (raftNode != null) {
                         count++;
                     }
@@ -101,8 +104,11 @@ public class CreateRaftGroupHelperTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
 
-        createRaftGroup(getNodeEngineImpl(instances[0]), RaftDataService.SERVICE_NAME, "test", nodeCount);
-        createRaftGroup(getNodeEngineImpl(instances[1]), RaftDataService.SERVICE_NAME, "test", nodeCount);
+        RaftGroupId groupId1 =
+                createRaftGroup(getNodeEngineImpl(instances[0]), RaftDataService.SERVICE_NAME, "test", nodeCount);
+        RaftGroupId groupId2 =
+                createRaftGroup(getNodeEngineImpl(instances[1]), RaftDataService.SERVICE_NAME, "test", nodeCount);
+        assertEquals(groupId1, groupId2);
     }
 
     @Test

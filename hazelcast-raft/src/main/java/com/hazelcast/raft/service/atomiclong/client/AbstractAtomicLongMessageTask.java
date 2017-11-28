@@ -2,12 +2,12 @@ package com.hazelcast.raft.service.atomiclong.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
-import com.hazelcast.client.impl.protocol.util.ParameterUtil;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
+import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy;
 
@@ -19,19 +19,19 @@ import java.security.Permission;
  */
 public abstract class AbstractAtomicLongMessageTask extends AbstractMessageTask implements ExecutionCallback {
 
-    protected String name;
+    protected RaftGroupId groupId;
 
     protected AbstractAtomicLongMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     protected IAtomicLong getProxy() {
-        return new RaftAtomicLongProxy(name, nodeEngine);
+        return new RaftAtomicLongProxy(groupId, nodeEngine);
     }
 
     @Override
     protected Object decodeClientMessage(ClientMessage clientMessage) {
-        name = clientMessage.getStringUtf8();
+        groupId = RaftGroupId.readFrom(clientMessage);
         return null;
     }
 
@@ -47,8 +47,7 @@ public abstract class AbstractAtomicLongMessageTask extends AbstractMessageTask 
     }
 
     private ClientMessage encodeLongResponse(long response) {
-        int dataSize = ClientMessage.HEADER_SIZE
-                + ParameterUtil.calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES;
+        int dataSize = ClientMessage.HEADER_SIZE + Bits.LONG_SIZE_IN_BYTES;
         ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
         clientMessage.setMessageType(1111);
         clientMessage.set(response);
@@ -57,8 +56,7 @@ public abstract class AbstractAtomicLongMessageTask extends AbstractMessageTask 
     }
 
     private ClientMessage encodeBooleanResponse(boolean response) {
-        int dataSize = ClientMessage.HEADER_SIZE
-                + ParameterUtil.calculateDataSize(name) + Bits.BOOLEAN_SIZE_IN_BYTES;
+        int dataSize = ClientMessage.HEADER_SIZE + Bits.BOOLEAN_SIZE_IN_BYTES;
         ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
         clientMessage.setMessageType(1111);
         clientMessage.set(response);
@@ -83,7 +81,7 @@ public abstract class AbstractAtomicLongMessageTask extends AbstractMessageTask 
 
     @Override
     public String getDistributedObjectName() {
-        return name;
+        return RaftAtomicLongService.nameWithoutPrefix(groupId.name());
     }
 
     @Override

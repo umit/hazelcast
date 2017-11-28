@@ -4,6 +4,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.impl.dto.AppendRequest;
+import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
 
 import java.io.IOException;
@@ -19,15 +20,15 @@ public class AppendRequestOp extends AsyncRaftOp {
     public AppendRequestOp() {
     }
 
-    public AppendRequestOp(String name, AppendRequest appendRequest) {
-        super(name);
+    public AppendRequestOp(RaftGroupId groupId, AppendRequest appendRequest) {
+        super(groupId);
         this.appendRequest = appendRequest;
     }
 
     @Override
     public void run() throws Exception {
         RaftService service = getService();
-        service.handleAppendEntries(name, appendRequest);
+        service.handleAppendEntries(groupId, appendRequest);
     }
 
     @Override

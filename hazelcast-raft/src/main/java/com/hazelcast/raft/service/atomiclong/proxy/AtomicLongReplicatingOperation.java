@@ -3,9 +3,9 @@ package com.hazelcast.raft.service.atomiclong.proxy;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftOperation;
+import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicatingOperation;
 import com.hazelcast.raft.service.atomiclong.AtomicLongDataSerializerHook;
-import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.raft.service.atomiclong.operation.AbstractAtomicLongOperation;
 
 import java.io.IOException;
@@ -31,8 +31,8 @@ public final class AtomicLongReplicatingOperation extends RaftReplicatingOperati
     }
 
     @Override
-    protected final String getRaftName() {
-        return RaftAtomicLongService.PREFIX + operation.getName();
+    protected RaftGroupId getRaftGroupId() {
+        return operation.getRaftGroupId();
     }
 
     @Override
