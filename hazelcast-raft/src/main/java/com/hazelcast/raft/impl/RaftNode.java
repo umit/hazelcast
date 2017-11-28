@@ -194,7 +194,7 @@ public class RaftNode {
         int nextIndex = leaderState.getNextIndex(follower);
 
         if (nextIndex <= raftLog.snapshotIndex()) {
-            InstallSnapshot installSnapshot = new InstallSnapshot(localEndpoint, raftLog.snapshot());
+            InstallSnapshot installSnapshot = new InstallSnapshot(localEndpoint, state.term(), raftLog.snapshot());
             if (logger.isFineEnabled()) {
                 logger.fine("Sending " + installSnapshot + " to " + follower + " since next index: " + nextIndex
                         + " <= snapshot index: " + raftLog.snapshotIndex());
@@ -392,6 +392,7 @@ public class RaftNode {
             return;
         }
 
+        RaftLog log = state.log();
         Object snapshot = raftIntegration.runOperation(new TakeSnapshotOp(serviceName, state.name()), commitIndex);
         if (snapshot instanceof Throwable) {
             Throwable t = (Throwable) snapshot;
@@ -399,21 +400,21 @@ public class RaftNode {
             return;
         }
         RestoreSnapshotOp snapshotOp = new RestoreSnapshotOp(serviceName, state.name(), commitIndex, snapshot);
-        LogEntry committedEntry = state.log().getLogEntry(commitIndex);
+        LogEntry committedEntry = log.getLogEntry(commitIndex);
         LogEntry snapshotLogEntry = new LogEntry(committedEntry.term(), commitIndex, snapshotOp);
-        state.log().setSnapshot(snapshotLogEntry);
+        log.setSnapshot(snapshotLogEntry);
 
         logger.info("Snapshot: "  + snapshotLogEntry + " is taken.");
     }
 
-    public void installSnapshot(LogEntry snapshot) {
+    public boolean installSnapshot(LogEntry snapshot) {
         int commitIndex = state.commitIndex();
         if (commitIndex > snapshot.index()) {
-            logger.severe("Cannot install snapshot: " + snapshot + " since commit index: " + commitIndex + " is larger.");
-            return;
+            logger.warning("Ignored stale snapshot: " + snapshot + ". commit index: " + commitIndex);
+            return false;
         } else if (commitIndex == snapshot.index()) {
-            logger.warning("Ignoring snapshot: " + snapshot + " since commit index is same.");
-            return;
+            logger.warning("Ignored snapshot: " + snapshot + " since commit index is same.");
+            return false;
         }
 
         state.commitIndex(snapshot.index());
@@ -430,6 +431,8 @@ public class RaftNode {
         invalidateFuturesUntil(snapshot.index());
 
         logger.info("Snapshot: " + snapshot + " is installed.");
+
+        return true;
     }
 
     public ICompletableFuture replicate(RaftOperation operation) {

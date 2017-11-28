@@ -1019,7 +1019,6 @@ public class LocalRaftTest extends HazelcastTestSupport {
         });
     }
 
-
     @Test
     public void when_isolatedLeaderAppendsEntries_then_itInvalidatesTheirFeaturesUponInstallSnapshot() throws ExecutionException, InterruptedException {
         final int entryCount = 50;

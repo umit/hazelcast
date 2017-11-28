@@ -27,7 +27,7 @@ public class RaftLog {
 
     // lastLogOrSnapshotEntry returns the last index and term, either from the last log or from the last snapshot
     public LogEntry lastLogOrSnapshotEntry() {
-        return logs.size() > 0 ? logs.get(logs.size() - 1) : (snapshot != null ? snapshot : new LogEntry());
+        return logs.size() > 0 ? logs.get(logs.size() - 1) : snapshot;
     }
 
     // returns only from the current log, not from the snapshot entry
