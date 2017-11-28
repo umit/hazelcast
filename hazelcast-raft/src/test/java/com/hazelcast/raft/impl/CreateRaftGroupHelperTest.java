@@ -6,6 +6,7 @@ import com.hazelcast.raft.impl.service.RaftDataService;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
+import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -19,7 +20,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 @RunWith(HazelcastSerialClassRunner.class)
-@Category(QuickTest.class)
+@Category({QuickTest.class, ParallelTest.class})
 public class CreateRaftGroupHelperTest extends HazelcastRaftTestSupport {
 
     private HazelcastInstance[] instances;

@@ -169,11 +169,13 @@ public class RaftState {
         return members.contains(endpoint);
     }
 
+    public void initPreCandidateState() {
+        preCandidateState = new CandidateState(majority());
+        preCandidateState.grantVote(localEndpoint);
+    }
+
     public CandidateState preCandidateState() {
-        if (preCandidateState == null) {
-            preCandidateState = new CandidateState(majority());
-            preCandidateState.grantVote(localEndpoint);
-        }
         return preCandidateState;
     }
+
 }
