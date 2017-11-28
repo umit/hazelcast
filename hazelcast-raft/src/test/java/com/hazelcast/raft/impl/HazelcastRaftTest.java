@@ -4,6 +4,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
+import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -15,7 +16,7 @@ import static com.hazelcast.raft.impl.service.RaftService.METADATA_RAFT;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(HazelcastSerialClassRunner.class)
-@Category(QuickTest.class)
+@Category({QuickTest.class, ParallelTest.class})
 public class HazelcastRaftTest extends HazelcastRaftTestSupport {
 
     @Test
@@ -30,13 +31,13 @@ public class HazelcastRaftTest extends HazelcastRaftTestSupport {
 
         leaderInstance.shutdown();
 
-        assertTrueEventually(new AssertTask() {
+        assertTrueAllTheTime(new AssertTask() {
             @Override
             public void run() throws Exception {
                 RaftNode raftNode = getRaftNode(followerInstance, METADATA_RAFT);
-                assertEquals(RaftRole.CANDIDATE, getRole(raftNode));
+                assertEquals(RaftRole.FOLLOWER, getRole(raftNode));
             }
-        });
+        }, 3);
 
         final HazelcastInstance newInstance = factory.newHazelcastInstance(leader.getLocalEndpoint().getAddress(),
                 createConfig(raftAddresses));
@@ -46,12 +47,12 @@ public class HazelcastRaftTest extends HazelcastRaftTestSupport {
             @Override
             public void run() throws Exception {
                 RaftNode raftNode = getRaftNode(followerInstance, METADATA_RAFT);
-                assertEquals(RaftRole.CANDIDATE, getRole(raftNode));
+                assertEquals(RaftRole.FOLLOWER, getRole(raftNode));
 
                 raftNode = getRaftNode(newInstance, METADATA_RAFT);
-                assertEquals(RaftRole.CANDIDATE, getRole(raftNode));
+                assertEquals(RaftRole.FOLLOWER, getRole(raftNode));
             }
-        }, 10);
+        }, 5);
     }
 
     @Test
@@ -77,8 +78,8 @@ public class HazelcastRaftTest extends HazelcastRaftTestSupport {
                 assertEquals(RaftRole.LEADER, getRole(raftNode));
 
                 raftNode = getRaftNode(newInstance, METADATA_RAFT);
-                assertEquals(RaftRole.CANDIDATE, getRole(raftNode));
+                assertEquals(RaftRole.FOLLOWER, getRole(raftNode));
             }
-        }, 10);
+        }, 5);
     }
 }

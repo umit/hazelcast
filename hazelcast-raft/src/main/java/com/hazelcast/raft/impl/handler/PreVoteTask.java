@@ -32,6 +32,7 @@ public class PreVoteTask implements StripedRunnable {
             return;
         }
 
+        state.initPreCandidateState();
         int nextTerm = state.term() + 1;
         RaftLog log = state.log();
         PreVoteRequest request = new PreVoteRequest(raftNode.getLocalEndpoint(), nextTerm,

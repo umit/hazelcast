@@ -42,6 +42,11 @@ public class PreVoteResponseHandlerTask implements StripedRunnable {
         }
 
         CandidateState preCandidateState = state.preCandidateState();
+        if (preCandidateState == null) {
+            logger.fine("Ignoring " + resp + ". We are not interested in pre-votes anymore.");
+            return;
+        }
+
         if (resp.granted() && preCandidateState.grantVote(resp.voter())) {
             logger.info("Pre-vote granted from " + resp.voter() + " for term: " + resp.term()
                     + ", number of votes: " + preCandidateState.voteCount() + ", majority: " + preCandidateState.majority());
@@ -49,7 +54,7 @@ public class PreVoteResponseHandlerTask implements StripedRunnable {
 
         if (preCandidateState.isMajorityGranted()) {
             logger.info("We have the majority during pre-vote phase Let's start real election!");
-            raftNode.execute(new LeaderElectionTask(raftNode));
+            new LeaderElectionTask(raftNode).run();
         }
     }
 
