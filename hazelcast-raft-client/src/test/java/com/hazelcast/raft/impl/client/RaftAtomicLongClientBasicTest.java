@@ -10,6 +10,7 @@ import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.HazelcastRaftTestSupport;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.test.HazelcastSerialClassRunner;
+import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.After;
 import org.junit.Before;
@@ -24,7 +25,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(HazelcastSerialClassRunner.class)
-@Category(QuickTest.class)
+@Category({QuickTest.class, ParallelTest.class})
 public class RaftAtomicLongClientBasicTest extends HazelcastRaftTestSupport {
 
     private IAtomicLong atomicLong;
