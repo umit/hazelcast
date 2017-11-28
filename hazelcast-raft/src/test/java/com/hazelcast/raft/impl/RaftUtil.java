@@ -1,10 +1,7 @@
 package com.hazelcast.raft.impl;
 
-import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.log.LogEntry;
-import com.hazelcast.raft.impl.service.RaftGroupId;
-import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.util.ExceptionUtil;
 
@@ -13,20 +10,11 @@ import java.net.UnknownHostException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
 
-import static com.hazelcast.test.HazelcastTestSupport.getNodeEngineImpl;
 import static com.hazelcast.test.HazelcastTestSupport.randomString;
 import static com.hazelcast.test.HazelcastTestSupport.sleepSeconds;
 import static org.junit.Assert.fail;
 
 public class RaftUtil {
-
-    public static RaftService getRaftService(HazelcastInstance instance) {
-        return getNodeEngineImpl(instance).getService(RaftService.SERVICE_NAME);
-    }
-
-    public static RaftNode getRaftNode(HazelcastInstance instance, RaftGroupId groupId) {
-        return getRaftService(instance).getRaftNode(groupId);
-    }
 
     public static RaftRole getRole(final RaftNode node) {
         Callable<RaftRole> task = new Callable<RaftRole>() {
