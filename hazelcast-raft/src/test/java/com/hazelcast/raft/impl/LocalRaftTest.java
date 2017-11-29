@@ -10,7 +10,7 @@ import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.service.RaftAddOperation;
 import com.hazelcast.raft.impl.service.RaftDataService;
-import com.hazelcast.raft.impl.testing.RaftGroup;
+import com.hazelcast.raft.impl.testing.LocalRaftGroup;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
@@ -51,7 +51,7 @@ import static org.junit.Assert.fail;
 @Category({QuickTest.class, ParallelTest.class})
 public class LocalRaftTest extends HazelcastTestSupport {
 
-    private RaftGroup group;
+    private LocalRaftGroup group;
 
     @Before
     public void init() {
@@ -75,7 +75,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     private void testLeaderElection(int nodeCount) throws Exception {
-        group = new RaftGroup(nodeCount, new RaftConfig());
+        group = new LocalRaftGroup(nodeCount, new RaftConfig());
         group.start();
         group.waitUntilLeaderElected();
 
@@ -473,7 +473,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
 
     @Test
     public void when_leaderStaysInMajorityDuringSplit_thenItMergesBackSuccessfully() throws Exception {
-        group = new RaftGroup(5);
+        group = new LocalRaftGroup(5);
         group.start();
         group.waitUntilLeaderElected();
 
@@ -496,7 +496,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
     @Test
     public void when_leaderStaysInMinorityDuringSplit_thenItMergesBackSuccessfully() throws Exception {
         int nodeCount = 5;
-        group = new RaftGroup(nodeCount);
+        group = new LocalRaftGroup(nodeCount);
         group.start();
         final RaftEndpoint leaderEndpoint = group.waitUntilLeaderElected().getLocalEndpoint();
 
@@ -1128,8 +1128,8 @@ public class LocalRaftTest extends HazelcastTestSupport {
         }
     }
 
-    private RaftGroup newGroupWithService(int nodeCount, RaftConfig raftConfig) {
-        return new RaftGroup(nodeCount, raftConfig, SERVICE_NAME, RaftDataService.class);
+    private LocalRaftGroup newGroupWithService(int nodeCount, RaftConfig raftConfig) {
+        return new LocalRaftGroup(nodeCount, raftConfig, SERVICE_NAME, RaftDataService.class);
     }
 
     private RaftConfig newRaftConfigWithNoSnapshotting() {
