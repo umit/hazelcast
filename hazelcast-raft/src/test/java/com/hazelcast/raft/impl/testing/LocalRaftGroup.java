@@ -22,21 +22,21 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
-public class RaftGroup {
+public class LocalRaftGroup {
 
     private final RaftEndpoint[] endpoints;
     private final LocalRaftIntegration[] integrations;
     private final RaftNode[] nodes;
 
-    public RaftGroup(int size) {
+    public LocalRaftGroup(int size) {
         this(size, new RaftConfig());
     }
 
-    public RaftGroup(int size, RaftConfig raftConfig) {
+    public LocalRaftGroup(int size, RaftConfig raftConfig) {
         this(size,raftConfig,  null, null);
     }
 
-    public RaftGroup(int size, RaftConfig raftConfig, String serviceName, Class<? extends SnapshotAwareService> serviceClazz) {
+    public LocalRaftGroup(int size, RaftConfig raftConfig, String serviceName, Class<? extends SnapshotAwareService> serviceClazz) {
         endpoints = new RaftEndpoint[size];
         integrations = new LocalRaftIntegration[size];
 
