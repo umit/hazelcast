@@ -8,13 +8,12 @@ import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.log.RaftLog;
 import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.util.Clock;
-import com.hazelcast.util.executor.StripedRunnable;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public class PreVoteRequestHandlerTask implements StripedRunnable {
+public class PreVoteRequestHandlerTask implements Runnable {
     private final ILogger logger;
     private final RaftNode raftNode;
     private final PreVoteRequest req;
@@ -64,10 +63,5 @@ public class PreVoteRequestHandlerTask implements StripedRunnable {
 
         logger.info("Granted pre-vote for " + req);
         raftNode.send(new PreVoteResponse(localEndpoint, req.nextTerm(), true), req.candidate());
-    }
-
-    @Override
-    public int getKey() {
-        return raftNode.getStripeKey();
     }
 }

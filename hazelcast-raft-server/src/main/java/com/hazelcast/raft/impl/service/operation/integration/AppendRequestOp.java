@@ -1,4 +1,4 @@
-package com.hazelcast.raft.impl.service.operation;
+package com.hazelcast.raft.impl.service.operation.integration;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;

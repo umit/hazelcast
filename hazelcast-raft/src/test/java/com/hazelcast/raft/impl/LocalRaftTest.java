@@ -1,13 +1,16 @@
 package com.hazelcast.raft.impl;
 
 import com.hazelcast.raft.RaftConfig;
+import com.hazelcast.raft.exception.CannotAppendException;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.NotLeaderException;
-import com.hazelcast.raft.exception.UncommittedEntryLimitExceededException;
+import com.hazelcast.raft.exception.RaftGroupTerminatedException;
 import com.hazelcast.raft.exception.StaleAppendRequestException;
+import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
+import com.hazelcast.raft.impl.operation.TerminateRaftGroupOp;
 import com.hazelcast.raft.impl.service.RaftAddOperation;
 import com.hazelcast.raft.impl.service.RaftDataService;
 import com.hazelcast.raft.impl.testing.LocalRaftGroup;
@@ -36,6 +39,7 @@ import static com.hazelcast.raft.impl.RaftUtil.getLastLogOrSnapshotEntry;
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static com.hazelcast.raft.impl.RaftUtil.getMatchIndex;
 import static com.hazelcast.raft.impl.RaftUtil.getSnapshotEntry;
+import static com.hazelcast.raft.impl.RaftUtil.getStatus;
 import static com.hazelcast.raft.impl.RaftUtil.getTerm;
 import static com.hazelcast.raft.impl.service.RaftDataService.SERVICE_NAME;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -829,7 +833,6 @@ public class LocalRaftTest extends HazelcastTestSupport {
                 f.get();
                 fail();
             } catch (LeaderDemotedException ignored) {
-
             }
         }
 
@@ -1085,7 +1088,6 @@ public class LocalRaftTest extends HazelcastTestSupport {
                 f.get();
                 fail();
             } catch (StaleAppendRequestException ignored) {
-
             }
         }
 
@@ -1120,12 +1122,128 @@ public class LocalRaftTest extends HazelcastTestSupport {
             leader.replicate(new RaftAddOperation("val" + i));
         }
 
-        Future f = leader.replicate(new RaftAddOperation("valFinal"));
         try {
-            f.get();
+            leader.replicate(new RaftAddOperation("valFinal")).get();
             fail();
-        } catch (UncommittedEntryLimitExceededException ignored) {
+        } catch (CannotAppendException ignored) {
         }
+    }
+
+    @Test
+    public void when_terminateOpIsAppendedButNotCommitted_then_cannotAppendNewEntry() throws ExecutionException, InterruptedException {
+        group = newGroupWithService(2, new RaftConfig());
+        group.start();
+
+        RaftNode leader = group.waitUntilLeaderElected();
+        RaftNode follower = group.getNodesExcept(leader.getLocalEndpoint())[0];
+
+        group.dropAllMessagesToEndpoint(leader.getLocalEndpoint(), follower.getLocalEndpoint());
+
+        leader.replicate(new TerminateRaftGroupOp());
+
+        try {
+            leader.replicate(new RaftAddOperation("val")).get();
+            fail();
+        } catch (CannotAppendException ignored) {
+        }
+    }
+
+    @Test
+    public void when_terminateOpIsAppended_then_statusIsTerminating() {
+        group = newGroupWithService(2, new RaftConfig());
+        group.start();
+
+        final RaftNode leader = group.waitUntilLeaderElected();
+        final RaftNode follower = group.getNodesExcept(leader.getLocalEndpoint())[0];
+
+        group.dropAllMessagesToEndpoint(follower.getLocalEndpoint(), leader.getLocalEndpoint());
+
+        leader.replicate(new TerminateRaftGroupOp());
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() throws Exception {
+                assertEquals(RaftNodeStatus.TERMINATING, getStatus(leader));
+                assertEquals(RaftNodeStatus.TERMINATING, getStatus(follower));
+            }
+        });
+    }
+
+    @Test
+    public void when_terminateOpIsCommitted_then_raftNodeIsTerminated() throws ExecutionException, InterruptedException {
+        group = newGroupWithService(2, new RaftConfig());
+        group.start();
+
+        final RaftNode leader = group.waitUntilLeaderElected();
+        final RaftNode follower = group.getNodesExcept(leader.getLocalEndpoint())[0];
+
+        leader.replicate(new TerminateRaftGroupOp()).get();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() throws Exception {
+                assertEquals(1, getCommitIndex(leader));
+                assertEquals(1, getCommitIndex(follower));
+                assertEquals(RaftNodeStatus.TERMINATED, getStatus(leader));
+                assertEquals(RaftNodeStatus.TERMINATED, getStatus(follower));
+            }
+        });
+
+        try {
+            leader.replicate(new RaftAddOperation("val")).get();
+            fail();
+        } catch (RaftGroupTerminatedException ignored) {
+
+        }
+
+        try {
+            follower.replicate(new RaftAddOperation("val")).get();
+            fail();
+        } catch (RaftGroupTerminatedException ignored) {
+        }
+    }
+
+    @Test
+    public void when_terminateOpIsTruncated_then_statusIsActive() throws ExecutionException, InterruptedException {
+        group = newGroupWithService(3, new RaftConfig());
+        group.start();
+
+        final RaftNode leader = group.waitUntilLeaderElected();
+        final RaftNode[] followers = group.getNodesExcept(leader.getLocalEndpoint());
+
+        group.dropMessagesToAll(leader.getLocalEndpoint(), AppendRequest.class);
+
+        leader.replicate(new TerminateRaftGroupOp());
+
+        group.split(leader.getLocalEndpoint());
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() throws Exception {
+                for (RaftNode raftNode : followers) {
+                    RaftEndpoint leaderEndpoint = getLeaderEndpoint(raftNode);
+                    assertNotNull(leaderEndpoint);
+                    assertNotEquals(leader.getLocalEndpoint(), leaderEndpoint);
+                }
+            }
+        });
+
+        final RaftNode newLeader = group.getNode(getLeaderEndpoint(followers[0]));
+
+        for (int i = 0; i < 10; i++) {
+            newLeader.replicate(new RaftAddOperation("val" + i)).get();
+        }
+
+        group.merge();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() throws Exception {
+                for (RaftNode raftNode : group.getNodes()) {
+                    assertEquals(RaftNodeStatus.ACTIVE, getStatus(raftNode));
+                }
+            }
+        });
     }
 
     private LocalRaftGroup newGroupWithService(int nodeCount, RaftConfig raftConfig) {

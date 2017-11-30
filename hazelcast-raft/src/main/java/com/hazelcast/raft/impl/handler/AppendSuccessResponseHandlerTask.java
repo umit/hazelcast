@@ -1,15 +1,14 @@
 package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.impl.state.LeaderState;
-import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.impl.log.RaftLog;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
-import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
-import com.hazelcast.util.executor.StripedRunnable;
+import com.hazelcast.raft.impl.log.LogEntry;
+import com.hazelcast.raft.impl.log.RaftLog;
+import com.hazelcast.raft.impl.state.LeaderState;
+import com.hazelcast.raft.impl.state.RaftState;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -20,7 +19,7 @@ import static java.util.Arrays.sort;
  * TODO: Javadoc Pending...
  *
  */
-public class AppendSuccessResponseHandlerTask implements StripedRunnable {
+public class AppendSuccessResponseHandlerTask implements Runnable {
     private final RaftNode raftNode;
     private final AppendSuccessResponse resp;
     private final ILogger logger;
@@ -115,10 +114,5 @@ public class AppendSuccessResponseHandlerTask implements StripedRunnable {
         state.commitIndex(commitIndex);
         raftNode.broadcastAppendRequest();
         raftNode.processLogs();
-    }
-
-    @Override
-    public int getKey() {
-        return raftNode.getStripeKey();
     }
 }

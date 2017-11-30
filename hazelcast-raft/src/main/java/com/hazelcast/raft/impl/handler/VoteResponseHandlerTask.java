@@ -1,18 +1,17 @@
 package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.impl.state.CandidateState;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
-import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.dto.VoteResponse;
-import com.hazelcast.util.executor.StripedRunnable;
+import com.hazelcast.raft.impl.state.CandidateState;
+import com.hazelcast.raft.impl.state.RaftState;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public class VoteResponseHandlerTask implements StripedRunnable {
+public class VoteResponseHandlerTask implements Runnable {
     private final RaftNode raftNode;
     private final VoteResponse resp;
     private final ILogger logger;
@@ -59,12 +58,7 @@ public class VoteResponseHandlerTask implements StripedRunnable {
             logger.info("We are the LEADER!");
             state.toLeader();
             raftNode.printMemberState();
-            raftNode.startPeriodicHeartbeatTask();
+            raftNode.scheduleHeartbeat();
         }
-    }
-
-    @Override
-    public int getKey() {
-        return raftNode.getStripeKey();
     }
 }

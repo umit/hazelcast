@@ -1,22 +1,26 @@
-package com.hazelcast.raft.impl.service.operation;
+package com.hazelcast.raft.impl.service.operation.integration;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.raft.impl.dto.AppendFailureResponse;
+import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
 
 import java.io.IOException;
 
-public class AppendFailureResponseOp extends AsyncRaftOp {
+/**
+ * TODO: Javadoc Pending...
+ *
+ */
+public class AppendSuccessResponseOp extends AsyncRaftOp {
 
-    private AppendFailureResponse appendResponse;
+    private AppendSuccessResponse appendResponse;
 
-    public AppendFailureResponseOp() {
+    public AppendSuccessResponseOp() {
     }
 
-    public AppendFailureResponseOp(RaftGroupId groupId, AppendFailureResponse appendResponse) {
+    public AppendSuccessResponseOp(RaftGroupId groupId, AppendSuccessResponse appendResponse) {
         super(groupId);
         this.appendResponse = appendResponse;
     }
@@ -41,7 +45,6 @@ public class AppendFailureResponseOp extends AsyncRaftOp {
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.APPEND_FAILURE_RESPONSE_OP;
+        return RaftServiceDataSerializerHook.APPEND_SUCCESS_RESPONSE_OP;
     }
-
 }

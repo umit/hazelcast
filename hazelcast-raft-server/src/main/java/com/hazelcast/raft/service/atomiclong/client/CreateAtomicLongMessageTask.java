@@ -12,7 +12,7 @@ import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 
 import java.security.Permission;
 
-import static com.hazelcast.raft.impl.service.CreateRaftGroupHelper.createRaftGroupAsync;
+import static com.hazelcast.raft.impl.service.util.RaftGroupHelper.createRaftGroupAsync;
 import static com.hazelcast.raft.service.atomiclong.RaftAtomicLongService.PREFIX;
 import static com.hazelcast.raft.service.atomiclong.RaftAtomicLongService.SERVICE_NAME;
 
