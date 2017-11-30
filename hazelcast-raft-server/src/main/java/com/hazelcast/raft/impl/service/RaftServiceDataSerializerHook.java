@@ -4,15 +4,20 @@ import com.hazelcast.internal.serialization.DataSerializerHook;
 import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.impl.service.operation.AppendFailureResponseOp;
-import com.hazelcast.raft.impl.service.operation.AppendRequestOp;
-import com.hazelcast.raft.impl.service.operation.AppendSuccessResponseOp;
-import com.hazelcast.raft.impl.service.operation.InstallSnapshotOp;
-import com.hazelcast.raft.impl.service.operation.PreVoteRequestOp;
-import com.hazelcast.raft.impl.service.operation.PreVoteResponseOp;
-import com.hazelcast.raft.impl.service.operation.VoteRequestOp;
-import com.hazelcast.raft.impl.service.operation.VoteResponseOp;
-import com.hazelcast.raft.impl.service.proxy.CreateRaftGroupReplicatingOperation;
+import com.hazelcast.raft.impl.service.operation.integration.AppendFailureResponseOp;
+import com.hazelcast.raft.impl.service.operation.integration.AppendRequestOp;
+import com.hazelcast.raft.impl.service.operation.integration.AppendSuccessResponseOp;
+import com.hazelcast.raft.impl.service.operation.integration.InstallSnapshotOp;
+import com.hazelcast.raft.impl.service.operation.integration.PreVoteRequestOp;
+import com.hazelcast.raft.impl.service.operation.integration.PreVoteResponseOp;
+import com.hazelcast.raft.impl.service.operation.integration.VoteRequestOp;
+import com.hazelcast.raft.impl.service.operation.integration.VoteResponseOp;
+import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOperation;
+import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOperation;
+import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupReplicatingOperation;
+import com.hazelcast.raft.impl.service.operation.metadata.GetDestroyingRaftGroupsOperation;
+import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOperation;
+import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicatingOperation;
 
 public final class RaftServiceDataSerializerHook implements DataSerializerHook {
 
@@ -21,18 +26,21 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
 
     public static final int F_ID = FactoryIdHelper.getFactoryId(RAFT_DS_FACTORY, RAFT_DS_FACTORY_ID);
 
-    public static final int VOTE_REQUEST_OP = 1;
-    public static final int VOTE_RESPONSE_OP = 2;
-    public static final int APPEND_REQUEST_OP = 3;
-    public static final int APPEND_SUCCESS_RESPONSE_OP = 4;
-    public static final int APPEND_FAILURE_RESPONSE_OP = 5;
-    public static final int INSTALL_SNAPSHOT_OP = 6;
-    public static final int PRE_VOTE_REQUEST_OP = 7;
-    public static final int PRE_VOTE_RESPONSE_OP = 8;
-    public static final int CREATE_RAFT_GROUP_OP = 9;
-    public static final int CREATE_RAFT_GROUP_REPLICATING_OP = 10;
-    public static final int GROUP_INFO = 11;
-    public static final int GROUP_ID = 12;
+    public static final int GROUP_ID = 1;
+    public static final int VOTE_REQUEST_OP = 2;
+    public static final int VOTE_RESPONSE_OP = 3;
+    public static final int APPEND_REQUEST_OP = 4;
+    public static final int APPEND_SUCCESS_RESPONSE_OP = 5;
+    public static final int APPEND_FAILURE_RESPONSE_OP = 6;
+    public static final int INSTALL_SNAPSHOT_OP = 7;
+    public static final int PRE_VOTE_REQUEST_OP = 8;
+    public static final int PRE_VOTE_RESPONSE_OP = 9;
+    public static final int DEFAULT_RAFT_GROUP_REPLICATING_OP = 10;
+    public static final int CREATE_RAFT_GROUP_OP = 11;
+    public static final int CREATE_RAFT_GROUP_REPLICATING_OP = 12;
+    public static final int TRIGGER_DESTROY_RAFT_GROUP_OP = 13;
+    public static final int GET_DESTROYING_RAFT_GROUPS_OP = 14;
+    public static final int COMPLETE_DESTROY_RAFT_GROUPS_OP = 15;
 
     @Override
     public int getFactoryId() {
@@ -45,6 +53,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
             @Override
             public IdentifiedDataSerializable create(int typeId) {
                 switch (typeId) {
+                    case GROUP_ID:
+                        return new RaftGroupId();
                     case VOTE_REQUEST_OP:
                         return new VoteRequestOp();
                     case VOTE_RESPONSE_OP:
@@ -63,12 +73,17 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new PreVoteResponseOp();
                     case CREATE_RAFT_GROUP_OP:
                         return new CreateRaftGroupOperation();
+                    case DEFAULT_RAFT_GROUP_REPLICATING_OP:
+                        return new DefaultRaftGroupReplicatingOperation();
                     case CREATE_RAFT_GROUP_REPLICATING_OP:
                         return new CreateRaftGroupReplicatingOperation();
-                    case GROUP_INFO:
-                        return new RaftGroupInfo();
-                    case GROUP_ID:
-                        return new RaftGroupId();
+                    case TRIGGER_DESTROY_RAFT_GROUP_OP:
+                        return new TriggerDestroyRaftGroupOperation();
+                    case GET_DESTROYING_RAFT_GROUPS_OP:
+                        return new GetDestroyingRaftGroupsOperation();
+                    case COMPLETE_DESTROY_RAFT_GROUPS_OP:
+                        return new CompleteDestroyRaftGroupsOperation();
+
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
             }

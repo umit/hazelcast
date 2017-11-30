@@ -20,7 +20,7 @@ import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.function.Supplier;
 
-import static com.hazelcast.raft.impl.service.RaftInvocationHelper.invokeOnLeader;
+import static com.hazelcast.raft.impl.service.util.RaftInvocationHelper.invokeOnLeader;
 import static com.hazelcast.raft.service.atomiclong.RaftAtomicLongService.SERVICE_NAME;
 import static com.hazelcast.raft.service.atomiclong.operation.AlterOperation.AlterResultType.AFTER_VALUE;
 import static com.hazelcast.raft.service.atomiclong.operation.AlterOperation.AlterResultType.BEFORE_VALUE;

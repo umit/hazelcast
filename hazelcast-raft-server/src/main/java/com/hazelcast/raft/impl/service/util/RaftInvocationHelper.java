@@ -1,4 +1,4 @@
-package com.hazelcast.raft.impl.service;
+package com.hazelcast.raft.impl.service.util;
 
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
@@ -8,7 +8,9 @@ import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.RaftException;
 import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.service.RaftGroupId;
+import com.hazelcast.raft.impl.service.RaftGroupInfo;
+import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicatingOperation;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.InternalCompletableFuture;
@@ -43,8 +45,7 @@ public final class RaftInvocationHelper {
 
     private static class RaftInvocationFuture<T> extends AbstractCompletableFuture<T> implements ExecutionCallback<T> {
 
-        private final String raftName;
-        private final RaftNode raftNode;
+        private final RaftGroupId groupId;
         private final RaftEndpoint[] endpoints;
         private final RaftService raftService;
         private final NodeEngine nodeEngine;
@@ -57,8 +58,7 @@ public final class RaftInvocationHelper {
         RaftInvocationFuture(RaftGroupId groupId, RaftService raftService, NodeEngine nodeEngine,
                 Supplier<RaftReplicatingOperation> operationSupplier, Executor executor, ILogger logger) {
             super(executor, logger);
-            this.raftName = groupId.name();
-            this.raftNode = raftService.getRaftNode(groupId);
+            this.groupId = groupId;
             this.raftService = raftService;
             this.nodeEngine = nodeEngine;
             this.operationSupplier = operationSupplier;
@@ -68,10 +68,7 @@ public final class RaftInvocationHelper {
         }
 
         private RaftEndpoint[] findEndpoints() {
-            if (raftNode != null) {
-                return null;
-            }
-            RaftGroupInfo groupInfo = raftService.getRaftGroupInfo(raftName);
+            RaftGroupInfo groupInfo = raftService.getRaftGroupInfo(groupId);
             if (groupInfo != null) {
                 return groupInfo.membersArray();
             }
@@ -80,9 +77,7 @@ public final class RaftInvocationHelper {
 
         @Override
         public void onResponse(T response) {
-            if (raftNode == null) {
-                raftService.setKnownLeader(raftName, lastInvocationEndpoint);
-            }
+            raftService.setKnownLeader(groupId, lastInvocationEndpoint);
             setResult(response);
         }
 
@@ -93,7 +88,7 @@ public final class RaftInvocationHelper {
                 if (cause instanceof RaftException) {
                     setKnownLeader((RaftException) cause);
                 } else {
-                    raftService.resetKnownLeader(raftName);
+                    raftService.resetKnownLeader(groupId);
                 }
                 try {
                     scheduleRetry();
@@ -120,9 +115,9 @@ public final class RaftInvocationHelper {
         private void setKnownLeader(RaftException cause) {
             RaftEndpoint leader = cause.getLeader();
             if (leader != null) {
-                raftService.setKnownLeader(raftName, leader);
+                raftService.setKnownLeader(groupId, leader);
             } else {
-                raftService.resetKnownLeader(raftName);
+                raftService.resetKnownLeader(groupId);
             }
         }
 
@@ -154,10 +149,7 @@ public final class RaftInvocationHelper {
         }
 
         private RaftEndpoint getLeader() {
-            if (raftNode != null) {
-                return raftNode.getLeader();
-            }
-            RaftEndpoint leader = raftService.getKnownLeader(raftName);
+            RaftEndpoint leader = raftService.getKnownLeader(groupId);
             return leader != null ? leader : endpoints[endPointIndex++ % endpoints.length];
         }
     }

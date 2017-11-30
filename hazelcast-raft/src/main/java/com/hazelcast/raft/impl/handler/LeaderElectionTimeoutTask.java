@@ -2,13 +2,12 @@ package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
-import com.hazelcast.util.executor.StripedRunnable;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public class LeaderElectionTimeoutTask implements StripedRunnable {
+public class LeaderElectionTimeoutTask implements Runnable {
     private final RaftNode raftNode;
 
     public LeaderElectionTimeoutTask(RaftNode raftNode) {
@@ -22,10 +21,5 @@ public class LeaderElectionTimeoutTask implements StripedRunnable {
         }
         raftNode.getLogger(getClass()).warning("Leader election for term: " + raftNode.state().term() + " has timed out!");
         new LeaderElectionTask(raftNode).run();
-    }
-
-    @Override
-    public int getKey() {
-        return raftNode.getStripeKey();
     }
 }
