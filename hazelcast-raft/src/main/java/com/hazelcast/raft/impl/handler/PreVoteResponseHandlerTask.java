@@ -6,13 +6,12 @@ import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.state.CandidateState;
 import com.hazelcast.raft.impl.state.RaftState;
-import com.hazelcast.util.executor.StripedRunnable;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public class PreVoteResponseHandlerTask implements StripedRunnable {
+public class PreVoteResponseHandlerTask implements Runnable {
     private final RaftNode raftNode;
     private final PreVoteResponse resp;
     private final ILogger logger;
@@ -56,10 +55,5 @@ public class PreVoteResponseHandlerTask implements StripedRunnable {
             logger.info("We have the majority during pre-vote phase. Let's start real election!");
             new LeaderElectionTask(raftNode).run();
         }
-    }
-
-    @Override
-    public int getKey() {
-        return raftNode.getStripeKey();
     }
 }

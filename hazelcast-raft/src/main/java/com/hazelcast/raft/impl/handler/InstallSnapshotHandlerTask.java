@@ -7,9 +7,8 @@ import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.InstallSnapshot;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.state.RaftState;
-import com.hazelcast.util.executor.StripedRunnable;
 
-public class InstallSnapshotHandlerTask implements StripedRunnable {
+public class InstallSnapshotHandlerTask implements Runnable {
 
     private final RaftNode raftNode;
     private final InstallSnapshot req;
@@ -19,11 +18,6 @@ public class InstallSnapshotHandlerTask implements StripedRunnable {
         this.raftNode = raftNode;
         this.req = req;
         this.logger = raftNode.getLogger(getClass());
-    }
-
-    @Override
-    public int getKey() {
-        return raftNode.getStripeKey();
     }
 
     @Override

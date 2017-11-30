@@ -1,8 +1,8 @@
-package com.hazelcast.raft.impl.service.operation;
+package com.hazelcast.raft.impl.service.operation.integration;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
+import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
@@ -13,38 +13,38 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public class AppendSuccessResponseOp extends AsyncRaftOp {
+public class VoteResponseOp extends AsyncRaftOp {
 
-    private AppendSuccessResponse appendResponse;
+    private VoteResponse voteResponse;
 
-    public AppendSuccessResponseOp() {
+    public VoteResponseOp() {
     }
 
-    public AppendSuccessResponseOp(RaftGroupId groupId, AppendSuccessResponse appendResponse) {
+    public VoteResponseOp(RaftGroupId groupId, VoteResponse voteResponse) {
         super(groupId);
-        this.appendResponse = appendResponse;
+        this.voteResponse = voteResponse;
     }
 
     @Override
     public void run() throws Exception {
         RaftService service = getService();
-        service.handleAppendResponse(groupId, appendResponse);
+        service.handleVoteResponse(groupId, voteResponse);
     }
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeObject(appendResponse);
+        out.writeObject(voteResponse);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        appendResponse = in.readObject();
+        voteResponse = in.readObject();
     }
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.APPEND_SUCCESS_RESPONSE_OP;
+        return RaftServiceDataSerializerHook.VOTE_RESPONSE_OP;
     }
 }

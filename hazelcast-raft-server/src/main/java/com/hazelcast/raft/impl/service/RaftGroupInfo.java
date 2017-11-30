@@ -1,44 +1,51 @@
 package com.hazelcast.raft.impl.service;
 
-import com.hazelcast.nio.ObjectDataInput;
-import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.impl.RaftEndpoint;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
+
+import static com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus.ACTIVE;
+import static com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus.DESTROYED;
+import static com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus.DESTROYING;
+import static com.hazelcast.util.Preconditions.checkState;
+import static java.util.Collections.unmodifiableCollection;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public final class RaftGroupInfo implements IdentifiedDataSerializable {
+public final class RaftGroupInfo {
 
-    private String serviceName;
-    private String name;
+    public enum RaftGroupStatus {
+        ACTIVE, DESTROYING, DESTROYED
+    }
+
+    private RaftGroupId id;
     private Collection<RaftEndpoint> members;
-    private int commitIndex;
+    private String serviceName;
+    // read from multiple threads in tests
+    private volatile RaftGroupStatus status;
 
     private transient RaftEndpoint[] membersArray;
 
-    public RaftGroupInfo(String serviceName, String name, Collection<RaftEndpoint> members, int commitIndex) {
+    public RaftGroupInfo(RaftGroupId id, Collection<RaftEndpoint> members, String serviceName) {
+        this.id = id;
+        this.members = unmodifiableCollection(new ArrayList<RaftEndpoint>(members));
         this.serviceName = serviceName;
-        this.name = name;
-        this.members = Collections.unmodifiableCollection(members);
-        this.commitIndex = commitIndex;
+        this.status = ACTIVE;
     }
 
-    public RaftGroupInfo() {
-    }
-
-    public String serviceName() {
-        return serviceName;
+    public RaftGroupId id() {
+        return id;
     }
 
     public String name() {
-        return name;
+        return id.name();
+    }
+
+    public int commitIndex() {
+        return id.commitIndex();
     }
 
     public Collection<RaftEndpoint> members() {
@@ -49,8 +56,32 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
         return members.size();
     }
 
-    public int commitIndex() {
-        return commitIndex;
+    public String serviceName() {
+        return serviceName;
+    }
+
+    public RaftGroupStatus status() {
+        return status;
+    }
+
+    public boolean setDestroying() {
+        if (status == DESTROYED) {
+            return false;
+        }
+
+        status = DESTROYING;
+        return true;
+    }
+
+    public boolean setDestroyed() {
+        checkState(status != ACTIVE, "Cannot destroy " + id + " because status is: " + status);
+
+        if (status == DESTROYED) {
+            return false;
+        }
+
+        status = DESTROYED;
+        return true;
     }
 
     public RaftEndpoint[] membersArray() {
@@ -58,39 +89,5 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
             membersArray = members.toArray(new RaftEndpoint[0]);
         }
         return membersArray;
-    }
-
-    @Override
-    public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeUTF(serviceName);
-        out.writeUTF(name);
-        out.writeInt(commitIndex);
-        out.writeInt(members.size());
-        for (RaftEndpoint endpoint : members) {
-            out.writeObject(endpoint);
-        }
-    }
-
-    @Override
-    public void readData(ObjectDataInput in) throws IOException {
-        serviceName = in.readUTF();
-        name = in.readUTF();
-        commitIndex = in.readInt();
-        int len = in.readInt();
-        members = new ArrayList<RaftEndpoint>(len);
-        for (int i = 0; i < len; i++) {
-            RaftEndpoint endpoint = in.readObject();
-            members.add(endpoint);
-        }
-    }
-
-    @Override
-    public int getFactoryId() {
-        return RaftServiceDataSerializerHook.F_ID;
-    }
-
-    @Override
-    public int getId() {
-        return RaftServiceDataSerializerHook.GROUP_INFO;
     }
 }

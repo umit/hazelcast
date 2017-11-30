@@ -28,8 +28,10 @@ import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.log.RaftLog;
 import com.hazelcast.raft.impl.operation.RestoreSnapshotOp;
 import com.hazelcast.raft.impl.operation.TakeSnapshotOp;
+import com.hazelcast.raft.impl.operation.TerminateRaftGroupOp;
 import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.raft.impl.state.RaftState;
+import com.hazelcast.raft.impl.util.RaftNodeStatusAwareStripedRunnableAdaptor;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.raft.impl.util.StripedRunnableAdaptor;
 import com.hazelcast.spi.TaskScheduler;
@@ -45,6 +47,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import static com.hazelcast.raft.impl.RaftNode.RaftNodeStatus.ACTIVE;
+import static com.hazelcast.raft.impl.RaftNode.RaftNodeStatus.TERMINATED;
+import static com.hazelcast.raft.impl.RaftNode.RaftNodeStatus.TERMINATING;
 import static java.lang.Math.min;
 
 /**
@@ -52,6 +57,10 @@ import static java.lang.Math.min;
  *
  */
 public class RaftNode {
+
+    public enum RaftNodeStatus {
+        ACTIVE, TERMINATING, TERMINATED
+    }
 
     private static final long SNAPSHOT_TASK_PERIOD_IN_SECONDS = 1;
     private static final int LEADER_ELECTION_TIMEOUT_RANGE = 1000;
@@ -72,6 +81,8 @@ public class RaftNode {
     private final int commitIndexAdvanceCountToSnapshot;
 
     private long lastAppendEntriesTimestamp;
+
+    private RaftNodeStatus status = ACTIVE;
 
     public RaftNode(String serviceName, String name, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints,
                     RaftConfig raftConfig, RaftIntegration raftIntegration, StripedExecutor executor) {
@@ -98,13 +109,26 @@ public class RaftNode {
         return localEndpoint;
     }
 
+    public RaftNodeStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(RaftNodeStatus status) {
+        if (this.status == TERMINATED) {
+            throw new IllegalStateException("Cannot set status: " + status + " since it is already TERMINATED");
+        }
+
+        this.status = status;
+        logger.info("Status is set to: " + status);
+    }
+
     public long getLeaderElectionTimeoutInMillis() {
         return RandomPicker.getInt(leaderElectionTimeout, leaderElectionTimeout + LEADER_ELECTION_TIMEOUT_RANGE);
     }
 
     public boolean shouldAllowNewAppends() {
         int lastLogIndex = state.log().lastLogOrSnapshotIndex();
-        return (lastLogIndex - state.commitIndex() < maxUncommittedEntryCount);
+        return status == ACTIVE && (lastLogIndex - state.commitIndex() < maxUncommittedEntryCount);
     }
 
     public void send(PreVoteRequest request, RaftEndpoint target) {
@@ -151,34 +175,25 @@ public class RaftNode {
         executor.execute(new PreVoteTask(this));
 
         scheduleLeaderFailureDetection();
-        schedulePeriodicSnapshotTask();
+        scheduleSnapshot();
     }
 
-    private void schedulePeriodicSnapshotTask() {
-        taskScheduler.scheduleWithRepetition(new Runnable() {
-            @Override
-            public void run() {
-                executor.execute(new SnapshotTask());
-            }
-        }, SNAPSHOT_TASK_PERIOD_IN_SECONDS, SNAPSHOT_TASK_PERIOD_IN_SECONDS, TimeUnit.SECONDS);
+    private void scheduleSnapshot() {
+        schedule(new SnapshotTask(), TimeUnit.SECONDS.toMillis(SNAPSHOT_TASK_PERIOD_IN_SECONDS));
     }
 
     private void scheduleLeaderFailureDetection() {
-        taskScheduler.schedule(new Runnable() {
-            @Override
-            public void run() {
-                executor.execute(new LeaderFailureDetectionTask());
-            }
-        }, getLeaderElectionTimeoutInMillis(), TimeUnit.MILLISECONDS);
+        schedule(new LeaderFailureDetectionTask(), getLeaderElectionTimeoutInMillis());
+    }
+
+    public void scheduleHeartbeat() {
+        schedule(new HeartbeatTask(), heartbeatPeriodInMillis);
     }
 
     public int getStripeKey() {
         return state.name().hashCode();
     }
 
-    public void startPeriodicHeartbeatTask() {
-        executor.execute(new HeartbeatTask());
-    }
 
     public void broadcastAppendRequest() {
         for (RaftEndpoint follower : state.remoteMembers()) {
@@ -270,6 +285,9 @@ public class RaftNode {
             // Update the lastApplied index
             state.lastApplied(idx);
         }
+
+        assert status != TERMINATED || commitIndex == raftLog.lastLogOrSnapshotIndex() :
+                "commit index: " + commitIndex + " must be equal to " + raftLog.lastLogOrSnapshotIndex() + " on termination.";
     }
 
     private void processLog(LogEntry entry) {
@@ -278,7 +296,14 @@ public class RaftNode {
         }
 
         SimpleCompletableFuture future = futures.remove(entry.index());
-        Object response = raftIntegration.runOperation(entry.operation(), entry.index());
+        Object response = null;
+        RaftOperation operation = entry.operation();
+        if (operation instanceof TerminateRaftGroupOp) {
+            assert status == TERMINATING;
+            setStatus(TERMINATED);
+        } else {
+            response = raftIntegration.runOperation(operation, entry.index());
+        }
         if (future != null) {
             future.setResult(response);
         }
@@ -296,53 +321,70 @@ public class RaftNode {
         return state;
     }
 
-    public TaskScheduler taskScheduler() {
-        return taskScheduler;
-    }
+    // only for testing
+    public void forceExecute(Runnable task) {
+        StripedRunnable r;
+        if (task instanceof StripedRunnable) {
+            r = (StripedRunnable) task;
+            assert r.getKey() == getStripeKey() : "Task-key: " + r.getKey() + ", Node-key: " + getStripeKey();
+        } else {
+            r = new StripedRunnableAdaptor(task, getStripeKey());
+        }
 
-    public void execute(StripedRunnable task) {
-        assert task.getKey() == getStripeKey() : "Task-key: " + task.getKey() + ", Node-key: " + getStripeKey();
-        executor.execute(task);
+        executor.execute(r);
     }
 
     public void execute(Runnable task) {
-        if (task instanceof StripedRunnable) {
-            execute((StripedRunnable) task);
-        } else {
-            executor.execute(new StripedRunnableAdaptor(task, getStripeKey()));
+        if (status == TERMINATED) {
+            return;
         }
+
+        executor.execute(new RaftNodeStatusAwareStripedRunnableAdaptor(this, task, getStripeKey()));
+    }
+
+    public void schedule(final Runnable task, long delayInMillis) {
+        if (status == TERMINATED) {
+            return;
+        }
+
+        taskScheduler.schedule(new Runnable() {
+            @Override
+            public void run() {
+                execute(task);
+            }
+        }, delayInMillis, TimeUnit.MILLISECONDS);
     }
 
     public void handlePreVoteRequest(PreVoteRequest request) {
-        executor.execute(new PreVoteRequestHandlerTask(this, request));
+        execute(new PreVoteRequestHandlerTask(this, request));
     }
 
     public void handlePreVoteResponse(PreVoteResponse response) {
-        executor.execute(new PreVoteResponseHandlerTask(this, response));
+        execute(new PreVoteResponseHandlerTask(this, response));
     }
 
     public void handleVoteRequest(VoteRequest request) {
-        executor.execute(new VoteRequestHandlerTask(this, request));
+        execute(new VoteRequestHandlerTask(this, request));
     }
 
     public void handleVoteResponse(VoteResponse response) {
-        executor.execute(new VoteResponseHandlerTask(this, response));
+        execute(new VoteResponseHandlerTask(this, response));
     }
 
     public void handleAppendRequest(AppendRequest request) {
-        executor.execute(new AppendRequestHandlerTask(this, request));
+        execute(new AppendRequestHandlerTask(this, request));
     }
 
     public void handleAppendResponse(AppendSuccessResponse response) {
-        executor.execute(new AppendSuccessResponseHandlerTask(this, response));
+        execute(new AppendSuccessResponseHandlerTask(this, response));
     }
 
     public void handleAppendResponse(AppendFailureResponse response) {
-        executor.execute(new AppendFailureResponseHandlerTask(this, response));
+        execute(new AppendFailureResponseHandlerTask(this, response));
     }
 
     public void handleInstallSnapshot(InstallSnapshot request) {
-        executor.execute(new InstallSnapshotHandlerTask(this, request));
+        execute(new InstallSnapshotHandlerTask(this, request));
     }
 
     public void registerFuture(int entryIndex, SimpleCompletableFuture future) {
@@ -384,11 +426,8 @@ public class RaftNode {
     }
 
     public void takeSnapshotIfCommitIndexAdvanced() {
-        if (commitIndexAdvanceCountToSnapshot == Integer.MAX_VALUE) {
-            return;
-        }
         int commitIndex = state.commitIndex();
-        if ((commitIndex - state.log().snapshotIndex()) < commitIndexAdvanceCountToSnapshot) {
+        if (status == TERMINATED || (commitIndex - state.log().snapshotIndex()) < commitIndexAdvanceCountToSnapshot) {
             return;
         }
 
@@ -441,11 +480,6 @@ public class RaftNode {
         return resultFuture;
     }
 
-    public RaftEndpoint getLeader() {
-        // read leader might be stale, since it's accessed without any synchronization
-        return state.leader();
-    }
-
     public String getServiceName() {
         return serviceName;
     }
@@ -469,8 +503,7 @@ public class RaftNode {
         logger.info(sb.toString());
     }
 
-    private class HeartbeatTask implements StripedRunnable {
-
+    private class HeartbeatTask implements Runnable {
         @Override
         public void run() {
             if (state.role() == RaftRole.LEADER) {
@@ -478,31 +511,12 @@ public class RaftNode {
                     broadcastAppendRequest();
                 }
 
-                scheduleNextRun();
+                scheduleHeartbeat();
             }
-        }
-
-        private void scheduleNextRun() {
-            taskScheduler.schedule(new Runnable() {
-                @Override
-                public void run() {
-                    executor.execute(new HeartbeatTask());
-                }
-            }, heartbeatPeriodInMillis, TimeUnit.MILLISECONDS);
-        }
-
-        @Override
-        public int getKey() {
-            return getStripeKey();
         }
     }
 
-    private class LeaderFailureDetectionTask implements StripedRunnable {
-        @Override
-        public int getKey() {
-            return getStripeKey();
-        }
-
+    private class LeaderFailureDetectionTask implements Runnable {
         @Override
         public void run() {
             try {
@@ -530,16 +544,15 @@ public class RaftNode {
         }
     }
 
-    private class SnapshotTask implements StripedRunnable {
-        @Override
-        public int getKey() {
-            return getStripeKey();
-        }
-
+    private class SnapshotTask implements Runnable {
         @Override
         public void run() {
-            if (state.role() == RaftRole.LEADER || state.role() == RaftRole.FOLLOWER) {
-                takeSnapshotIfCommitIndexAdvanced();
+            try {
+                if (state.role() == RaftRole.LEADER || state.role() == RaftRole.FOLLOWER) {
+                    takeSnapshotIfCommitIndexAdvanced();
+                }
+            } finally {
+                scheduleSnapshot();
             }
         }
     }

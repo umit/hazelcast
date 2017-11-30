@@ -1,14 +1,13 @@
 package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
-import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
-import com.hazelcast.util.executor.StripedRunnable;
+import com.hazelcast.raft.impl.state.LeaderState;
+import com.hazelcast.raft.impl.state.RaftState;
 
-public class AppendFailureResponseHandlerTask implements StripedRunnable {
+public class AppendFailureResponseHandlerTask implements Runnable {
 
     private final RaftNode raftNode;
     private final AppendFailureResponse resp;
@@ -18,11 +17,6 @@ public class AppendFailureResponseHandlerTask implements StripedRunnable {
         this.raftNode = raftNode;
         this.resp = response;
         this.logger = raftNode.getLogger(getClass());
-    }
-
-    @Override
-    public int getKey() {
-        return raftNode.getStripeKey();
     }
 
     @Override

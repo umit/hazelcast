@@ -12,14 +12,14 @@ import com.hazelcast.raft.impl.dto.PreVoteRequest;
 import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
-import com.hazelcast.raft.impl.service.operation.AppendFailureResponseOp;
-import com.hazelcast.raft.impl.service.operation.AppendRequestOp;
-import com.hazelcast.raft.impl.service.operation.AppendSuccessResponseOp;
-import com.hazelcast.raft.impl.service.operation.InstallSnapshotOp;
-import com.hazelcast.raft.impl.service.operation.PreVoteRequestOp;
-import com.hazelcast.raft.impl.service.operation.PreVoteResponseOp;
-import com.hazelcast.raft.impl.service.operation.VoteRequestOp;
-import com.hazelcast.raft.impl.service.operation.VoteResponseOp;
+import com.hazelcast.raft.impl.service.operation.integration.AppendFailureResponseOp;
+import com.hazelcast.raft.impl.service.operation.integration.AppendRequestOp;
+import com.hazelcast.raft.impl.service.operation.integration.AppendSuccessResponseOp;
+import com.hazelcast.raft.impl.service.operation.integration.InstallSnapshotOp;
+import com.hazelcast.raft.impl.service.operation.integration.PreVoteRequestOp;
+import com.hazelcast.raft.impl.service.operation.integration.PreVoteResponseOp;
+import com.hazelcast.raft.impl.service.operation.integration.VoteRequestOp;
+import com.hazelcast.raft.impl.service.operation.integration.VoteResponseOp;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationAccessor;
@@ -117,7 +117,6 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
     @Override
     public Object runOperation(RaftOperation operation, int commitIndex) {
         operation.setCommitIndex(commitIndex).setNodeEngine(nodeEngine);
-        // TODO do we need this ???
         OperationAccessor.setCallerAddress(operation, nodeEngine.getThisAddress());
         try {
             operation.beforeRun();

@@ -2,24 +2,26 @@ package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.log.RaftLog;
+import com.hazelcast.raft.impl.operation.TerminateRaftGroupOp;
 import com.hazelcast.raft.impl.state.RaftState;
-import com.hazelcast.util.executor.StripedRunnable;
 
 import java.util.Arrays;
 import java.util.List;
 
 import static java.lang.Math.min;
+import static java.util.Collections.singletonList;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public class AppendRequestHandlerTask implements StripedRunnable {
+public class AppendRequestHandlerTask implements Runnable {
     private final RaftNode raftNode;
     private final AppendRequest req;
     private final ILogger logger;
@@ -121,6 +123,7 @@ public class AppendRequestHandlerTask implements StripedRunnable {
                     }
 
                     raftNode.invalidateFuturesFrom(reqEntry.index());
+                    updateRaftNodeStatus(truncated, RaftNodeStatus.ACTIVE);
 
                     //                            if (entry.index <= r.configurations.latestIndex) {
                     //                                r.configurations.latest = r.configurations.committed
@@ -138,6 +141,7 @@ public class AppendRequestHandlerTask implements StripedRunnable {
                 }
 
                 raftLog.appendEntries(newEntries);
+                updateRaftNodeStatus(singletonList(raftLog.lastLogOrSnapshotEntry()), RaftNodeStatus.TERMINATING);
 
                 // Handle any new configuration changes
                 //                        for _, newEntry := range newEntries {
@@ -166,12 +170,16 @@ public class AppendRequestHandlerTask implements StripedRunnable {
         raftNode.send(resp, req.leader());
     }
 
-    private AppendFailureResponse createFailureResponse(int term) {
-        return new AppendFailureResponse(raftNode.getLocalEndpoint(), term, req.prevLogIndex() + 1);
+    private void updateRaftNodeStatus(List<LogEntry> entries, RaftNodeStatus status) {
+        for (LogEntry entry : entries) {
+            if (entry.operation() instanceof TerminateRaftGroupOp) {
+                raftNode.setStatus(status);
+                return;
+            }
+        }
     }
 
-    @Override
-    public int getKey() {
-        return raftNode.getStripeKey();
+    private AppendFailureResponse createFailureResponse(int term) {
+        return new AppendFailureResponse(raftNode.getLocalEndpoint(), term, req.prevLogIndex() + 1);
     }
 }

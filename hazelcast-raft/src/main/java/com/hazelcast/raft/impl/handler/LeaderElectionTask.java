@@ -5,15 +5,12 @@ import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.state.RaftState;
-import com.hazelcast.util.executor.StripedRunnable;
-
-import java.util.concurrent.TimeUnit;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public class LeaderElectionTask implements StripedRunnable {
+public class LeaderElectionTask implements Runnable {
     private final RaftNode raftNode;
     private final ILogger logger;
 
@@ -44,17 +41,7 @@ public class LeaderElectionTask implements StripedRunnable {
     }
 
     private void scheduleLeaderElectionTimeout() {
-        raftNode.taskScheduler().schedule(new Runnable() {
-            @Override
-            public void run() {
-                raftNode.execute(new LeaderElectionTimeoutTask(raftNode));
-            }
-        }, raftNode.getLeaderElectionTimeoutInMillis(), TimeUnit.MILLISECONDS);
-    }
-
-    @Override
-    public int getKey() {
-        return raftNode.getStripeKey();
+        raftNode.schedule(new LeaderElectionTimeoutTask(raftNode), raftNode.getLeaderElectionTimeoutInMillis());
     }
 
 }

@@ -9,13 +9,12 @@ import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.log.RaftLog;
 import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.util.Clock;
-import com.hazelcast.util.executor.StripedRunnable;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public class VoteRequestHandlerTask implements StripedRunnable {
+public class VoteRequestHandlerTask implements Runnable {
     private final ILogger logger;
     private final RaftNode raftNode;
     private final VoteRequest req;
@@ -96,10 +95,5 @@ public class VoteRequestHandlerTask implements StripedRunnable {
         state.persistVote(req.term(), req.candidate());
 
         raftNode.send(new VoteResponse(localEndpoint, req.term(), true), req.candidate());
-    }
-
-    @Override
-    public int getKey() {
-        return raftNode.getStripeKey();
     }
 }

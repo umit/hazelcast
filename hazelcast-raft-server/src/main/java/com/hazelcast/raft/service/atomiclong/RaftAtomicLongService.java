@@ -12,7 +12,7 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
-import static com.hazelcast.raft.impl.service.CreateRaftGroupHelper.createRaftGroup;
+import static com.hazelcast.raft.impl.service.util.RaftGroupHelper.createRaftGroup;
 
 /**
  * TODO: Javadoc Pending...
