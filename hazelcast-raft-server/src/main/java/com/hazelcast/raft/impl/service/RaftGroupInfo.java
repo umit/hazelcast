@@ -41,6 +41,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
         this.members = unmodifiableCollection(new ArrayList<RaftEndpoint>(members));
         this.serviceName = serviceName;
         this.status = ACTIVE;
+        this.membersArray = members.toArray(new RaftEndpoint[0]);
     }
 
     public RaftGroupId id() {
@@ -92,9 +93,6 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     }
 
     public RaftEndpoint[] membersArray() {
-        if (membersArray == null) {
-            membersArray = members.toArray(new RaftEndpoint[0]);
-        }
         return membersArray;
     }
 
