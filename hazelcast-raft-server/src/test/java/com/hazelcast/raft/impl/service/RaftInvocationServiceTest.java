@@ -5,6 +5,7 @@ import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.nio.Address;
+import com.hazelcast.raft.exception.RaftGroupTerminatedException;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.operation.metadata.GetDestroyingRaftGroupsOperation;
@@ -144,14 +145,9 @@ public class RaftInvocationServiceTest extends HazelcastRaftTestSupport {
         RaftInvocationService invocationService = getRaftInvocationService(instances[0]);
         final RaftGroupId groupId = invocationService.createRaftGroup(RaftDataService.SERVICE_NAME, "test", nodeCount);
 
-        invocationService.invoke(groupId, new Supplier<RaftReplicateOperation>() {
-            @Override
-            public RaftReplicateOperation get() {
-                return new DefaultRaftGroupReplicateOperation(groupId, new RaftAddOperation("val"));
-            }
-        }).get();
+        invocationService.invoke(groupId, createRaftAddOperationSupplier(groupId, "val")).get();
 
-        invocationService.destroyRaftGroup(groupId);
+        invocationService.triggerDestroyRaftGroup(groupId);
 
         ICompletableFuture<Collection<RaftGroupId>> future = invocationService.invoke(METADATA_GROUP_ID, new Supplier<RaftReplicateOperation>() {
                     @Override
@@ -176,6 +172,21 @@ public class RaftInvocationServiceTest extends HazelcastRaftTestSupport {
                 }
             }
         });
+
+        try {
+            invocationService.invoke(groupId, createRaftAddOperationSupplier(groupId, "val2")).get();
+            fail();
+        } catch (RaftGroupTerminatedException ignored) {
+        }
+    }
+
+    private Supplier<RaftReplicateOperation> createRaftAddOperationSupplier(final RaftGroupId groupId, final Object val) {
+        return new Supplier<RaftReplicateOperation>() {
+            @Override
+            public RaftReplicateOperation get() {
+                return new DefaultRaftGroupReplicateOperation(groupId, new RaftAddOperation(val));
+            }
+        };
     }
 
     @Override

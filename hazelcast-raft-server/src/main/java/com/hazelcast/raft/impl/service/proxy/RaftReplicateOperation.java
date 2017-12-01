@@ -6,8 +6,11 @@ import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.exception.NotLeaderException;
+import com.hazelcast.raft.exception.RaftGroupTerminatedException;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.service.RaftGroupId;
+import com.hazelcast.raft.impl.service.RaftGroupInfo;
+import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.spi.ExceptionAction;
 import com.hazelcast.spi.Operation;
@@ -35,7 +38,12 @@ public abstract class RaftReplicateOperation extends Operation implements Identi
         RaftService service = getService();
         RaftNode raftNode = service.getRaftNode(groupId);
         if (raftNode == null) {
-            sendResponse(new NotLeaderException(service.getLocalEndpoint(), null));
+            RaftGroupInfo raftGroupInfo = service.getRaftGroupInfo(groupId);
+            if (raftGroupInfo != null && raftGroupInfo.status() == RaftGroupStatus.DESTROYED) {
+                sendResponse(new RaftGroupTerminatedException());
+            } else {
+                sendResponse(new NotLeaderException(service.getLocalEndpoint(), null));
+            }
             return;
         }
 
