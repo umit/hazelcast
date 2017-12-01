@@ -27,20 +27,21 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int F_ID = FactoryIdHelper.getFactoryId(RAFT_DS_FACTORY, RAFT_DS_FACTORY_ID);
 
     public static final int GROUP_ID = 1;
-    public static final int VOTE_REQUEST_OP = 2;
-    public static final int VOTE_RESPONSE_OP = 3;
-    public static final int APPEND_REQUEST_OP = 4;
-    public static final int APPEND_SUCCESS_RESPONSE_OP = 5;
-    public static final int APPEND_FAILURE_RESPONSE_OP = 6;
-    public static final int INSTALL_SNAPSHOT_OP = 7;
-    public static final int PRE_VOTE_REQUEST_OP = 8;
-    public static final int PRE_VOTE_RESPONSE_OP = 9;
-    public static final int DEFAULT_RAFT_GROUP_REPLICATING_OP = 10;
-    public static final int CREATE_RAFT_GROUP_OP = 11;
-    public static final int CREATE_RAFT_GROUP_REPLICATING_OP = 12;
-    public static final int TRIGGER_DESTROY_RAFT_GROUP_OP = 13;
-    public static final int GET_DESTROYING_RAFT_GROUPS_OP = 14;
-    public static final int COMPLETE_DESTROY_RAFT_GROUPS_OP = 15;
+    public static final int GROUP_INFO = 2;
+    public static final int VOTE_REQUEST_OP = 3;
+    public static final int VOTE_RESPONSE_OP = 4;
+    public static final int APPEND_REQUEST_OP = 5;
+    public static final int APPEND_SUCCESS_RESPONSE_OP = 6;
+    public static final int APPEND_FAILURE_RESPONSE_OP = 7;
+    public static final int INSTALL_SNAPSHOT_OP = 8;
+    public static final int PRE_VOTE_REQUEST_OP = 9;
+    public static final int PRE_VOTE_RESPONSE_OP = 10;
+    public static final int DEFAULT_RAFT_GROUP_REPLICATING_OP = 11;
+    public static final int CREATE_RAFT_GROUP_OP = 12;
+    public static final int CREATE_RAFT_GROUP_REPLICATING_OP = 13;
+    public static final int TRIGGER_DESTROY_RAFT_GROUP_OP = 14;
+    public static final int GET_DESTROYING_RAFT_GROUPS_OP = 15;
+    public static final int COMPLETE_DESTROY_RAFT_GROUPS_OP = 16;
 
     @Override
     public int getFactoryId() {
@@ -55,6 +56,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                 switch (typeId) {
                     case GROUP_ID:
                         return new RaftGroupId();
+                    case GROUP_INFO:
+                        return new RaftGroupInfo();
                     case VOTE_REQUEST_OP:
                         return new VoteRequestOp();
                     case VOTE_RESPONSE_OP:
