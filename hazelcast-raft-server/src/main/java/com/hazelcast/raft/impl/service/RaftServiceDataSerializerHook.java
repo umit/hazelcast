@@ -14,10 +14,10 @@ import com.hazelcast.raft.impl.service.operation.integration.VoteRequestOp;
 import com.hazelcast.raft.impl.service.operation.integration.VoteResponseOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOperation;
-import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupReplicatingOperation;
+import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.GetDestroyingRaftGroupsOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOperation;
-import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicatingOperation;
+import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
 
 public final class RaftServiceDataSerializerHook implements DataSerializerHook {
 
@@ -77,9 +77,9 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                     case CREATE_RAFT_GROUP_OP:
                         return new CreateRaftGroupOperation();
                     case DEFAULT_RAFT_GROUP_REPLICATING_OP:
-                        return new DefaultRaftGroupReplicatingOperation();
+                        return new DefaultRaftGroupReplicateOperation();
                     case CREATE_RAFT_GROUP_REPLICATING_OP:
-                        return new CreateRaftGroupReplicatingOperation();
+                        return new CreateRaftGroupReplicateOperation();
                     case TRIGGER_DESTROY_RAFT_GROUP_OP:
                         return new TriggerDestroyRaftGroupOperation();
                     case GET_DESTROYING_RAFT_GROUPS_OP:

@@ -8,16 +8,17 @@ import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
 import java.io.IOException;
 
-public class DefaultRaftGroupReplicatingOperation extends RaftReplicatingOperation {
+public class DefaultRaftGroupReplicateOperation
+        extends RaftReplicateOperation {
 
     private RaftGroupId groupId;
 
     private RaftOperation raftOperation;
 
-    public DefaultRaftGroupReplicatingOperation() {
+    public DefaultRaftGroupReplicateOperation() {
     }
 
-    public DefaultRaftGroupReplicatingOperation(RaftGroupId groupId, RaftOperation raftOperation) {
+    public DefaultRaftGroupReplicateOperation(RaftGroupId groupId, RaftOperation raftOperation) {
         this.groupId = groupId;
         this.raftOperation = raftOperation;
     }

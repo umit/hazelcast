@@ -4,7 +4,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.impl.service.RaftGroupId;
-import com.hazelcast.raft.impl.service.proxy.RaftReplicatingOperation;
+import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
 import com.hazelcast.raft.service.atomiclong.AtomicLongDataSerializerHook;
 import com.hazelcast.raft.service.atomiclong.operation.AbstractAtomicLongOperation;
 
@@ -14,14 +14,14 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public final class AtomicLongReplicatingOperation extends RaftReplicatingOperation {
+public final class AtomicLongReplicateOperation extends RaftReplicateOperation {
 
     private AbstractAtomicLongOperation operation;
 
-    public AtomicLongReplicatingOperation() {
+    public AtomicLongReplicateOperation() {
     }
 
-    public AtomicLongReplicatingOperation(AbstractAtomicLongOperation operation) {
+    public AtomicLongReplicateOperation(AbstractAtomicLongOperation operation) {
         this.operation = operation;
     }
 
