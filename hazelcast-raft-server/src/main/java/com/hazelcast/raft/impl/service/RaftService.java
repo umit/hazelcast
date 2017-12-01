@@ -2,7 +2,6 @@ package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.internal.cluster.ClusterService;
-import com.hazelcast.internal.util.RuntimeAvailableProcessors;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftConfig;
@@ -31,8 +30,8 @@ import com.hazelcast.spi.ConfigurableService;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.util.AddressUtil;
-import com.hazelcast.util.executor.StripedExecutor;
 import com.hazelcast.util.function.Supplier;
 
 import java.net.UnknownHostException;
@@ -53,7 +52,6 @@ import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.raft.impl.service.util.RaftInvocationHelper.invokeOnLeader;
 import static com.hazelcast.util.Preconditions.checkNotNull;
-import static com.hazelcast.util.ThreadUtil.createThreadName;
 import static java.util.Collections.emptyList;
 
 /**
@@ -69,16 +67,15 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     private final Map<RaftGroupId, RaftGroupInfo> raftGroups = new ConcurrentHashMap<RaftGroupId, RaftGroupInfo>();
     private final Map<RaftGroupId, RaftNode> nodes = new ConcurrentHashMap<RaftGroupId, RaftNode>();
     private final ConcurrentMap<RaftGroupId, RaftEndpoint> knownLeaders = new ConcurrentHashMap<RaftGroupId, RaftEndpoint>();
-    private final NodeEngine nodeEngine;
+    private final NodeEngineImpl nodeEngine;
     private final ILogger logger;
 
-    private volatile StripedExecutor executor;
     private volatile RaftConfig config;
     private volatile Collection<RaftEndpoint> endpoints;
     private volatile RaftEndpoint localEndpoint;
 
     public RaftService(NodeEngine nodeEngine) {
-        this.nodeEngine = nodeEngine;
+        this.nodeEngine = (NodeEngineImpl) nodeEngine;
         this.logger = nodeEngine.getLogger(getClass());
     }
 
@@ -98,11 +95,8 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
             return;
         }
 
-        String threadPoolName = createThreadName(nodeEngine.getHazelcastInstance().getName(), "raft");
-        this.executor = new StripedExecutor(logger, threadPoolName, RuntimeAvailableProcessors.get(), Integer.MAX_VALUE);
-
-        RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, METADATA_GROUP_ID);
-        RaftNode node = new RaftNode(SERVICE_NAME, METADATA_RAFT, localEndpoint, endpoints, config, raftIntegration, executor);
+        RaftIntegration raftIntegration = new NodeEngineRaftIntegration(this.nodeEngine, METADATA_GROUP_ID);
+        RaftNode node = new RaftNode(SERVICE_NAME, METADATA_RAFT, localEndpoint, endpoints, config, raftIntegration);
         nodes.put(METADATA_GROUP_ID, node);
         node.start();
 
@@ -138,10 +132,6 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
 
     @Override
     public void shutdown(boolean terminate) {
-        if (executor != null) {
-            executor.shutdown();
-            executor = null;
-        }
     }
 
     @Override
@@ -296,7 +286,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         assert nodes.get(groupId) == null : "Raft node with name " + name + " should not exist!";
 
         RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, groupId);
-        RaftNode node = new RaftNode(serviceName, name, localEndpoint, endpoints, config, raftIntegration, executor);
+        RaftNode node = new RaftNode(serviceName, name, localEndpoint, endpoints, config, raftIntegration);
         nodes.put(groupId, node);
         node.start();
         return groupId;

@@ -1,6 +1,6 @@
 package com.hazelcast.raft.impl.handler;
 
-import com.hazelcast.logging.ILogger;
+import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.PreVoteResponse;
@@ -11,24 +11,17 @@ import com.hazelcast.raft.impl.state.RaftState;
  * TODO: Javadoc Pending...
  *
  */
-public class PreVoteResponseHandlerTask implements Runnable {
-    private final RaftNode raftNode;
+public class PreVoteResponseHandlerTask extends RaftNodeAwareTask implements Runnable {
     private final PreVoteResponse resp;
-    private final ILogger logger;
 
     public PreVoteResponseHandlerTask(RaftNode raftNode, PreVoteResponse response) {
-        this.raftNode = raftNode;
+        super(raftNode);
         this.resp = response;
-        this.logger = raftNode.getLogger(getClass());
     }
 
     @Override
-    public void run() {
+    protected void innerRun() {
         RaftState state = raftNode.state();
-        if (!state.isKnownEndpoint(resp.voter())) {
-            logger.warning("Ignored " + resp + ", since pre-voter is unknown to us");
-            return;
-        }
 
         if (state.role() != RaftRole.FOLLOWER) {
             logger.info("Ignored " + resp + ". We are not FOLLOWER anymore.");
@@ -55,5 +48,10 @@ public class PreVoteResponseHandlerTask implements Runnable {
             logger.info("We have the majority during pre-vote phase. Let's start real election!");
             new LeaderElectionTask(raftNode).run();
         }
+    }
+
+    @Override
+    protected RaftEndpoint senderEndpoint() {
+        return resp.voter();
     }
 }

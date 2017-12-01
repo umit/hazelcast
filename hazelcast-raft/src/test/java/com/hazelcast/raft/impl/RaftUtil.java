@@ -126,7 +126,7 @@ public class RaftUtil {
 
     private static <T> T readRaftState(RaftNode node, Callable<T> task) {
         FutureTask<T> futureTask = new FutureTask<T>(task);
-        node.forceExecute(futureTask);
+        node.execute(futureTask);
         try {
             return futureTask.get();
         } catch (Exception e) {

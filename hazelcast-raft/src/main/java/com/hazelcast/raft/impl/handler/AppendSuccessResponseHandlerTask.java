@@ -1,6 +1,5 @@
 package com.hazelcast.raft.impl.handler;
 
-import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
@@ -19,24 +18,17 @@ import static java.util.Arrays.sort;
  * TODO: Javadoc Pending...
  *
  */
-public class AppendSuccessResponseHandlerTask implements Runnable {
-    private final RaftNode raftNode;
+public class AppendSuccessResponseHandlerTask extends RaftNodeAwareTask implements Runnable {
     private final AppendSuccessResponse resp;
-    private final ILogger logger;
 
     public AppendSuccessResponseHandlerTask(RaftNode raftNode, AppendSuccessResponse response) {
-        this.raftNode = raftNode;
+        super(raftNode);
         this.resp = response;
-        this.logger = raftNode.getLogger(getClass());
     }
 
     @Override
-    public void run() {
+    protected void innerRun() {
         RaftState state = raftNode.state();
-        if (!state.isKnownEndpoint(resp.follower())) {
-            logger.warning("Ignored " + resp + ", since sender is unknown to us");
-            return;
-        }
 
         if (state.role() != RaftRole.LEADER) {
             logger.warning("Ignored " + resp + ". We are not LEADER anymore.");
@@ -114,5 +106,10 @@ public class AppendSuccessResponseHandlerTask implements Runnable {
         state.commitIndex(commitIndex);
         raftNode.broadcastAppendRequest();
         raftNode.processLogs();
+    }
+
+    @Override
+    protected RaftEndpoint senderEndpoint() {
+        return resp.follower();
     }
 }

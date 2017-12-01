@@ -31,15 +31,10 @@ import com.hazelcast.raft.impl.operation.TakeSnapshotOp;
 import com.hazelcast.raft.impl.operation.TerminateRaftGroupOp;
 import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.raft.impl.state.RaftState;
-import com.hazelcast.raft.impl.util.RaftNodeStatusAwareStripedRunnableAdaptor;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
-import com.hazelcast.raft.impl.util.StripedRunnableAdaptor;
-import com.hazelcast.spi.TaskScheduler;
 import com.hazelcast.util.Clock;
 import com.hazelcast.util.RandomPicker;
 import com.hazelcast.util.collection.Long2ObjectHashMap;
-import com.hazelcast.util.executor.StripedExecutor;
-import com.hazelcast.util.executor.StripedRunnable;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -68,10 +63,8 @@ public class RaftNode {
     private final String serviceName;
     private final ILogger logger;
     private final RaftState state;
-    private final StripedExecutor executor;
     private final RaftIntegration raftIntegration;
     private final RaftEndpoint localEndpoint;
-    private final TaskScheduler taskScheduler;
     private final Long2ObjectHashMap<SimpleCompletableFuture> futures = new Long2ObjectHashMap<SimpleCompletableFuture>();
 
     private final long heartbeatPeriodInMillis;
@@ -81,17 +74,14 @@ public class RaftNode {
     private final int commitIndexAdvanceCountToSnapshot;
 
     private long lastAppendEntriesTimestamp;
-
     private RaftNodeStatus status = ACTIVE;
 
     public RaftNode(String serviceName, String name, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints,
-                    RaftConfig raftConfig, RaftIntegration raftIntegration, StripedExecutor executor) {
+                    RaftConfig raftConfig, RaftIntegration raftIntegration) {
         this.serviceName = serviceName;
         this.raftIntegration = raftIntegration;
-        this.executor = executor;
         this.localEndpoint = localEndpoint;
         this.state = new RaftState(name, localEndpoint, endpoints);
-        this.taskScheduler = raftIntegration.getTaskScheduler();
         this.logger = getLogger(getClass());
         this.maxUncommittedEntryCount = raftConfig.getUncommittedEntryCountToRejectNewAppends();
         this.appendRequestMaxEntryCount = raftConfig.getAppendRequestMaxEntryCount();
@@ -111,6 +101,10 @@ public class RaftNode {
 
     public RaftNodeStatus getStatus() {
         return status;
+    }
+
+    public boolean isTerminated() {
+        return status == TERMINATED;
     }
 
     public void setStatus(RaftNodeStatus status) {
@@ -161,7 +155,7 @@ public class RaftNode {
 
     public void start() {
         if (!raftIntegration.isJoined()) {
-            taskScheduler.schedule(new Runnable() {
+            raftIntegration.schedule(new Runnable() {
                 @Override
                 public void run() {
                     start();
@@ -172,7 +166,7 @@ public class RaftNode {
 
         logger.info("Starting raft node: " + localEndpoint + " for raft cluster: " + state.name()
                 + " with members[" + state.memberCount() + "]: " + state.members());
-        executor.execute(new PreVoteTask(this));
+        raftIntegration.execute(new PreVoteTask(this));
 
         scheduleLeaderFailureDetection();
         scheduleSnapshot();
@@ -321,38 +315,15 @@ public class RaftNode {
         return state;
     }
 
-    // only for testing
-    public void forceExecute(Runnable task) {
-        StripedRunnable r;
-        if (task instanceof StripedRunnable) {
-            r = (StripedRunnable) task;
-            assert r.getKey() == getStripeKey() : "Task-key: " + r.getKey() + ", Node-key: " + getStripeKey();
-        } else {
-            r = new StripedRunnableAdaptor(task, getStripeKey());
-        }
-
-        executor.execute(r);
-    }
-
     public void execute(Runnable task) {
-        if (status == TERMINATED) {
-            return;
-        }
-
-        executor.execute(new RaftNodeStatusAwareStripedRunnableAdaptor(this, task, getStripeKey()));
+        raftIntegration.execute(task);
     }
 
-    public void schedule(final Runnable task, long delayInMillis) {
+    public void schedule(Runnable task, long delayInMillis) {
         if (status == TERMINATED) {
             return;
         }
-
-        taskScheduler.schedule(new Runnable() {
-            @Override
-            public void run() {
-                execute(task);
-            }
-        }, delayInMillis, TimeUnit.MILLISECONDS);
+        raftIntegration.schedule(task, delayInMillis, TimeUnit.MILLISECONDS);
     }
 
     public void handlePreVoteRequest(PreVoteRequest request) {
@@ -475,8 +446,8 @@ public class RaftNode {
     }
 
     public ICompletableFuture replicate(RaftOperation operation) {
-        SimpleCompletableFuture resultFuture = new SimpleCompletableFuture(raftIntegration.getExecutor(), logger);
-        executor.execute(new ReplicateTask(this, operation, resultFuture));
+        SimpleCompletableFuture resultFuture = raftIntegration.newCompletableFuture();
+        raftIntegration.execute(new ReplicateTask(this, operation, resultFuture));
         return resultFuture;
     }
 

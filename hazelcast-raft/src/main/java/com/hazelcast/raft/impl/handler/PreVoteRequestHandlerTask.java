@@ -1,6 +1,5 @@
 package com.hazelcast.raft.impl.handler;
 
-import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.dto.PreVoteRequest;
@@ -13,25 +12,17 @@ import com.hazelcast.util.Clock;
  * TODO: Javadoc Pending...
  *
  */
-public class PreVoteRequestHandlerTask implements Runnable {
-    private final ILogger logger;
-    private final RaftNode raftNode;
+public class PreVoteRequestHandlerTask extends RaftNodeAwareTask implements Runnable {
     private final PreVoteRequest req;
 
     public PreVoteRequestHandlerTask(RaftNode raftNode, PreVoteRequest req) {
-        this.raftNode = raftNode;
+        super(raftNode);
         this.req = req;
-        this.logger = raftNode.getLogger(getClass());
     }
 
     @Override
-    public void run() {
+    protected void innerRun() {
         RaftState state = raftNode.state();
-        if (!state.isKnownEndpoint(req.candidate())) {
-            logger.warning("Ignored " + req + " since candidate is unknown to us");
-            return;
-        }
-
         RaftEndpoint localEndpoint = raftNode.getLocalEndpoint();
 
         // Reply false if term < currentTerm (§5.1)
@@ -63,5 +54,10 @@ public class PreVoteRequestHandlerTask implements Runnable {
 
         logger.info("Granted pre-vote for " + req);
         raftNode.send(new PreVoteResponse(localEndpoint, req.nextTerm(), true), req.candidate());
+    }
+
+    @Override
+    protected RaftEndpoint senderEndpoint() {
+        return req.candidate();
     }
 }

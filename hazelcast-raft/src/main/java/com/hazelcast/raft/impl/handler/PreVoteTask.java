@@ -1,6 +1,5 @@
 package com.hazelcast.raft.impl.handler;
 
-import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.dto.PreVoteRequest;
@@ -11,17 +10,14 @@ import com.hazelcast.raft.impl.state.RaftState;
  * TODO: Javadoc Pending...
  *
  */
-public class PreVoteTask implements Runnable {
-    private final RaftNode raftNode;
-    private final ILogger logger;
+public class PreVoteTask extends RaftNodeAwareTask implements Runnable {
 
     public PreVoteTask(RaftNode raftNode) {
-        this.raftNode = raftNode;
-        this.logger = raftNode.getLogger(getClass());
+        super(raftNode);
     }
 
     @Override
-    public void run() {
+    protected void innerRun() {
         RaftState state = raftNode.state();
 
         if (state.leader() != null) {
@@ -48,5 +44,10 @@ public class PreVoteTask implements Runnable {
 
     private void schedulePreVoteTimeout() {
         raftNode.schedule(new PreVoteTimeoutTask(raftNode), raftNode.getLeaderElectionTimeoutInMillis());
+    }
+
+    @Override
+    protected RaftEndpoint senderEndpoint() {
+        return null;
     }
 }
