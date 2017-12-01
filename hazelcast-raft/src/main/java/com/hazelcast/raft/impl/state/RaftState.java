@@ -25,8 +25,7 @@ public class RaftState {
     private RaftRole role = RaftRole.FOLLOWER;
     private int term;
 
-    // defined as volatile to be able to read without synchronization
-    private volatile RaftEndpoint leader;
+    private RaftEndpoint leader;
 
     // index of highest committed log entry
     private int commitIndex;
