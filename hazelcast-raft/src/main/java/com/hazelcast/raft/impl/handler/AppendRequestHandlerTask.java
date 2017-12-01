@@ -1,6 +1,6 @@
 package com.hazelcast.raft.impl.handler;
 
-import com.hazelcast.logging.ILogger;
+import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
@@ -21,28 +21,21 @@ import static java.util.Collections.singletonList;
  * TODO: Javadoc Pending...
  *
  */
-public class AppendRequestHandlerTask implements Runnable {
-    private final RaftNode raftNode;
+public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runnable {
     private final AppendRequest req;
-    private final ILogger logger;
 
     public AppendRequestHandlerTask(RaftNode raftNode, AppendRequest req) {
-        this.raftNode = raftNode;
+        super(raftNode);
         this.req = req;
-        this.logger = raftNode.getLogger(getClass());
     }
 
     @Override
-    public void run() {
+    protected void innerRun() {
         if (logger.isFineEnabled()) {
             logger.fine("Received " + req);
         }
 
         RaftState state = raftNode.state();
-        if (!state.isKnownEndpoint(req.leader())) {
-            logger.warning("Ignored " + req + ", since sender is unknown to us");
-            return;
-        }
 
         // Reply false if term < currentTerm (§5.1)
         if (req.term() < state.term()) {
@@ -181,5 +174,10 @@ public class AppendRequestHandlerTask implements Runnable {
 
     private AppendFailureResponse createFailureResponse(int term) {
         return new AppendFailureResponse(raftNode.getLocalEndpoint(), term, req.prevLogIndex() + 1);
+    }
+
+    @Override
+    protected RaftEndpoint senderEndpoint() {
+        return req.leader();
     }
 }

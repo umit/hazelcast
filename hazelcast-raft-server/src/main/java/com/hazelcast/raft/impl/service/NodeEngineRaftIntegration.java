@@ -20,12 +20,16 @@ import com.hazelcast.raft.impl.service.operation.integration.PreVoteRequestOp;
 import com.hazelcast.raft.impl.service.operation.integration.PreVoteResponseOp;
 import com.hazelcast.raft.impl.service.operation.integration.VoteRequestOp;
 import com.hazelcast.raft.impl.service.operation.integration.VoteResponseOp;
-import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.raft.impl.util.PartitionSpecificRunnableAdaptor;
+import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationAccessor;
 import com.hazelcast.spi.TaskScheduler;
+import com.hazelcast.spi.impl.NodeEngineImpl;
+import com.hazelcast.spi.impl.operationservice.InternalOperationService;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 
@@ -35,33 +39,44 @@ import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
  */
 final class NodeEngineRaftIntegration implements RaftIntegration {
 
-    private final NodeEngine nodeEngine;
-
+    private final NodeEngineImpl nodeEngine;
     private final RaftGroupId raftGroupId;
+    private final InternalOperationService operationService;
+    private final TaskScheduler taskScheduler;
+    private final int partitionId;
 
-    NodeEngineRaftIntegration(NodeEngine nodeEngine, RaftGroupId groupId) {
+    NodeEngineRaftIntegration(NodeEngineImpl nodeEngine, RaftGroupId groupId) {
         this.nodeEngine = nodeEngine;
         this.raftGroupId = groupId;
+        this.operationService = nodeEngine.getOperationService();
+        this.partitionId = groupId.hashCode() % nodeEngine.getPartitionService().getPartitionCount();
+        this.taskScheduler = nodeEngine.getExecutionService().getGlobalTaskScheduler();
     }
 
     @Override
-    public TaskScheduler getTaskScheduler() {
-        return nodeEngine.getExecutionService().getGlobalTaskScheduler();
+    public void execute(Runnable task) {
+        operationService.execute(new PartitionSpecificRunnableAdaptor(task, partitionId));
     }
 
     @Override
-    public Executor getExecutor() {
-        return nodeEngine.getExecutionService().getExecutor(ASYNC_EXECUTOR);
+    public void schedule(final Runnable task, long delay, TimeUnit timeUnit) {
+        taskScheduler.schedule(new Runnable() {
+            @Override
+            public void run() {
+                execute(task);
+            }
+        }, delay, timeUnit);
+    }
+
+    @Override
+    public SimpleCompletableFuture newCompletableFuture() {
+        Executor executor = nodeEngine.getExecutionService().getExecutor(ASYNC_EXECUTOR);
+        return new SimpleCompletableFuture(executor, nodeEngine.getLogger(getClass()));
     }
 
     @Override
     public ILogger getLogger(String name) {
         return nodeEngine.getLogger(name);
-    }
-
-    @Override
-    public ILogger getLogger(Class clazz) {
-        return nodeEngine.getLogger(clazz);
     }
 
     @Override

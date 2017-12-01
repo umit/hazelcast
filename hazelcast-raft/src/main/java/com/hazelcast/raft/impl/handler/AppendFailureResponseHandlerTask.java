@@ -1,31 +1,24 @@
 package com.hazelcast.raft.impl.handler;
 
-import com.hazelcast.logging.ILogger;
+import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.raft.impl.state.RaftState;
 
-public class AppendFailureResponseHandlerTask implements Runnable {
+public class AppendFailureResponseHandlerTask extends RaftNodeAwareTask implements Runnable {
 
-    private final RaftNode raftNode;
     private final AppendFailureResponse resp;
-    private final ILogger logger;
 
     public AppendFailureResponseHandlerTask(RaftNode raftNode, AppendFailureResponse response) {
-        this.raftNode = raftNode;
+        super(raftNode);
         this.resp = response;
-        this.logger = raftNode.getLogger(getClass());
     }
 
     @Override
-    public void run() {
+    protected void innerRun() {
         RaftState state = raftNode.state();
-        if (!state.isKnownEndpoint(resp.follower())) {
-            logger.warning(resp + " is ignored since sender is unknown to us");
-            return;
-        }
 
         if (state.role() != RaftRole.LEADER) {
             logger.warning(resp + " is ignored since we are not LEADER.");
@@ -71,5 +64,10 @@ public class AppendFailureResponseHandlerTask implements Runnable {
         }
 
         return false;
+    }
+
+    @Override
+    protected RaftEndpoint senderEndpoint() {
+        return resp.follower();
     }
 }

@@ -1,5 +1,6 @@
 package com.hazelcast.raft.impl.handler;
 
+import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
 
@@ -7,19 +8,23 @@ import com.hazelcast.raft.impl.RaftRole;
  * TODO: Javadoc Pending...
  *
  */
-public class PreVoteTimeoutTask implements Runnable {
-    private final RaftNode raftNode;
+public class PreVoteTimeoutTask extends RaftNodeAwareTask implements Runnable {
 
     public PreVoteTimeoutTask(RaftNode raftNode) {
-        this.raftNode = raftNode;
+        super(raftNode);
     }
 
     @Override
-    public void run() {
+    protected void innerRun() {
         if (raftNode.state().role() != RaftRole.FOLLOWER) {
             return;
         }
-        raftNode.getLogger(getClass()).warning("Pre-vote for term: " + raftNode.state().term() + " has timed out!");
+        logger.warning("Pre-vote for term: " + raftNode.state().term() + " has timed out!");
         new PreVoteTask(raftNode).run();
+    }
+
+    @Override
+    protected RaftEndpoint senderEndpoint() {
+        return null;
     }
 }
