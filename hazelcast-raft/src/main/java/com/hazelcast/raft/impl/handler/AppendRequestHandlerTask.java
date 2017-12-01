@@ -3,6 +3,7 @@ package com.hazelcast.raft.impl.handler;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
+import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
@@ -46,10 +47,11 @@ public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runna
 
         RaftLog raftLog = state.log();
 
-        // Increase the term if we see a newer one, also transform to follower
-        if (req.term() > state.term()) {
+        // Transform into follower if if a newer term is seen or another node wins the election of the current term
+        if (req.term() > state.term() || state.role() != RaftRole.FOLLOWER) {
             // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
-            logger.info("Demoting to FOLLOWER from current term: " + state.term() + " to new term: " + req.term() + " and leader: " + req.leader());
+            logger.info("Demoting to FOLLOWER from current role: " + state.role() + ", term: " + state.term()
+                    + " to new term: " + req.term() + " and leader: " + req.leader());
             state.toFollower(req.term());
             raftNode.printMemberState();
         }
