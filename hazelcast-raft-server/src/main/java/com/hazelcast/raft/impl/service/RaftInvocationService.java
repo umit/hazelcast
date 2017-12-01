@@ -4,7 +4,6 @@ import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.MemberLeftException;
-import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftOperation;
@@ -40,7 +39,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
@@ -55,7 +53,8 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
     private final ILogger logger;
     private final ConcurrentMap<RaftGroupId, RaftEndpoint> knownLeaders = new ConcurrentHashMap<RaftGroupId, RaftEndpoint>();
     private volatile RaftConfig raftConfig;
-    private volatile RaftEndpoint[] endpoints;
+    private volatile RaftEndpoint[] allEndpoints;
+    private volatile RaftEndpoint localEndpoint;
 
     public RaftInvocationService(NodeEngine nodeEngine) {
         this.nodeEngine = nodeEngine;
@@ -64,16 +63,22 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
 
     @Override
     public void configure(RaftConfig raftConfig) {
-        try {
-            this.raftConfig = raftConfig;
-            this.endpoints = RaftEndpoint.parseEndpoints(raftConfig.getMembers()).toArray(new RaftEndpoint[0]);
-        } catch (UnknownHostException e) {
-            throw new HazelcastException(e);
-        }
+        this.raftConfig = raftConfig;
     }
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
+        try {
+            allEndpoints = RaftEndpoint.parseEndpoints(raftConfig.getMembers()).toArray(new RaftEndpoint[0]);
+        } catch (UnknownHostException e) {
+            throw new HazelcastException(e);
+        }
+
+        localEndpoint = findLocalEndpoint(allEndpoints);
+        if (localEndpoint == null) {
+            return;
+        }
+
         ExecutionService executionService = nodeEngine.getExecutionService();
         executionService.scheduleWithRepetition(new CleanupTask(), 1000,1000, TimeUnit.MILLISECONDS);
     }
@@ -86,6 +91,16 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
     @Override
     public void shutdown(boolean terminate) {
         reset();
+    }
+
+    private RaftEndpoint findLocalEndpoint(RaftEndpoint[] endpoints) {
+        for (RaftEndpoint endpoint : endpoints) {
+            if (nodeEngine.getThisAddress().equals(endpoint.getAddress())) {
+                return endpoint;
+            }
+        }
+
+        return null;
     }
 
     public ICompletableFuture<RaftGroupId> createRaftGroupAsync(final String serviceName, final String raftName,
@@ -103,7 +118,7 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
         return createRaftGroupAsync(serviceName, raftName, nodeCount).get();
     }
 
-    public ICompletableFuture<RaftGroupId> destroyRaftGroupAsync(final RaftGroupId groupId) {
+    public ICompletableFuture<RaftGroupId> triggerDestroyRaftGroupAsync(final RaftGroupId groupId) {
         return invoke(METADATA_GROUP_ID, new Supplier<RaftReplicateOperation>() {
             @Override
             public RaftReplicateOperation get() {
@@ -112,15 +127,12 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
         });
     }
 
-    public void destroyRaftGroup(final RaftGroupId groupId) throws ExecutionException, InterruptedException {
-        destroyRaftGroupAsync(groupId).get();
+    public void triggerDestroyRaftGroup(final RaftGroupId groupId) throws ExecutionException, InterruptedException {
+        triggerDestroyRaftGroupAsync(groupId).get();
     }
 
     public <T> ICompletableFuture<T> invoke(RaftGroupId groupId, Supplier<RaftReplicateOperation> operationSupplier) {
-        Executor executor = nodeEngine.getExecutionService().getExecutor(ExecutionService.ASYNC_EXECUTOR);
-
-        RaftInvocationFuture<T> invocationFuture = new RaftInvocationFuture<T>(groupId, nodeEngine,
-                operationSupplier, executor, logger);
+        RaftInvocationFuture<T> invocationFuture = new RaftInvocationFuture<T>(nodeEngine, logger, operationSupplier, groupId);
         invocationFuture.invoke();
         return invocationFuture;
     }
@@ -144,17 +156,20 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
 
         private final RaftGroupId groupId;
         private final NodeEngine nodeEngine;
+        private final RaftService raftService;
         private final Supplier<RaftReplicateOperation> operationSupplier;
         private final ILogger logger;
         private final boolean failOnIndeterminateOperationState;
         private volatile RaftEndpoint lastInvocationEndpoint;
+        private volatile RaftEndpoint[] endpoints;
         private volatile int endPointIndex;
 
-        RaftInvocationFuture(RaftGroupId groupId, NodeEngine nodeEngine,
-                             Supplier<RaftReplicateOperation> operationSupplier, Executor executor, ILogger logger) {
-            super(executor, logger);
+        RaftInvocationFuture(NodeEngine nodeEngine, ILogger logger, Supplier<RaftReplicateOperation> operationSupplier,
+                             RaftGroupId groupId) {
+            super(nodeEngine, logger);
             this.groupId = groupId;
             this.nodeEngine = nodeEngine;
+            this.raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
             this.operationSupplier = operationSupplier;
             this.logger = logger;
             this.failOnIndeterminateOperationState = raftConfig.isFailOnIndeterminateOperationState();
@@ -224,6 +239,7 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
                 scheduleRetry();
                 return;
             }
+
             RaftReplicateOperation op = operationSupplier.get();
             InternalCompletableFuture<T> future = nodeEngine.getOperationService()
                                                             .invokeOnTarget(RaftService.SERVICE_NAME, op, leader.getAddress());
@@ -233,7 +249,17 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
 
         private RaftEndpoint getLeader() {
             RaftEndpoint leader = getKnownLeader(groupId);
-            return leader != null ? leader : endpoints != null ? endpoints[endPointIndex++ % endpoints.length] : null;
+            if (leader != null) {
+                return leader;
+            }
+
+            if (endpoints == null || endPointIndex == endpoints.length) {
+                RaftGroupInfo raftGroupInfo = raftService.getRaftGroupInfo(groupId);
+                endpoints = raftGroupInfo != null ? raftGroupInfo.membersArray() : allEndpoints;
+                endPointIndex = 0;
+            }
+
+            return endpoints != null ? endpoints[endPointIndex++] : null;
         }
     }
 
@@ -272,8 +298,8 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
         }
 
         private boolean shouldRun() {
-            ClusterService clusterService = nodeEngine.getClusterService();
-            return nodeEngine.isRunning() && clusterService.isJoined() && clusterService.isMaster();
+            RaftEndpoint leader = getKnownLeader(RaftService.METADATA_GROUP_ID);
+            return leader != null && leader.equals(localEndpoint);
         }
 
         private Collection<RaftGroupId> getDestroyingRaftGroupIds() {
