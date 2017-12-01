@@ -8,11 +8,11 @@ import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.raft.impl.service.RaftGroupId;
+import com.hazelcast.raft.impl.service.RaftInvocationService;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 
 import java.security.Permission;
 
-import static com.hazelcast.raft.impl.service.util.RaftGroupHelper.createRaftGroupAsync;
 import static com.hazelcast.raft.service.atomiclong.RaftAtomicLongService.PREFIX;
 import static com.hazelcast.raft.service.atomiclong.RaftAtomicLongService.SERVICE_NAME;
 
@@ -32,7 +32,8 @@ public class CreateAtomicLongMessageTask extends AbstractMessageTask implements 
     @Override
     protected void processMessage() throws Throwable {
         String raftName = PREFIX + name;
-        ICompletableFuture future = createRaftGroupAsync(nodeEngine, SERVICE_NAME, raftName, nodeCount);
+        RaftInvocationService raftInvocationService = nodeEngine.getService(RaftInvocationService.SERVICE_NAME);
+        ICompletableFuture future = raftInvocationService.createRaftGroupAsync(SERVICE_NAME, raftName, nodeCount);
         future.andThen(this);
     }
 

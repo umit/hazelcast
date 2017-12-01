@@ -10,7 +10,7 @@ import com.hazelcast.raft.service.atomiclong.operation.ApplyOperation;
 import com.hazelcast.raft.service.atomiclong.operation.CompareAndSetOperation;
 import com.hazelcast.raft.service.atomiclong.operation.GetAndAddOperation;
 import com.hazelcast.raft.service.atomiclong.operation.GetAndSetOperation;
-import com.hazelcast.raft.service.atomiclong.proxy.AtomicLongReplicatingOperation;
+import com.hazelcast.raft.service.atomiclong.proxy.AtomicLongReplicateOperation;
 
 public final class AtomicLongDataSerializerHook implements DataSerializerHook {
 
@@ -47,7 +47,7 @@ public final class AtomicLongDataSerializerHook implements DataSerializerHook {
                     case GET_AND_SET_OP:
                         return new GetAndSetOperation();
                     case REPLICATING_OP:
-                        return new AtomicLongReplicatingOperation();
+                        return new AtomicLongReplicateOperation();
                     case ALTER_OP:
                         return new AlterOperation();
                     case APPLY_OP:

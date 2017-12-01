@@ -7,7 +7,7 @@ import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
-import com.hazelcast.raft.impl.service.proxy.RaftReplicatingOperation;
+import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -19,16 +19,16 @@ import java.util.List;
  * TODO: Javadoc Pending...
  *
  */
-public class CreateRaftGroupReplicatingOperation extends RaftReplicatingOperation {
+public class CreateRaftGroupReplicateOperation extends RaftReplicateOperation {
 
     private String serviceName;
     private String name;
     private int nodeCount;
 
-    public CreateRaftGroupReplicatingOperation() {
+    public CreateRaftGroupReplicateOperation() {
     }
 
-    public CreateRaftGroupReplicatingOperation(String serviceName, String name, int nodeCount) {
+    public CreateRaftGroupReplicateOperation(String serviceName, String name, int nodeCount) {
         this.serviceName = serviceName;
         this.name = name;
         this.nodeCount = nodeCount;
