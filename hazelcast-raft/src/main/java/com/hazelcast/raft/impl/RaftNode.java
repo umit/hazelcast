@@ -181,13 +181,9 @@ public class RaftNode {
     }
 
     public void scheduleHeartbeat() {
+        broadcastAppendRequest();
         schedule(new HeartbeatTask(), heartbeatPeriodInMillis);
     }
-
-    public int getStripeKey() {
-        return state.name().hashCode();
-    }
-
 
     public void broadcastAppendRequest() {
         for (RaftEndpoint follower : state.remoteMembers()) {
