@@ -36,7 +36,7 @@ public class InstallSnapshotHandlerTask extends RaftNodeAwareTask implements Run
             return;
         }
 
-        // Transform into follower if if a newer term is seen or another node wins the election of the current term
+        // Transform into follower if a newer term is seen or another node wins the election of the current term
         if (req.term() > state.term() || state.role() != RaftRole.FOLLOWER) {
             // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
             logger.info("Demoting to FOLLOWER from current role: " + state.role() + ", term: " + state.term()
