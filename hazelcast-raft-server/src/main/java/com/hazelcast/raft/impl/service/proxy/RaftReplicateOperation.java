@@ -18,7 +18,7 @@ import com.hazelcast.spi.exception.TargetNotMemberException;
  * TODO: Javadoc Pending...
  *
  */
-public abstract class RaftReplicatingOperation extends Operation implements IdentifiedDataSerializable {
+public abstract class RaftReplicateOperation extends Operation implements IdentifiedDataSerializable {
 
     @Override
     public final void run() throws Exception {

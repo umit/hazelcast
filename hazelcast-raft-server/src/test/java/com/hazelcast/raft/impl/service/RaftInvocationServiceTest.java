@@ -8,9 +8,8 @@ import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.operation.metadata.GetDestroyingRaftGroupsOperation;
-import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicatingOperation;
-import com.hazelcast.raft.impl.service.proxy.RaftReplicatingOperation;
-import com.hazelcast.spi.impl.NodeEngineImpl;
+import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
+import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -23,9 +22,6 @@ import org.junit.runner.RunWith;
 import java.util.Collection;
 import java.util.concurrent.ExecutionException;
 
-import static com.hazelcast.raft.impl.service.util.RaftGroupHelper.createRaftGroup;
-import static com.hazelcast.raft.impl.service.util.RaftGroupHelper.triggerDestroyRaftGroupAsync;
-import static com.hazelcast.raft.impl.service.util.RaftInvocationHelper.invokeOnLeader;
 import static com.hazelcast.raft.impl.service.RaftService.METADATA_GROUP_ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -34,8 +30,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
-public class RaftGroupHelperTest
-        extends HazelcastRaftTestSupport {
+public class RaftInvocationServiceTest extends HazelcastRaftTestSupport {
 
     private HazelcastInstance[] instances;
 
@@ -45,8 +40,8 @@ public class RaftGroupHelperTest
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
 
-        final RaftGroupId groupId =
-                createRaftGroup(getNodeEngineImpl(instances[0]), RaftDataService.SERVICE_NAME, "test", nodeCount);
+        RaftInvocationService invocationService = getRaftInvocationService(instances[0]);
+        final RaftGroupId groupId = invocationService.createRaftGroup(RaftDataService.SERVICE_NAME, "test", nodeCount);
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
@@ -78,8 +73,8 @@ public class RaftGroupHelperTest
         final int newGroupCount = 3;
 
         HazelcastInstance instance = instances[invokeOnCP ? 0 : instances.length - 1];
-        final RaftGroupId groupId =
-                createRaftGroup(getNodeEngineImpl(instance), RaftDataService.SERVICE_NAME, "test", newGroupCount);
+        RaftInvocationService invocationService = getRaftInvocationService(instance);
+        final RaftGroupId groupId = invocationService.createRaftGroup(RaftDataService.SERVICE_NAME, "test", newGroupCount);
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -105,7 +100,8 @@ public class RaftGroupHelperTest
         instances = newInstances(raftAddresses);
 
         try {
-            createRaftGroup(getNodeEngineImpl(instances[0]), RaftDataService.SERVICE_NAME, "test", nodeCount + 1);
+            RaftInvocationService invocationService = getRaftInvocationService(instances[0]);
+            invocationService.createRaftGroup(RaftDataService.SERVICE_NAME, "test", nodeCount + 1);
             fail();
         } catch (IllegalArgumentException ignored) {
         }
@@ -116,11 +112,11 @@ public class RaftGroupHelperTest
         int nodeCount = 3;
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
-
+        RaftInvocationService invocationService = getRaftInvocationService(instances[0]);
         RaftGroupId groupId1 =
-                createRaftGroup(getNodeEngineImpl(instances[0]), RaftDataService.SERVICE_NAME, "test", nodeCount);
+                invocationService.createRaftGroup(RaftDataService.SERVICE_NAME, "test", nodeCount);
         RaftGroupId groupId2 =
-                createRaftGroup(getNodeEngineImpl(instances[1]), RaftDataService.SERVICE_NAME, "test", nodeCount);
+                invocationService.createRaftGroup(RaftDataService.SERVICE_NAME, "test", nodeCount);
         assertEquals(groupId1, groupId2);
     }
 
@@ -130,9 +126,10 @@ public class RaftGroupHelperTest
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
 
-        createRaftGroup(getNodeEngineImpl(instances[0]), RaftDataService.SERVICE_NAME, "test", nodeCount);
+        RaftInvocationService invocationService = getRaftInvocationService(instances[0]);
+        invocationService.createRaftGroup(RaftDataService.SERVICE_NAME, "test", nodeCount);
         try {
-            createRaftGroup(getNodeEngineImpl(instances[1]), RaftDataService.SERVICE_NAME, "test", nodeCount - 1);
+            invocationService.createRaftGroup(RaftDataService.SERVICE_NAME, "test", nodeCount - 1);
             fail();
         } catch (IllegalStateException ignored) {
         }
@@ -144,25 +141,24 @@ public class RaftGroupHelperTest
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
 
-        NodeEngineImpl nodeEngine = getNodeEngineImpl(instances[0]);
-        final RaftGroupId groupId = createRaftGroup(nodeEngine, RaftDataService.SERVICE_NAME, "test", nodeCount);
+        RaftInvocationService invocationService = getRaftInvocationService(instances[0]);
+        final RaftGroupId groupId = invocationService.createRaftGroup(RaftDataService.SERVICE_NAME, "test", nodeCount);
 
-        invokeOnLeader(nodeEngine, new Supplier<RaftReplicatingOperation>() {
+        invocationService.invoke(groupId, new Supplier<RaftReplicateOperation>() {
             @Override
-            public RaftReplicatingOperation get() {
-                return new DefaultRaftGroupReplicatingOperation(groupId, new RaftAddOperation("val"));
+            public RaftReplicateOperation get() {
+                return new DefaultRaftGroupReplicateOperation(groupId, new RaftAddOperation("val"));
             }
-        }, groupId).get();
+        }).get();
 
-        triggerDestroyRaftGroupAsync(nodeEngine, groupId).get();
+        invocationService.destroyRaftGroup(groupId);
 
-        ICompletableFuture<Collection<RaftGroupId>> future = invokeOnLeader(nodeEngine,
-                new Supplier<RaftReplicatingOperation>() {
+        ICompletableFuture<Collection<RaftGroupId>> future = invocationService.invoke(METADATA_GROUP_ID, new Supplier<RaftReplicateOperation>() {
                     @Override
-                    public RaftReplicatingOperation get() {
-                        return new DefaultRaftGroupReplicatingOperation(METADATA_GROUP_ID, new GetDestroyingRaftGroupsOperation());
+                    public RaftReplicateOperation get() {
+                        return new DefaultRaftGroupReplicateOperation(METADATA_GROUP_ID, new GetDestroyingRaftGroupsOperation());
                     }
-                }, METADATA_GROUP_ID);
+                });
 
         Collection<RaftGroupId> groupIds = future.get();
         assertEquals(1, groupIds.size());
