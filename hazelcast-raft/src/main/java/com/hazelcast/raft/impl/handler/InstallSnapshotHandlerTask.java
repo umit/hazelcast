@@ -1,6 +1,6 @@
 package com.hazelcast.raft.impl.handler;
 
-import com.hazelcast.logging.ILogger;
+import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
@@ -8,29 +8,22 @@ import com.hazelcast.raft.impl.dto.InstallSnapshot;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.state.RaftState;
 
-public class InstallSnapshotHandlerTask implements Runnable {
+public class InstallSnapshotHandlerTask extends RaftNodeAwareTask implements Runnable {
 
-    private final RaftNode raftNode;
     private final InstallSnapshot req;
-    private final ILogger logger;
 
     public InstallSnapshotHandlerTask(RaftNode raftNode, InstallSnapshot req) {
-        this.raftNode = raftNode;
+        super(raftNode);
         this.req = req;
-        this.logger = raftNode.getLogger(getClass());
     }
 
     @Override
-    public void run() {
+    protected void innerRun() {
         if (logger.isFineEnabled()) {
             logger.fine("Received " + req);
         }
 
         RaftState state = raftNode.state();
-        if (!state.isKnownEndpoint(req.leader())) {
-            logger.warning("Ignored " + req + ", since sender is unknown to us");
-            return;
-        }
 
         LogEntry snapshot = req.snapshot();
 
@@ -62,4 +55,8 @@ public class InstallSnapshotHandlerTask implements Runnable {
         }
     }
 
+    @Override
+    protected RaftEndpoint senderEndpoint() {
+        return req.leader();
+    }
 }

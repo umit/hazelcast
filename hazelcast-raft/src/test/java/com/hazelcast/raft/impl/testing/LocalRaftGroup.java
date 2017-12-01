@@ -59,8 +59,7 @@ public class LocalRaftGroup {
         nodes = new RaftNode[size];
         for (int i = 0; i < size; i++) {
             LocalRaftIntegration integration = integrations[i];
-            nodes[i] = new RaftNode(serviceName, "test", endpoints[i], asList(endpoints), raftConfig, integration,
-                    integration.getStripedExecutor());
+            nodes[i] = new RaftNode(serviceName, "test", endpoints[i], asList(endpoints), raftConfig, integration);
         }
     }
 
@@ -78,7 +77,7 @@ public class LocalRaftGroup {
     public void initDiscovery() {
         for (LocalRaftIntegration integration : integrations) {
             for (int i = 0; i < size(); i++) {
-                if (!integrations[i].isAlive()) {
+                if (integrations[i].isShutdown()) {
                     continue;
                 }
                 RaftNode node = nodes[i];
@@ -149,7 +148,7 @@ public class LocalRaftGroup {
                 int leaderTerm = getTerm(leaderNode);
 
                 for (RaftNode raftNode : nodes) {
-                    if (!integrations[getIndexOf(raftNode.getLocalEndpoint())].isAlive()) {
+                    if (integrations[getIndexOf(raftNode.getLocalEndpoint())].isShutdown()) {
                         continue;
                     }
 
@@ -167,7 +166,7 @@ public class LocalRaftGroup {
     public RaftEndpoint getLeaderEndpoint() {
         RaftEndpoint leader = null;
         for (int i = 0; i < size(); i++) {
-            if (!integrations[i].isAlive()) {
+            if (integrations[i].isShutdown()) {
                 continue;
             }
             RaftNode node = nodes[i];
@@ -187,7 +186,7 @@ public class LocalRaftGroup {
             return null;
         }
         for (int i = 0; i < size(); i++) {
-            if (!integrations[i].isAlive()) {
+            if (integrations[i].isShutdown()) {
                 continue;
             }
             RaftNode node = nodes[i];

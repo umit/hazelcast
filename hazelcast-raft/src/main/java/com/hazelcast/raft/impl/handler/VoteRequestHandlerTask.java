@@ -1,6 +1,5 @@
 package com.hazelcast.raft.impl.handler;
 
-import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
@@ -14,25 +13,17 @@ import com.hazelcast.util.Clock;
  * TODO: Javadoc Pending...
  *
  */
-public class VoteRequestHandlerTask implements Runnable {
-    private final ILogger logger;
-    private final RaftNode raftNode;
+public class VoteRequestHandlerTask extends RaftNodeAwareTask implements Runnable {
     private final VoteRequest req;
 
     public VoteRequestHandlerTask(RaftNode raftNode, VoteRequest req) {
-        this.raftNode = raftNode;
+        super(raftNode);
         this.req = req;
-        this.logger = raftNode.getLogger(getClass());
     }
 
     @Override
-    public void run() {
+    protected void innerRun() {
         RaftState state = raftNode.state();
-        if (!state.isKnownEndpoint(req.candidate())) {
-            logger.warning("Ignored " + req + " since candidate is unknown to us");
-            return;
-        }
-
         RaftEndpoint localEndpoint = raftNode.getLocalEndpoint();
 
         // Reply false if last AppendEntries call was received less than election timeout ago (leader stickiness)
@@ -95,5 +86,10 @@ public class VoteRequestHandlerTask implements Runnable {
         state.persistVote(req.term(), req.candidate());
 
         raftNode.send(new VoteResponse(localEndpoint, req.term(), true), req.candidate());
+    }
+
+    @Override
+    protected RaftEndpoint senderEndpoint() {
+        return req.candidate();
     }
 }

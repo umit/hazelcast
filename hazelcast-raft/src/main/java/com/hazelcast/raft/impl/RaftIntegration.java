@@ -10,22 +10,16 @@ import com.hazelcast.raft.impl.dto.PreVoteRequest;
 import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
-import com.hazelcast.spi.TaskScheduler;
+import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 
-import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * TODO: Javadoc Pending...
  */
 public interface RaftIntegration {
 
-    TaskScheduler getTaskScheduler();
-
-    Executor getExecutor();
-
     ILogger getLogger(String name);
-
-    ILogger getLogger(Class clazz);
 
     boolean isJoined();
 
@@ -49,4 +43,9 @@ public interface RaftIntegration {
 
     Object runOperation(RaftOperation operation, int commitIndex);
 
+    void execute(Runnable task);
+
+    void schedule(Runnable task, long delay, TimeUnit timeUnit);
+
+    SimpleCompletableFuture newCompletableFuture();
 }

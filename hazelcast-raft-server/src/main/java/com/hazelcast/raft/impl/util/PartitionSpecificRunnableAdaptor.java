@@ -1,0 +1,27 @@
+package com.hazelcast.raft.impl.util;
+
+import com.hazelcast.spi.impl.PartitionSpecificRunnable;
+
+/**
+ * TODO: Javadoc Pending...
+ *
+ */
+public class PartitionSpecificRunnableAdaptor implements PartitionSpecificRunnable {
+    private final Runnable task;
+    private final int partitionId;
+
+    public PartitionSpecificRunnableAdaptor(Runnable task, int partitionId) {
+        this.task = task;
+        this.partitionId = partitionId;
+    }
+
+    @Override
+    public int getPartitionId() {
+        return partitionId;
+    }
+
+    @Override
+    public void run() {
+        task.run();
+    }
+}
