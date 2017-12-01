@@ -1,7 +1,11 @@
 package com.hazelcast.raft.impl.service;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.impl.RaftEndpoint;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -15,7 +19,7 @@ import static java.util.Collections.unmodifiableCollection;
  * TODO: Javadoc Pending...
  *
  */
-public final class RaftGroupInfo {
+public final class RaftGroupInfo implements IdentifiedDataSerializable {
 
     public enum RaftGroupStatus {
         ACTIVE, DESTROYING, DESTROYED
@@ -28,6 +32,9 @@ public final class RaftGroupInfo {
     private volatile RaftGroupStatus status;
 
     private transient RaftEndpoint[] membersArray;
+
+    public RaftGroupInfo() {
+    }
 
     public RaftGroupInfo(RaftGroupId id, Collection<RaftEndpoint> members, String serviceName) {
         this.id = id;
@@ -89,5 +96,39 @@ public final class RaftGroupInfo {
             membersArray = members.toArray(new RaftEndpoint[0]);
         }
         return membersArray;
+    }
+
+    @Override
+    public void writeData(ObjectDataOutput out) throws IOException {
+        out.writeObject(id);
+        out.writeInt(members.size());
+        for (RaftEndpoint endpoint : members) {
+            out.writeObject(endpoint);
+        }
+        out.writeUTF(serviceName);
+        out.writeUTF(status.toString());
+    }
+
+    @Override
+    public void readData(ObjectDataInput in) throws IOException {
+        id = in.readObject();
+        int len = in.readInt();
+        members = new ArrayList<RaftEndpoint>(len);
+        for (int i = 0; i < len; i++) {
+            RaftEndpoint endpoint = in.readObject();
+            members.add(endpoint);
+        }
+        serviceName = in.readUTF();
+        status = RaftGroupStatus.valueOf(in.readUTF());
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftServiceDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftServiceDataSerializerHook.GROUP_INFO;
     }
 }

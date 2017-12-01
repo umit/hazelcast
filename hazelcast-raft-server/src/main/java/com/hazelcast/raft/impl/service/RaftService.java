@@ -60,7 +60,7 @@ import static java.util.Collections.emptyList;
  * TODO: Javadoc Pending...
  */
 public class RaftService implements ManagedService, ConfigurableService<RaftConfig>,
-        SnapshotAwareService<Collection<RaftGroupInfo>> {
+        SnapshotAwareService<ArrayList<RaftGroupInfo>> {
 
     public static final String SERVICE_NAME = "hz:core:raft";
     private static final String METADATA_RAFT = "METADATA";
@@ -151,10 +151,10 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     }
 
     @Override
-    public Collection<RaftGroupInfo> takeSnapshot(String raftName, int commitIndex) {
+    public ArrayList<RaftGroupInfo> takeSnapshot(String raftName, int commitIndex) {
         assert METADATA_RAFT.equals(raftName);
 
-        Collection<RaftGroupInfo> groupInfos = new ArrayList<RaftGroupInfo>();
+        ArrayList<RaftGroupInfo> groupInfos = new ArrayList<RaftGroupInfo>();
         for (RaftGroupInfo groupInfo : raftGroups.values()) {
             assert groupInfo.commitIndex() <= commitIndex
                     : "Group commit index: " + groupInfo.commitIndex() + ", snapshot commit index: " + commitIndex;
@@ -166,7 +166,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     }
 
     @Override
-    public void restoreSnapshot(String raftName, int commitIndex, Collection<RaftGroupInfo> snapshot) {
+    public void restoreSnapshot(String raftName, int commitIndex, ArrayList<RaftGroupInfo> snapshot) {
         assert METADATA_RAFT.equals(raftName);
 
         for (RaftGroupInfo groupInfo : snapshot) {
@@ -276,7 +276,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     public RaftGroupId createRaftGroup(String serviceName, String name, Collection<RaftEndpoint> endpoints, int commitIndex) {
         // keep configuration on every metadata node
         RaftGroupInfo groupInfo = getRaftGroupInfoByName(name);
-        if (groupInfo != null && groupInfo.status() != RaftGroupStatus.DESTROYED) {
+        if (groupInfo != null) {
             if (groupInfo.members().size() == endpoints.size()) {
                 logger.warning("Raft group " + name + " already exists. Ignoring add raft node request.");
                 return groupInfo.id();
@@ -344,12 +344,11 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     }
 
     private RaftGroupInfo getRaftGroupInfoByName(String name) {
-        for (Entry<RaftGroupId, RaftGroupInfo> e : raftGroups.entrySet()) {
-            if (e.getKey().name().equals(name)) {
-                return e.getValue();
+        for (RaftGroupInfo groupInfo : raftGroups.values()) {
+            if (groupInfo.status() != RaftGroupStatus.DESTROYED && groupInfo.name().equals(name)) {
+                return groupInfo;
             }
         }
-
         return null;
     }
 
