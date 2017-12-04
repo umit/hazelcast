@@ -14,4 +14,8 @@ public class RaftServiceUtil {
     public static RaftNode getRaftNode(HazelcastInstance instance, RaftGroupId groupId) {
         return getRaftService(instance).getRaftNode(groupId);
     }
+
+    public static RaftGroupInfo getRaftGroupInfo(HazelcastInstance instance, RaftGroupId groupId) {
+        return getRaftService(instance).getRaftGroupInfo(groupId);
+    }
 }

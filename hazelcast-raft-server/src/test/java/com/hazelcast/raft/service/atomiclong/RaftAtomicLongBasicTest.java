@@ -13,11 +13,9 @@ import com.hazelcast.raft.impl.service.RaftServiceUtil;
 import com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
-import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import com.hazelcast.util.RandomPicker;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -28,6 +26,10 @@ import java.util.concurrent.Future;
 
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy.create;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
@@ -38,30 +40,30 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
     private final int raftGroupSize = 3;
 
     @Before
-    public void setup() throws ExecutionException, InterruptedException {
+    public void setup() {
         Address[] raftAddresses = createAddresses(5);
         instances = newInstances(raftAddresses, raftAddresses.length + 2);
 
         String name = "id";
         atomicLong = create(instances[RandomPicker.getInt(instances.length)], name, raftGroupSize);
-        Assert.assertNotNull(atomicLong);
+        assertNotNull(atomicLong);
     }
 
     @Test
-    public void createNewAtomicLong() throws Exception {
-        HazelcastTestSupport.assertTrueEventually(new AssertTask() {
+    public void createNewAtomicLong() {
+        assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 int count = 0;
                 RaftAtomicLongProxy proxy = (RaftAtomicLongProxy) atomicLong;
                 for (HazelcastInstance instance : instances) {
                     RaftNode raftNode = RaftServiceUtil.getRaftService(instance).getRaftNode(proxy.getGroupId());
                     if (raftNode != null) {
                         count++;
-                        Assert.assertNotNull(getLeaderEndpoint(raftNode));
+                        assertNotNull(getLeaderEndpoint(raftNode));
                     }
                 }
-                Assert.assertEquals(raftGroupSize, count);
+                assertEquals(raftGroupSize, count);
             }
         });
     }
@@ -69,53 +71,53 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
     @Test
     public void testSet() {
         atomicLong.set(271);
-        Assert.assertEquals(271, atomicLong.get());
+        assertEquals(271, atomicLong.get());
     }
 
     @Test
     public void testGet() {
-        Assert.assertEquals(0, atomicLong.get());
+        assertEquals(0, atomicLong.get());
     }
 
     @Test
     public void testDecrementAndGet() {
-        Assert.assertEquals(-1, atomicLong.decrementAndGet());
-        Assert.assertEquals(-2, atomicLong.decrementAndGet());
+        assertEquals(-1, atomicLong.decrementAndGet());
+        assertEquals(-2, atomicLong.decrementAndGet());
     }
 
     @Test
     public void testIncrementAndGet() {
-        Assert.assertEquals(1, atomicLong.incrementAndGet());
-        Assert.assertEquals(2, atomicLong.incrementAndGet());
+        assertEquals(1, atomicLong.incrementAndGet());
+        assertEquals(2, atomicLong.incrementAndGet());
     }
 
     @Test
     public void testGetAndSet() {
-        Assert.assertEquals(0, atomicLong.getAndSet(271));
-        Assert.assertEquals(271, atomicLong.get());
+        assertEquals(0, atomicLong.getAndSet(271));
+        assertEquals(271, atomicLong.get());
     }
 
     @Test
     public void testAddAndGet() {
-        Assert.assertEquals(271, atomicLong.addAndGet(271));
+        assertEquals(271, atomicLong.addAndGet(271));
     }
 
     @Test
     public void testGetAndAdd() {
-        Assert.assertEquals(0, atomicLong.getAndAdd(271));
-        Assert.assertEquals(271, atomicLong.get());
+        assertEquals(0, atomicLong.getAndAdd(271));
+        assertEquals(271, atomicLong.get());
     }
 
     @Test
     public void testCompareAndSet_whenSuccess() {
-        Assert.assertTrue(atomicLong.compareAndSet(0, 271));
-        Assert.assertEquals(271, atomicLong.get());
+        assertTrue(atomicLong.compareAndSet(0, 271));
+        assertEquals(271, atomicLong.get());
     }
 
     @Test
     public void testCompareAndSet_whenNotSuccess() {
-        Assert.assertFalse(atomicLong.compareAndSet(172, 0));
-        Assert.assertEquals(0, atomicLong.get());
+        assertFalse(atomicLong.compareAndSet(172, 0));
+        assertEquals(0, atomicLong.get());
     }
 
     @Test
@@ -124,7 +126,7 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
 
         atomicLong.alter(new MultiplyByTwo());
 
-        Assert.assertEquals(4, atomicLong.get());
+        assertEquals(4, atomicLong.get());
     }
 
     @Test
@@ -133,7 +135,7 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
 
         long result = atomicLong.alterAndGet(new MultiplyByTwo());
 
-        Assert.assertEquals(4, result);
+        assertEquals(4, result);
     }
 
     @Test
@@ -142,8 +144,8 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
 
         long result = atomicLong.getAndAlter(new MultiplyByTwo());
 
-        Assert.assertEquals(2, result);
-        Assert.assertEquals(4, atomicLong.get());
+        assertEquals(2, result);
+        assertEquals(4, atomicLong.get());
     }
 
     @Test
@@ -153,7 +155,7 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
         ICompletableFuture<Void> f = atomicLong.alterAsync(new MultiplyByTwo());
         f.get();
 
-        Assert.assertEquals(4, atomicLong.get());
+        assertEquals(4, atomicLong.get());
     }
 
     @Test
@@ -163,7 +165,7 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
         ICompletableFuture<Long> f = atomicLong.alterAndGetAsync(new MultiplyByTwo());
         long result = f.get();
 
-        Assert.assertEquals(4, result);
+        assertEquals(4, result);
     }
 
     @Test
@@ -173,8 +175,8 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
         ICompletableFuture<Long> f = atomicLong.getAndAlterAsync(new MultiplyByTwo());
         long result = f.get();
 
-        Assert.assertEquals(2, result);
-        Assert.assertEquals(4, atomicLong.get());
+        assertEquals(2, result);
+        assertEquals(4, atomicLong.get());
     }
 
     @Test
@@ -183,8 +185,8 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
 
         long result = atomicLong.apply(new MultiplyByTwo());
 
-        Assert.assertEquals(4, result);
-        Assert.assertEquals(2, atomicLong.get());
+        assertEquals(4, result);
+        assertEquals(2, atomicLong.get());
     }
 
     @Test
@@ -194,8 +196,8 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
         Future<Long> f = atomicLong.applyAsync(new MultiplyByTwo());
         long result = f.get();
 
-        Assert.assertEquals(4, result);
-        Assert.assertEquals(2, atomicLong.get());
+        assertEquals(4, result);
+        assertEquals(2, atomicLong.get());
     }
 
     @Override
