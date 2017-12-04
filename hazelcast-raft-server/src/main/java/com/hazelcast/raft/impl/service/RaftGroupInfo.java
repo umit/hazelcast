@@ -28,7 +28,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     private RaftGroupId id;
     private Collection<RaftEndpoint> members;
     private String serviceName;
-    // read from multiple threads in tests
+
     private volatile RaftGroupStatus status;
 
     private transient RaftEndpoint[] membersArray;
