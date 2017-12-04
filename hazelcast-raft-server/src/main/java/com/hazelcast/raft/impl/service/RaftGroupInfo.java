@@ -129,4 +129,10 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     public int getId() {
         return RaftServiceDataSerializerHook.GROUP_INFO;
     }
+
+    @Override
+    public String toString() {
+        return "RaftGroupInfo{" + "id=" + id + ", members=" + members + ", serviceName='" + serviceName + '\'' + ", status="
+                + status + '}';
+    }
 }

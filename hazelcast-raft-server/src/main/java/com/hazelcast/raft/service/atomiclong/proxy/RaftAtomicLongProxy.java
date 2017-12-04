@@ -258,7 +258,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public void destroy() {
-        throw new UnsupportedOperationException();
+        join(raftInvocationService.triggerDestroyRaftGroupAsync(groupId));
     }
 
     public RaftGroupId getGroupId() {
