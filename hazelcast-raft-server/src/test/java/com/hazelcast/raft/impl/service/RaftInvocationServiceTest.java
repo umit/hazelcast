@@ -3,12 +3,10 @@ package com.hazelcast.raft.impl.service;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
-import com.hazelcast.raft.impl.service.operation.metadata.GetDestroyingRaftGroupsOperation;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
 import com.hazelcast.test.AssertTask;
@@ -20,10 +18,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.util.Collection;
 import java.util.concurrent.ExecutionException;
 
-import static com.hazelcast.raft.impl.service.RaftService.METADATA_GROUP_ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -148,17 +144,6 @@ public class RaftInvocationServiceTest extends HazelcastRaftTestSupport {
         invocationService.invoke(groupId, createRaftAddOperationSupplier(groupId, "val")).get();
 
         invocationService.triggerDestroyRaftGroup(groupId);
-
-        ICompletableFuture<Collection<RaftGroupId>> future = invocationService.invoke(METADATA_GROUP_ID, new Supplier<RaftReplicateOperation>() {
-                    @Override
-                    public RaftReplicateOperation get() {
-                        return new DefaultRaftGroupReplicateOperation(METADATA_GROUP_ID, new GetDestroyingRaftGroupsOperation());
-                    }
-                });
-
-        Collection<RaftGroupId> groupIds = future.get();
-        assertEquals(1, groupIds.size());
-        assertEquals(groupId, groupIds.iterator().next());
 
         assertTrueEventually(new AssertTask() {
             @Override

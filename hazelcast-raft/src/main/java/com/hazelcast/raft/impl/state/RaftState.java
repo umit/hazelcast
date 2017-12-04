@@ -25,7 +25,7 @@ public class RaftState {
     private RaftRole role = RaftRole.FOLLOWER;
     private int term;
 
-    private RaftEndpoint leader;
+    private volatile RaftEndpoint leader;
 
     // index of highest committed log entry
     private int commitIndex;

@@ -99,6 +99,11 @@ public class RaftNode {
         return localEndpoint;
     }
 
+    // It reads the most recent write to the volatile leader field, however leader might be already changed.
+    public RaftEndpoint getLeader() {
+        return state.leader();
+    }
+
     public RaftNodeStatus getStatus() {
         return status;
     }
