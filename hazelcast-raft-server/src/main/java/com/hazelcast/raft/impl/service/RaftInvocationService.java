@@ -12,10 +12,10 @@ import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.RaftException;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
 import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.operation.TerminateRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupReplicateOperation;
-import com.hazelcast.raft.impl.service.operation.metadata.GetDestroyingRaftGroupsOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOperation;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
@@ -43,7 +43,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.raft.impl.service.RaftService.METADATA_GROUP_ID;
-import static java.util.Collections.emptyList;
 
 public class RaftInvocationService implements ManagedService, ConfigurableService<RaftConfig>  {
 
@@ -298,23 +297,16 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
         }
 
         private boolean shouldRun() {
-            RaftEndpoint leader = getKnownLeader(RaftService.METADATA_GROUP_ID);
-            return leader != null && leader.equals(localEndpoint);
+            RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+            RaftNode raftNode = service.getRaftNode(RaftService.METADATA_GROUP_ID);
+            // even if the local leader information is stale, it is fine.
+            return raftNode != null && localEndpoint.equals(raftNode.getLeader());
         }
 
         private Collection<RaftGroupId> getDestroyingRaftGroupIds() {
-            Future<Collection<RaftGroupId>> f = invoke(METADATA_GROUP_ID, new Supplier<RaftReplicateOperation>() {
-                @Override
-                public RaftReplicateOperation get() {
-                    return new DefaultRaftGroupReplicateOperation(METADATA_GROUP_ID, new GetDestroyingRaftGroupsOperation());
-                }
-            });
-            try {
-                return f.get();
-            } catch (Exception e) {
-                logger.severe("Cannot fetch destroying raft group ids", e);
-                return emptyList();
-            }
+            // we are reading the destroying group ids locally, since we know they are committed.
+            RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+            return service.getDestroyingRaftGroupIds();
         }
 
         private boolean isTerminated(RaftGroupId groupId, Future<Object> future) {
