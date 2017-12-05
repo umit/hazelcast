@@ -16,7 +16,7 @@ public class PreVoteRequestHandlerTask extends RaftNodeAwareTask implements Runn
     private final PreVoteRequest req;
 
     public PreVoteRequestHandlerTask(RaftNode raftNode, PreVoteRequest req) {
-        super(raftNode);
+        super(raftNode, false);
         this.req = req;
     }
 

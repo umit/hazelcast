@@ -12,7 +12,7 @@ public class AppendFailureResponseHandlerTask extends RaftNodeAwareTask implemen
     private final AppendFailureResponse resp;
 
     public AppendFailureResponseHandlerTask(RaftNode raftNode, AppendFailureResponse response) {
-        super(raftNode);
+        super(raftNode, true);
         this.resp = response;
     }
 

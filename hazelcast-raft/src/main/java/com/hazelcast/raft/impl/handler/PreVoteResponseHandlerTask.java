@@ -15,7 +15,7 @@ public class PreVoteResponseHandlerTask extends RaftNodeAwareTask implements Run
     private final PreVoteResponse resp;
 
     public PreVoteResponseHandlerTask(RaftNode raftNode, PreVoteResponse response) {
-        super(raftNode);
+        super(raftNode, true);
         this.resp = response;
     }
 

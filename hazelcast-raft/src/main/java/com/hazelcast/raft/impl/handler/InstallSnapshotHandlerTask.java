@@ -14,7 +14,7 @@ public class InstallSnapshotHandlerTask extends RaftNodeAwareTask implements Run
     private final InstallSnapshot req;
 
     public InstallSnapshotHandlerTask(RaftNode raftNode, InstallSnapshot req) {
-        super(raftNode);
+        super(raftNode, false);
         this.req = req;
     }
 

@@ -23,6 +23,18 @@ public class LeaderState {
         }
     }
 
+    public void add(RaftEndpoint follower, int lastLogIndex) {
+        assertNotFollower(nextIndices, follower);
+        nextIndices.put(follower, lastLogIndex + 1);
+        matchIndices.put(follower, 0);
+    }
+
+    public void remove(RaftEndpoint follower) {
+        assertFollower(nextIndices, follower);
+        nextIndices.remove(follower);
+        matchIndices.remove(follower);
+    }
+
     public void setNextIndex(RaftEndpoint follower, int index) {
         assertFollower(nextIndices, follower);
         assert index > 0 : "Invalid next index: " + index;
@@ -50,7 +62,11 @@ public class LeaderState {
     }
 
     private void assertFollower(Map<RaftEndpoint, Integer> indices, RaftEndpoint follower) {
-        assert indices.containsKey(follower) : "Unknown address " + follower;
+        assert indices.containsKey(follower) : "Unknown follower " + follower;
+    }
+
+    private void assertNotFollower(Map<RaftEndpoint, Integer> indices, RaftEndpoint follower) {
+        assert !indices.containsKey(follower) : "Already known follower " + follower;
     }
 
 }
