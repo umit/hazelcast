@@ -26,6 +26,9 @@ import com.hazelcast.raft.impl.handler.VoteRequestHandlerTask;
 import com.hazelcast.raft.impl.handler.VoteResponseHandlerTask;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.log.RaftLog;
+import com.hazelcast.raft.impl.operation.ChangeRaftGroupMembershipOp;
+import com.hazelcast.raft.impl.operation.ChangeRaftGroupMembershipOp.MembershipChangeType;
+import com.hazelcast.raft.impl.operation.InternalRaftOp;
 import com.hazelcast.raft.impl.operation.RestoreSnapshotOp;
 import com.hazelcast.raft.impl.operation.TakeSnapshotOp;
 import com.hazelcast.raft.impl.operation.TerminateRaftGroupOp;
@@ -43,6 +46,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.raft.impl.RaftNode.RaftNodeStatus.ACTIVE;
+import static com.hazelcast.raft.impl.RaftNode.RaftNodeStatus.CHANGING_MEMBERSHIP;
+import static com.hazelcast.raft.impl.RaftNode.RaftNodeStatus.STEPPED_DOWN;
 import static com.hazelcast.raft.impl.RaftNode.RaftNodeStatus.TERMINATED;
 import static com.hazelcast.raft.impl.RaftNode.RaftNodeStatus.TERMINATING;
 import static java.lang.Math.min;
@@ -54,7 +59,7 @@ import static java.lang.Math.min;
 public class RaftNode {
 
     public enum RaftNodeStatus {
-        ACTIVE, TERMINATING, TERMINATED
+        ACTIVE, CHANGING_MEMBERSHIP, TERMINATING, TERMINATED, STEPPED_DOWN
     }
 
     private static final long SNAPSHOT_TASK_PERIOD_IN_SECONDS = 1;
@@ -108,13 +113,13 @@ public class RaftNode {
         return status;
     }
 
-    public boolean isTerminated() {
-        return status == TERMINATED;
+    public boolean isTerminatedOrSteppedDown() {
+        return status == TERMINATED || status == STEPPED_DOWN;
     }
 
     public void setStatus(RaftNodeStatus status) {
-        if (this.status == TERMINATED) {
-            throw new IllegalStateException("Cannot set status: " + status + " since it is already TERMINATED");
+        if (this.status == TERMINATED || this.status == STEPPED_DOWN) {
+            throw new IllegalStateException("Cannot set status: " + status + " since it is already " + this.status);
         }
 
         this.status = status;
@@ -125,9 +130,36 @@ public class RaftNode {
         return RandomPicker.getInt(leaderElectionTimeout, leaderElectionTimeout + LEADER_ELECTION_TIMEOUT_RANGE);
     }
 
-    public boolean shouldAllowNewAppends() {
-        int lastLogIndex = state.log().lastLogOrSnapshotIndex();
-        return status == ACTIVE && (lastLogIndex - state.commitIndex() < maxUncommittedEntryCount);
+    public boolean canReplicateNewEntry(RaftOperation operation) {
+        if (isTerminatedOrSteppedDown()) {
+            return false;
+        }
+
+        RaftLog log = state.log();
+        int lastLogIndex = log.lastLogOrSnapshotIndex();
+        int commitIndex = state.commitIndex();
+        if (lastLogIndex - commitIndex >= maxUncommittedEntryCount) {
+            return false;
+        }
+
+        if (status == RaftNodeStatus.TERMINATING) {
+            return false;
+        } else if (status == RaftNodeStatus.CHANGING_MEMBERSHIP) {
+            return !(operation instanceof InternalRaftOp);
+        }
+
+        if (operation instanceof ChangeRaftGroupMembershipOp) {
+            // the leader must have committed an entry in its term to make a membership change
+            // https://groups.google.com/forum/#!msg/raft-dev/t4xj6dJTP6E/d2D9LrWRza8J
+
+            // last committed entry is either in the last snapshot or still in the log
+            LogEntry lastCommittedEntry = commitIndex == log.snapshotIndex() ? log.snapshot() : log.getLogEntry(commitIndex);
+            assert lastCommittedEntry != null;
+
+            return lastCommittedEntry.term() == state.term();
+        }
+
+        return true;
     }
 
     public void send(PreVoteRequest request, RaftEndpoint target) {
@@ -296,6 +328,14 @@ public class RaftNode {
         if (operation instanceof TerminateRaftGroupOp) {
             assert status == TERMINATING;
             setStatus(TERMINATED);
+        } else if (operation instanceof ChangeRaftGroupMembershipOp) {
+            assert status == CHANGING_MEMBERSHIP;
+            state.commitGroupMembers();
+            if (state.members().contains(localEndpoint)) {
+                setStatus(ACTIVE);
+            } else {
+                setStatus(STEPPED_DOWN);
+            }
         } else {
             response = raftIntegration.runOperation(operation, entry.index());
         }
@@ -321,9 +361,10 @@ public class RaftNode {
     }
 
     public void schedule(Runnable task, long delayInMillis) {
-        if (status == TERMINATED) {
+        if (isTerminatedOrSteppedDown()) {
             return;
         }
+
         raftIntegration.schedule(task, delayInMillis, TimeUnit.MILLISECONDS);
     }
 
@@ -399,7 +440,12 @@ public class RaftNode {
 
     public void takeSnapshotIfCommitIndexAdvanced() {
         int commitIndex = state.commitIndex();
-        if (status == TERMINATED || (commitIndex - state.log().snapshotIndex()) < commitIndexAdvanceCountToSnapshot) {
+        if ((commitIndex - state.log().snapshotIndex()) < commitIndexAdvanceCountToSnapshot) {
+            return;
+        }
+
+        // We don't support snapshots while there's a membership change or the raft group is being destroyed...
+        if (status != ACTIVE) {
             return;
         }
 
@@ -410,7 +456,8 @@ public class RaftNode {
             logger.severe("Could not take snapshot from service '" + serviceName + "', commit index: " + commitIndex, t);
             return;
         }
-        RestoreSnapshotOp snapshotOp = new RestoreSnapshotOp(serviceName, state.name(), commitIndex, snapshot);
+        RaftOperation snapshotOp = new RestoreSnapshotOp(serviceName, state.name(), commitIndex, snapshot,
+                state.membersLogIndex(), state.members());
         LogEntry committedEntry = log.getLogEntry(commitIndex);
         LogEntry snapshotLogEntry = new LogEntry(committedEntry.term(), commitIndex, snapshotOp);
         log.setSnapshot(snapshotLogEntry);
@@ -436,7 +483,15 @@ public class RaftNode {
             logger.info(truncated.size() + " entries are truncated to install snapshot: " + snapshot);
         }
 
-        raftIntegration.runOperation(snapshot.operation(), snapshot.index());
+        RestoreSnapshotOp operation = (RestoreSnapshotOp) snapshot.operation();
+        raftIntegration.runOperation(operation, snapshot.index());
+        state.restoreGroupMembers(operation.getGroupMembersLogIndex(), operation.getGroupMembers());
+        printMemberState();
+        if (state.members().contains(localEndpoint)) {
+            setStatus(ACTIVE);
+        } else {
+            setStatus(STEPPED_DOWN);
+        }
         state.lastApplied(snapshot.index());
 
         invalidateFuturesUntil(snapshot.index());
@@ -461,6 +516,7 @@ public class RaftNode {
                 .append("name: ").append(state.name())
                 .append(", size:").append(state.memberCount())
                 .append(", term:").append(state.term())
+                .append(", logIndex:").append(state.membersLogIndex())
                 .append("} [");
 
         for (RaftEndpoint endpoint : state.members()) {
@@ -473,6 +529,16 @@ public class RaftNode {
         }
         sb.append("\n]\n");
         logger.info(sb.toString());
+    }
+
+    public void updateGroupMembers(int logIndex, RaftEndpoint member, MembershipChangeType changeType) {
+        state.updateGroupMembers(logIndex, member, changeType);
+        printMemberState();
+    }
+
+    public void resetGroupMembers() {
+        state.resetGroupMembers();
+        printMemberState();
     }
 
     private class HeartbeatTask implements Runnable {

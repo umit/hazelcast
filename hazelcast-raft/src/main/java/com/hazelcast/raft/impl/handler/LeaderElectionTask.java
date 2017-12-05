@@ -12,7 +12,7 @@ import com.hazelcast.raft.impl.state.RaftState;
 public class LeaderElectionTask extends RaftNodeAwareTask implements Runnable {
 
     public LeaderElectionTask(RaftNode raftNode) {
-        super(raftNode);
+        super(raftNode, false);
     }
 
     @Override

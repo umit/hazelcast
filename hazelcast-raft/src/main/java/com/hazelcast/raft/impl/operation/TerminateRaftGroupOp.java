@@ -3,19 +3,13 @@ package com.hazelcast.raft.impl.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.RaftOperation;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
 
 import java.io.IOException;
 
-public class TerminateRaftGroupOp extends RaftOperation implements IdentifiedDataSerializable {
+public class TerminateRaftGroupOp extends InternalRaftOp implements IdentifiedDataSerializable {
 
     public TerminateRaftGroupOp() {
-    }
-
-    @Override
-    protected Object doRun(int commitIndex) {
-        throw new UnsupportedOperationException();
     }
 
     @Override

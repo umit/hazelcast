@@ -15,7 +15,7 @@ public class VoteResponseHandlerTask extends RaftNodeAwareTask implements Runnab
     private final VoteResponse resp;
 
     public VoteResponseHandlerTask(RaftNode raftNode, VoteResponse response) {
-        super(raftNode);
+        super(raftNode, true);
         this.resp = response;
     }
 

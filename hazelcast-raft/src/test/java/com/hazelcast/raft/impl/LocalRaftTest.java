@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl;
 
 import com.hazelcast.raft.RaftConfig;
-import com.hazelcast.raft.exception.CannotAppendException;
+import com.hazelcast.raft.exception.CannotReplicateException;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
@@ -1125,7 +1125,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
         try {
             leader.replicate(new RaftAddOperation("valFinal")).get();
             fail();
-        } catch (CannotAppendException ignored) {
+        } catch (CannotReplicateException ignored) {
         }
     }
 
@@ -1144,7 +1144,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
         try {
             leader.replicate(new RaftAddOperation("val")).get();
             fail();
-        } catch (CannotAppendException ignored) {
+        } catch (CannotReplicateException ignored) {
         }
     }
 

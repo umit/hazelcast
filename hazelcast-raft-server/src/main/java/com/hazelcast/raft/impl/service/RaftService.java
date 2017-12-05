@@ -4,9 +4,11 @@ import com.hazelcast.core.HazelcastException;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.SnapshotAwareService;
+import com.hazelcast.raft.impl.ForceSetRaftNodeStatusRunnable;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
@@ -119,7 +121,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     @Override
     public void restoreSnapshot(String raftName, int commitIndex, ArrayList<RaftGroupInfo> snapshot) {
         assert METADATA_RAFT.equals(raftName);
-
+        // TODO [basri] this is broken. what about destroyed ones ???
         for (RaftGroupInfo groupInfo : snapshot) {
             if (!raftGroups.containsKey(groupInfo.id())) {
                 createRaftGroup(groupInfo.serviceName(), groupInfo.name(), groupInfo.members(), groupInfo.commitIndex());
@@ -289,6 +291,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
             logger.info(groupId + " is destroyed.");
             RaftNode raftNode = nodes.remove(groupId);
             if (raftNode != null) {
+                raftNode.execute(new ForceSetRaftNodeStatusRunnable(raftNode, RaftNodeStatus.TERMINATED));
                 logger.info("Local raft node of " + groupId + " is destroyed.");
             }
         }
