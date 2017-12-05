@@ -4,12 +4,10 @@ import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.log.RaftLog;
+import com.hazelcast.raft.impl.operation.ChangeRaftGroupMembershipOp.MembershipChangeType;
 
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Set;
-
-import static java.util.Collections.unmodifiableSet;
 
 /**
  * TODO: Javadoc Pending...
@@ -19,8 +17,8 @@ public class RaftState {
 
     private final RaftEndpoint localEndpoint;
     private final String name;
-    private final Collection<RaftEndpoint> members;
-    private final Collection<RaftEndpoint> remoteMembers;
+    private RaftGroupMembers committedGroupMembers;
+    private RaftGroupMembers lastGroupMembers;
 
     private RaftRole role = RaftRole.FOLLOWER;
     private int term;
@@ -44,13 +42,13 @@ public class RaftState {
     private CandidateState candidateState;
 
     public RaftState(String name, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints) {
+        assert endpoints.contains(localEndpoint)
+                : "Members set must contain local member! Members: " + endpoints + ", Local member: " + localEndpoint;
         this.name = name;
         this.localEndpoint = localEndpoint;
-        this.members = unmodifiableSet(new HashSet<RaftEndpoint>(endpoints));
-        Set<RaftEndpoint> remoteMembers = new HashSet<RaftEndpoint>(endpoints);
-        boolean removed = remoteMembers.remove(localEndpoint);
-        assert removed : "Members set must contain local member! Members: " + endpoints + ", Local member: " + localEndpoint;
-        this.remoteMembers = unmodifiableSet(remoteMembers);
+        RaftGroupMembers groupMembers = new RaftGroupMembers(0, endpoints, localEndpoint);
+        this.committedGroupMembers = groupMembers;
+        this.lastGroupMembers = groupMembers;
     }
 
     public String name() {
@@ -58,19 +56,23 @@ public class RaftState {
     }
 
     public Collection<RaftEndpoint> members() {
-        return members;
+        return lastGroupMembers.members();
     }
 
     public Collection<RaftEndpoint> remoteMembers() {
-        return remoteMembers;
+        return lastGroupMembers.remoteMembers();
     }
 
     public int memberCount() {
-        return members.size();
+        return lastGroupMembers.memberCount();
     }
 
     public int majority() {
-        return members.size() / 2 + 1;
+        return lastGroupMembers.majority();
+    }
+
+    public int membersLogIndex() {
+        return lastGroupMembers.index();
     }
 
     public RaftRole role() {
@@ -161,11 +163,11 @@ public class RaftState {
         leader(localEndpoint);
         preCandidateState = null;
         candidateState = null;
-        leaderState = new LeaderState(remoteMembers, log.lastLogOrSnapshotIndex());
+        leaderState = new LeaderState(lastGroupMembers.remoteMembers(), log.lastLogOrSnapshotIndex());
     }
 
     public boolean isKnownEndpoint(RaftEndpoint endpoint) {
-        return members.contains(endpoint);
+        return lastGroupMembers.isKnownEndpoint(endpoint);
     }
 
     public void initPreCandidateState() {
@@ -177,4 +179,51 @@ public class RaftState {
         return preCandidateState;
     }
 
+    public void updateGroupMembers(int logIndex, RaftEndpoint endpoint, MembershipChangeType changeType) {
+        assert committedGroupMembers == lastGroupMembers
+                : "Cannot make group members update: " + changeType + " for " + endpoint + " at log index: " + logIndex
+                + " because last group members: " + lastGroupMembers + " is different than committed group members: "
+                + committedGroupMembers;
+        assert lastGroupMembers.index() < logIndex
+                : "Cannot make group members update: " + changeType + " for " + endpoint + " at log index: " + logIndex
+                + " because last group members: " + lastGroupMembers + " has a bigger log index.";
+
+        Collection<RaftEndpoint> endpoints = new HashSet<RaftEndpoint>(members());
+        if (changeType == MembershipChangeType.ADD) {
+            endpoints.add(endpoint);
+        } else  {
+            endpoints.remove(endpoint);
+        }
+
+        RaftGroupMembers newGroupMembers = new RaftGroupMembers(logIndex, endpoints, localEndpoint);
+        committedGroupMembers = lastGroupMembers;
+        lastGroupMembers = newGroupMembers;
+
+        if (leaderState != null) {
+            if (changeType == MembershipChangeType.ADD) {
+                leaderState.add(endpoint, log.lastLogOrSnapshotIndex());
+            } else {
+                leaderState.remove(endpoint);
+            }
+        }
+    }
+
+    public void commitGroupMembers() {
+        assert committedGroupMembers != lastGroupMembers
+                : "Cannot commit last group members: " + lastGroupMembers + " because it is same with committed group members";
+
+        committedGroupMembers = lastGroupMembers;
+    }
+
+    public void resetGroupMembers() {
+        assert this.committedGroupMembers != this.lastGroupMembers;
+
+        this.lastGroupMembers = this.committedGroupMembers;
+    }
+
+    public void restoreGroupMembers(int logIndex, Collection<RaftEndpoint> endpoints) {
+        RaftGroupMembers groupMembers = new RaftGroupMembers(logIndex, endpoints, localEndpoint);
+        this.committedGroupMembers = groupMembers;
+        this.lastGroupMembers = groupMembers;
+    }
 }

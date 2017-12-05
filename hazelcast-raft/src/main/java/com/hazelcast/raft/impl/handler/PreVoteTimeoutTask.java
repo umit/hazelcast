@@ -11,7 +11,7 @@ import com.hazelcast.raft.impl.RaftRole;
 public class PreVoteTimeoutTask extends RaftNodeAwareTask implements Runnable {
 
     public PreVoteTimeoutTask(RaftNode raftNode) {
-        super(raftNode);
+        super(raftNode, false);
     }
 
     @Override

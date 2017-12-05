@@ -11,7 +11,7 @@ import com.hazelcast.raft.impl.RaftRole;
 public class LeaderElectionTimeoutTask extends RaftNodeAwareTask implements Runnable {
 
     public LeaderElectionTimeoutTask(RaftNode raftNode) {
-        super(raftNode);
+        super(raftNode, false);
     }
 
     @Override

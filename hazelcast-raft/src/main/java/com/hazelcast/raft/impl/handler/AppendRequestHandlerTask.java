@@ -9,6 +9,7 @@ import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.log.RaftLog;
+import com.hazelcast.raft.impl.operation.ChangeRaftGroupMembershipOp;
 import com.hazelcast.raft.impl.operation.TerminateRaftGroupOp;
 import com.hazelcast.raft.impl.state.RaftState;
 
@@ -16,7 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static java.lang.Math.min;
-import static java.util.Collections.singletonList;
+import static java.util.Arrays.asList;
 
 /**
  * TODO: Javadoc Pending...
@@ -26,7 +27,7 @@ public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runna
     private final AppendRequest req;
 
     public AppendRequestHandlerTask(RaftNode raftNode, AppendRequest req) {
-        super(raftNode);
+        super(raftNode, false);
         this.req = req;
     }
 
@@ -118,12 +119,8 @@ public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runna
                     }
 
                     raftNode.invalidateFuturesFrom(reqEntry.index());
-                    updateRaftNodeStatus(truncated, RaftNodeStatus.ACTIVE);
+                    handleInternalRaftOperation(truncated, true);
 
-                    //                            if (entry.index <= r.configurations.latestIndex) {
-                    //                                r.configurations.latest = r.configurations.committed
-                    //                                r.configurations.latestIndex = r.configurations.committedIndex
-                    //                            }
                     newEntries = Arrays.copyOfRange(req.entries(), i, req.entryCount());
                     break;
                 }
@@ -136,12 +133,7 @@ public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runna
                 }
 
                 raftLog.appendEntries(newEntries);
-                updateRaftNodeStatus(singletonList(raftLog.lastLogOrSnapshotEntry()), RaftNodeStatus.TERMINATING);
-
-                // Handle any new configuration changes
-                //                        for _, newEntry := range newEntries {
-                //                            r.processConfigurationLogEntry(newEntry)
-                //                        }
+                handleInternalRaftOperation(asList(newEntries), false);
             }
         }
 
@@ -153,10 +145,6 @@ public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runna
             int newCommitIndex = min(req.leaderCommitIndex(), lastLogIndex);
             logger.info("Setting commit index: " + newCommitIndex);
             state.commitIndex(newCommitIndex);
-            //                    if r.configurations.latestIndex <= newCommitIndex {
-            //                        r.configurations.committed = r.configurations.latest
-            //                        r.configurations.committedIndex = r.configurations.latestIndex
-            //                    }
             raftNode.processLogs();
         }
 
@@ -165,10 +153,21 @@ public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runna
         raftNode.send(resp, req.leader());
     }
 
-    private void updateRaftNodeStatus(List<LogEntry> entries, RaftNodeStatus status) {
+    private void handleInternalRaftOperation(List<LogEntry> entries, boolean revert) {
         for (LogEntry entry : entries) {
             if (entry.operation() instanceof TerminateRaftGroupOp) {
+                RaftNodeStatus status = revert ? RaftNodeStatus.ACTIVE : RaftNodeStatus.TERMINATING;
                 raftNode.setStatus(status);
+                return;
+            } else if (entry.operation() instanceof ChangeRaftGroupMembershipOp) {
+                RaftNodeStatus status = revert ? RaftNodeStatus.ACTIVE : RaftNodeStatus.CHANGING_MEMBERSHIP;
+                raftNode.setStatus(status);
+                if (revert) {
+                    raftNode.resetGroupMembers();
+                } else {
+                    ChangeRaftGroupMembershipOp op = (ChangeRaftGroupMembershipOp) entry.operation();
+                    raftNode.updateGroupMembers(entry.index(), op.getMember(), op.getChangeType());
+                }
                 return;
             }
         }

@@ -17,7 +17,7 @@ public class VoteRequestHandlerTask extends RaftNodeAwareTask implements Runnabl
     private final VoteRequest req;
 
     public VoteRequestHandlerTask(RaftNode raftNode, VoteRequest req) {
-        super(raftNode);
+        super(raftNode, false);
         this.req = req;
     }
 

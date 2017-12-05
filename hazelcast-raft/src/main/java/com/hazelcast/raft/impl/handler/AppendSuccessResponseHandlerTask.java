@@ -22,7 +22,7 @@ public class AppendSuccessResponseHandlerTask extends RaftNodeAwareTask implemen
     private final AppendSuccessResponse resp;
 
     public AppendSuccessResponseHandlerTask(RaftNode raftNode, AppendSuccessResponse response) {
-        super(raftNode);
+        super(raftNode, true);
         this.resp = response;
     }
 
