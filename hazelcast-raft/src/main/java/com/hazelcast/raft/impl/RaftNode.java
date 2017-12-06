@@ -26,6 +26,7 @@ import com.hazelcast.raft.impl.handler.VoteRequestHandlerTask;
 import com.hazelcast.raft.impl.handler.VoteResponseHandlerTask;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.log.RaftLog;
+import com.hazelcast.raft.impl.log.SnapshotEntry;
 import com.hazelcast.raft.impl.operation.ChangeRaftGroupMembershipOp;
 import com.hazelcast.raft.impl.operation.ChangeRaftGroupMembershipOp.MembershipChangeType;
 import com.hazelcast.raft.impl.operation.InternalRaftOp;
@@ -456,16 +457,16 @@ public class RaftNode {
             logger.severe("Could not take snapshot from service '" + serviceName + "', commit index: " + commitIndex, t);
             return;
         }
-        RaftOperation snapshotOp = new RestoreSnapshotOp(serviceName, state.name(), commitIndex, snapshot,
-                state.membersLogIndex(), state.members());
+        RaftOperation snapshotOp = new RestoreSnapshotOp(serviceName, state.name(), commitIndex, snapshot);
         LogEntry committedEntry = log.getLogEntry(commitIndex);
-        LogEntry snapshotLogEntry = new LogEntry(committedEntry.term(), commitIndex, snapshotOp);
-        log.setSnapshot(snapshotLogEntry);
+        SnapshotEntry snapshotEntry = new SnapshotEntry(committedEntry.term(), commitIndex, snapshotOp,
+                state.membersLogIndex(), state.members());
+        log.setSnapshot(snapshotEntry);
 
-        logger.info("Snapshot: "  + snapshotLogEntry + " is taken.");
+        logger.info("Snapshot: "  + snapshotEntry + " is taken.");
     }
 
-    public boolean installSnapshot(LogEntry snapshot) {
+    public boolean installSnapshot(SnapshotEntry snapshot) {
         int commitIndex = state.commitIndex();
         if (commitIndex > snapshot.index()) {
             logger.warning("Ignored stale snapshot: " + snapshot + ". commit index: " + commitIndex);
@@ -483,9 +484,8 @@ public class RaftNode {
             logger.info(truncated.size() + " entries are truncated to install snapshot: " + snapshot);
         }
 
-        RestoreSnapshotOp operation = (RestoreSnapshotOp) snapshot.operation();
-        raftIntegration.runOperation(operation, snapshot.index());
-        state.restoreGroupMembers(operation.getGroupMembersLogIndex(), operation.getGroupMembers());
+        raftIntegration.runOperation(snapshot.operation(), snapshot.index());
+        state.restoreGroupMembers(snapshot.groupMembersLogIndex(), snapshot.groupMembers());
         printMemberState();
         if (state.members().contains(localEndpoint)) {
             setStatus(ACTIVE);
