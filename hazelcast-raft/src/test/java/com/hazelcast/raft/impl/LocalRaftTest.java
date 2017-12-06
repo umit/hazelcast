@@ -8,6 +8,7 @@ import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
 import com.hazelcast.raft.exception.StaleAppendRequestException;
 import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
+import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
@@ -1344,7 +1345,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void when_newLeaderRaftNodeLeaves_then_itCannotVoteForCommitOfMemberChange() throws ExecutionException, InterruptedException {
+    public void when_leaderLeaves_then_itCannotVoteForCommitOfMemberChange() throws ExecutionException, InterruptedException {
         group = newGroupWithService(3, new RaftConfig().setLeaderHeartbeatPeriodInMillis(1000));
         group.start();
 
@@ -1459,6 +1460,95 @@ public class LocalRaftTest extends HazelcastTestSupport {
             fail();
         } catch (CannotReplicateException ignored) {
         }
+    }
+
+    @Test
+    public void when_newJoiningNodeFirstReceivesSnapshot_then_itInstallsSnapshot() throws ExecutionException, InterruptedException {
+        group = newGroupWithService(3, new RaftConfig().setCommitIndexAdvanceCountToSnapshot(5));
+        group.start();
+
+        final RaftNode leader = group.waitUntilLeaderElected();
+        for (int i = 0; i < 4; i++) {
+            leader.replicate(new RaftAddOperation("val" + i)).get();
+        }
+
+        final RaftNode newRaftNode = group.createNewRaftNode();
+
+        group.dropMessagesToEndpoint(leader.getLocalEndpoint(), newRaftNode.getLocalEndpoint(), AppendRequest.class);
+
+        leader.replicateMembershipChange(newRaftNode.getLocalEndpoint(), MembershipChangeType.ADD).get();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertTrue(getSnapshotEntry(leader).index() > 0);
+            }
+        });
+
+        group.resetAllDropRulesFrom(leader.getLocalEndpoint());
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertEquals(getCommitIndex(leader), getCommitIndex(newRaftNode));
+                assertEquals(getLastGroupMembers(leader).members(), getLastGroupMembers(newRaftNode).members());
+                assertEquals(getLastGroupMembers(leader).members(), getCommittedGroupMembers(newRaftNode).members());
+                RaftDataService service = group.getService(newRaftNode);
+                assertEquals(4, service.size());
+            }
+        });
+    }
+
+    @Test
+    public void when_leaderFailsWhileLeavingRaftGroup_othersCommitTheMemberChange() throws ExecutionException, InterruptedException {
+        group = newGroupWithService(3, new RaftConfig());
+        group.start();
+
+        final RaftNode leader = group.waitUntilLeaderElected();
+        final RaftNode[] followers = group.getNodesExcept(leader.getLocalEndpoint());
+
+        leader.replicate(new RaftAddOperation("val")).get();
+
+        for (RaftNode follower : followers) {
+            group.dropMessagesToEndpoint(follower.getLocalEndpoint(), leader.getLocalEndpoint(), AppendSuccessResponse.class);
+            group.dropMessagesToEndpoint(follower.getLocalEndpoint(), leader.getLocalEndpoint(), AppendFailureResponse.class);
+        }
+
+        leader.replicateMembershipChange(leader.getLocalEndpoint(), MembershipChangeType.REMOVE);
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (RaftNode follower : followers) {
+                    assertEquals(2, getLastLogOrSnapshotEntry(follower).index());
+                }
+            }
+        });
+
+        group.terminateNode(leader.getLocalEndpoint());
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (RaftNode follower : followers) {
+                    final RaftEndpoint newLeaderEndpoint = getLeaderEndpoint(follower);
+                    assertNotNull(newLeaderEndpoint);
+                    assertNotEquals(leader.getLocalEndpoint(), newLeaderEndpoint);
+                }
+            }
+        });
+
+        final RaftNode newLeader = group.getNode(getLeaderEndpoint(followers[0]));
+        newLeader.replicate(new RaftAddOperation("val2"));
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (RaftNode follower : followers) {
+                    assertFalse(getCommittedGroupMembers(follower).isKnownEndpoint(leader.getLocalEndpoint()));
+                }
+            }
+        });
     }
 
     private LocalRaftGroup newGroupWithService(int nodeCount, RaftConfig raftConfig) {
