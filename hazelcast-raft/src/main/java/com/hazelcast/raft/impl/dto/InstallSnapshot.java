@@ -5,7 +5,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.impl.log.LogEntry;
+import com.hazelcast.raft.impl.log.SnapshotEntry;
 
 import java.io.IOException;
 
@@ -15,12 +15,12 @@ public class InstallSnapshot implements IdentifiedDataSerializable {
 
     private int term;
 
-    private LogEntry snapshot;
+    private SnapshotEntry snapshot;
 
     public InstallSnapshot() {
     }
 
-    public InstallSnapshot(RaftEndpoint leader, int term, LogEntry snapshot) {
+    public InstallSnapshot(RaftEndpoint leader, int term, SnapshotEntry snapshot) {
         this.leader = leader;
         this.term = term;
         this.snapshot = snapshot;
@@ -34,7 +34,7 @@ public class InstallSnapshot implements IdentifiedDataSerializable {
         return term;
     }
 
-    public LogEntry snapshot() {
+    public SnapshotEntry snapshot() {
         return snapshot;
     }
 
@@ -50,18 +50,16 @@ public class InstallSnapshot implements IdentifiedDataSerializable {
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        leader.writeData(out);
+        out.writeObject(leader);
         out.writeInt(term);
-        snapshot.writeData(out);
+        out.writeObject(snapshot);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
-        leader = new RaftEndpoint();
-        leader.readData(in);
+        leader = in.readObject();
         term = in.readInt();
-        snapshot = new LogEntry();
-        snapshot.readData(in);
+        snapshot = in.readObject();
     }
 
     @Override

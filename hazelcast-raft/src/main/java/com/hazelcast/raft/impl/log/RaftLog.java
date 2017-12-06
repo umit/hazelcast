@@ -15,7 +15,7 @@ public class RaftLog {
      */
     private final ArrayList<LogEntry> logs = new ArrayList<LogEntry>();
 
-    private LogEntry snapshot = new LogEntry();
+    private SnapshotEntry snapshot = new SnapshotEntry();
 
     public int lastLogOrSnapshotIndex() {
         return lastLogOrSnapshotEntry().index();
@@ -70,7 +70,7 @@ public class RaftLog {
                         + lastTerm);
             }
             if (entry.index() != lastIndex + 1) {
-                throw new IllegalArgumentException("Cannot append " + entry + "since its index is bigger than (lasLogIndex + 1): "
+                throw new IllegalArgumentException("Cannot append " + entry + " since its index is bigger than (lastLogIndex + 1): "
                         + (lastIndex + 1));
             }
             logs.add(entry);
@@ -97,7 +97,7 @@ public class RaftLog {
         return logs.subList(toArrayIndex(fromEntryIndex), toArrayIndex(toEntryIndex + 1)).toArray(new LogEntry[0]);
     }
 
-    public List<LogEntry> setSnapshot(LogEntry snapshot) {
+    public List<LogEntry> setSnapshot(SnapshotEntry snapshot) {
         if (snapshot.index() <= snapshotIndex()) {
             throw new IllegalArgumentException("Illegal index: " + snapshot.index() + ", current snapshot index: " + snapshotIndex());
         }
@@ -124,7 +124,7 @@ public class RaftLog {
         return snapshot.index();
     }
 
-    public LogEntry snapshot() {
+    public SnapshotEntry snapshot() {
         return snapshot;
     }
 
