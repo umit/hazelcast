@@ -20,11 +20,11 @@ import com.hazelcast.client.impl.ClientEngineImpl;
 import com.hazelcast.cluster.ClusterState;
 import com.hazelcast.cluster.Joiner;
 import com.hazelcast.cluster.impl.TcpIpJoiner;
+import com.hazelcast.config.AliasedDiscoveryConfigUtils;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.ConfigurationException;
 import com.hazelcast.config.DiscoveryConfig;
 import com.hazelcast.config.DiscoveryStrategyConfig;
-import com.hazelcast.config.AliasedDiscoveryConfigUtils;
 import com.hazelcast.config.JoinConfig;
 import com.hazelcast.config.ListenerConfig;
 import com.hazelcast.config.MemberAttributeConfig;
@@ -507,7 +507,6 @@ public class Node {
         }
     }
 
-    @SuppressWarnings("checkstyle:npathcomplexity")
     private void shutdownServices(boolean terminate) {
         if (nodeExtension != null) {
             nodeExtension.beforeShutdown();
