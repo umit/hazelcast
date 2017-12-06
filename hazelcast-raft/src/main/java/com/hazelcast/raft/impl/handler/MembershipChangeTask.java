@@ -42,19 +42,27 @@ public class MembershipChangeTask implements Runnable {
                 members.remove(member);
                 break;
             default:
-                throw new IllegalArgumentException("Unknown type: " + changeType);
+                resultFuture.setResult(new IllegalArgumentException("Unknown type: " + changeType));
+                return;
         }
         new ReplicateTask(raftNode, new ApplyRaftGroupMembersOp(members), resultFuture).run();
     }
 
     private boolean verifyMembershipChange() {
+        if (changeType == null) {
+            resultFuture.setResult(new IllegalArgumentException("Unknown type: " + changeType));
+            return false;
+        }
+
         Collection<RaftEndpoint> members = raftNode.state().members();
         boolean memberExists = members.contains(member);
         if ((changeType == MembershipChangeType.ADD && memberExists) ||
                 (changeType == MembershipChangeType.REMOVE && !memberExists)) {
-            resultFuture.setResult("Cannot " + changeType + " member: " + member + " to / from: " + members);
+            Exception e = new IllegalArgumentException("Cannot " + changeType + " member: " + member + " to / from: " + members);
+            resultFuture.setResult(e);
             return false;
         }
+
         return true;
     }
 }
