@@ -50,7 +50,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     private final ILogger logger;
 
     private volatile RaftConfig config;
-    private volatile Collection<RaftEndpoint> endpoints;
+    private volatile Collection<RaftEndpoint> allEndpoints;
     private volatile RaftEndpoint localEndpoint;
 
     public RaftService(NodeEngine nodeEngine) {
@@ -61,21 +61,21 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
         try {
-            endpoints = Collections.unmodifiableCollection(RaftEndpoint.parseEndpoints(config.getMembers()));
+            allEndpoints = Collections.unmodifiableCollection(RaftEndpoint.parseEndpoints(config.getMembers()));
         } catch (UnknownHostException e) {
             throw new HazelcastException(e);
         }
-        logger.info("CP nodes: " + endpoints);
-        raftGroups.put(METADATA_GROUP_ID, new RaftGroupInfo(METADATA_GROUP_ID, endpoints, SERVICE_NAME));
+        logger.info("CP nodes: " + allEndpoints);
+        raftGroups.put(METADATA_GROUP_ID, new RaftGroupInfo(METADATA_GROUP_ID, allEndpoints, SERVICE_NAME));
 
-        localEndpoint = findLocalEndpoint(endpoints);
+        localEndpoint = findLocalEndpoint(allEndpoints);
         if (localEndpoint == null) {
             logger.warning("We are not in CP nodes group :(");
             return;
         }
 
         RaftIntegration raftIntegration = new NodeEngineRaftIntegration(this.nodeEngine, METADATA_GROUP_ID);
-        RaftNode node = new RaftNode(SERVICE_NAME, METADATA_RAFT, localEndpoint, endpoints, config, raftIntegration);
+        RaftNode node = new RaftNode(SERVICE_NAME, METADATA_RAFT, localEndpoint, allEndpoints, config, raftIntegration);
         nodes.put(METADATA_GROUP_ID, node);
         node.start();
     }
@@ -121,10 +121,30 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     @Override
     public void restoreSnapshot(String raftName, int commitIndex, ArrayList<RaftGroupInfo> snapshot) {
         assert METADATA_RAFT.equals(raftName);
-        // TODO [basri] this is broken. what about destroyed ones ???
         for (RaftGroupInfo groupInfo : snapshot) {
-            if (!raftGroups.containsKey(groupInfo.id())) {
-                createRaftGroup(groupInfo.serviceName(), groupInfo.name(), groupInfo.members(), groupInfo.commitIndex());
+            RaftGroupInfo existingGroupInfo = raftGroups.get(groupInfo.id());
+
+            if (groupInfo.status() == RaftGroupStatus.ACTIVE && existingGroupInfo == null) {
+                createRaftGroup(groupInfo);
+                continue;
+            }
+
+            if (groupInfo.status() == RaftGroupStatus.DESTROYING) {
+                if (existingGroupInfo == null) {
+                    createRaftGroup(groupInfo);
+                } else {
+                    existingGroupInfo.setDestroying();
+                }
+                continue;
+            }
+
+            if (groupInfo.status() == RaftGroupStatus.DESTROYED) {
+                if (existingGroupInfo == null) {
+                    raftGroups.put(groupInfo.id(), groupInfo);
+                } else {
+                    completeDestroy(existingGroupInfo);
+                }
+                continue;
             }
         }
     }
@@ -219,7 +239,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     }
 
     public Collection<RaftEndpoint> getAllEndpoints() {
-        return endpoints;
+        return allEndpoints;
     }
 
     public RaftEndpoint getLocalEndpoint() {
@@ -239,17 +259,26 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
                     + " already exists with different group size. Ignoring add raft node request.");
         }
 
-        RaftGroupId groupId = new RaftGroupId(name, commitIndex);
-        raftGroups.put(groupId, new RaftGroupInfo(groupId, endpoints, serviceName));
+        return createRaftGroup(new RaftGroupInfo(new RaftGroupId(name, commitIndex), endpoints, serviceName));
+    }
 
+    private RaftGroupId createRaftGroup(RaftGroupInfo groupInfo) {
+        RaftGroupId groupId = groupInfo.id();
+        if (raftGroups.containsKey(groupId)) {
+            throw new IllegalStateException(groupInfo + " already exists.");
+        }
+
+        raftGroups.put(groupId, groupInfo);
+
+        Collection<RaftEndpoint> endpoints = groupInfo.members();
         if (!endpoints.contains(localEndpoint)) {
             return groupId;
         }
 
-        assert nodes.get(groupId) == null : "Raft node with name " + name + " should not exist!";
+        assert nodes.get(groupId) == null : "Raft node with name " + groupId.name() + " should not exist!";
 
         RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, groupId);
-        RaftNode node = new RaftNode(serviceName, name, localEndpoint, endpoints, config, raftIntegration);
+        RaftNode node = new RaftNode(groupInfo.serviceName(), groupId.name(), localEndpoint, endpoints, config, raftIntegration);
         nodes.put(groupId, node);
         node.start();
         return groupId;
@@ -287,6 +316,11 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         RaftGroupInfo groupInfo = raftGroups.get(groupId);
         checkNotNull(groupInfo, "No raft group exists for " + groupId + " to commit destroy");
 
+        completeDestroy(groupInfo);
+    }
+
+    private void completeDestroy(RaftGroupInfo groupInfo) {
+        RaftGroupId groupId = groupInfo.id();
         if (groupInfo.setDestroyed()) {
             logger.info(groupId + " is destroyed.");
             RaftNode raftNode = nodes.remove(groupId);
