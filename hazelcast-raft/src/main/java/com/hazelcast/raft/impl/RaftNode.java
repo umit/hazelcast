@@ -125,7 +125,11 @@ public class RaftNode {
         }
 
         this.status = status;
-        logger.info("Status is set to: " + status);
+        if (status == ACTIVE) {
+            logger.info("Status is set to: " + status);
+        } else {
+            logger.warning("Status is set to: " + status);
+        }
     }
 
     public long getLeaderElectionTimeoutInMillis() {
