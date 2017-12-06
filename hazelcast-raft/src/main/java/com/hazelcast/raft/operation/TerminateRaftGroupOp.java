@@ -1,4 +1,4 @@
-package com.hazelcast.raft.impl.operation;
+package com.hazelcast.raft.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
@@ -7,7 +7,11 @@ import com.hazelcast.raft.impl.RaftDataSerializerHook;
 
 import java.io.IOException;
 
-public class TerminateRaftGroupOp extends InternalRaftOp implements IdentifiedDataSerializable {
+/**
+ * TODO: Javadoc Pending...
+ *
+ */
+public class TerminateRaftGroupOp extends RaftCommandOperation implements IdentifiedDataSerializable {
 
     public TerminateRaftGroupOp() {
     }

@@ -4,10 +4,8 @@ import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.log.RaftLog;
-import com.hazelcast.raft.impl.operation.ChangeRaftGroupMembershipOp.MembershipChangeType;
 
 import java.util.Collection;
-import java.util.HashSet;
 
 /**
  * TODO: Javadoc Pending...
@@ -73,6 +71,14 @@ public class RaftState {
 
     public int membersLogIndex() {
         return lastGroupMembers.index();
+    }
+
+    public RaftGroupMembers committedGroupMembers() {
+        return committedGroupMembers;
+    }
+
+    public RaftGroupMembers lastGroupMembers() {
+        return lastGroupMembers;
     }
 
     public RaftRole role() {
@@ -179,31 +185,29 @@ public class RaftState {
         return preCandidateState;
     }
 
-    public void updateGroupMembers(int logIndex, RaftEndpoint endpoint, MembershipChangeType changeType) {
+    public void updateGroupMembers(int logIndex, Collection<RaftEndpoint> endpoints) {
         assert committedGroupMembers == lastGroupMembers
-                : "Cannot make group members update: " + changeType + " for " + endpoint + " at log index: " + logIndex
-                + " because last group members: " + lastGroupMembers + " is different than committed group members: "
-                + committedGroupMembers;
+                : "Cannot update group members to: " + endpoints + " at log index: " + logIndex + " because last group members: "
+                + lastGroupMembers + " is different than committed group members: " + committedGroupMembers;
         assert lastGroupMembers.index() < logIndex
-                : "Cannot make group members update: " + changeType + " for " + endpoint + " at log index: " + logIndex
-                + " because last group members: " + lastGroupMembers + " has a bigger log index.";
-
-        Collection<RaftEndpoint> endpoints = new HashSet<RaftEndpoint>(members());
-        if (changeType == MembershipChangeType.ADD) {
-            endpoints.add(endpoint);
-        } else  {
-            endpoints.remove(endpoint);
-        }
+                : "Cannot update group members to: " + endpoints + " at log index: " + logIndex + " because last group members: "
+                + lastGroupMembers + " has a bigger log index.";
 
         RaftGroupMembers newGroupMembers = new RaftGroupMembers(logIndex, endpoints, localEndpoint);
         committedGroupMembers = lastGroupMembers;
         lastGroupMembers = newGroupMembers;
 
         if (leaderState != null) {
-            if (changeType == MembershipChangeType.ADD) {
-                leaderState.add(endpoint, log.lastLogOrSnapshotIndex());
-            } else {
-                leaderState.remove(endpoint);
+            for (RaftEndpoint endpoint : endpoints) {
+                if (!committedGroupMembers.isKnownEndpoint(endpoint)) {
+                    leaderState.add(endpoint, 0);
+                }
+            }
+
+            for (RaftEndpoint endpoint : committedGroupMembers.remoteMembers()) {
+                if (!endpoints.contains(endpoint)) {
+                    leaderState.remove(endpoint);
+                }
             }
         }
     }
@@ -219,6 +223,7 @@ public class RaftState {
         assert this.committedGroupMembers != this.lastGroupMembers;
 
         this.lastGroupMembers = this.committedGroupMembers;
+        // there is no leader state to clean up
     }
 
     public void restoreGroupMembers(int logIndex, Collection<RaftEndpoint> endpoints) {

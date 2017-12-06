@@ -16,6 +16,7 @@ import static com.hazelcast.raft.impl.RaftUtil.minority;
 import static com.hazelcast.raft.impl.RaftUtil.newRaftEndpoint;
 import static com.hazelcast.test.HazelcastTestSupport.assertTrueEventually;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertEquals;
@@ -24,9 +25,13 @@ import static org.junit.Assert.assertThat;
 
 public class LocalRaftGroup {
 
-    private final RaftEndpoint[] endpoints;
-    private final LocalRaftIntegration[] integrations;
-    private final RaftNode[] nodes;
+    private RaftEndpoint[] endpoints;
+    private LocalRaftIntegration[] integrations;
+    private RaftNode[] nodes;
+    private RaftConfig raftConfig;
+    private String serviceName;
+    private Class<? extends SnapshotAwareService> serviceClazz;
+    private int createdNodeCount;
 
     public LocalRaftGroup(int size) {
         this(size, new RaftConfig());
@@ -39,21 +44,14 @@ public class LocalRaftGroup {
     public LocalRaftGroup(int size, RaftConfig raftConfig, String serviceName, Class<? extends SnapshotAwareService> serviceClazz) {
         endpoints = new RaftEndpoint[size];
         integrations = new LocalRaftIntegration[size];
+        this.raftConfig = raftConfig;
+        this.serviceName = serviceName;
+        this.serviceClazz = serviceClazz;
 
-        for (int i = 0; i < size; i++) {
-            endpoints[i] = newRaftEndpoint(5000 + i);
-            SnapshotAwareService service;
-            if (serviceName != null && serviceClazz != null) {
-                try {
-                    service = serviceClazz.newInstance();
-                } catch (Exception e) {
-                    throw new AssertionError(e);
-                }
-            } else {
-                service = null;
-            }
-
-            integrations[i] = new LocalRaftIntegration(endpoints[i], raftConfig, service);
+        for (; createdNodeCount < size; createdNodeCount++) {
+            LocalRaftIntegration integration = createNewLocalRaftIntegration();
+            integrations[createdNodeCount] = integration;
+            endpoints[createdNodeCount] = integration.getLocalEndpoint();
         }
 
         nodes = new RaftNode[size];
@@ -61,6 +59,22 @@ public class LocalRaftGroup {
             LocalRaftIntegration integration = integrations[i];
             nodes[i] = new RaftNode(serviceName, "test", endpoints[i], asList(endpoints), raftConfig, integration);
         }
+    }
+
+    private LocalRaftIntegration createNewLocalRaftIntegration() {
+        return new LocalRaftIntegration(newRaftEndpoint(5000 + createdNodeCount), raftConfig, createServiceInstance());
+    }
+
+    private SnapshotAwareService createServiceInstance() {
+        if (serviceName != null && serviceClazz != null) {
+            try {
+                return serviceClazz.newInstance();
+            } catch (Exception e) {
+                throw new AssertionError(e);
+            }
+        }
+
+        return null;
     }
 
     public void start() {
@@ -74,7 +88,7 @@ public class LocalRaftGroup {
         }
     }
 
-    public void initDiscovery() {
+    private void initDiscovery() {
         for (LocalRaftIntegration integration : integrations) {
             for (int i = 0; i < size(); i++) {
                 if (integrations[i].isShutdown()) {
@@ -86,6 +100,31 @@ public class LocalRaftGroup {
                 }
             }
         }
+    }
+
+    public RaftNode createNewRaftNode() {
+        int oldSize = this.integrations.length;
+        int newSize = oldSize + 1;
+        RaftEndpoint[] endpoints = new RaftEndpoint[newSize];
+        LocalRaftIntegration[] integrations = new LocalRaftIntegration[newSize];
+        RaftNode[] nodes = new RaftNode[newSize];
+        System.arraycopy(this.endpoints, 0, endpoints, 0, oldSize);
+        System.arraycopy(this.integrations, 0, integrations, 0, oldSize);
+        System.arraycopy(this.nodes, 0, nodes, 0, oldSize);
+        LocalRaftIntegration integration = createNewLocalRaftIntegration();
+        integrations[oldSize] = integration;
+        RaftEndpoint endpoint = integration.getLocalEndpoint();
+        endpoints[oldSize] = endpoint;
+        RaftNode node = new RaftNode(serviceName, "test", endpoint, singletonList(endpoint), raftConfig, integration);
+        nodes[oldSize] = node;
+        this.endpoints = endpoints;
+        this.integrations = integrations;
+        this.nodes = nodes;
+
+        node.start();
+        initDiscovery();
+
+        return node;
     }
 
     public RaftNode[] getNodes() {
