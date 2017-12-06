@@ -84,10 +84,20 @@ public class AppendSuccessResponseHandlerTask extends RaftNodeAwareTask implemen
     private int findQuorumMatchIndex(RaftState state) {
         LeaderState leaderState = state.leaderState();
         Collection<Integer> matchIndices = leaderState.matchIndices();
-        int[] indices = new int[matchIndices.size() + 1];
-        indices[0] = state.log().lastLogOrSnapshotIndex();
 
-        int k = 1;
+        int[] indices;
+        int k;
+
+        // if the leader is leaving, it should not count its vote for quorum...
+        if (raftNode.state().isKnownEndpoint(raftNode.getLocalEndpoint())) {
+            indices = new int[matchIndices.size() + 1];
+            indices[0] = state.log().lastLogOrSnapshotIndex();
+            k = 1;
+        } else {
+            indices = new int[matchIndices.size()];
+            k = 0;
+        }
+
         for (int index : matchIndices) {
             indices[k++] = index;
         }

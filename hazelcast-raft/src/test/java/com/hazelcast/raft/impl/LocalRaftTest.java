@@ -36,6 +36,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static com.hazelcast.raft.MembershipChangeType.REMOVE;
 import static com.hazelcast.raft.impl.RaftUtil.getCommitIndex;
 import static com.hazelcast.raft.impl.RaftUtil.getCommittedGroupMembers;
 import static com.hazelcast.raft.impl.RaftUtil.getLastGroupMembers;
@@ -46,8 +47,10 @@ import static com.hazelcast.raft.impl.RaftUtil.getSnapshotEntry;
 import static com.hazelcast.raft.impl.RaftUtil.getStatus;
 import static com.hazelcast.raft.impl.RaftUtil.getTerm;
 import static com.hazelcast.raft.impl.service.RaftDataService.SERVICE_NAME;
+import static java.util.Arrays.asList;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -1251,7 +1254,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void when_newRaftNodeJoins_itAppendsMissingEntries() throws ExecutionException, InterruptedException {
+    public void when_newRaftNodeJoins_then_itAppendsMissingEntries() throws ExecutionException, InterruptedException {
         group = newGroupWithService(3, new RaftConfig());
         group.start();
 
@@ -1274,12 +1277,12 @@ public class LocalRaftTest extends HazelcastTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                for (RaftNode node : group.getNodes()) {
-                    assertEquals(RaftNodeStatus.ACTIVE, getStatus(node));
-                    assertEquals(lastGroupMembers.members(), getLastGroupMembers(node).members());
-                    assertEquals(lastGroupMembers.index(), getLastGroupMembers(node).index());
-                    assertEquals(lastGroupMembers.members(), getCommittedGroupMembers(node).members());
-                    assertEquals(lastGroupMembers.index(), getCommittedGroupMembers(node).index());
+                for (RaftNode raftNode : group.getNodes()) {
+                    assertEquals(RaftNodeStatus.ACTIVE, getStatus(raftNode));
+                    assertEquals(lastGroupMembers.members(), getLastGroupMembers(raftNode).members());
+                    assertEquals(lastGroupMembers.index(), getLastGroupMembers(raftNode).index());
+                    assertEquals(lastGroupMembers.members(), getCommittedGroupMembers(raftNode).members());
+                    assertEquals(lastGroupMembers.index(), getCommittedGroupMembers(raftNode).index());
                 }
             }
         });
@@ -1287,6 +1290,110 @@ public class LocalRaftTest extends HazelcastTestSupport {
         RaftDataService service = group.getService(newRaftNode);
         assertEquals(1, service.size());
         assertTrue(service.values().contains("val"));
+    }
+
+    @Test
+    public void when_followerLeaves_then_itIsRemovedFromTheGroupMembers() throws ExecutionException, InterruptedException {
+        group = newGroupWithService(3, new RaftConfig());
+        group.start();
+
+        final RaftNode leader = group.waitUntilLeaderElected();
+        RaftNode[] followers = group.getNodesExcept(leader.getLocalEndpoint());
+        final RaftNode leavingFollower = followers[0];
+        final RaftNode stayingFollower = followers[1];
+
+        leader.replicate(new RaftAddOperation("val")).get();
+
+        leader.replicateMembershipChange(leavingFollower.getLocalEndpoint(), REMOVE).get();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (RaftNode raftNode : asList(leader, stayingFollower)) {
+                    assertFalse(getLastGroupMembers(raftNode).isKnownEndpoint(leavingFollower.getLocalEndpoint()));
+                    assertFalse(getCommittedGroupMembers(raftNode).isKnownEndpoint(leavingFollower.getLocalEndpoint()));
+                }
+            }
+        });
+
+        group.terminateNode(leavingFollower.getLocalEndpoint());
+    }
+
+    @Test
+    public void when_leaderLeaves_then_itIsRemovedFromTheGroupMembers() throws ExecutionException, InterruptedException {
+        group = newGroupWithService(3, new RaftConfig());
+        group.start();
+
+        final RaftNode leader = group.waitUntilLeaderElected();
+        final RaftNode[] followers = group.getNodesExcept(leader.getLocalEndpoint());
+
+        leader.replicate(new RaftAddOperation("val")).get();
+        leader.replicateMembershipChange(leader.getLocalEndpoint(), REMOVE).get();
+
+        assertEquals(RaftNodeStatus.STEPPED_DOWN, getStatus(leader));
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (RaftNode raftNode : followers) {
+                    assertFalse(getLastGroupMembers(raftNode).isKnownEndpoint(leader.getLocalEndpoint()));
+                    assertFalse(getCommittedGroupMembers(raftNode).isKnownEndpoint(leader.getLocalEndpoint()));
+                }
+            }
+        });
+    }
+
+    @Test
+    public void when_newLeaderRaftNodeLeaves_then_itCannotVoteForCommitOfMemberChange() throws ExecutionException, InterruptedException {
+        group = newGroupWithService(3, new RaftConfig().setLeaderHeartbeatPeriodInMillis(1000));
+        group.start();
+
+        final RaftNode leader = group.waitUntilLeaderElected();
+
+        group.dropMessagesToEndpoint(group.getNodesExcept(leader.getLocalEndpoint())[0].getLocalEndpoint(), leader.getLocalEndpoint(), AppendSuccessResponse.class);
+        leader.replicate(new RaftAddOperation("val")).get();
+
+        leader.replicateMembershipChange(leader.getLocalEndpoint(), MembershipChangeType.REMOVE);
+
+        assertTrueAllTheTime(new AssertTask() {
+            @Override
+            public void run() {
+                assertEquals(1, getCommitIndex(leader));
+            }
+        }, 10);
+    }
+
+    @Test
+    public void when_leaderLeaves_then_followersElectNewLeader() throws ExecutionException, InterruptedException {
+        group = newGroupWithService(3, new RaftConfig());
+        group.start();
+
+        final RaftNode leader = group.waitUntilLeaderElected();
+        final RaftNode[] followers = group.getNodesExcept(leader.getLocalEndpoint());
+
+        leader.replicate(new RaftAddOperation("val")).get();
+        leader.replicateMembershipChange(leader.getLocalEndpoint(), REMOVE).get();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (RaftNode raftNode : followers) {
+                    assertFalse(getLastGroupMembers(raftNode).isKnownEndpoint(leader.getLocalEndpoint()));
+                    assertFalse(getCommittedGroupMembers(raftNode).isKnownEndpoint(leader.getLocalEndpoint()));
+                }
+            }
+        });
+
+        group.terminateNode(leader.getLocalEndpoint());
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (RaftNode raftNode : followers) {
+                    assertNotEquals(leader.getLocalEndpoint(), getLeaderEndpoint(raftNode));
+                }
+            }
+        });
     }
 
     private LocalRaftGroup newGroupWithService(int nodeCount, RaftConfig raftConfig) {
