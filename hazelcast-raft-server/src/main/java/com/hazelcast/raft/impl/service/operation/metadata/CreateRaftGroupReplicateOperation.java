@@ -2,7 +2,7 @@ package com.hazelcast.raft.impl.service.operation.metadata;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.raft.RaftOperation;
+import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.service.RaftGroupId;

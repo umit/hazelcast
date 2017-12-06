@@ -1,4 +1,4 @@
-package com.hazelcast.raft.impl.operation;
+package com.hazelcast.raft.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
@@ -12,7 +12,7 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public class ChangeRaftGroupMembershipOp extends InternalRaftOp implements IdentifiedDataSerializable {
+public class ChangeRaftGroupMembersOp extends RaftCommandOperation implements IdentifiedDataSerializable {
 
     public enum MembershipChangeType {
         ADD, REMOVE
@@ -22,10 +22,10 @@ public class ChangeRaftGroupMembershipOp extends InternalRaftOp implements Ident
 
     private MembershipChangeType changeType;
 
-    public ChangeRaftGroupMembershipOp() {
+    public ChangeRaftGroupMembersOp() {
     }
 
-    public ChangeRaftGroupMembershipOp(RaftEndpoint member, MembershipChangeType changeType) {
+    public ChangeRaftGroupMembersOp(RaftEndpoint member, MembershipChangeType changeType) {
         this.member = member;
         this.changeType = changeType;
     }
@@ -59,11 +59,11 @@ public class ChangeRaftGroupMembershipOp extends InternalRaftOp implements Ident
 
     @Override
     public int getId() {
-        return RaftDataSerializerHook.CHANGE_RAFT_GROUP_MEMBERSHIP_OP;
+        return RaftDataSerializerHook.CHANGE_RAFT_GROUP_MEMBERS_OP;
     }
 
     @Override
     public String toString() {
-        return "ChangeRaftGroupMembershipOp{" + "member=" + member + ", changeType=" + changeType + '}';
+        return "ChangeRaftGroupMembersOp{" + "member=" + member + ", changeType=" + changeType + '}';
     }
 }

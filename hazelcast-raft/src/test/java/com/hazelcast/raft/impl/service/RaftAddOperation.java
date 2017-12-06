@@ -2,7 +2,7 @@ package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.raft.RaftOperation;
+import com.hazelcast.raft.operation.RaftOperation;
 
 import java.io.IOException;
 

@@ -10,10 +10,13 @@ import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
-import com.hazelcast.raft.impl.operation.TerminateRaftGroupOp;
 import com.hazelcast.raft.impl.service.RaftAddOperation;
 import com.hazelcast.raft.impl.service.RaftDataService;
+import com.hazelcast.raft.impl.state.RaftGroupMembers;
 import com.hazelcast.raft.impl.testing.LocalRaftGroup;
+import com.hazelcast.raft.operation.ChangeRaftGroupMembersOp;
+import com.hazelcast.raft.operation.ChangeRaftGroupMembersOp.MembershipChangeType;
+import com.hazelcast.raft.operation.TerminateRaftGroupOp;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
@@ -35,6 +38,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static com.hazelcast.raft.impl.RaftUtil.getCommitIndex;
+import static com.hazelcast.raft.impl.RaftUtil.getCommittedGroupMembers;
+import static com.hazelcast.raft.impl.RaftUtil.getLastGroupMembers;
 import static com.hazelcast.raft.impl.RaftUtil.getLastLogOrSnapshotEntry;
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static com.hazelcast.raft.impl.RaftUtil.getMatchIndex;
@@ -1244,6 +1249,45 @@ public class LocalRaftTest extends HazelcastTestSupport {
                 }
             }
         });
+    }
+
+    @Test
+    public void when_newRaftNodeJoins_itAppendsMissingEntries() throws ExecutionException, InterruptedException {
+        group = newGroupWithService(3, new RaftConfig());
+        group.start();
+
+        final RaftNode leader = group.waitUntilLeaderElected();
+        leader.replicate(new RaftAddOperation("val")).get();
+
+        final RaftNode newRaftNode = group.createNewRaftNode();
+
+        leader.replicate(new ChangeRaftGroupMembersOp(newRaftNode.getLocalEndpoint(), MembershipChangeType.ADD)).get();
+
+        final int commitIndex = getCommitIndex(leader);
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertEquals(commitIndex, getCommitIndex(newRaftNode));
+            }
+        });
+
+        final RaftGroupMembers lastGroupMembers = RaftUtil.getLastGroupMembers(leader);
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (RaftNode node : group.getNodes()) {
+                    assertEquals(RaftNodeStatus.ACTIVE, getStatus(node));
+                    assertEquals(lastGroupMembers.members(), getLastGroupMembers(node).members());
+                    assertEquals(lastGroupMembers.index(), getLastGroupMembers(node).index());
+                    assertEquals(lastGroupMembers.members(), getCommittedGroupMembers(node).members());
+                    assertEquals(lastGroupMembers.index(), getCommittedGroupMembers(node).index());
+                }
+            }
+        });
+
+        RaftDataService service = group.getService(newRaftNode);
+        assertEquals(1, service.size());
+        assertTrue(service.values().contains("val"));
     }
 
     private LocalRaftGroup newGroupWithService(int nodeCount, RaftConfig raftConfig) {

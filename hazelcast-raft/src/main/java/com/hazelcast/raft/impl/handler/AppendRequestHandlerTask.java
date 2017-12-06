@@ -9,8 +9,8 @@ import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.log.RaftLog;
-import com.hazelcast.raft.impl.operation.ChangeRaftGroupMembershipOp;
-import com.hazelcast.raft.impl.operation.TerminateRaftGroupOp;
+import com.hazelcast.raft.impl.operation.ApplyRaftGroupMembersOp;
+import com.hazelcast.raft.operation.TerminateRaftGroupOp;
 import com.hazelcast.raft.impl.state.RaftState;
 
 import java.util.Arrays;
@@ -159,14 +159,14 @@ public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runna
                 RaftNodeStatus status = revert ? RaftNodeStatus.ACTIVE : RaftNodeStatus.TERMINATING;
                 raftNode.setStatus(status);
                 return;
-            } else if (entry.operation() instanceof ChangeRaftGroupMembershipOp) {
+            } else if (entry.operation() instanceof ApplyRaftGroupMembersOp) {
                 RaftNodeStatus status = revert ? RaftNodeStatus.ACTIVE : RaftNodeStatus.CHANGING_MEMBERSHIP;
                 raftNode.setStatus(status);
                 if (revert) {
                     raftNode.resetGroupMembers();
                 } else {
-                    ChangeRaftGroupMembershipOp op = (ChangeRaftGroupMembershipOp) entry.operation();
-                    raftNode.updateGroupMembers(entry.index(), op.getMember(), op.getChangeType());
+                    ApplyRaftGroupMembersOp op = (ApplyRaftGroupMembersOp) entry.operation();
+                    raftNode.updateGroupMembers(entry.index(), op.getMembers());
                 }
                 return;
             }
