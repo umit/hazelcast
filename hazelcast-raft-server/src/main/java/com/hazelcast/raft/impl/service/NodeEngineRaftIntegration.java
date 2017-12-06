@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.RaftOperation;
+import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;

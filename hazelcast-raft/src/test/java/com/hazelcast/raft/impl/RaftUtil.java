@@ -4,6 +4,7 @@ import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.state.LeaderState;
+import com.hazelcast.raft.impl.state.RaftGroupMembers;
 import com.hazelcast.util.ExceptionUtil;
 
 import java.net.InetAddress;
@@ -20,7 +21,7 @@ public class RaftUtil {
     public static RaftRole getRole(final RaftNode node) {
         Callable<RaftRole> task = new Callable<RaftRole>() {
             @Override
-            public RaftRole call() throws Exception {
+            public RaftRole call() {
                 return node.state().role();
             }
         };
@@ -30,7 +31,7 @@ public class RaftUtil {
     public static RaftEndpoint getLeaderEndpoint(final RaftNode node) {
         Callable<RaftEndpoint> task = new Callable<RaftEndpoint>() {
             @Override
-            public RaftEndpoint call() throws Exception {
+            public RaftEndpoint call() {
                 return node.state().leader();
             }
         };
@@ -40,7 +41,7 @@ public class RaftUtil {
     public static LogEntry getLastLogOrSnapshotEntry(final RaftNode node) {
         Callable<LogEntry> task = new Callable<LogEntry>() {
             @Override
-            public LogEntry call() throws Exception {
+            public LogEntry call() {
                 return node.state().log().lastLogOrSnapshotEntry();
             }
         };
@@ -51,7 +52,7 @@ public class RaftUtil {
     public static LogEntry getSnapshotEntry(final RaftNode node) {
         Callable<LogEntry> task = new Callable<LogEntry>() {
             @Override
-            public LogEntry call() throws Exception {
+            public LogEntry call() {
                 return node.state().log().snapshot();
             }
         };
@@ -62,8 +63,7 @@ public class RaftUtil {
     public static int getCommitIndex(final RaftNode node) {
         Callable<Integer> task = new Callable<Integer>() {
             @Override
-            public Integer call()
-                    throws Exception {
+            public Integer call() {
                 return node.state().commitIndex();
             }
         };
@@ -74,8 +74,7 @@ public class RaftUtil {
     public static int getTerm(final RaftNode node) {
         Callable<Integer> task = new Callable<Integer>() {
             @Override
-            public Integer call()
-                    throws Exception {
+            public Integer call() {
                 return node.state().term();
             }
         };
@@ -86,7 +85,7 @@ public class RaftUtil {
     public static int getNextIndex(final RaftNode leader, final RaftEndpoint follower) {
         Callable<Integer> task = new Callable<Integer>() {
             @Override
-            public Integer call() throws Exception {
+            public Integer call() {
                 LeaderState leaderState = leader.state().leaderState();
                 return leaderState.getNextIndex(follower);
             }
@@ -98,7 +97,7 @@ public class RaftUtil {
     public static int getMatchIndex(final RaftNode leader, final RaftEndpoint follower) {
         Callable<Integer> task = new Callable<Integer>() {
             @Override
-            public Integer call() throws Exception {
+            public Integer call() {
                 LeaderState leaderState = leader.state().leaderState();
                 return leaderState.getMatchIndex(follower);
             }
@@ -110,8 +109,30 @@ public class RaftUtil {
     public static RaftNodeStatus getStatus(final RaftNode node) {
         Callable<RaftNodeStatus> task = new Callable<RaftNodeStatus>() {
             @Override
-            public RaftNodeStatus call() throws Exception {
+            public RaftNodeStatus call() {
                 return node.getStatus();
+            }
+        };
+
+        return readRaftState(node, task);
+    }
+
+    public static RaftGroupMembers getLastGroupMembers(final RaftNode node) {
+        Callable<RaftGroupMembers> task = new Callable<RaftGroupMembers>() {
+            @Override
+            public RaftGroupMembers call() {
+                return node.state().lastGroupMembers();
+            }
+        };
+
+        return readRaftState(node, task);
+    }
+
+    public static RaftGroupMembers getCommittedGroupMembers(final RaftNode node) {
+        Callable<RaftGroupMembers> task = new Callable<RaftGroupMembers>() {
+            @Override
+            public RaftGroupMembers call() {
+                return node.state().committedGroupMembers();
             }
         };
 

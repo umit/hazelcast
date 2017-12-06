@@ -3,7 +3,7 @@ package com.hazelcast.raft.impl;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftConfig;
-import com.hazelcast.raft.RaftOperation;
+import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.StaleAppendRequestException;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
@@ -27,12 +27,12 @@ import com.hazelcast.raft.impl.handler.VoteResponseHandlerTask;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.log.RaftLog;
 import com.hazelcast.raft.impl.log.SnapshotEntry;
-import com.hazelcast.raft.impl.operation.ChangeRaftGroupMembershipOp;
-import com.hazelcast.raft.impl.operation.ChangeRaftGroupMembershipOp.MembershipChangeType;
-import com.hazelcast.raft.impl.operation.InternalRaftOp;
+import com.hazelcast.raft.impl.operation.ApplyRaftGroupMembersOp;
+import com.hazelcast.raft.operation.ChangeRaftGroupMembersOp;
+import com.hazelcast.raft.operation.RaftCommandOperation;
 import com.hazelcast.raft.impl.operation.RestoreSnapshotOp;
 import com.hazelcast.raft.impl.operation.TakeSnapshotOp;
-import com.hazelcast.raft.impl.operation.TerminateRaftGroupOp;
+import com.hazelcast.raft.operation.TerminateRaftGroupOp;
 import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
@@ -146,10 +146,10 @@ public class RaftNode {
         if (status == RaftNodeStatus.TERMINATING) {
             return false;
         } else if (status == RaftNodeStatus.CHANGING_MEMBERSHIP) {
-            return !(operation instanceof InternalRaftOp);
+            return !(operation instanceof RaftCommandOperation);
         }
 
-        if (operation instanceof ChangeRaftGroupMembershipOp) {
+        if (operation instanceof ChangeRaftGroupMembersOp) {
             // the leader must have committed an entry in its term to make a membership change
             // https://groups.google.com/forum/#!msg/raft-dev/t4xj6dJTP6E/d2D9LrWRza8J
 
@@ -329,7 +329,7 @@ public class RaftNode {
         if (operation instanceof TerminateRaftGroupOp) {
             assert status == TERMINATING;
             setStatus(TERMINATED);
-        } else if (operation instanceof ChangeRaftGroupMembershipOp) {
+        } else if (operation instanceof ApplyRaftGroupMembersOp) {
             assert status == CHANGING_MEMBERSHIP;
             state.commitGroupMembers();
             if (state.members().contains(localEndpoint)) {
@@ -487,6 +487,7 @@ public class RaftNode {
         raftIntegration.runOperation(snapshot.operation(), snapshot.index());
         state.restoreGroupMembers(snapshot.groupMembersLogIndex(), snapshot.groupMembers());
         printMemberState();
+        // TODO fix this
         if (state.members().contains(localEndpoint)) {
             setStatus(ACTIVE);
         } else {
@@ -531,8 +532,8 @@ public class RaftNode {
         logger.info(sb.toString());
     }
 
-    public void updateGroupMembers(int logIndex, RaftEndpoint member, MembershipChangeType changeType) {
-        state.updateGroupMembers(logIndex, member, changeType);
+    public void updateGroupMembers(int logIndex, Collection<RaftEndpoint> members) {
+        state.updateGroupMembers(logIndex, members);
         printMemberState();
     }
 

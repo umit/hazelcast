@@ -1,6 +1,6 @@
 package com.hazelcast.raft.impl.log;
 
-import com.hazelcast.raft.RaftOperation;
+import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;

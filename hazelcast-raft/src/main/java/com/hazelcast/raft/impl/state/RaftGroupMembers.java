@@ -3,7 +3,7 @@ package com.hazelcast.raft.impl.state;
 import com.hazelcast.raft.impl.RaftEndpoint;
 
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import static java.util.Collections.unmodifiableSet;
@@ -22,8 +22,8 @@ public class RaftGroupMembers {
 
     public RaftGroupMembers(int index, Collection<RaftEndpoint> endpoints, RaftEndpoint localEndpoint) {
         this.index = index;
-        this.members = unmodifiableSet(new HashSet<RaftEndpoint>(endpoints));
-        Set<RaftEndpoint> remoteMembers = new HashSet<RaftEndpoint>(endpoints);
+        this.members = unmodifiableSet(new LinkedHashSet<RaftEndpoint>(endpoints));
+        Set<RaftEndpoint> remoteMembers = new LinkedHashSet<RaftEndpoint>(endpoints);
         remoteMembers.remove(localEndpoint);
         this.remoteMembers = unmodifiableSet(remoteMembers);
     }

@@ -14,9 +14,10 @@ import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.log.SnapshotEntry;
-import com.hazelcast.raft.impl.operation.ChangeRaftGroupMembershipOp;
+import com.hazelcast.raft.impl.operation.ApplyRaftGroupMembersOp;
+import com.hazelcast.raft.operation.ChangeRaftGroupMembersOp;
 import com.hazelcast.raft.impl.operation.RestoreSnapshotOp;
-import com.hazelcast.raft.impl.operation.TerminateRaftGroupOp;
+import com.hazelcast.raft.operation.TerminateRaftGroupOp;
 
 public final class RaftDataSerializerHook implements DataSerializerHook {
 
@@ -37,8 +38,9 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
     public static final int PRE_VOTE_REQUEST = 10;
     public static final int PRE_VOTE_RESPONSE = 11;
     public static final int TERMINATE_RAFT_GROUP_OP = 12;
-    public static final int CHANGE_RAFT_GROUP_MEMBERSHIP_OP = 13;
-    public static final int SNAPSHOT_ENTRY = 14;
+    public static final int CHANGE_RAFT_GROUP_MEMBERS_OP = 13;
+    public static final int APPLY_RAFT_GROUP_MEMBERS_OP = 14;
+    public static final int SNAPSHOT_ENTRY = 15;
 
     @Override
     public int getFactoryId() {
@@ -75,8 +77,10 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
                         return new PreVoteResponse();
                     case TERMINATE_RAFT_GROUP_OP:
                         return new TerminateRaftGroupOp();
-                    case CHANGE_RAFT_GROUP_MEMBERSHIP_OP:
-                        return new ChangeRaftGroupMembershipOp();
+                    case CHANGE_RAFT_GROUP_MEMBERS_OP:
+                        return new ChangeRaftGroupMembersOp();
+                    case APPLY_RAFT_GROUP_MEMBERS_OP:
+                        return new ApplyRaftGroupMembersOp();
                     case SNAPSHOT_ENTRY:
                         return new SnapshotEntry();
                 }

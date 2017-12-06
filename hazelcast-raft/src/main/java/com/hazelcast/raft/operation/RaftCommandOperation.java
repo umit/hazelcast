@@ -1,12 +1,10 @@
-package com.hazelcast.raft.impl.operation;
-
-import com.hazelcast.raft.RaftOperation;
+package com.hazelcast.raft.operation;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public abstract class InternalRaftOp extends RaftOperation {
+public abstract class RaftCommandOperation extends RaftOperation {
 
     @Override
     protected final Object doRun(int commitIndex) {
