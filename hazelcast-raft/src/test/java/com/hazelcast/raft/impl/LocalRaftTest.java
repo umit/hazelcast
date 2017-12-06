@@ -1350,8 +1350,9 @@ public class LocalRaftTest extends HazelcastTestSupport {
         group.start();
 
         final RaftNode leader = group.waitUntilLeaderElected();
+        RaftNode[] followers = group.getNodesExcept(leader.getLocalEndpoint());
 
-        group.dropMessagesToEndpoint(group.getNodesExcept(leader.getLocalEndpoint())[0].getLocalEndpoint(), leader.getLocalEndpoint(), AppendSuccessResponse.class);
+        group.dropMessagesToEndpoint(followers[0].getLocalEndpoint(), leader.getLocalEndpoint(), AppendSuccessResponse.class);
         leader.replicate(new RaftAddOperation("val")).get();
 
         leader.replicateMembershipChange(leader.getLocalEndpoint(), MembershipChangeType.REMOVE);
