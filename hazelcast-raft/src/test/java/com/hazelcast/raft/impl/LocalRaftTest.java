@@ -1,5 +1,6 @@
 package com.hazelcast.raft.impl;
 
+import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.exception.CannotReplicateException;
 import com.hazelcast.raft.exception.LeaderDemotedException;
@@ -14,8 +15,6 @@ import com.hazelcast.raft.impl.service.RaftAddOperation;
 import com.hazelcast.raft.impl.service.RaftDataService;
 import com.hazelcast.raft.impl.state.RaftGroupMembers;
 import com.hazelcast.raft.impl.testing.LocalRaftGroup;
-import com.hazelcast.raft.operation.ChangeRaftGroupMembersOp;
-import com.hazelcast.raft.operation.ChangeRaftGroupMembersOp.MembershipChangeType;
 import com.hazelcast.raft.operation.TerminateRaftGroupOp;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -1261,7 +1260,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
 
         final RaftNode newRaftNode = group.createNewRaftNode();
 
-        leader.replicate(new ChangeRaftGroupMembersOp(newRaftNode.getLocalEndpoint(), MembershipChangeType.ADD)).get();
+        leader.replicateMembershipChange(newRaftNode.getLocalEndpoint(), MembershipChangeType.ADD).get();
 
         final int commitIndex = getCommitIndex(leader);
         assertTrueEventually(new AssertTask() {

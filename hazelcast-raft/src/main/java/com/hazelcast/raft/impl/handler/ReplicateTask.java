@@ -1,25 +1,19 @@
 package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.exception.CannotReplicateException;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
-import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.operation.ApplyRaftGroupMembersOp;
-import com.hazelcast.raft.operation.ChangeRaftGroupMembersOp;
-import com.hazelcast.raft.operation.ChangeRaftGroupMembersOp.MembershipChangeType;
-import com.hazelcast.raft.operation.RaftCommandOperation;
-import com.hazelcast.raft.operation.TerminateRaftGroupOp;
 import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
-
-import java.util.Collection;
-import java.util.LinkedHashSet;
+import com.hazelcast.raft.operation.RaftCommandOperation;
+import com.hazelcast.raft.operation.RaftOperation;
+import com.hazelcast.raft.operation.TerminateRaftGroupOp;
 
 /**
  * TODO: Javadoc Pending...
@@ -59,12 +53,6 @@ public class ReplicateTask implements Runnable {
             return;
         }
 
-        if (!verifyChangeGroupMembersRequestOp()) {
-            return;
-        }
-
-        RaftOperation operation = getOperationToAppended();
-
         if (logger.isFineEnabled()) {
             logger.fine("Replicating: " + operation + " in term: " + state.term());
         }
@@ -98,38 +86,6 @@ public class ReplicateTask implements Runnable {
         }
 
         return true;
-    }
-
-    private boolean verifyChangeGroupMembersRequestOp() {
-        if (operation instanceof ChangeRaftGroupMembersOp) {
-            ChangeRaftGroupMembersOp op = (ChangeRaftGroupMembersOp) operation;
-            Collection<RaftEndpoint> members = raftNode.state().members();
-            boolean memberExists = members.contains(op.getMember());
-            MembershipChangeType changeType = op.getChangeType();
-            if ((changeType == MembershipChangeType.ADD && memberExists) ||
-                    (changeType == MembershipChangeType.REMOVE && !memberExists)) {
-                resultFuture.setResult("Cannot " + changeType + " member: " + op.getMember() + " to / from: " + members);
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private RaftOperation getOperationToAppended() {
-        if (!(operation instanceof ChangeRaftGroupMembersOp)) {
-            return operation;
-        }
-
-        ChangeRaftGroupMembersOp op = (ChangeRaftGroupMembersOp) operation;
-        Collection<RaftEndpoint> members = new LinkedHashSet<RaftEndpoint>(raftNode.state().members());
-        if (op.getChangeType() == MembershipChangeType.ADD) {
-            members.add(op.getMember());
-        } else {
-            members.remove(op.getMember());
-        }
-
-        return new ApplyRaftGroupMembersOp(members);
     }
 
     private void handleInternalRaftOperation(int logIndex, RaftOperation operation) {
