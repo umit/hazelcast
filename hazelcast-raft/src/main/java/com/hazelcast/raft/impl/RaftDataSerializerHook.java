@@ -15,7 +15,6 @@ import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.log.SnapshotEntry;
 import com.hazelcast.raft.impl.operation.ApplyRaftGroupMembersOp;
-import com.hazelcast.raft.operation.ChangeRaftGroupMembersOp;
 import com.hazelcast.raft.impl.operation.RestoreSnapshotOp;
 import com.hazelcast.raft.operation.TerminateRaftGroupOp;
 
@@ -26,21 +25,20 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
 
     public static final int F_ID = FactoryIdHelper.getFactoryId(RAFT_DS_FACTORY, RAFT_DS_FACTORY_ID);
 
-    public static final int VOTE_REQUEST = 1;
-    public static final int VOTE_RESPONSE = 2;
-    public static final int APPEND_REQUEST = 3;
-    public static final int APPEND_SUCCESS_RESPONSE = 4;
-    public static final int APPEND_FAILURE_RESPONSE = 5;
-    public static final int INSTALL_SNAPSHOT = 6;
-    public static final int RESTORE_SNAPSHOT_OP = 7;
-    public static final int LOG_ENTRY = 8;
-    public static final int ENDPOINT = 9;
-    public static final int PRE_VOTE_REQUEST = 10;
-    public static final int PRE_VOTE_RESPONSE = 11;
-    public static final int TERMINATE_RAFT_GROUP_OP = 12;
-    public static final int CHANGE_RAFT_GROUP_MEMBERS_OP = 13;
+    public static final int PRE_VOTE_REQUEST = 1;
+    public static final int PRE_VOTE_RESPONSE = 2;
+    public static final int VOTE_REQUEST = 3;
+    public static final int VOTE_RESPONSE = 4;
+    public static final int APPEND_REQUEST = 5;
+    public static final int APPEND_SUCCESS_RESPONSE = 6;
+    public static final int APPEND_FAILURE_RESPONSE = 7;
+    public static final int INSTALL_SNAPSHOT = 8;
+    public static final int LOG_ENTRY = 9;
+    public static final int SNAPSHOT_ENTRY = 10;
+    public static final int ENDPOINT = 11;
+    public static final int RESTORE_SNAPSHOT_OP = 12;
+    public static final int TERMINATE_RAFT_GROUP_OP = 13;
     public static final int APPLY_RAFT_GROUP_MEMBERS_OP = 14;
-    public static final int SNAPSHOT_ENTRY = 15;
 
     @Override
     public int getFactoryId() {
@@ -53,6 +51,10 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
             @Override
             public IdentifiedDataSerializable create(int typeId) {
                 switch (typeId) {
+                    case PRE_VOTE_REQUEST:
+                        return new PreVoteRequest();
+                    case PRE_VOTE_RESPONSE:
+                        return new PreVoteResponse();
                     case VOTE_REQUEST:
                         return new VoteRequest();
                     case VOTE_RESPONSE:
@@ -65,24 +67,19 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
                         return new AppendFailureResponse();
                     case INSTALL_SNAPSHOT:
                         return new InstallSnapshot();
-                    case RESTORE_SNAPSHOT_OP:
-                        return new RestoreSnapshotOp();
                     case LOG_ENTRY:
                         return new LogEntry();
-                    case ENDPOINT:
-                        return new RaftEndpoint();
-                    case PRE_VOTE_REQUEST:
-                        return new PreVoteRequest();
-                    case PRE_VOTE_RESPONSE:
-                        return new PreVoteResponse();
-                    case TERMINATE_RAFT_GROUP_OP:
-                        return new TerminateRaftGroupOp();
-                    case CHANGE_RAFT_GROUP_MEMBERS_OP:
-                        return new ChangeRaftGroupMembersOp();
-                    case APPLY_RAFT_GROUP_MEMBERS_OP:
-                        return new ApplyRaftGroupMembersOp();
                     case SNAPSHOT_ENTRY:
                         return new SnapshotEntry();
+                    case ENDPOINT:
+                        return new RaftEndpoint();
+                    case RESTORE_SNAPSHOT_OP:
+                        return new RestoreSnapshotOp();
+                    case TERMINATE_RAFT_GROUP_OP:
+                        return new TerminateRaftGroupOp();
+                    case APPLY_RAFT_GROUP_MEMBERS_OP:
+                        return new ApplyRaftGroupMembersOp();
+
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
             }
