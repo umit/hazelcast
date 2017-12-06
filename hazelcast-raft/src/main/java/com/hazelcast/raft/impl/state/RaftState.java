@@ -227,6 +227,13 @@ public class RaftState {
     }
 
     public void restoreGroupMembers(int logIndex, Collection<RaftEndpoint> endpoints) {
+        assert committedGroupMembers == lastGroupMembers
+                : "Cannot restore group members to: " + endpoints + " at log index: " + logIndex + " because last group members: "
+                + lastGroupMembers + " is different than committed group members: " + committedGroupMembers;
+        assert lastGroupMembers.index() <= logIndex
+                : "Cannot restore group members to: " + endpoints + " at log index: " + logIndex + " because last group members: "
+                + lastGroupMembers + " has a bigger log index.";
+
         RaftGroupMembers groupMembers = new RaftGroupMembers(logIndex, endpoints, localEndpoint);
         this.committedGroupMembers = groupMembers;
         this.lastGroupMembers = groupMembers;

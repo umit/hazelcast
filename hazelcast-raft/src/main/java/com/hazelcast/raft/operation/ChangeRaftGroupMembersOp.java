@@ -2,8 +2,6 @@ package com.hazelcast.raft.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.impl.RaftEndpoint;
 
 import java.io.IOException;
@@ -12,7 +10,7 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public class ChangeRaftGroupMembersOp extends RaftCommandOperation implements IdentifiedDataSerializable {
+public class ChangeRaftGroupMembersOp extends RaftCommandOperation {
 
     public enum MembershipChangeType {
         ADD, REMOVE
@@ -21,9 +19,6 @@ public class ChangeRaftGroupMembersOp extends RaftCommandOperation implements Id
     private RaftEndpoint member;
 
     private MembershipChangeType changeType;
-
-    public ChangeRaftGroupMembersOp() {
-    }
 
     public ChangeRaftGroupMembersOp(RaftEndpoint member, MembershipChangeType changeType) {
         this.member = member;
@@ -40,26 +35,12 @@ public class ChangeRaftGroupMembersOp extends RaftCommandOperation implements Id
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
-        super.writeInternal(out);
-        out.writeObject(member);
-        out.writeUTF(changeType.name());
+        throw new UnsupportedOperationException();
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
-        super.readInternal(in);
-        member = in.readObject();
-        changeType = MembershipChangeType.valueOf(in.readUTF());
-    }
-
-    @Override
-    public int getFactoryId() {
-        return RaftDataSerializerHook.F_ID;
-    }
-
-    @Override
-    public int getId() {
-        return RaftDataSerializerHook.CHANGE_RAFT_GROUP_MEMBERS_OP;
+        throw new UnsupportedOperationException();
     }
 
     @Override
