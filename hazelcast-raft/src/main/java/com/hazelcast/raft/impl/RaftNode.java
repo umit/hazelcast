@@ -2,8 +2,8 @@ package com.hazelcast.raft.impl;
 
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.RaftConfig;
-import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.StaleAppendRequestException;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
@@ -18,6 +18,7 @@ import com.hazelcast.raft.impl.handler.AppendFailureResponseHandlerTask;
 import com.hazelcast.raft.impl.handler.AppendRequestHandlerTask;
 import com.hazelcast.raft.impl.handler.AppendSuccessResponseHandlerTask;
 import com.hazelcast.raft.impl.handler.InstallSnapshotHandlerTask;
+import com.hazelcast.raft.impl.handler.MembershipChangeTask;
 import com.hazelcast.raft.impl.handler.PreVoteRequestHandlerTask;
 import com.hazelcast.raft.impl.handler.PreVoteResponseHandlerTask;
 import com.hazelcast.raft.impl.handler.PreVoteTask;
@@ -28,14 +29,14 @@ import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.log.RaftLog;
 import com.hazelcast.raft.impl.log.SnapshotEntry;
 import com.hazelcast.raft.impl.operation.ApplyRaftGroupMembersOp;
-import com.hazelcast.raft.operation.ChangeRaftGroupMembersOp;
-import com.hazelcast.raft.operation.RaftCommandOperation;
 import com.hazelcast.raft.impl.operation.RestoreSnapshotOp;
 import com.hazelcast.raft.impl.operation.TakeSnapshotOp;
-import com.hazelcast.raft.operation.TerminateRaftGroupOp;
 import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
+import com.hazelcast.raft.operation.RaftCommandOperation;
+import com.hazelcast.raft.operation.RaftOperation;
+import com.hazelcast.raft.operation.TerminateRaftGroupOp;
 import com.hazelcast.util.Clock;
 import com.hazelcast.util.RandomPicker;
 import com.hazelcast.util.collection.Long2ObjectHashMap;
@@ -149,7 +150,7 @@ public class RaftNode {
             return !(operation instanceof RaftCommandOperation);
         }
 
-        if (operation instanceof ChangeRaftGroupMembersOp) {
+        if (operation instanceof ApplyRaftGroupMembersOp) {
             // the leader must have committed an entry in its term to make a membership change
             // https://groups.google.com/forum/#!msg/raft-dev/t4xj6dJTP6E/d2D9LrWRza8J
 
@@ -503,6 +504,12 @@ public class RaftNode {
     public ICompletableFuture replicate(RaftOperation operation) {
         SimpleCompletableFuture resultFuture = raftIntegration.newCompletableFuture();
         raftIntegration.execute(new ReplicateTask(this, operation, resultFuture));
+        return resultFuture;
+    }
+
+    public ICompletableFuture replicateMembershipChange(RaftEndpoint member, MembershipChangeType change) {
+        SimpleCompletableFuture resultFuture = raftIntegration.newCompletableFuture();
+        raftIntegration.execute(new MembershipChangeTask(this, member, change, resultFuture));
         return resultFuture;
     }
 
