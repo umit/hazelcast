@@ -1396,6 +1396,71 @@ public class LocalRaftTest extends HazelcastTestSupport {
         });
     }
 
+    @Test
+    public void when_membershipChangeRequestIsMadeWithWrongType_then_theChangeFails() throws ExecutionException, InterruptedException {
+        group = newGroupWithService(3, new RaftConfig());
+        group.start();
+
+        final RaftNode leader = group.waitUntilLeaderElected();
+        leader.replicate(new RaftAddOperation("val")).get();
+
+        try {
+            leader.replicateMembershipChange(leader.getLocalEndpoint(), null).get();
+            fail();
+        } catch (IllegalArgumentException ignored) {
+        }
+    }
+
+    @Test
+    public void when_nonExistingEndpointIsRemoved_then_theChangeFails() throws ExecutionException, InterruptedException {
+        group = newGroupWithService(3, new RaftConfig());
+        group.start();
+
+        final RaftNode leader = group.waitUntilLeaderElected();
+        final RaftNode leavingFollower = group.getNodesExcept(leader.getLocalEndpoint())[0];
+
+        leader.replicate(new RaftAddOperation("val")).get();
+        leader.replicateMembershipChange(leavingFollower.getLocalEndpoint(), MembershipChangeType.REMOVE).get();
+
+        try {
+            leader.replicateMembershipChange(leavingFollower.getLocalEndpoint(), MembershipChangeType.REMOVE).get();
+            fail();
+        } catch (IllegalArgumentException ignored) {
+        }
+    }
+
+    @Test
+    public void when_existingEndpointIsAdded_then_theChangeFails() throws ExecutionException, InterruptedException {
+        group = newGroupWithService(3, new RaftConfig());
+        group.start();
+
+        final RaftNode leader = group.waitUntilLeaderElected();
+
+        leader.replicate(new RaftAddOperation("val")).get();
+
+        try {
+            leader.replicateMembershipChange(leader.getLocalEndpoint(), MembershipChangeType.ADD).get();
+            fail();
+        } catch (IllegalArgumentException ignored) {
+        }
+    }
+
+    @Test
+    public void when_thereIsNoCommitInTheCurrentTerm_then_cannotMakeMemberChange() throws ExecutionException, InterruptedException {
+        // https://groups.google.com/forum/#!msg/raft-dev/t4xj6dJTP6E/d2D9LrWRza8J
+
+        group = newGroupWithService(3, new RaftConfig());
+        group.start();
+
+        final RaftNode leader = group.waitUntilLeaderElected();
+
+        try {
+            leader.replicateMembershipChange(leader.getLocalEndpoint(), MembershipChangeType.REMOVE).get();
+            fail();
+        } catch (CannotReplicateException ignored) {
+        }
+    }
+
     private LocalRaftGroup newGroupWithService(int nodeCount, RaftConfig raftConfig) {
         return new LocalRaftGroup(nodeCount, raftConfig, SERVICE_NAME, RaftDataService.class);
     }
