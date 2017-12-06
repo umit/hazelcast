@@ -485,14 +485,12 @@ public class RaftNode {
         }
 
         raftIntegration.runOperation(snapshot.operation(), snapshot.index());
+
+        // If I am installing a snapshot, it means I am still present in the last member list so I don't need to update status.
+        // Nevertheless, I may not be present in the restored member list, which is ok.
         state.restoreGroupMembers(snapshot.groupMembersLogIndex(), snapshot.groupMembers());
         printMemberState();
-        // TODO fix this
-        if (state.members().contains(localEndpoint)) {
-            setStatus(ACTIVE);
-        } else {
-            setStatus(STEPPED_DOWN);
-        }
+
         state.lastApplied(snapshot.index());
 
         invalidateFuturesUntil(snapshot.index());
