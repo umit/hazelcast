@@ -41,15 +41,14 @@ public class ChangeRaftGroupMembershipOp extends InternalRaftOp implements Ident
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        member.writeData(out);
+        out.writeObject(member);
         out.writeUTF(changeType.name());
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        member = new RaftEndpoint();
-        member.readData(in);
+        member = in.readObject();
         changeType = MembershipChangeType.valueOf(in.readUTF());
     }
 

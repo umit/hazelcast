@@ -47,14 +47,13 @@ public class DefaultRaftGroupReplicateOperation
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeObject(raftOperation);
-        groupId.writeData(out);
+        out.writeObject(groupId);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         raftOperation = in.readObject();
-        groupId = new RaftGroupId();
-        groupId.readData(in);
+        groupId = in.readObject();
     }
 }

@@ -6,7 +6,7 @@ import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.InstallSnapshot;
-import com.hazelcast.raft.impl.log.LogEntry;
+import com.hazelcast.raft.impl.log.SnapshotEntry;
 import com.hazelcast.raft.impl.state.RaftState;
 
 public class InstallSnapshotHandlerTask extends RaftNodeAwareTask implements Runnable {
@@ -26,7 +26,7 @@ public class InstallSnapshotHandlerTask extends RaftNodeAwareTask implements Run
 
         RaftState state = raftNode.state();
 
-        LogEntry snapshot = req.snapshot();
+        SnapshotEntry snapshot = req.snapshot();
 
         // Reply false if term < currentTerm (§5.1)
         if (req.term() < state.term()) {
