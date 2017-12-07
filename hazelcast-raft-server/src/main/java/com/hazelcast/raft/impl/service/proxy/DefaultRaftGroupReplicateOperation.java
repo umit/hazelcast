@@ -8,10 +8,7 @@ import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
 import java.io.IOException;
 
-public class DefaultRaftGroupReplicateOperation
-        extends RaftReplicateOperation {
-
-    private RaftGroupId groupId;
+public class DefaultRaftGroupReplicateOperation extends RaftReplicateOperation {
 
     private RaftOperation raftOperation;
 
@@ -19,13 +16,8 @@ public class DefaultRaftGroupReplicateOperation
     }
 
     public DefaultRaftGroupReplicateOperation(RaftGroupId groupId, RaftOperation raftOperation) {
-        this.groupId = groupId;
+        super(groupId);
         this.raftOperation = raftOperation;
-    }
-
-    @Override
-    protected RaftGroupId getRaftGroupId() {
-        return groupId;
     }
 
     @Override
@@ -40,20 +32,18 @@ public class DefaultRaftGroupReplicateOperation
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.DEFAULT_RAFT_GROUP_REPLICATING_OP;
+        return RaftServiceDataSerializerHook.DEFAULT_RAFT_GROUP_REPLICATE_OP;
     }
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeObject(raftOperation);
-        out.writeObject(groupId);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         raftOperation = in.readObject();
-        groupId = in.readObject();
     }
 }

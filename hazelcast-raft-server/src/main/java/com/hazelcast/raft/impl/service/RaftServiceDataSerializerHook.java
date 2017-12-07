@@ -35,9 +35,9 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int INSTALL_SNAPSHOT_OP = 8;
     public static final int PRE_VOTE_REQUEST_OP = 9;
     public static final int PRE_VOTE_RESPONSE_OP = 10;
-    public static final int DEFAULT_RAFT_GROUP_REPLICATING_OP = 11;
+    public static final int DEFAULT_RAFT_GROUP_REPLICATE_OP = 11;
     public static final int CREATE_RAFT_GROUP_OP = 12;
-    public static final int CREATE_RAFT_GROUP_REPLICATING_OP = 13;
+    public static final int CREATE_RAFT_GROUP_REPLICATE_OP = 13;
     public static final int TRIGGER_DESTROY_RAFT_GROUP_OP = 14;
     public static final int COMPLETE_DESTROY_RAFT_GROUPS_OP = 15;
 
@@ -74,9 +74,9 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new PreVoteResponseOp();
                     case CREATE_RAFT_GROUP_OP:
                         return new CreateRaftGroupOperation();
-                    case DEFAULT_RAFT_GROUP_REPLICATING_OP:
+                    case DEFAULT_RAFT_GROUP_REPLICATE_OP:
                         return new DefaultRaftGroupReplicateOperation();
-                    case CREATE_RAFT_GROUP_REPLICATING_OP:
+                    case CREATE_RAFT_GROUP_REPLICATE_OP:
                         return new CreateRaftGroupReplicateOperation();
                     case TRIGGER_DESTROY_RAFT_GROUP_OP:
                         return new TriggerDestroyRaftGroupOperation();

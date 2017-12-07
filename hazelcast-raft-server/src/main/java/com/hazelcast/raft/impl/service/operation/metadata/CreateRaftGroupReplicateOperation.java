@@ -2,18 +2,19 @@ package com.hazelcast.raft.impl.service.operation.metadata;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.raft.operation.RaftOperation;
-import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
+import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
+import com.hazelcast.raft.operation.RaftOperation;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+
+import static com.hazelcast.raft.impl.service.RaftService.METADATA_GROUP_ID;
 
 /**
  * TODO: Javadoc Pending...
@@ -29,14 +30,10 @@ public class CreateRaftGroupReplicateOperation extends RaftReplicateOperation {
     }
 
     public CreateRaftGroupReplicateOperation(String serviceName, String name, int nodeCount) {
+        super(METADATA_GROUP_ID);
         this.serviceName = serviceName;
         this.name = name;
         this.nodeCount = nodeCount;
-    }
-
-    @Override
-    protected RaftGroupId getRaftGroupId() {
-        return RaftService.METADATA_GROUP_ID;
     }
 
     @Override
@@ -77,6 +74,6 @@ public class CreateRaftGroupReplicateOperation extends RaftReplicateOperation {
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.CREATE_RAFT_GROUP_REPLICATING_OP;
+        return RaftServiceDataSerializerHook.CREATE_RAFT_GROUP_REPLICATE_OP;
     }
 }
