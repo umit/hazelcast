@@ -150,7 +150,7 @@ public class RaftNode {
 
         if (status == RaftNodeStatus.TERMINATING) {
             return false;
-        } else if (status == RaftNodeStatus.CHANGING_MEMBERSHIP) {
+        } else if (status == CHANGING_MEMBERSHIP) {
             return !(operation instanceof RaftCommandOperation);
         }
 
@@ -335,7 +335,7 @@ public class RaftNode {
             assert status == TERMINATING;
             setStatus(TERMINATED);
         } else if (operation instanceof ApplyRaftGroupMembersOp) {
-            assert status == CHANGING_MEMBERSHIP;
+            assert status == CHANGING_MEMBERSHIP : "STATUS: " + status;
             state.commitGroupMembers();
             if (state.members().contains(localEndpoint)) {
                 setStatus(ACTIVE);

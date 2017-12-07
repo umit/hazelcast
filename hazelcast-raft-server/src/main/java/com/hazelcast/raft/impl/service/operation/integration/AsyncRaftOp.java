@@ -7,6 +7,7 @@ import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.spi.Operation;
+import com.hazelcast.spi.impl.AllowedDuringPassiveState;
 
 import java.io.IOException;
 
@@ -14,7 +15,7 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public abstract class AsyncRaftOp extends Operation implements IdentifiedDataSerializable {
+public abstract class AsyncRaftOp extends Operation implements IdentifiedDataSerializable, AllowedDuringPassiveState {
 
     protected RaftGroupId groupId;
 

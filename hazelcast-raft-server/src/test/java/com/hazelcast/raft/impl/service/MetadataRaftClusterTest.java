@@ -283,6 +283,16 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         });
     }
 
+    @Test
+    public void when_shutdownMember_blabla() {
+        int nodeCount = 4;
+        Address[] raftAddresses = createAddresses(nodeCount);
+        instances = newInstances(raftAddresses);
+
+        RaftAtomicLongProxy atomicLong = (RaftAtomicLongProxy) RaftAtomicLongProxy.create(instances[0], "id", nodeCount - 1);
+        instances[0].shutdown();
+    }
+
     @Override
     protected Config createConfig(Address[] raftAddresses) {
         ServiceConfig atomicLongServiceConfig = new ServiceConfig().setEnabled(true)

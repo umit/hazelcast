@@ -1,5 +1,6 @@
 package com.hazelcast.raft.impl.service;
 
+import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.SnapshotAwareService;
@@ -17,22 +18,32 @@ import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
+import com.hazelcast.raft.impl.service.exception.CannotShutdownException;
+import com.hazelcast.raft.impl.service.operation.metadata.TriggerShutdownEndpointOperation;
+import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
+import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
 import com.hazelcast.spi.ConfigurableService;
+import com.hazelcast.spi.GracefulShutdownAwareService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.impl.NodeEngineImpl;
+import com.hazelcast.util.ExceptionUtil;
+import com.hazelcast.util.function.Supplier;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import static com.hazelcast.raft.impl.service.RaftCleanupHandler.CLEANUP_TASK_PERIOD;
 
 /**
  * TODO: Javadoc Pending...
  */
 public class RaftService implements ManagedService, ConfigurableService<RaftConfig>,
-                                    SnapshotAwareService<ArrayList<RaftGroupInfo>> {
+        SnapshotAwareService<MetadataSnapshot>, GracefulShutdownAwareService {
 
     public static final String SERVICE_NAME = "hz:core:raft";
     public static final RaftGroupId METADATA_GROUP_ID = RaftMetadataManager.METADATA_GROUP_ID;
@@ -40,6 +51,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     private final Map<RaftGroupId, RaftNode> nodes = new ConcurrentHashMap<RaftGroupId, RaftNode>();
     private final NodeEngineImpl nodeEngine;
     private final ILogger logger;
+    private final RaftCleanupHandler cleanupHandler;
 
     private volatile RaftInvocationManager invocationManager;
     private volatile RaftMetadataManager metadataManager;
@@ -49,6 +61,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     public RaftService(NodeEngine nodeEngine) {
         this.nodeEngine = (NodeEngineImpl) nodeEngine;
         this.logger = nodeEngine.getLogger(getClass());
+        cleanupHandler = new RaftCleanupHandler(nodeEngine, this);
     }
 
     @Override
@@ -64,6 +77,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
 
         metadataManager.init();
         invocationManager.init();
+        cleanupHandler.init();
     }
 
     @Override
@@ -78,13 +92,66 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     }
 
     @Override
-    public ArrayList<RaftGroupInfo> takeSnapshot(String raftName, int commitIndex) {
+    public MetadataSnapshot takeSnapshot(String raftName, int commitIndex) {
         return metadataManager.takeSnapshot(raftName, commitIndex);
     }
 
     @Override
-    public void restoreSnapshot(String raftName, int commitIndex, ArrayList<RaftGroupInfo> snapshot) {
+    public void restoreSnapshot(String raftName, int commitIndex, MetadataSnapshot snapshot) {
         metadataManager.restoreSnapshot(raftName, commitIndex, snapshot);
+    }
+
+    @Override
+    public boolean onShutdown(long timeout, TimeUnit unit) {
+        RaftEndpoint localEndpoint = getLocalEndpoint();
+        if (localEndpoint == null) {
+            return true;
+        }
+
+        logger.severe("ON SHUTDOWN " + localEndpoint);
+
+        long remainingTimeNanos = unit.toNanos(timeout);
+        long start = System.nanoTime();
+
+        ensureTriggerShutdown(localEndpoint, remainingTimeNanos);
+        remainingTimeNanos -= (System.nanoTime() - start);
+
+        // wait for us being replaced in all raft groups we are participating
+        // and removed from all raft groups
+        while (remainingTimeNanos > 0) {
+            if (isShutdown(localEndpoint)) {
+                return true;
+            }
+            try {
+                Thread.sleep(CLEANUP_TASK_PERIOD);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+            remainingTimeNanos -= CLEANUP_TASK_PERIOD;
+        }
+        return false;
+    }
+
+    private void ensureTriggerShutdown(RaftEndpoint localEndpoint, long remainingTimeNanos) {
+        while (remainingTimeNanos > 0) {
+            long start = System.nanoTime();
+            try {
+                // mark us as shutting-down in metadata
+                Future<RaftGroupId> future = triggerShutdownEndpointAsync(localEndpoint);
+                future.get(remainingTimeNanos, TimeUnit.NANOSECONDS);
+                logger.severe("TRIGGERED SHUTDOWN FOR " + localEndpoint + " -> " + metadataManager.getShuttingDownEndpoint());
+                return;
+            } catch (CannotShutdownException e) {
+                remainingTimeNanos -= (System.nanoTime() - start);
+                if (remainingTimeNanos <= 0) {
+                    throw e;
+                }
+                logger.fine(e.getMessage());
+            } catch (Exception e) {
+                throw ExceptionUtil.rethrow(e);
+            }
+        }
     }
 
     public RaftMetadataManager getMetadataManager() {
@@ -207,5 +274,23 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
             raftNode.execute(new ForceSetRaftNodeStatusRunnable(raftNode, RaftNodeStatus.TERMINATED));
             logger.info("Local raft node of " + groupInfo + " is destroyed.");
         }
+    }
+
+
+    private ICompletableFuture<RaftGroupId> triggerShutdownEndpointAsync(final RaftEndpoint endpoint) {
+        return invocationManager.invoke(new Supplier<RaftReplicateOperation>() {
+            @Override
+            public RaftReplicateOperation get() {
+                return new DefaultRaftGroupReplicateOperation(METADATA_GROUP_ID, new TriggerShutdownEndpointOperation(endpoint));
+            }
+        });
+    }
+
+    public boolean isActive(RaftEndpoint endpoint) {
+        return !endpoint.equals(metadataManager.getShuttingDownEndpoint()) && !metadataManager.isShutdown(endpoint);
+    }
+
+    public boolean isShutdown(RaftEndpoint endpoint) {
+        return metadataManager.isShutdown(endpoint);
     }
 }

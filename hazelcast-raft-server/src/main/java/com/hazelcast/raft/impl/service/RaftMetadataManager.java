@@ -6,11 +6,13 @@ import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
+import com.hazelcast.raft.impl.service.exception.CannotShutdownException;
 import com.hazelcast.spi.NodeEngine;
 
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,13 +20,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import static com.hazelcast.raft.impl.RaftEndpoint.parseEndpoints;
 import static com.hazelcast.raft.impl.service.RaftService.SERVICE_NAME;
 import static com.hazelcast.util.Preconditions.checkNotNull;
+import static java.util.Collections.newSetFromMap;
 import static java.util.Collections.unmodifiableCollection;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public class RaftMetadataManager implements SnapshotAwareService<ArrayList<RaftGroupInfo>>  {
+public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapshot>  {
 
     private static final String METADATA_RAFT = "METADATA";
     public static final RaftGroupId METADATA_GROUP_ID = new RaftGroupId(METADATA_RAFT, 0);
@@ -33,9 +36,15 @@ public class RaftMetadataManager implements SnapshotAwareService<ArrayList<RaftG
     private final RaftService raftService;
     private final ILogger logger;
 
+    // raftGroups are read outside of Raft
     private final Map<RaftGroupId, RaftGroupInfo> raftGroups = new ConcurrentHashMap<RaftGroupId, RaftGroupInfo>();
     private final Collection<RaftEndpoint> allEndpoints;
     private final RaftEndpoint localEndpoint;
+
+    // read outside of Raft
+    private final Collection<RaftEndpoint> shutdownEndpoints = newSetFromMap(new ConcurrentHashMap<RaftEndpoint, Boolean>());
+    // read outside of Raft
+    private volatile RaftEndpoint shuttingDownEndpoint;
 
     public RaftMetadataManager(NodeEngine nodeEngine, RaftService raftService, RaftConfig config) {
         this.nodeEngine = nodeEngine;
@@ -69,24 +78,29 @@ public class RaftMetadataManager implements SnapshotAwareService<ArrayList<RaftG
     }
 
     @Override
-    public ArrayList<RaftGroupInfo> takeSnapshot(String raftName, int commitIndex) {
+    public MetadataSnapshot takeSnapshot(String raftName, int commitIndex) {
         assert METADATA_RAFT.equals(raftName);
 
-        ArrayList<RaftGroupInfo> groupInfos = new ArrayList<RaftGroupInfo>();
+        MetadataSnapshot snapshot = new MetadataSnapshot();
         for (RaftGroupInfo groupInfo : raftGroups.values()) {
             assert groupInfo.commitIndex() <= commitIndex
                     : "Group commit index: " + groupInfo.commitIndex() + ", snapshot commit index: " + commitIndex;
-            if (!METADATA_RAFT.equals(groupInfo.name())) {
-                groupInfos.add(groupInfo);
-            }
+            snapshot.addRaftGroup(groupInfo);
         }
-        return groupInfos;
+        for (RaftEndpoint endpoint : allEndpoints) {
+            snapshot.addEndpoint(endpoint);
+        }
+        for (RaftEndpoint endpoint : shutdownEndpoints) {
+            snapshot.addShutdownEndpoint(endpoint);
+        }
+        snapshot.setShuttingDownEndpoint(shuttingDownEndpoint);
+        return snapshot;
     }
 
     @Override
-    public void restoreSnapshot(String raftName, int commitIndex, ArrayList<RaftGroupInfo> snapshot) {
+    public void restoreSnapshot(String raftName, int commitIndex, MetadataSnapshot snapshot) {
         assert METADATA_RAFT.equals(raftName);
-        for (RaftGroupInfo groupInfo : snapshot) {
+        for (RaftGroupInfo groupInfo : snapshot.getRaftGroups()) {
             RaftGroupInfo existingGroupInfo = raftGroups.get(groupInfo.id());
 
             if (groupInfo.status() == RaftGroupStatus.ACTIVE && existingGroupInfo == null) {
@@ -112,6 +126,15 @@ public class RaftMetadataManager implements SnapshotAwareService<ArrayList<RaftG
                 continue;
             }
         }
+
+        for (RaftEndpoint endpoint : snapshot.getEndpoints()) {
+            // TODO: restore endpoints
+        }
+
+        shutdownEndpoints.clear();
+        shutdownEndpoints.addAll(snapshot.getShutdownEndpoints());
+
+        shuttingDownEndpoint = snapshot.getShuttingDownEndpoint();
     }
 
     public Collection<RaftEndpoint> getAllEndpoints() {
@@ -131,7 +154,7 @@ public class RaftMetadataManager implements SnapshotAwareService<ArrayList<RaftG
         // keep configuration on every metadata node
         RaftGroupInfo groupInfo = getRaftGroupInfoByName(name);
         if (groupInfo != null) {
-            if (groupInfo.members().size() == endpoints.size()) {
+            if (groupInfo.memberCount() == endpoints.size()) {
                 logger.warning("Raft group " + name + " already exists. Ignoring add raft node request.");
                 return groupInfo.id();
             }
@@ -213,5 +236,103 @@ public class RaftMetadataManager implements SnapshotAwareService<ArrayList<RaftG
             }
         }
         return groupIds;
+    }
+
+    public void triggerShutdownEndpoint(RaftEndpoint endpoint) {
+        if (!allEndpoints.contains(endpoint)) {
+            throw new IllegalArgumentException(endpoint + " doesn't exist!");
+        }
+
+        if (endpoint.equals(shuttingDownEndpoint)) {
+            logger.info(endpoint + " is already marked as shutting down.");
+            return;
+        }
+
+        if (shuttingDownEndpoint != null) {
+            throw new CannotShutdownException("Another node " + shuttingDownEndpoint + " is currently shutting down,"
+                    + " cannot process shutdown request of " + endpoint);
+        }
+
+        logger.severe("Shutting down " + endpoint);
+        shuttingDownEndpoint = endpoint;
+
+        for (RaftGroupInfo groupInfo : raftGroups.values()) {
+            RaftGroupId groupId = groupInfo.id();
+            if (groupId.equals(METADATA_GROUP_ID)) {
+                continue;
+            }
+            if (groupInfo.containsMember(endpoint)) {
+                if (groupInfo.leavingMember() != null) {
+                    // already found a substitute
+                    assert endpoint.equals(groupInfo.leavingMember()) : "Leaving: " + endpoint + " -> " + groupInfo;
+                    continue;
+                }
+
+                boolean foundSubstitute = false;
+                for (RaftEndpoint e : allEndpoints) {
+                    // TODO: not deterministic !!!
+                    if (!shutdownEndpoints.contains(e) && !groupInfo.containsMember(e)) {
+                        groupInfo.markSubstitutes(endpoint, e);
+                        logger.fine("Substituted " + endpoint + " with " + e + " in " + groupInfo);
+                        foundSubstitute = true;
+                        break;
+                    }
+                }
+                if (!foundSubstitute) {
+                    logger.fine("Cannot find a substitute for " + endpoint + " in " + groupInfo);
+                }
+            }
+        }
+    }
+
+    public void completeShutdownEndpoint(RaftEndpoint endpoint) {
+        if (!allEndpoints.contains(endpoint)) {
+            throw new IllegalArgumentException(endpoint + " doesn't exist!");
+        }
+        if (!endpoint.equals(shuttingDownEndpoint)) {
+            throw new IllegalArgumentException(endpoint + " is not shutting down member! Currently "
+                    + shuttingDownEndpoint + " is shutting down.");
+        }
+
+        logger.severe("Shutdown completed for " + endpoint);
+        shutdownEndpoints.add(endpoint);
+        shuttingDownEndpoint = null;
+
+        for (RaftGroupInfo groupInfo : raftGroups.values()) {
+            if (groupInfo.id().equals(METADATA_GROUP_ID)) {
+                continue;
+            }
+            if (groupInfo.containsMember(endpoint)) {
+                RaftEndpoint joiningMember = groupInfo.joiningMember();
+                groupInfo.completeSubstitution(endpoint);
+                logger.fine("Removed " + endpoint + " from " + groupInfo);
+                if (localEndpoint.equals(joiningMember)) {
+                    // we are the added member to the group,
+                    // create local raft node
+                    raftService.createRaftNode(groupInfo);
+                }
+            }
+        }
+    }
+
+    // Called outside of Raft
+    public RaftEndpoint getShuttingDownEndpoint() {
+        return shuttingDownEndpoint;
+    }
+
+    // Called outside of Raft
+    public boolean isShutdown(RaftEndpoint endpoint) {
+        return shutdownEndpoints.contains(endpoint);
+    }
+
+    // Called outside of Raft
+    public Map<RaftGroupId, RaftEndpoint> getSubstitutesFor(RaftEndpoint endpoint) {
+        Map<RaftGroupId, RaftEndpoint> substitutes = new HashMap<RaftGroupId, RaftEndpoint>();
+        for (RaftGroupInfo groupInfo : raftGroups.values()) {
+            if (endpoint.equals(groupInfo.leavingMember())) {
+                substitutes.put(groupInfo.id(), groupInfo.joiningMember());
+            }
+        }
+        return substitutes;
     }
 }
