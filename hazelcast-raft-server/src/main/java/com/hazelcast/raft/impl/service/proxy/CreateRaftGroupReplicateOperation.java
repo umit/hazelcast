@@ -1,4 +1,4 @@
-package com.hazelcast.raft.impl.service.operation.metadata;
+package com.hazelcast.raft.impl.service.proxy;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
@@ -6,12 +6,17 @@ import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
+import com.hazelcast.raft.impl.service.RaftGroupId;
+import com.hazelcast.raft.impl.service.RaftService;
+import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
+import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOperation;
 import com.hazelcast.raft.operation.RaftOperation;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 import static com.hazelcast.raft.impl.service.RaftService.METADATA_GROUP_ID;
@@ -46,6 +51,18 @@ public class CreateRaftGroupReplicateOperation extends RaftReplicateOperation {
         }
 
         List<RaftEndpoint> endpoints = new ArrayList<RaftEndpoint>(allEndpoints);
+        Iterator<RaftEndpoint> iterator = endpoints.iterator();
+        while (iterator.hasNext()) {
+            RaftEndpoint e = iterator.next();
+            if (!service.isActive(e)) {
+                iterator.remove();
+            }
+        }
+        if (endpoints.size() < nodeCount) {
+            throw new IllegalArgumentException("There are not enough active endpoints to create raft group " + name
+                + ". Active endpoints: " + endpoints.size() + ", Requested count: " + nodeCount);
+        }
+
         Collections.shuffle(endpoints);
         endpoints = endpoints.subList(0, nodeCount);
         return new CreateRaftGroupOperation(serviceName, name, endpoints);

@@ -8,17 +8,11 @@ import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.RaftException;
-import com.hazelcast.raft.exception.RaftGroupTerminatedException;
 import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.impl.RaftNode;
-import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOperation;
-import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOperation;
+import com.hazelcast.raft.impl.service.proxy.CreateRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
-import com.hazelcast.raft.operation.RaftOperation;
-import com.hazelcast.raft.operation.TerminateRaftGroupOp;
-import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.exception.CallerNotMemberException;
@@ -26,15 +20,9 @@ import com.hazelcast.spi.exception.TargetNotMemberException;
 import com.hazelcast.spi.impl.AbstractCompletableFuture;
 import com.hazelcast.util.function.Supplier;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.raft.impl.service.RaftService.METADATA_GROUP_ID;
@@ -57,16 +45,6 @@ public class RaftInvocationManager {
     }
 
     public void init() {
-        if (getLocalEndpoint() == null) {
-            return;
-        }
-
-        ExecutionService executionService = nodeEngine.getExecutionService();
-        executionService.scheduleWithRepetition(new CleanupTask(), 1000,1000, TimeUnit.MILLISECONDS);
-    }
-
-    private RaftEndpoint getLocalEndpoint() {
-        return raftService.getMetadataManager().getLocalEndpoint();
     }
 
     public void reset() {
@@ -97,7 +75,7 @@ public class RaftInvocationManager {
         });
     }
 
-    public void triggerDestroyRaftGroup(final RaftGroupId groupId) throws ExecutionException, InterruptedException {
+    public void triggerDestroyRaftGroup(RaftGroupId groupId) throws ExecutionException, InterruptedException {
         triggerDestroyRaftGroupAsync(groupId).get();
     }
 
@@ -224,86 +202,4 @@ public class RaftInvocationManager {
             return endpoints != null ? endpoints[endPointIndex++] : null;
         }
     }
-
-    private class CleanupTask implements Runnable {
-
-        @Override
-        public void run() {
-            if (!shouldRun()) {
-                return;
-            }
-
-            Map<RaftGroupId, Future<Object>> futures = new HashMap<RaftGroupId, Future<Object>>();
-
-            for (final RaftGroupId groupId : getDestroyingRaftGroupIds()) {
-                Future<Object> future = invoke(new Supplier<RaftReplicateOperation>() {
-                    @Override
-                    public RaftReplicateOperation get() {
-                        return new DefaultRaftGroupReplicateOperation(groupId, new TerminateRaftGroupOp());
-                    }
-                });
-                futures.put(groupId, future);
-            }
-
-            final Set<RaftGroupId> terminatedGroupIds = new HashSet<RaftGroupId>();
-            for (Map.Entry<RaftGroupId, Future<Object>> e : futures.entrySet()) {
-                if (isTerminated(e.getKey(), e.getValue())) {
-                    terminatedGroupIds.add(e.getKey());
-                }
-            }
-
-            if (terminatedGroupIds.isEmpty()) {
-                return;
-            }
-
-            commitDestroyedRaftGroups(terminatedGroupIds);
-        }
-
-        private boolean shouldRun() {
-            RaftNode raftNode = raftService.getRaftNode(RaftService.METADATA_GROUP_ID);
-            // even if the local leader information is stale, it is fine.
-            return getLocalEndpoint().equals(raftNode.getLeader());
-        }
-
-        private Collection<RaftGroupId> getDestroyingRaftGroupIds() {
-            // we are reading the destroying group ids locally, since we know they are committed.
-            return raftService.getMetadataManager().getDestroyingRaftGroupIds();
-        }
-
-        private boolean isTerminated(RaftGroupId groupId, Future<Object> future) {
-            try {
-                future.get();
-                return true;
-            }  catch (InterruptedException e) {
-                logger.severe("Cannot get result of DESTROY commit to " + groupId, e);
-                return false;
-            } catch (ExecutionException e) {
-                if (e.getCause() instanceof RaftGroupTerminatedException) {
-                    return true;
-                }
-
-                logger.severe("Cannot get result of DESTROY commit to " + groupId, e);
-
-                return false;
-            }
-        }
-
-        private void commitDestroyedRaftGroups(final Set<RaftGroupId> destroyedGroupIds) {
-            Future<Collection<RaftGroupId>> f = invoke(new Supplier<RaftReplicateOperation>() {
-                @Override
-                public RaftReplicateOperation get() {
-                    RaftOperation raftOperation = new CompleteDestroyRaftGroupsOperation(destroyedGroupIds);
-                    return new DefaultRaftGroupReplicateOperation(METADATA_GROUP_ID, raftOperation);
-                }
-            });
-
-            try {
-                f.get();
-                logger.info("Terminated raft groups: " + destroyedGroupIds + " are committed.");
-            } catch (Exception e) {
-                logger.severe("Cannot commit terminated raft groups: " + destroyedGroupIds, e);
-            }
-        }
-    }
-
 }

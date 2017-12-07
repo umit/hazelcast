@@ -4,6 +4,9 @@ import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.VoteResponse;
+import com.hazelcast.raft.impl.log.LogEntry;
+import com.hazelcast.raft.impl.log.RaftLog;
+import com.hazelcast.raft.impl.operation.NopEntryOp;
 import com.hazelcast.raft.impl.state.CandidateState;
 import com.hazelcast.raft.impl.state.RaftState;
 
@@ -50,9 +53,15 @@ public class VoteResponseHandlerTask extends RaftNodeAwareTask implements Runnab
         if (candidateState.isMajorityGranted()) {
             logger.info("We are the LEADER!");
             state.toLeader();
+            appendNopEntry(state);
             raftNode.printMemberState();
             raftNode.scheduleHeartbeat();
         }
+    }
+
+    private void appendNopEntry(RaftState state) {
+        RaftLog log = state.log();
+        log.appendEntries(new LogEntry(state.term(), log.lastLogOrSnapshotIndex() + 1, new NopEntryOp()));
     }
 
     @Override

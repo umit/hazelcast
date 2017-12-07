@@ -46,4 +46,9 @@ public class DefaultRaftGroupReplicateOperation extends RaftReplicateOperation {
         super.readInternal(in);
         raftOperation = in.readObject();
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", raftOp=").append(raftOperation);
+    }
 }
