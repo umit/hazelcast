@@ -42,7 +42,7 @@ public class CompleteDestroyRaftGroupsOperation extends RaftOperation implements
         super.writeInternal(out);
         out.writeInt(groupIds.size());
         for (RaftGroupId groupId : groupIds) {
-            groupId.writeData(out);
+            out.writeObject(groupId);
         }
     }
 
@@ -52,8 +52,7 @@ public class CompleteDestroyRaftGroupsOperation extends RaftOperation implements
         int count = in.readInt();
         groupIds = new HashSet<RaftGroupId>();
         for (int i = 0; i < count; i++) {
-            RaftGroupId groupId = new RaftGroupId();
-            groupId.readData(in);
+            RaftGroupId groupId = in.readObject();
             groupIds.add(groupId);
         }
     }

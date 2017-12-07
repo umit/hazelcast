@@ -18,6 +18,7 @@ import com.hazelcast.spi.ExceptionAction;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.exception.CallerNotMemberException;
 import com.hazelcast.spi.exception.TargetNotMemberException;
+import com.hazelcast.spi.impl.AllowedDuringPassiveState;
 
 import java.io.IOException;
 
@@ -25,7 +26,8 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public abstract class RaftReplicateOperation extends Operation implements IdentifiedDataSerializable {
+public abstract class RaftReplicateOperation extends Operation
+        implements IdentifiedDataSerializable, AllowedDuringPassiveState {
 
     private RaftGroupId raftGroupId;
 
@@ -37,23 +39,11 @@ public abstract class RaftReplicateOperation extends Operation implements Identi
     }
 
     @Override
-    public final void run() throws Exception {
-        RaftOperation op = getRaftOperation();
-        RaftGroupId groupId = getRaftGroupId();
-        replicate(op, groupId);
-    }
-
-    public RaftGroupId getRaftGroupId() {
-        return raftGroupId;
-    }
-
-    protected abstract RaftOperation getRaftOperation();
-
-    private void replicate(RaftOperation op, RaftGroupId groupId) {
+    public final void run() {
         RaftService service = getService();
-        RaftNode raftNode = service.getRaftNode(groupId);
+        RaftNode raftNode = service.getRaftNode(raftGroupId);
         if (raftNode == null) {
-            RaftGroupInfo raftGroupInfo = service.getRaftGroupInfo(groupId);
+            RaftGroupInfo raftGroupInfo = service.getRaftGroupInfo(raftGroupId);
             if (raftGroupInfo != null && raftGroupInfo.status() == RaftGroupStatus.DESTROYED) {
                 sendResponse(new RaftGroupTerminatedException());
             } else {
@@ -62,7 +52,10 @@ public abstract class RaftReplicateOperation extends Operation implements Identi
             return;
         }
 
-        ICompletableFuture future = raftNode.replicate(op);
+        ICompletableFuture future = replicate(raftNode);
+        if (future == null) {
+            return;
+        }
         future.andThen(new ExecutionCallback() {
             @Override
             public void onResponse(Object response) {
@@ -75,6 +68,17 @@ public abstract class RaftReplicateOperation extends Operation implements Identi
             }
         });
     }
+
+    ICompletableFuture replicate(RaftNode raftNode) {
+        RaftOperation op = getRaftOperation();
+        return raftNode.replicate(op);
+    }
+
+    public RaftGroupId getRaftGroupId() {
+        return raftGroupId;
+    }
+
+    protected abstract RaftOperation getRaftOperation();
 
     @Override
     public final boolean returnsResponse() {
