@@ -104,7 +104,7 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
 
     public ICompletableFuture<RaftGroupId> createRaftGroupAsync(final String serviceName, final String raftName,
                                                                 final int nodeCount) {
-        return invoke(METADATA_GROUP_ID, new Supplier<RaftReplicateOperation>() {
+        return invoke(new Supplier<RaftReplicateOperation>() {
             @Override
             public RaftReplicateOperation get() {
                 return new CreateRaftGroupReplicateOperation(serviceName, raftName, nodeCount);
@@ -118,7 +118,7 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
     }
 
     public ICompletableFuture<RaftGroupId> triggerDestroyRaftGroupAsync(final RaftGroupId groupId) {
-        return invoke(METADATA_GROUP_ID, new Supplier<RaftReplicateOperation>() {
+        return invoke(new Supplier<RaftReplicateOperation>() {
             @Override
             public RaftReplicateOperation get() {
                 return new DefaultRaftGroupReplicateOperation(METADATA_GROUP_ID, new TriggerDestroyRaftGroupOperation(groupId));
@@ -130,8 +130,8 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
         triggerDestroyRaftGroupAsync(groupId).get();
     }
 
-    public <T> ICompletableFuture<T> invoke(RaftGroupId groupId, Supplier<RaftReplicateOperation> operationSupplier) {
-        RaftInvocationFuture<T> invocationFuture = new RaftInvocationFuture<T>(nodeEngine, logger, operationSupplier, groupId);
+    public <T> ICompletableFuture<T> invoke(Supplier<RaftReplicateOperation> operationSupplier) {
+        RaftInvocationFuture<T> invocationFuture = new RaftInvocationFuture<T>(nodeEngine, logger, operationSupplier);
         invocationFuture.invoke();
         return invocationFuture;
     }
@@ -153,20 +153,18 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
     private class RaftInvocationFuture<T> extends AbstractCompletableFuture<T>
             implements ExecutionCallback<T> {
 
-        private final RaftGroupId groupId;
         private final NodeEngine nodeEngine;
         private final RaftService raftService;
         private final Supplier<RaftReplicateOperation> operationSupplier;
         private final ILogger logger;
         private final boolean failOnIndeterminateOperationState;
+        private volatile RaftGroupId groupId;
         private volatile RaftEndpoint lastInvocationEndpoint;
         private volatile RaftEndpoint[] endpoints;
         private volatile int endPointIndex;
 
-        RaftInvocationFuture(NodeEngine nodeEngine, ILogger logger, Supplier<RaftReplicateOperation> operationSupplier,
-                             RaftGroupId groupId) {
+        RaftInvocationFuture(NodeEngine nodeEngine, ILogger logger, Supplier<RaftReplicateOperation> operationSupplier) {
             super(nodeEngine, logger);
-            this.groupId = groupId;
             this.nodeEngine = nodeEngine;
             this.raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
             this.operationSupplier = operationSupplier;
@@ -233,13 +231,15 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
         }
 
         void invoke() {
+            RaftReplicateOperation op = operationSupplier.get();
+            groupId = op.getRaftGroupId();
             RaftEndpoint leader = getLeader();
             if (leader == null) {
                 scheduleRetry();
                 return;
             }
 
-            RaftReplicateOperation op = operationSupplier.get();
+
             InternalCompletableFuture<T> future = nodeEngine.getOperationService()
                                                             .invokeOnTarget(RaftService.SERVICE_NAME, op, leader.getAddress());
             lastInvocationEndpoint = leader;
@@ -273,7 +273,7 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
             Map<RaftGroupId, Future<Object>> futures = new HashMap<RaftGroupId, Future<Object>>();
 
             for (final RaftGroupId groupId : getDestroyingRaftGroupIds()) {
-                Future<Object> future = invoke(groupId, new Supplier<RaftReplicateOperation>() {
+                Future<Object> future = invoke(new Supplier<RaftReplicateOperation>() {
                     @Override
                     public RaftReplicateOperation get() {
                         return new DefaultRaftGroupReplicateOperation(groupId, new TerminateRaftGroupOp());
@@ -328,7 +328,7 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
         }
 
         private void commitDestroyedRaftGroups(final Set<RaftGroupId> destroyedGroupIds) {
-            Future<Collection<RaftGroupId>> f = invoke(METADATA_GROUP_ID, new Supplier<RaftReplicateOperation>() {
+            Future<Collection<RaftGroupId>> f = invoke(new Supplier<RaftReplicateOperation>() {
                 @Override
                 public RaftReplicateOperation get() {
                     RaftOperation raftOperation = new CompleteDestroyRaftGroupsOperation(destroyedGroupIds);
