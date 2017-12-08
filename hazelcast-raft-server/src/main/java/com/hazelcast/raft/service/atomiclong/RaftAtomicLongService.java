@@ -3,7 +3,8 @@ package com.hazelcast.raft.service.atomiclong;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.service.RaftGroupId;
-import com.hazelcast.raft.impl.service.RaftInvocationService;
+import com.hazelcast.raft.impl.service.RaftInvocationManager;
+import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
@@ -23,13 +24,11 @@ public class RaftAtomicLongService implements ManagedService, SnapshotAwareServi
     public static final String PREFIX = "atomiclong:";
 
     private final Map<String, RaftAtomicLong> map = new ConcurrentHashMap<String, RaftAtomicLong>();
-    private volatile NodeEngine nodeEngine;
-    private volatile RaftInvocationService raftInvocationService;
+    private volatile RaftService raftService;
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
-        this.nodeEngine = nodeEngine;
-        this.raftInvocationService = nodeEngine.getService(RaftInvocationService.SERVICE_NAME);
+        this.raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
     }
 
     @Override
@@ -61,8 +60,13 @@ public class RaftAtomicLongService implements ManagedService, SnapshotAwareServi
 
     // TODO: in config, nodeCount or failure tolerance ?
     public IAtomicLong createNew(String name, int nodeCount) throws ExecutionException, InterruptedException {
-        RaftGroupId groupId = raftInvocationService.createRaftGroup(SERVICE_NAME, PREFIX + name, nodeCount);
-        return new RaftAtomicLongProxy(groupId, nodeEngine);
+        RaftInvocationManager invocationManager = raftService.getInvocationManager();
+        RaftGroupId groupId = invocationManager.createRaftGroup(SERVICE_NAME, PREFIX + name, nodeCount);
+        return new RaftAtomicLongProxy(groupId, invocationManager);
+    }
+
+    public IAtomicLong newProxy(RaftGroupId groupId) {
+        return new RaftAtomicLongProxy(groupId, raftService.getInvocationManager());
     }
 
     public RaftAtomicLong getAtomicLong(RaftGroupId groupId) {
