@@ -6,8 +6,8 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.impl.RaftEndpoint;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 
 import static com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus.ACTIVE;
 import static com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus.DESTROYED;
@@ -38,7 +38,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
 
     public RaftGroupInfo(RaftGroupId id, Collection<RaftEndpoint> members, String serviceName) {
         this.id = id;
-        this.members = unmodifiableCollection(new ArrayList<RaftEndpoint>(members));
+        this.members = unmodifiableCollection(new HashSet<RaftEndpoint>(members));
         this.serviceName = serviceName;
         this.status = ACTIVE;
         this.membersArray = members.toArray(new RaftEndpoint[0]);
@@ -58,6 +58,10 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
 
     public Collection<RaftEndpoint> members() {
         return members;
+    }
+
+    public boolean containsMember(RaftEndpoint endpoint) {
+        return members.contains(endpoint);
     }
 
     public int memberCount() {
@@ -111,7 +115,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     public void readData(ObjectDataInput in) throws IOException {
         id = in.readObject();
         int len = in.readInt();
-        members = new ArrayList<RaftEndpoint>(len);
+        members = new HashSet<RaftEndpoint>(len);
         for (int i = 0; i < len; i++) {
             RaftEndpoint endpoint = in.readObject();
             members.add(endpoint);

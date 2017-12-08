@@ -3,6 +3,7 @@ package com.hazelcast.raft.impl.service.operation.metadata;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.raft.impl.service.RaftMetadataManager;
 import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
@@ -24,7 +25,8 @@ public class TriggerDestroyRaftGroupOperation extends RaftOperation implements I
     @Override
     protected Object doRun(int commitIndex) {
         RaftService service = getService();
-        service.triggerDestroy(groupId);
+        RaftMetadataManager metadataManager = service.getMetadataManager();
+        metadataManager.triggerDestroy(groupId);
         return groupId;
     }
 
