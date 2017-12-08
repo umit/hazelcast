@@ -119,12 +119,6 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
                 .setClassName(RaftService.class.getName()).setConfigObject(raftConfig);
         config.getServicesConfig().addServiceConfig(raftServiceConfig);
 
-        ServiceConfig raftInvocationServiceConfig = new ServiceConfig().setEnabled(true)
-                                                                       .setName(RaftInvocationService.SERVICE_NAME)
-                                                                       .setClassName(RaftInvocationService.class.getName())
-                                                                       .setConfigObject(raftConfig);
-        config.getServicesConfig().addServiceConfig(raftInvocationServiceConfig);
-
         return config;
     }
 
@@ -156,9 +150,10 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         throw new AssertionError();
     }
 
-    protected RaftInvocationService getRaftInvocationService(HazelcastInstance instance) {
+    protected RaftInvocationManager getRaftInvocationService(HazelcastInstance instance) {
         NodeEngineImpl nodeEngine = getNodeEngineImpl(instance);
-        return nodeEngine.getService(RaftInvocationService.SERVICE_NAME);
+        RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+        return service.getInvocationManager();
     }
 
 }

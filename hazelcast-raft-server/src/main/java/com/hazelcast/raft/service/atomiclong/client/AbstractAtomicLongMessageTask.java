@@ -9,7 +9,6 @@ import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
-import com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy;
 
 import java.security.Permission;
 
@@ -26,7 +25,9 @@ public abstract class AbstractAtomicLongMessageTask extends AbstractMessageTask 
     }
 
     protected IAtomicLong getProxy() {
-        return new RaftAtomicLongProxy(groupId, nodeEngine);
+        RaftAtomicLongService service = (RaftAtomicLongService) getService(getServiceName());
+        // TODO: creates a new proxy on each client request
+        return service.newProxy(groupId);
     }
 
     @Override

@@ -22,7 +22,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
-public class RaftInvocationServiceTest extends HazelcastRaftTestSupport {
+public class RaftInvocationManagerTest extends HazelcastRaftTestSupport {
 
     private HazelcastInstance[] instances;
 
@@ -32,7 +32,7 @@ public class RaftInvocationServiceTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
 
-        RaftInvocationService invocationService = getRaftInvocationService(instances[0]);
+        RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
         final RaftGroupId groupId = invocationService.createRaftGroup(RaftDataService.SERVICE_NAME, "test", nodeCount);
 
         for (int i = 0; i < 100; i++) {
@@ -46,7 +46,7 @@ public class RaftInvocationServiceTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(cpNodeCount);
         instances = newInstances(raftAddresses, cpNodeCount + 1);
 
-        RaftInvocationService invocationService = getRaftInvocationService(instances[instances.length - 1]);
+        RaftInvocationManager invocationService = getRaftInvocationService(instances[instances.length - 1]);
         final RaftGroupId groupId = invocationService.createRaftGroup(RaftDataService.SERVICE_NAME, "test", cpNodeCount);
 
         for (int i = 0; i < 100; i++) {
@@ -60,7 +60,7 @@ public class RaftInvocationServiceTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
 
-        final RaftInvocationService invocationService = getRaftInvocationService(instances[0]);
+        final RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
         final RaftGroupId groupId = invocationService.createRaftGroup(RaftDataService.SERVICE_NAME, "test", nodeCount);
 
         invocationService.invoke(createRaftAddOperationSupplier(groupId, "val")).get();

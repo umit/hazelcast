@@ -1,40 +1,35 @@
 package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.core.HazelcastException;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftConfig;
-import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.RaftException;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
-import com.hazelcast.raft.operation.TerminateRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOperation;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
-import com.hazelcast.spi.ConfigurableService;
+import com.hazelcast.raft.operation.RaftOperation;
+import com.hazelcast.raft.operation.TerminateRaftGroupOp;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.InternalCompletableFuture;
-import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.exception.CallerNotMemberException;
 import com.hazelcast.spi.exception.TargetNotMemberException;
 import com.hazelcast.spi.impl.AbstractCompletableFuture;
 import com.hazelcast.util.function.Supplier;
 
-import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -44,37 +39,25 @@ import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.raft.impl.service.RaftService.METADATA_GROUP_ID;
 
-public class RaftInvocationService implements ManagedService, ConfigurableService<RaftConfig>  {
-
-    public static final String SERVICE_NAME = "hz:core:raftInvocation";
+public class RaftInvocationManager {
 
     private final NodeEngine nodeEngine;
+    private final RaftService raftService;
     private final ILogger logger;
     private final ConcurrentMap<RaftGroupId, RaftEndpoint> knownLeaders = new ConcurrentHashMap<RaftGroupId, RaftEndpoint>();
-    private volatile RaftConfig raftConfig;
-    private volatile RaftEndpoint[] allEndpoints;
-    private volatile RaftEndpoint localEndpoint;
+    private final RaftEndpoint[] allEndpoints;
+    private final boolean failOnIndeterminateOperationState;
 
-    public RaftInvocationService(NodeEngine nodeEngine) {
+    public RaftInvocationManager(NodeEngine nodeEngine, RaftService raftService, RaftConfig config) {
         this.nodeEngine = nodeEngine;
         this.logger = nodeEngine.getLogger(getClass());
+        this.raftService = raftService;
+        this.allEndpoints = raftService.getMetadataManager().getAllEndpoints().toArray(new RaftEndpoint[0]);
+        this.failOnIndeterminateOperationState = config.isFailOnIndeterminateOperationState();
     }
 
-    @Override
-    public void configure(RaftConfig raftConfig) {
-        this.raftConfig = raftConfig;
-    }
-
-    @Override
-    public void init(NodeEngine nodeEngine, Properties properties) {
-        try {
-            allEndpoints = RaftEndpoint.parseEndpoints(raftConfig.getMembers()).toArray(new RaftEndpoint[0]);
-        } catch (UnknownHostException e) {
-            throw new HazelcastException(e);
-        }
-
-        localEndpoint = findLocalEndpoint(allEndpoints);
-        if (localEndpoint == null) {
+    public void init() {
+        if (getLocalEndpoint() == null) {
             return;
         }
 
@@ -82,24 +65,12 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
         executionService.scheduleWithRepetition(new CleanupTask(), 1000,1000, TimeUnit.MILLISECONDS);
     }
 
-    @Override
+    private RaftEndpoint getLocalEndpoint() {
+        return raftService.getMetadataManager().getLocalEndpoint();
+    }
+
     public void reset() {
         knownLeaders.clear();
-    }
-
-    @Override
-    public void shutdown(boolean terminate) {
-        reset();
-    }
-
-    private RaftEndpoint findLocalEndpoint(RaftEndpoint[] endpoints) {
-        for (RaftEndpoint endpoint : endpoints) {
-            if (nodeEngine.getThisAddress().equals(endpoint.getAddress())) {
-                return endpoint;
-            }
-        }
-
-        return null;
     }
 
     public ICompletableFuture<RaftGroupId> createRaftGroupAsync(final String serviceName, final String raftName,
@@ -131,7 +102,7 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
     }
 
     public <T> ICompletableFuture<T> invoke(Supplier<RaftReplicateOperation> operationSupplier) {
-        RaftInvocationFuture<T> invocationFuture = new RaftInvocationFuture<T>(nodeEngine, logger, operationSupplier);
+        RaftInvocationFuture<T> invocationFuture = new RaftInvocationFuture<T>(operationSupplier);
         invocationFuture.invoke();
         return invocationFuture;
     }
@@ -153,23 +124,15 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
     private class RaftInvocationFuture<T> extends AbstractCompletableFuture<T>
             implements ExecutionCallback<T> {
 
-        private final NodeEngine nodeEngine;
-        private final RaftService raftService;
         private final Supplier<RaftReplicateOperation> operationSupplier;
-        private final ILogger logger;
-        private final boolean failOnIndeterminateOperationState;
         private volatile RaftGroupId groupId;
         private volatile RaftEndpoint lastInvocationEndpoint;
         private volatile RaftEndpoint[] endpoints;
         private volatile int endPointIndex;
 
-        RaftInvocationFuture(NodeEngine nodeEngine, ILogger logger, Supplier<RaftReplicateOperation> operationSupplier) {
-            super(nodeEngine, logger);
-            this.nodeEngine = nodeEngine;
-            this.raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
+        RaftInvocationFuture(Supplier<RaftReplicateOperation> operationSupplier) {
+            super(nodeEngine, RaftInvocationManager.this.logger);
             this.operationSupplier = operationSupplier;
-            this.logger = logger;
-            this.failOnIndeterminateOperationState = raftConfig.isFailOnIndeterminateOperationState();
         }
 
         @Override
@@ -297,16 +260,14 @@ public class RaftInvocationService implements ManagedService, ConfigurableServic
         }
 
         private boolean shouldRun() {
-            RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
-            RaftNode raftNode = service.getRaftNode(RaftService.METADATA_GROUP_ID);
+            RaftNode raftNode = raftService.getRaftNode(RaftService.METADATA_GROUP_ID);
             // even if the local leader information is stale, it is fine.
-            return raftNode != null && localEndpoint.equals(raftNode.getLeader());
+            return getLocalEndpoint().equals(raftNode.getLeader());
         }
 
         private Collection<RaftGroupId> getDestroyingRaftGroupIds() {
             // we are reading the destroying group ids locally, since we know they are committed.
-            RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
-            return service.getDestroyingRaftGroupIds();
+            return raftService.getMetadataManager().getDestroyingRaftGroupIds();
         }
 
         private boolean isTerminated(RaftGroupId groupId, Future<Object> future) {
