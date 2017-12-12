@@ -6,7 +6,7 @@ import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
-import com.hazelcast.raft.impl.service.exception.CannotShutdownException;
+import com.hazelcast.raft.impl.service.exception.CannotRemoveEndpointException;
 import com.hazelcast.spi.NodeEngine;
 
 import java.net.UnknownHostException;
@@ -14,10 +14,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.hazelcast.raft.impl.RaftEndpoint.parseEndpoints;
+import static com.hazelcast.raft.impl.service.LeavingRaftEndpointContext.RaftGroupLeavingEndpointContext;
 import static com.hazelcast.raft.impl.service.RaftService.SERVICE_NAME;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static java.util.Collections.newSetFromMap;
@@ -42,9 +44,9 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     private final RaftEndpoint localEndpoint;
 
     // read outside of Raft
-    private final Collection<RaftEndpoint> shutdownEndpoints = newSetFromMap(new ConcurrentHashMap<RaftEndpoint, Boolean>());
+    private final Collection<RaftEndpoint> removedEndpoints = newSetFromMap(new ConcurrentHashMap<RaftEndpoint, Boolean>());
     // read outside of Raft
-    private volatile RaftEndpoint shuttingDownEndpoint;
+    private volatile LeavingRaftEndpointContext leavingEndpointContext;
 
     public RaftMetadataManager(NodeEngine nodeEngine, RaftService raftService, RaftConfig config) {
         this.nodeEngine = nodeEngine;
@@ -90,10 +92,12 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         for (RaftEndpoint endpoint : allEndpoints) {
             snapshot.addEndpoint(endpoint);
         }
-        for (RaftEndpoint endpoint : shutdownEndpoints) {
+        for (RaftEndpoint endpoint : removedEndpoints) {
             snapshot.addShutdownEndpoint(endpoint);
         }
-        snapshot.setShuttingDownEndpoint(shuttingDownEndpoint);
+
+        // TODO fixit
+//        snapshot.setShuttingDownEndpoint(shuttingDownEndpoint);
         return snapshot;
     }
 
@@ -131,10 +135,11 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             // TODO: restore endpoints
         }
 
-        shutdownEndpoints.clear();
-        shutdownEndpoints.addAll(snapshot.getShutdownEndpoints());
+        removedEndpoints.clear();
+        removedEndpoints.addAll(snapshot.getShutdownEndpoints());
 
-        shuttingDownEndpoint = snapshot.getShuttingDownEndpoint();
+        // TODO fixit
+//        shuttingDownEndpoint = snapshot.getShuttingDownEndpoint();
     }
 
     public Collection<RaftEndpoint> getAllEndpoints() {
@@ -238,24 +243,23 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         return groupIds;
     }
 
-    public void triggerShutdownEndpoint(RaftEndpoint endpoint) {
+    public void triggerRemoveEndpoint(RaftEndpoint endpoint) {
         if (!allEndpoints.contains(endpoint)) {
             throw new IllegalArgumentException(endpoint + " doesn't exist!");
         }
+        if (leavingEndpointContext != null) {
+            if (leavingEndpointContext.getEndpoint().equals(endpoint)) {
+                logger.info(endpoint + " is already marked as leaving.");
+                return;
+            }
 
-        if (endpoint.equals(shuttingDownEndpoint)) {
-            logger.info(endpoint + " is already marked as shutting down.");
-            return;
+            throw new CannotRemoveEndpointException("Another node " + leavingEndpointContext.getEndpoint()
+                    + " is currently leaving, cannot process remove request of " + endpoint);
         }
 
-        if (shuttingDownEndpoint != null) {
-            throw new CannotShutdownException("Another node " + shuttingDownEndpoint + " is currently shutting down,"
-                    + " cannot process shutdown request of " + endpoint);
-        }
+        logger.severe("Removing " + endpoint);
 
-        logger.severe("Shutting down " + endpoint);
-        shuttingDownEndpoint = endpoint;
-
+        Map<RaftGroupId, RaftGroupLeavingEndpointContext> leavingGroups = new HashMap<RaftGroupId, RaftGroupLeavingEndpointContext>();
         for (RaftGroupInfo groupInfo : raftGroups.values()) {
             RaftGroupId groupId = groupInfo.id();
             if (groupId.equals(METADATA_GROUP_ID)) {
@@ -269,11 +273,13 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
                 }
 
                 boolean foundSubstitute = false;
-                for (RaftEndpoint e : allEndpoints) {
+                for (RaftEndpoint substitute : allEndpoints) {
                     // TODO: not deterministic !!!
-                    if (!shutdownEndpoints.contains(e) && !groupInfo.containsMember(e)) {
-                        groupInfo.markSubstitutes(endpoint, e);
-                        logger.fine("Substituted " + endpoint + " with " + e + " in " + groupInfo);
+                    if (!removedEndpoints.contains(substitute) && !groupInfo.containsMember(substitute)) {
+                        groupInfo.markSubstitutes(endpoint, substitute);
+                        leavingGroups.put(groupId, new RaftGroupLeavingEndpointContext(groupInfo.getMembersCommitIndex(),
+                                groupInfo.members(), substitute));
+                        logger.fine("Substituted " + endpoint + " with " + substitute + " in " + groupInfo);
                         foundSubstitute = true;
                         break;
                     }
@@ -283,56 +289,72 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
                 }
             }
         }
+
+        leavingEndpointContext = new LeavingRaftEndpointContext(endpoint, leavingGroups);
     }
 
-    public void completeShutdownEndpoint(RaftEndpoint endpoint) {
+    public void completeRemoveEndpoint(RaftEndpoint endpoint, Map<RaftGroupId, Entry<Integer, Integer>> leftGroups) {
         if (!allEndpoints.contains(endpoint)) {
             throw new IllegalArgumentException(endpoint + " doesn't exist!");
         }
-        if (!endpoint.equals(shuttingDownEndpoint)) {
-            throw new IllegalArgumentException(endpoint + " is not shutting down member! Currently "
-                    + shuttingDownEndpoint + " is shutting down.");
+
+        if (leavingEndpointContext == null) {
+            throw new IllegalStateException("There is no leaving endpoint!");
         }
 
-        logger.severe("Shutdown completed for " + endpoint);
-        shutdownEndpoints.add(endpoint);
-        shuttingDownEndpoint = null;
+        if (!leavingEndpointContext.getEndpoint().equals(endpoint)) {
+            throw new IllegalArgumentException(endpoint + " is not the already leaving member! Currently "
+                    + leavingEndpointContext.getEndpoint() + " is leaving.");
+        }
 
-        for (RaftGroupInfo groupInfo : raftGroups.values()) {
-            if (groupInfo.id().equals(METADATA_GROUP_ID)) {
-                continue;
-            }
-            if (groupInfo.containsMember(endpoint)) {
+        for (Entry<RaftGroupId, Entry<Integer, Integer>> e : leftGroups.entrySet()) {
+            RaftGroupId groupId = e.getKey();
+            RaftGroupInfo groupInfo = raftGroups.get(groupId);
+            int expectedMembersCommitIndex = e.getValue().getKey();
+            if (groupInfo.getMembersCommitIndex() == expectedMembersCommitIndex) {
                 RaftEndpoint joiningMember = groupInfo.joiningMember();
-                groupInfo.completeSubstitution(endpoint);
-                logger.fine("Removed " + endpoint + " from " + groupInfo);
+                int newMembersCommitIndex = e.getValue().getValue();
+                groupInfo.completeSubstitution(endpoint, newMembersCommitIndex);
+                logger.fine("Removed " + endpoint + " from " + groupInfo + " with new members commit index: "
+                        + newMembersCommitIndex);
                 if (localEndpoint.equals(joiningMember)) {
                     // we are the added member to the group,
                     // create local raft node
                     raftService.createRaftNode(groupInfo);
+                    // TODO might be already created...
                 }
             }
         }
-    }
 
-    // Called outside of Raft
-    public RaftEndpoint getShuttingDownEndpoint() {
-        return shuttingDownEndpoint;
-    }
-
-    // Called outside of Raft
-    public boolean isShutdown(RaftEndpoint endpoint) {
-        return shutdownEndpoints.contains(endpoint);
-    }
-
-    // Called outside of Raft
-    public Map<RaftGroupId, RaftEndpoint> getSubstitutesFor(RaftEndpoint endpoint) {
-        Map<RaftGroupId, RaftEndpoint> substitutes = new HashMap<RaftGroupId, RaftEndpoint>();
+        boolean safeToRemove = true;
         for (RaftGroupInfo groupInfo : raftGroups.values()) {
-            if (endpoint.equals(groupInfo.leavingMember())) {
-                substitutes.put(groupInfo.id(), groupInfo.joiningMember());
+            if (groupInfo.id().equals(METADATA_GROUP_ID)) {
+                continue;
+            }
+
+            if (groupInfo.containsMember(endpoint)) {
+                safeToRemove = false;
+                break;
             }
         }
-        return substitutes;
+
+        if (safeToRemove) {
+            logger.severe("Remove member completed for " + endpoint);
+            removedEndpoints.add(endpoint);
+            leavingEndpointContext = null;
+        } else {
+            // TODO shrink the groups in leavingEndpointContext
+        }
     }
+
+    // Called outside of Raft
+    public LeavingRaftEndpointContext getLeavingEndpointContext() {
+        return leavingEndpointContext;
+    }
+
+    // Called outside of Raft
+    public boolean isRemoved(RaftEndpoint endpoint) {
+        return removedEndpoints.contains(endpoint);
+    }
+
 }

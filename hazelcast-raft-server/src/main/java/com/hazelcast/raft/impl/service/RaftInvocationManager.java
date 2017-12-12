@@ -99,8 +99,7 @@ public class RaftInvocationManager {
         return knownLeaders.get(groupId);
     }
 
-    private class RaftInvocationFuture<T> extends AbstractCompletableFuture<T>
-            implements ExecutionCallback<T> {
+    private class RaftInvocationFuture<T> extends AbstractCompletableFuture<T> implements ExecutionCallback<T> {
 
         private final Supplier<RaftReplicateOperation> operationSupplier;
         private volatile RaftGroupId groupId;
