@@ -13,10 +13,10 @@ import com.hazelcast.raft.impl.service.operation.integration.PreVoteResponseOp;
 import com.hazelcast.raft.impl.service.operation.integration.VoteRequestOp;
 import com.hazelcast.raft.impl.service.operation.integration.VoteResponseOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOperation;
-import com.hazelcast.raft.impl.service.operation.metadata.CompleteShutdownEndpointOperation;
+import com.hazelcast.raft.impl.service.operation.metadata.CompleteRemoveEndpointOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOperation;
-import com.hazelcast.raft.impl.service.operation.metadata.TriggerShutdownEndpointOperation;
+import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveEndpointOperation;
 import com.hazelcast.raft.impl.service.proxy.CreateRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.MembershipChangeReplicateOperation;
@@ -43,8 +43,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int CREATE_RAFT_GROUP_REPLICATE_OP = 13;
     public static final int TRIGGER_DESTROY_RAFT_GROUP_OP = 14;
     public static final int COMPLETE_DESTROY_RAFT_GROUPS_OP = 15;
-    public static final int TRIGGER_SHUTDOWN_ENDPOINT_OP = 16;
-    public static final int COMPLETE_SHUTDOWN_ENDPOINT_OP = 17;
+    public static final int TRIGGER_REMOVE_ENDPOINT_OP = 16;
+    public static final int COMPLETE_REMOVE_ENDPOINT_OP = 17;
     public static final int MEMBERSHIP_CHANGE_REPLICATE_OP = 18;
     public static final int METADATA_SNAPSHOT = 19;
 
@@ -89,10 +89,10 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new TriggerDestroyRaftGroupOperation();
                     case COMPLETE_DESTROY_RAFT_GROUPS_OP:
                         return new CompleteDestroyRaftGroupsOperation();
-                    case TRIGGER_SHUTDOWN_ENDPOINT_OP:
-                        return new TriggerShutdownEndpointOperation();
-                    case COMPLETE_SHUTDOWN_ENDPOINT_OP:
-                        return new CompleteShutdownEndpointOperation();
+                    case TRIGGER_REMOVE_ENDPOINT_OP:
+                        return new TriggerRemoveEndpointOperation();
+                    case COMPLETE_REMOVE_ENDPOINT_OP:
+                        return new CompleteRemoveEndpointOperation();
                     case MEMBERSHIP_CHANGE_REPLICATE_OP:
                         return new MembershipChangeReplicateOperation();
                     case METADATA_SNAPSHOT:

@@ -11,14 +11,14 @@ import com.hazelcast.raft.operation.RaftOperation;
 
 import java.io.IOException;
 
-public class TriggerShutdownEndpointOperation extends RaftOperation implements IdentifiedDataSerializable {
+public class TriggerRemoveEndpointOperation extends RaftOperation implements IdentifiedDataSerializable {
 
     private RaftEndpoint endpoint;
 
-    public TriggerShutdownEndpointOperation() {
+    public TriggerRemoveEndpointOperation() {
     }
 
-    public TriggerShutdownEndpointOperation(RaftEndpoint endpoint) {
+    public TriggerRemoveEndpointOperation(RaftEndpoint endpoint) {
         this.endpoint = endpoint;
     }
 
@@ -26,7 +26,7 @@ public class TriggerShutdownEndpointOperation extends RaftOperation implements I
     protected Object doRun(int commitIndex) {
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
-        metadataManager.triggerShutdownEndpoint(endpoint);
+        metadataManager.triggerRemoveEndpoint(endpoint);
         return endpoint;
     }
 
@@ -54,6 +54,6 @@ public class TriggerShutdownEndpointOperation extends RaftOperation implements I
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.TRIGGER_SHUTDOWN_ENDPOINT_OP;
+        return RaftServiceDataSerializerHook.TRIGGER_REMOVE_ENDPOINT_OP;
     }
 }

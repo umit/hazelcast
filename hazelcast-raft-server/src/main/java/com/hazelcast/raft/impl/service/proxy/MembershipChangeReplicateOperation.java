@@ -14,22 +14,34 @@ import java.io.IOException;
 
 public class MembershipChangeReplicateOperation extends RaftReplicateOperation {
 
+    private static final int NAN_MEMBERS_COMMIT_INDEX = -1;
+
+    private int membersCommitIndex;
     private RaftEndpoint endpoint;
     private MembershipChangeType changeType;
 
     public MembershipChangeReplicateOperation() {
     }
 
-    public MembershipChangeReplicateOperation(RaftGroupId groupId, RaftEndpoint endpoint,
+    public MembershipChangeReplicateOperation(RaftGroupId groupId, RaftEndpoint endpoint, MembershipChangeType changeType) {
+        this(groupId, NAN_MEMBERS_COMMIT_INDEX, endpoint, changeType);
+    }
+
+    public MembershipChangeReplicateOperation(RaftGroupId groupId, int membersCommitIndex, RaftEndpoint endpoint,
             MembershipChangeType changeType) {
         super(groupId);
+        this.membersCommitIndex = membersCommitIndex;
         this.endpoint = endpoint;
         this.changeType = changeType;
     }
 
     @Override
     ICompletableFuture replicate(RaftNode raftNode) {
-        return raftNode.replicateMembershipChange(endpoint, changeType);
+        if (membersCommitIndex == NAN_MEMBERS_COMMIT_INDEX) {
+            return raftNode.replicateMembershipChange(endpoint, changeType);
+        } else {
+            return raftNode.replicateMembershipChange(endpoint, changeType, membersCommitIndex);
+        }
     }
 
     @Override
@@ -50,6 +62,7 @@ public class MembershipChangeReplicateOperation extends RaftReplicateOperation {
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
+        out.writeInt(membersCommitIndex);
         out.writeObject(endpoint);
         out.writeUTF(changeType.toString());
     }
@@ -57,6 +70,7 @@ public class MembershipChangeReplicateOperation extends RaftReplicateOperation {
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
+        membersCommitIndex = in.readInt();
         endpoint = in.readObject();
         changeType = MembershipChangeType.valueOf(in.readUTF());
     }

@@ -27,6 +27,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     }
 
     private RaftGroupId id;
+    private int membersCommitIndex;
     private Set<RaftEndpoint> members;
     private String serviceName;
     private RaftEndpoint leavingMember;
@@ -100,6 +101,10 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
         return true;
     }
 
+    public int getMembersCommitIndex() {
+        return membersCommitIndex;
+    }
+
     public RaftEndpoint joiningMember() {
         return joiningMember;
     }
@@ -130,7 +135,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
         joiningMember = joining;
     }
 
-    public void completeSubstitution(RaftEndpoint endpoint) {
+    public void completeSubstitution(RaftEndpoint endpoint, int newMembersCommitIndex) {
         if (leavingMember == null || !leavingMember.equals(endpoint)) {
             throw new IllegalArgumentException("Cannot remove " + endpoint + ", current leaving member is " + leavingMember);
         }
@@ -138,6 +143,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
         set.remove(endpoint);
         set.add(joiningMember);
         members = Collections.unmodifiableSet(set);
+        membersCommitIndex = newMembersCommitIndex;
         membersArray = members.toArray(new RaftEndpoint[0]);
         leavingMember = null;
         joiningMember = null;
