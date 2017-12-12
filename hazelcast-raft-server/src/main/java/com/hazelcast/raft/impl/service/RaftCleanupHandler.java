@@ -13,6 +13,7 @@ import com.hazelcast.raft.impl.service.operation.metadata.CompleteRemoveEndpoint
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.MembershipChangeReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
+import com.hazelcast.raft.impl.util.Pair;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.operation.TerminateRaftGroupOp;
@@ -20,7 +21,6 @@ import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.util.function.Supplier;
 
-import java.util.AbstractMap.SimpleEntry;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -221,15 +221,14 @@ public class RaftCleanupHandler {
                 }
             }
 
-            Map<RaftGroupId, Entry<Integer, Integer>> leftGroups = new HashMap<RaftGroupId, Entry<Integer, Integer>>();
+            Map<RaftGroupId, Pair<Integer, Integer>> leftGroups = new HashMap<RaftGroupId, Pair<Integer, Integer>>();
             for (Entry<RaftGroupId, Future<Integer>> entry : leaveFutures.entrySet()) {
                 RaftGroupId groupId = entry.getKey();
                 RaftGroupLeavingEndpointContext ctx = leavingGroups.get(groupId);
                 int idx = getMemberRemoveCommitIndex(groupId, leavingEndpoint, ctx, entry.getValue());
                 if (idx != NA_MEMBERS_COMMIT_INDEX) {
                     logger.info(leavingEndpoint + " is removed from " + groupId + " with new members commit index: " + idx);
-                    Entry<Integer, Integer> e = new SimpleEntry<Integer, Integer>(ctx.getMembersCommitIndex(), idx);
-                    leftGroups.put(groupId, e);
+                    leftGroups.put(groupId, new Pair<Integer, Integer>(ctx.getMembersCommitIndex(), idx));
                 }
             }
 
@@ -337,7 +336,7 @@ public class RaftCleanupHandler {
             }
         }
 
-        private void completeRemoveOnMetadata(final RaftEndpoint endpoint, final Map<RaftGroupId, Entry<Integer, Integer>> leftGroups) {
+        private void completeRemoveOnMetadata(final RaftEndpoint endpoint, final Map<RaftGroupId, Pair<Integer, Integer>> leftGroups) {
             ICompletableFuture<Object> future = invoke(new Supplier<RaftReplicateOperation>() {
                 @Override
                 public RaftReplicateOperation get() {

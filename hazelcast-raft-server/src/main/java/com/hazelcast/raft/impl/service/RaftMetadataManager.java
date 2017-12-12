@@ -7,6 +7,7 @@ import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.exception.CannotRemoveEndpointException;
+import com.hazelcast.raft.impl.util.Pair;
 import com.hazelcast.spi.NodeEngine;
 
 import java.net.UnknownHostException;
@@ -295,7 +296,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         leavingEndpointContext = new LeavingRaftEndpointContext(endpoint, leavingGroups);
     }
 
-    public void completeRemoveEndpoint(RaftEndpoint leavingEndpoint, Map<RaftGroupId, Entry<Integer, Integer>> leftGroups) {
+    public void completeRemoveEndpoint(RaftEndpoint leavingEndpoint, Map<RaftGroupId, Pair<Integer, Integer>> leftGroups) {
         if (!allEndpoints.contains(leavingEndpoint)) {
             throw new IllegalArgumentException("Cannot remove " + leavingEndpoint + " from groups: " + leftGroups.keySet()
                     + " since " +  leavingEndpoint + " doesn't exist!");
@@ -312,12 +313,13 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         }
 
         Map<RaftGroupId, RaftGroupLeavingEndpointContext> leavingGroups = leavingEndpointContext.getGroups();
-        for (Entry<RaftGroupId, Entry<Integer, Integer>> e : leftGroups.entrySet()) {
+        for (Entry<RaftGroupId, Pair<Integer, Integer>> e : leftGroups.entrySet()) {
             RaftGroupId groupId = e.getKey();
             RaftGroupInfo groupInfo = raftGroups.get(groupId);
 
-            int expectedMembersCommitIndex = e.getValue().getKey();
-            int newMembersCommitIndex = e.getValue().getValue();
+            Pair<Integer, Integer> value = e.getValue();
+            int expectedMembersCommitIndex = value.getPrimary();
+            int newMembersCommitIndex = value.getSecondary();
             RaftEndpoint joining = leavingGroups.get(groupId).getSubstitute();
 
             if (groupInfo.substitute(leavingEndpoint, joining, expectedMembersCommitIndex, newMembersCommitIndex)) {
