@@ -16,9 +16,9 @@ import java.util.Collection;
 public final class MetadataSnapshot implements IdentifiedDataSerializable {
 
     private final Collection<RaftEndpoint> endpoints = new ArrayList<RaftEndpoint>();
-    private final Collection<RaftEndpoint> shutdownEndpoints = new ArrayList<RaftEndpoint>();
+    private final Collection<RaftEndpoint> removedEndpoints = new ArrayList<RaftEndpoint>();
     private final Collection<RaftGroupInfo> raftGroups = new ArrayList<RaftGroupInfo>();
-    private RaftEndpoint shuttingDownEndpoint;
+    private LeavingRaftEndpointContext leavingRaftEndpointContext;
 
     public void addRaftGroup(RaftGroupInfo groupInfo) {
         raftGroups.add(groupInfo);
@@ -28,28 +28,28 @@ public final class MetadataSnapshot implements IdentifiedDataSerializable {
         endpoints.add(endpoint);
     }
 
-    public void addShutdownEndpoint(RaftEndpoint endpoint) {
-        shutdownEndpoints.add(endpoint);
-    }
-
-    public void setShuttingDownEndpoint(RaftEndpoint shuttingDownEndpoint) {
-        this.shuttingDownEndpoint = shuttingDownEndpoint;
+    public void addRemovedEndpoint(RaftEndpoint endpoint) {
+        removedEndpoints.add(endpoint);
     }
 
     public Collection<RaftEndpoint> getEndpoints() {
         return endpoints;
     }
 
-    public Collection<RaftEndpoint> getShutdownEndpoints() {
-        return shutdownEndpoints;
-    }
-
-    public RaftEndpoint getShuttingDownEndpoint() {
-        return shuttingDownEndpoint;
+    public Collection<RaftEndpoint> getRemovedEndpoints() {
+        return removedEndpoints;
     }
 
     public Collection<RaftGroupInfo> getRaftGroups() {
         return raftGroups;
+    }
+
+    public LeavingRaftEndpointContext getLeavingRaftEndpointContext() {
+        return leavingRaftEndpointContext;
+    }
+
+    public void setLeavingRaftEndpointContext(LeavingRaftEndpointContext leavingRaftEndpointContext) {
+        this.leavingRaftEndpointContext = leavingRaftEndpointContext;
     }
 
     @Override
@@ -72,11 +72,11 @@ public final class MetadataSnapshot implements IdentifiedDataSerializable {
         for (RaftGroupInfo group : raftGroups) {
             out.writeObject(group);
         }
-        out.writeInt(shutdownEndpoints.size());
-        for (RaftEndpoint endpoint : shutdownEndpoints) {
+        out.writeInt(removedEndpoints.size());
+        for (RaftEndpoint endpoint : removedEndpoints) {
             out.writeObject(endpoint);
         }
-        out.writeObject(shuttingDownEndpoint);
+        out.writeObject(leavingRaftEndpointContext);
     }
 
     @Override
@@ -96,8 +96,8 @@ public final class MetadataSnapshot implements IdentifiedDataSerializable {
         len = in.readInt();
         for (int i = 0; i < len; i++) {
             RaftEndpoint endpoint = in.readObject();
-            shutdownEndpoints.add(endpoint);
+            removedEndpoints.add(endpoint);
         }
-        shuttingDownEndpoint = in.readObject();
+        leavingRaftEndpointContext = in.readObject();
     }
 }
