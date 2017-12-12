@@ -30,8 +30,6 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     private int membersCommitIndex;
     private Set<RaftEndpoint> members;
     private String serviceName;
-    private RaftEndpoint leavingMember;
-    private RaftEndpoint joiningMember;
 
     // read outside of Raft
     private volatile RaftGroupStatus status;
@@ -105,48 +103,22 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
         return membersCommitIndex;
     }
 
-    public RaftEndpoint joiningMember() {
-        return joiningMember;
-    }
+    public boolean substitute(RaftEndpoint leaving, RaftEndpoint joining,
+            int expectedMembersCommitIndex, int newMembersCommitIndex) {
+        if (membersCommitIndex != expectedMembersCommitIndex) {
+            return false;
+        }
 
-    public RaftEndpoint leavingMember() {
-        return leavingMember;
-    }
-
-    public void markSubstitutes(RaftEndpoint leaving, RaftEndpoint joining) {
-        if (leavingMember != null) {
-            if (!leavingMember.equals(leaving)) {
-                throw new IllegalStateException(leavingMember + " is already leaving. "
-                        + "Cannot substitute " + leaving + " with " + joining);
-            }
-            if (!joiningMember.equals(joining)) {
-                throw new IllegalStateException(joining + " is already joining. "
-                        + "Cannot substitute " + leaving + " with " + joining);
-            }
-            return;
-        }
-        if (!members.contains(leaving)) {
-            throw new IllegalArgumentException(leaving + " doesn't exist in the group!");
-        }
-        if (members.contains(joining)) {
-            throw new IllegalArgumentException(joining + " is already in the group!");
-        }
-        leavingMember = leaving;
-        joiningMember = joining;
-    }
-
-    public void completeSubstitution(RaftEndpoint endpoint, int newMembersCommitIndex) {
-        if (leavingMember == null || !leavingMember.equals(endpoint)) {
-            throw new IllegalArgumentException("Cannot remove " + endpoint + ", current leaving member is " + leavingMember);
-        }
         Set<RaftEndpoint> set = new HashSet<RaftEndpoint>(members);
-        set.remove(endpoint);
-        set.add(joiningMember);
+        boolean removed = set.remove(leaving);
+        assert removed : leaving + " is not member of " + toString();
+        boolean added = set.add(joining);
+        assert added : joining + " is already member of " + toString();
+
         members = Collections.unmodifiableSet(set);
         membersCommitIndex = newMembersCommitIndex;
         membersArray = members.toArray(new RaftEndpoint[0]);
-        leavingMember = null;
-        joiningMember = null;
+        return true;
     }
 
     public RaftEndpoint[] membersArray() {
@@ -162,8 +134,6 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
         }
         out.writeUTF(serviceName);
         out.writeUTF(status.toString());
-        out.writeObject(leavingMember);
-        out.writeObject(joiningMember);
     }
 
     @Override
@@ -178,8 +148,6 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
         members = Collections.unmodifiableSet(members);
         serviceName = in.readUTF();
         status = RaftGroupStatus.valueOf(in.readUTF());
-        leavingMember = in.readObject();
-        joiningMember = in.readObject();
     }
 
     @Override
@@ -194,7 +162,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
 
     @Override
     public String toString() {
-        return "RaftGroupInfo{" + "id=" + id + ", members=" + members + ", serviceName='" + serviceName + '\''
-                + ", leavingMember=" + leavingMember + ", joiningMember=" + joiningMember + ", status=" + status + '}';
+        return "RaftGroupInfo{" + "id=" + id + ", membersCommitIndex=" + membersCommitIndex + ", members=" + members
+                + ", serviceName='" + serviceName + '\'' + ", status=" + status + '}';
     }
 }

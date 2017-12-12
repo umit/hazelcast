@@ -266,17 +266,10 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
                 continue;
             }
             if (groupInfo.containsMember(endpoint)) {
-                if (groupInfo.leavingMember() != null) {
-                    // already found a substitute
-                    assert endpoint.equals(groupInfo.leavingMember()) : "Leaving: " + endpoint + " -> " + groupInfo;
-                    continue;
-                }
-
                 boolean foundSubstitute = false;
                 for (RaftEndpoint substitute : allEndpoints) {
                     // TODO: not deterministic !!!
                     if (!removedEndpoints.contains(substitute) && !groupInfo.containsMember(substitute)) {
-                        groupInfo.markSubstitutes(endpoint, substitute);
                         leavingGroups.put(groupId, new RaftGroupLeavingEndpointContext(groupInfo.getMembersCommitIndex(),
                                 groupInfo.members(), substitute));
                         logger.fine("Substituted " + endpoint + " with " + substitute + " in " + groupInfo);
@@ -307,17 +300,19 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
                     + leavingEndpointContext.getEndpoint() + " is leaving.");
         }
 
+        Map<RaftGroupId, RaftGroupLeavingEndpointContext> leavingEndpointContextGroups = leavingEndpointContext.getGroups();
         for (Entry<RaftGroupId, Entry<Integer, Integer>> e : leftGroups.entrySet()) {
             RaftGroupId groupId = e.getKey();
             RaftGroupInfo groupInfo = raftGroups.get(groupId);
+
             int expectedMembersCommitIndex = e.getValue().getKey();
-            if (groupInfo.getMembersCommitIndex() == expectedMembersCommitIndex) {
-                RaftEndpoint joiningMember = groupInfo.joiningMember();
-                int newMembersCommitIndex = e.getValue().getValue();
-                groupInfo.completeSubstitution(endpoint, newMembersCommitIndex);
+            int newMembersCommitIndex = e.getValue().getValue();
+            RaftEndpoint joining = leavingEndpointContextGroups.get(groupId).getSubstitute();
+
+            if (groupInfo.substitute(endpoint, joining, expectedMembersCommitIndex, newMembersCommitIndex)) {
                 logger.fine("Removed " + endpoint + " from " + groupInfo + " with new members commit index: "
                         + newMembersCommitIndex);
-                if (localEndpoint.equals(joiningMember)) {
+                if (localEndpoint.equals(joining)) {
                     // we are the added member to the group,
                     // create local raft node
                     raftService.createRaftNode(groupInfo);

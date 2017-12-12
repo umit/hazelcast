@@ -36,21 +36,29 @@ public class RaftException extends HazelcastException {
             out.writeBoolean(false);
         } else {
             out.writeBoolean(true);
-            out.writeUTF(leader.getUid());
-            Address address = leader.getAddress();
-            out.writeUTF(address.getHost());
-            out.writeInt(address.getPort());
+            writeEndpoint(leader, out);
         }
+    }
+
+    static void writeEndpoint(RaftEndpoint endpoint, ObjectOutputStream out) throws IOException {
+        out.writeUTF(endpoint.getUid());
+        Address address = endpoint.getAddress();
+        out.writeUTF(address.getHost());
+        out.writeInt(address.getPort());
     }
 
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
 
         if (in.readBoolean()) {
-            String uid = in.readUTF();
-            String host = in.readUTF();
-            int port = in.readInt();
-            leader = new RaftEndpoint(uid, new Address(host, port));
+            leader = readEndpoint(in);
         }
+    }
+
+    static RaftEndpoint readEndpoint(ObjectInputStream in) throws IOException {
+        String uid = in.readUTF();
+        String host = in.readUTF();
+        int port = in.readInt();
+        return new RaftEndpoint(uid, new Address(host, port));
     }
 }
