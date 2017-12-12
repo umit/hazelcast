@@ -3,6 +3,7 @@ package com.hazelcast.raft.impl.service;
 import com.hazelcast.raft.impl.RaftEndpoint;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 
 public class LeavingRaftEndpointContext {
@@ -22,6 +23,15 @@ public class LeavingRaftEndpointContext {
 
     public Map<RaftGroupId, RaftGroupLeavingEndpointContext> getGroups() {
         return groups;
+    }
+
+    public LeavingRaftEndpointContext exclude(Collection<RaftGroupId> groupIds) {
+        Map<RaftGroupId, RaftGroupLeavingEndpointContext> groups = new HashMap<RaftGroupId, RaftGroupLeavingEndpointContext>(this.groups);
+        for (RaftGroupId leftGroupId : groupIds) {
+            groups.remove(leftGroupId);
+        }
+
+        return new LeavingRaftEndpointContext(endpoint, groups);
     }
 
     public static class RaftGroupLeavingEndpointContext {

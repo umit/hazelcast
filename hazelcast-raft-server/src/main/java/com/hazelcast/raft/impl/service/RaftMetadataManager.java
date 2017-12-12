@@ -12,7 +12,9 @@ import com.hazelcast.spi.NodeEngine;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -23,6 +25,7 @@ import static com.hazelcast.raft.impl.service.LeavingRaftEndpointContext.RaftGro
 import static com.hazelcast.raft.impl.service.RaftService.SERVICE_NAME;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static java.util.Collections.newSetFromMap;
+import static java.util.Collections.sort;
 import static java.util.Collections.unmodifiableCollection;
 
 /**
@@ -54,7 +57,14 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         this.logger = nodeEngine.getLogger(getClass());
 
         try {
-            this.allEndpoints = unmodifiableCollection(parseEndpoints(config.getMembers()));
+            List<RaftEndpoint> e = new ArrayList<RaftEndpoint>(parseEndpoints(config.getMembers()));
+            sort(e, new Comparator<RaftEndpoint>() {
+                @Override
+                public int compare(RaftEndpoint e1, RaftEndpoint e2) {
+                    return e1.getUid().compareTo(e2.getUid());
+                }
+            });
+            this.allEndpoints = unmodifiableCollection(e);
         } catch (UnknownHostException e) {
             throw new HazelcastException(e);
         }
@@ -268,7 +278,6 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             if (groupInfo.containsMember(endpoint)) {
                 boolean foundSubstitute = false;
                 for (RaftEndpoint substitute : allEndpoints) {
-                    // TODO: not deterministic !!!
                     if (!removedEndpoints.contains(substitute) && !groupInfo.containsMember(substitute)) {
                         leavingGroups.put(groupId, new RaftGroupLeavingEndpointContext(groupInfo.getMembersCommitIndex(),
                                 groupInfo.members(), substitute));
@@ -279,6 +288,8 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
                 }
                 if (!foundSubstitute) {
                     logger.fine("Cannot find a substitute for " + endpoint + " in " + groupInfo);
+                    leavingGroups.put(groupId, new RaftGroupLeavingEndpointContext(groupInfo.getMembersCommitIndex(),
+                            groupInfo.members(), null));
                 }
             }
         }
@@ -286,38 +297,41 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         leavingEndpointContext = new LeavingRaftEndpointContext(endpoint, leavingGroups);
     }
 
-    public void completeRemoveEndpoint(RaftEndpoint endpoint, Map<RaftGroupId, Entry<Integer, Integer>> leftGroups) {
-        if (!allEndpoints.contains(endpoint)) {
-            throw new IllegalArgumentException(endpoint + " doesn't exist!");
+    public void completeRemoveEndpoint(RaftEndpoint leavingEndpoint, Map<RaftGroupId, Entry<Integer, Integer>> leftGroups) {
+        if (!allEndpoints.contains(leavingEndpoint)) {
+            throw new IllegalArgumentException("Cannot remove " + leavingEndpoint + " from groups: " + leftGroups.keySet()
+                    + " since " +  leavingEndpoint + " doesn't exist!");
         }
 
         if (leavingEndpointContext == null) {
-            throw new IllegalStateException("There is no leaving endpoint!");
+            throw new IllegalStateException("Cannot remove " + leavingEndpoint + " from groups: " + leftGroups.keySet()
+                    + " since there is no leaving endpoint!");
         }
 
-        if (!leavingEndpointContext.getEndpoint().equals(endpoint)) {
-            throw new IllegalArgumentException(endpoint + " is not the already leaving member! Currently "
-                    + leavingEndpointContext.getEndpoint() + " is leaving.");
+        if (!leavingEndpointContext.getEndpoint().equals(leavingEndpoint)) {
+            throw new IllegalArgumentException("Cannot remove " + leavingEndpoint + " from groups: " + leftGroups.keySet()
+                    + " since " + leavingEndpointContext.getEndpoint() + " is currently leaving.");
         }
 
-        Map<RaftGroupId, RaftGroupLeavingEndpointContext> leavingEndpointContextGroups = leavingEndpointContext.getGroups();
+        Map<RaftGroupId, RaftGroupLeavingEndpointContext> leavingGroups = leavingEndpointContext.getGroups();
         for (Entry<RaftGroupId, Entry<Integer, Integer>> e : leftGroups.entrySet()) {
             RaftGroupId groupId = e.getKey();
             RaftGroupInfo groupInfo = raftGroups.get(groupId);
 
             int expectedMembersCommitIndex = e.getValue().getKey();
             int newMembersCommitIndex = e.getValue().getValue();
-            RaftEndpoint joining = leavingEndpointContextGroups.get(groupId).getSubstitute();
+            RaftEndpoint joining = leavingGroups.get(groupId).getSubstitute();
 
-            if (groupInfo.substitute(endpoint, joining, expectedMembersCommitIndex, newMembersCommitIndex)) {
-                logger.fine("Removed " + endpoint + " from " + groupInfo + " with new members commit index: "
+            if (groupInfo.substitute(leavingEndpoint, joining, expectedMembersCommitIndex, newMembersCommitIndex)) {
+                logger.fine("Removed " + leavingEndpoint + " from " + groupInfo + " with new members commit index: "
                         + newMembersCommitIndex);
                 if (localEndpoint.equals(joining)) {
                     // we are the added member to the group,
                     // create local raft node
                     raftService.createRaftNode(groupInfo);
-                    // TODO might be already created...
                 }
+            } else {
+                logger.warning("Could not substitute " + leavingEndpoint + " with " + joining + " in " + groupId);
             }
         }
 
@@ -326,19 +340,19 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             if (groupInfo.id().equals(METADATA_GROUP_ID)) {
                 continue;
             }
-
-            if (groupInfo.containsMember(endpoint)) {
+            if (groupInfo.containsMember(leavingEndpoint)) {
                 safeToRemove = false;
                 break;
             }
         }
 
         if (safeToRemove) {
-            logger.severe("Remove member completed for " + endpoint);
-            removedEndpoints.add(endpoint);
+            logger.severe("Remove member completed for " + leavingEndpoint);
+            removedEndpoints.add(leavingEndpoint);
             leavingEndpointContext = null;
-        } else {
-            // TODO shrink the groups in leavingEndpointContext
+        } else if (!leftGroups.isEmpty()) {
+            // no need to re-attempt for successfully left groups
+            leavingEndpointContext = leavingEndpointContext.exclude(leftGroups.keySet());
         }
     }
 
