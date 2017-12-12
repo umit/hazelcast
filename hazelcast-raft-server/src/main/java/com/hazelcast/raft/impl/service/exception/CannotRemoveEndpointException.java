@@ -1,13 +1,12 @@
 package com.hazelcast.raft.impl.service.exception;
 
-import com.hazelcast.raft.exception.RaftException;
+import com.hazelcast.core.HazelcastException;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public class CannotRemoveEndpointException extends RaftException {
-    // TODO RaftException is for internal raft algorithm-related exceptions, isn't so?
+public class CannotRemoveEndpointException extends HazelcastException {
 
     public CannotRemoveEndpointException(String message) {
         super(message, null);
