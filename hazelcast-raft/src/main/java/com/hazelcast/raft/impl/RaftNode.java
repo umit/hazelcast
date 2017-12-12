@@ -342,6 +342,7 @@ public class RaftNode {
             } else {
                 setStatus(STEPPED_DOWN);
             }
+            response = entry.index();
         } else {
             response = raftIntegration.runOperation(operation, entry.index());
         }
@@ -513,7 +514,14 @@ public class RaftNode {
 
     public ICompletableFuture replicateMembershipChange(RaftEndpoint member, MembershipChangeType change) {
         SimpleCompletableFuture resultFuture = raftIntegration.newCompletableFuture();
-        raftIntegration.execute(new MembershipChangeTask(this, member, change, resultFuture));
+        raftIntegration.execute(new MembershipChangeTask(this, resultFuture, member, change));
+        return resultFuture;
+    }
+
+    public ICompletableFuture replicateMembershipChange(RaftEndpoint member, MembershipChangeType change,
+                                                        int groupMembersCommitIndex) {
+        SimpleCompletableFuture resultFuture = raftIntegration.newCompletableFuture();
+        raftIntegration.execute(new MembershipChangeTask(this, resultFuture, member, change, groupMembersCommitIndex));
         return resultFuture;
     }
 

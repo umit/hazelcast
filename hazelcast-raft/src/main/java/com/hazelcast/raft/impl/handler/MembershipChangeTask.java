@@ -1,13 +1,16 @@
 package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.exception.MemberAlreadyExistsException;
 import com.hazelcast.raft.exception.MemberDoesNotExistException;
+import com.hazelcast.raft.exception.MismatchingGroupMembersCommitIndexException;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.operation.ApplyRaftGroupMembersOp;
+import com.hazelcast.raft.impl.state.RaftGroupMembers;
+import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
-import com.hazelcast.raft.MembershipChangeType;
 
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -18,13 +21,20 @@ import java.util.LinkedHashSet;
  */
 public class MembershipChangeTask implements Runnable {
     private final RaftNode raftNode;
+    private final Integer groupMembersCommitIndex;
     private final RaftEndpoint member;
     private final MembershipChangeType changeType;
     private final SimpleCompletableFuture resultFuture;
 
-    public MembershipChangeTask(RaftNode raftNode, RaftEndpoint member, MembershipChangeType changeType,
-            SimpleCompletableFuture resultFuture) {
+    public MembershipChangeTask(RaftNode raftNode, SimpleCompletableFuture resultFuture, RaftEndpoint member,
+                                MembershipChangeType changeType) {
+        this(raftNode, resultFuture, member, changeType, null);
+    }
+
+    public MembershipChangeTask(RaftNode raftNode, SimpleCompletableFuture resultFuture, RaftEndpoint member,
+                                MembershipChangeType changeType, Integer groupMembersCommitIndex) {
         this.raftNode = raftNode;
+        this.groupMembersCommitIndex = groupMembersCommitIndex;
         this.member = member;
         this.changeType = changeType;
         this.resultFuture = resultFuture;
@@ -37,10 +47,24 @@ public class MembershipChangeTask implements Runnable {
             return;
         }
 
-        Collection<RaftEndpoint> members = new LinkedHashSet<RaftEndpoint>(raftNode.state().members());
+        ILogger logger = raftNode.getLogger(getClass());
+
+        RaftState state = raftNode.state();
+        if (groupMembersCommitIndex != null) {
+            RaftGroupMembers groupMembers = state.committedGroupMembers();
+            if (groupMembers.index() != groupMembersCommitIndex) {
+                logger.severe("Cannot " + changeType + " " + member + " because expected members commit index: "
+                        + groupMembersCommitIndex + " is different than group members commit index: " + groupMembers.index());
+
+                Exception e = new MismatchingGroupMembersCommitIndexException(groupMembers.index(), groupMembers.members());
+                resultFuture.setResult(e);
+                return;
+            }
+        }
+
+        Collection<RaftEndpoint> members = new LinkedHashSet<RaftEndpoint>(state.members());
         boolean memberExists = members.contains(member);
 
-        ILogger logger = raftNode.getLogger(getClass());
         logger.severe("Changing membership -> " + changeType + ": " + member);
 
         switch (changeType) {

@@ -18,8 +18,8 @@ import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
-import com.hazelcast.raft.impl.service.exception.CannotShutdownException;
-import com.hazelcast.raft.impl.service.operation.metadata.TriggerShutdownEndpointOperation;
+import com.hazelcast.raft.impl.service.exception.CannotRemoveEndpointException;
+import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveEndpointOperation;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
 import com.hazelcast.spi.ConfigurableService;
@@ -119,7 +119,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         // wait for us being replaced in all raft groups we are participating
         // and removed from all raft groups
         while (remainingTimeNanos > 0) {
-            if (isShutdown(localEndpoint)) {
+            if (isRemoved(localEndpoint)) {
                 return true;
             }
             try {
@@ -138,11 +138,11 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
             long start = System.nanoTime();
             try {
                 // mark us as shutting-down in metadata
-                Future<RaftGroupId> future = triggerShutdownEndpointAsync(localEndpoint);
+                Future<RaftGroupId> future = triggerRemoveEndpointAsync(localEndpoint);
                 future.get(remainingTimeNanos, TimeUnit.NANOSECONDS);
-                logger.severe("TRIGGERED SHUTDOWN FOR " + localEndpoint + " -> " + metadataManager.getShuttingDownEndpoint());
+                logger.severe("TRIGGERED SHUTDOWN FOR " + localEndpoint + " -> " + metadataManager.getLeavingEndpointContext());
                 return;
-            } catch (CannotShutdownException e) {
+            } catch (CannotRemoveEndpointException e) {
                 remainingTimeNanos -= (System.nanoTime() - start);
                 if (remainingTimeNanos <= 0) {
                     throw e;
@@ -277,20 +277,25 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     }
 
 
-    private ICompletableFuture<RaftGroupId> triggerShutdownEndpointAsync(final RaftEndpoint endpoint) {
+    private ICompletableFuture<RaftGroupId> triggerRemoveEndpointAsync(final RaftEndpoint endpoint) {
         return invocationManager.invoke(new Supplier<RaftReplicateOperation>() {
             @Override
             public RaftReplicateOperation get() {
-                return new DefaultRaftGroupReplicateOperation(METADATA_GROUP_ID, new TriggerShutdownEndpointOperation(endpoint));
+                return new DefaultRaftGroupReplicateOperation(METADATA_GROUP_ID, new TriggerRemoveEndpointOperation(endpoint));
             }
         });
     }
 
     public boolean isActive(RaftEndpoint endpoint) {
-        return !endpoint.equals(metadataManager.getShuttingDownEndpoint()) && !metadataManager.isShutdown(endpoint);
+        LeavingRaftEndpointContext leavingEndpointContext = metadataManager.getLeavingEndpointContext();
+        if (leavingEndpointContext != null && leavingEndpointContext.getEndpoint().equals(endpoint)) {
+            return false;
+        }
+
+        return !metadataManager.isRemoved(endpoint);
     }
 
-    public boolean isShutdown(RaftEndpoint endpoint) {
-        return metadataManager.isShutdown(endpoint);
+    public boolean isRemoved(RaftEndpoint endpoint) {
+        return metadataManager.isRemoved(endpoint);
     }
 }
