@@ -47,6 +47,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int COMPLETE_REMOVE_ENDPOINT_OP = 17;
     public static final int MEMBERSHIP_CHANGE_REPLICATE_OP = 18;
     public static final int METADATA_SNAPSHOT = 19;
+    public static final int LEAVING_RAFT_ENDPOINT_CTX = 20;
 
     @Override
     public int getFactoryId() {
@@ -97,6 +98,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new MembershipChangeReplicateOperation();
                     case METADATA_SNAPSHOT:
                         return new MetadataSnapshot();
+                    case LEAVING_RAFT_ENDPOINT_CTX:
+                        return new LeavingRaftEndpointContext();
 
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);

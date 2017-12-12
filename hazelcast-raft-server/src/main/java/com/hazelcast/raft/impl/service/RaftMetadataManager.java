@@ -103,11 +103,9 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             snapshot.addEndpoint(endpoint);
         }
         for (RaftEndpoint endpoint : removedEndpoints) {
-            snapshot.addShutdownEndpoint(endpoint);
+            snapshot.addRemovedEndpoint(endpoint);
         }
-
-        // TODO fixit
-//        snapshot.setShuttingDownEndpoint(shuttingDownEndpoint);
+        snapshot.setLeavingRaftEndpointContext(leavingEndpointContext);
         return snapshot;
     }
 
@@ -143,13 +141,13 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
 
         for (RaftEndpoint endpoint : snapshot.getEndpoints()) {
             // TODO: restore endpoints
+            // currently we don't modify endpoints
         }
 
         removedEndpoints.clear();
-        removedEndpoints.addAll(snapshot.getShutdownEndpoints());
+        removedEndpoints.addAll(snapshot.getRemovedEndpoints());
 
-        // TODO fixit
-//        shuttingDownEndpoint = snapshot.getShuttingDownEndpoint();
+        leavingEndpointContext = snapshot.getLeavingRaftEndpointContext();
     }
 
     public Collection<RaftEndpoint> getAllEndpoints() {
