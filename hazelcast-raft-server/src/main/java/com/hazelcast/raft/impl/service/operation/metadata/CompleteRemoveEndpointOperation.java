@@ -8,10 +8,10 @@ import com.hazelcast.raft.impl.service.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftMetadataManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
+import com.hazelcast.raft.impl.util.Pair;
 import com.hazelcast.raft.operation.RaftOperation;
 
 import java.io.IOException;
-import java.util.AbstractMap.SimpleEntry;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -20,12 +20,12 @@ public class CompleteRemoveEndpointOperation extends RaftOperation implements Id
 
     private RaftEndpoint endpoint;
 
-    private Map<RaftGroupId, Entry<Integer, Integer>> leftGroups;
+    private Map<RaftGroupId, Pair<Integer, Integer>> leftGroups;
 
     public CompleteRemoveEndpointOperation() {
     }
 
-    public CompleteRemoveEndpointOperation(RaftEndpoint endpoint, Map<RaftGroupId, Entry<Integer, Integer>> leftGroups) {
+    public CompleteRemoveEndpointOperation(RaftEndpoint endpoint, Map<RaftGroupId, Pair<Integer, Integer>> leftGroups) {
         this.endpoint = endpoint;
         this.leftGroups = leftGroups;
     }
@@ -48,10 +48,11 @@ public class CompleteRemoveEndpointOperation extends RaftOperation implements Id
         super.writeInternal(out);
         out.writeObject(endpoint);
         out.writeInt(leftGroups.size());
-        for (Entry<RaftGroupId, Entry<Integer, Integer>> e : leftGroups.entrySet()) {
+        for (Entry<RaftGroupId, Pair<Integer, Integer>> e : leftGroups.entrySet()) {
             out.writeObject(e.getKey());
-            out.writeInt(e.getValue().getKey());
-            out.writeInt(e.getValue().getValue());
+            Pair<Integer, Integer> value = e.getValue();
+            out.writeInt(value.getPrimary());
+            out.writeInt(value.getSecondary());
         }
     }
 
@@ -60,12 +61,12 @@ public class CompleteRemoveEndpointOperation extends RaftOperation implements Id
         super.readInternal(in);
         endpoint = in.readObject();
         int count = in.readInt();
-        leftGroups = new HashMap<RaftGroupId, Entry<Integer, Integer>>(count);
+        leftGroups = new HashMap<RaftGroupId, Pair<Integer, Integer>>(count);
         for (int i = 0; i < count; i++) {
             RaftGroupId groupId = in.readObject();
             int currMembersCommitIndex = in.readInt();
             int newMembersCommitIndex = in.readInt();
-            leftGroups.put(groupId, new SimpleEntry<Integer, Integer>(currMembersCommitIndex, newMembersCommitIndex));
+            leftGroups.put(groupId, new Pair<Integer, Integer>(currMembersCommitIndex, newMembersCommitIndex));
         }
     }
 
