@@ -1482,7 +1482,11 @@ public class LocalRaftTest extends HazelcastTestSupport {
             @Override
             public void run() throws Exception {
                 // may fail until nop-entry is committed
-                leader.replicateMembershipChange(leader.getLocalEndpoint(), MembershipChangeType.REMOVE).get();
+                try {
+                    leader.replicateMembershipChange(leader.getLocalEndpoint(), MembershipChangeType.REMOVE).get();
+                } catch (CannotReplicateException e) {
+                    fail(e.getMessage());
+                }
             }
         });
     }
