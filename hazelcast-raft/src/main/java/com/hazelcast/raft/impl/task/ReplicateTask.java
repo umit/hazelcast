@@ -1,4 +1,4 @@
-package com.hazelcast.raft.impl.handler;
+package com.hazelcast.raft.impl.task;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.exception.CannotReplicateException;

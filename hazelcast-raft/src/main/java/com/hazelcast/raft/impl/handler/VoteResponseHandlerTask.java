@@ -14,16 +14,16 @@ import com.hazelcast.raft.impl.state.RaftState;
  * TODO: Javadoc Pending...
  *
  */
-public class VoteResponseHandlerTask extends RaftNodeAwareTask implements Runnable {
+public class VoteResponseHandlerTask extends AbstractResponseHandlerTask {
     private final VoteResponse resp;
 
     public VoteResponseHandlerTask(RaftNode raftNode, VoteResponse response) {
-        super(raftNode, true);
+        super(raftNode);
         this.resp = response;
     }
 
     @Override
-    protected void innerRun() {
+    protected void handleResponse() {
         RaftState state = raftNode.state();
 
         if (state.role() != RaftRole.CANDIDATE) {

@@ -6,21 +6,22 @@ import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.state.CandidateState;
 import com.hazelcast.raft.impl.state.RaftState;
+import com.hazelcast.raft.impl.task.LeaderElectionTask;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public class PreVoteResponseHandlerTask extends RaftNodeAwareTask implements Runnable {
+public class PreVoteResponseHandlerTask extends AbstractResponseHandlerTask {
     private final PreVoteResponse resp;
 
     public PreVoteResponseHandlerTask(RaftNode raftNode, PreVoteResponse response) {
-        super(raftNode, true);
+        super(raftNode);
         this.resp = response;
     }
 
     @Override
-    protected void innerRun() {
+    protected void handleResponse() {
         RaftState state = raftNode.state();
 
         if (state.role() != RaftRole.FOLLOWER) {

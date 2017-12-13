@@ -6,6 +6,7 @@ import com.hazelcast.raft.impl.dto.PreVoteRequest;
 import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.log.RaftLog;
 import com.hazelcast.raft.impl.state.RaftState;
+import com.hazelcast.raft.impl.task.RaftNodeAwareTask;
 import com.hazelcast.util.Clock;
 
 /**
@@ -16,7 +17,7 @@ public class PreVoteRequestHandlerTask extends RaftNodeAwareTask implements Runn
     private final PreVoteRequest req;
 
     public PreVoteRequestHandlerTask(RaftNode raftNode, PreVoteRequest req) {
-        super(raftNode, false);
+        super(raftNode);
         this.req = req;
     }
 
@@ -54,10 +55,5 @@ public class PreVoteRequestHandlerTask extends RaftNodeAwareTask implements Runn
 
         logger.info("Granted pre-vote for " + req);
         raftNode.send(new PreVoteResponse(localEndpoint, req.nextTerm(), true), req.candidate());
-    }
-
-    @Override
-    protected RaftEndpoint senderEndpoint() {
-        return req.candidate();
     }
 }

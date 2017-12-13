@@ -7,17 +7,17 @@ import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.raft.impl.state.RaftState;
 
-public class AppendFailureResponseHandlerTask extends RaftNodeAwareTask implements Runnable {
+public class AppendFailureResponseHandlerTask extends AbstractResponseHandlerTask {
 
     private final AppendFailureResponse resp;
 
     public AppendFailureResponseHandlerTask(RaftNode raftNode, AppendFailureResponse response) {
-        super(raftNode, true);
+        super(raftNode);
         this.resp = response;
     }
 
     @Override
-    protected void innerRun() {
+    protected void handleResponse() {
         RaftState state = raftNode.state();
 
         if (state.role() != RaftRole.LEADER) {

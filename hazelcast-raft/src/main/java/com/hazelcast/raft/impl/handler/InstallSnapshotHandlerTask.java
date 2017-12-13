@@ -1,6 +1,5 @@
 package com.hazelcast.raft.impl.handler;
 
-import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
@@ -8,13 +7,14 @@ import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.InstallSnapshot;
 import com.hazelcast.raft.impl.log.SnapshotEntry;
 import com.hazelcast.raft.impl.state.RaftState;
+import com.hazelcast.raft.impl.task.RaftNodeAwareTask;
 
 public class InstallSnapshotHandlerTask extends RaftNodeAwareTask implements Runnable {
 
     private final InstallSnapshot req;
 
     public InstallSnapshotHandlerTask(RaftNode raftNode, InstallSnapshot req) {
-        super(raftNode, false);
+        super(raftNode);
         this.req = req;
     }
 
@@ -54,10 +54,5 @@ public class InstallSnapshotHandlerTask extends RaftNodeAwareTask implements Run
         if (raftNode.installSnapshot(snapshot)) {
             raftNode.send(new AppendSuccessResponse(raftNode.getLocalEndpoint(), req.term(), snapshot.index()), req.leader());
         }
-    }
-
-    @Override
-    protected RaftEndpoint senderEndpoint() {
-        return req.leader();
     }
 }
