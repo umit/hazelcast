@@ -8,6 +8,7 @@ import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftMember;
 import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.test.AssertTask;

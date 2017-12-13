@@ -2,6 +2,7 @@ package com.hazelcast.raft.impl.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.SnapshotAwareService;
 
@@ -9,17 +10,17 @@ import java.io.IOException;
 
 public class TakeSnapshotOp extends RaftOperation {
 
-    private final String name;
+    private final RaftGroupId groupId;
 
-    public TakeSnapshotOp(String serviceName, String name) {
-        this.name = name;
+    public TakeSnapshotOp(String serviceName, RaftGroupId groupId) {
+        this.groupId = groupId;
         setServiceName(serviceName);
     }
 
     @Override
     public Object doRun(int commitIndex) {
         SnapshotAwareService service = getService();
-        return service.takeSnapshot(name, commitIndex);
+        return service.takeSnapshot(groupId, commitIndex);
     }
 
     @Override

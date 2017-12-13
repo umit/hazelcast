@@ -5,6 +5,7 @@ import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
 import com.hazelcast.test.AssertTask;

@@ -1,5 +1,6 @@
 package com.hazelcast.raft.impl.service;
 
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
 
 import java.util.HashMap;
@@ -43,7 +44,7 @@ public class RaftDataService implements SnapshotAwareService<Map<Integer, Object
     }
 
     @Override
-    public Map<Integer, Object> takeSnapshot(String raftName, int commitIndex) {
+    public Map<Integer, Object> takeSnapshot(RaftGroupId raftGroupId, int commitIndex) {
         Map<Integer, Object> snapshot = new HashMap<Integer, Object>();
         for (Entry<Integer, Object> e : values.entrySet()) {
             assert e.getKey() <= commitIndex : "Key: " + e.getKey() + ", commit-index: " + commitIndex;
@@ -54,7 +55,7 @@ public class RaftDataService implements SnapshotAwareService<Map<Integer, Object
     }
 
     @Override
-    public void restoreSnapshot(String raftName, int commitIndex, Map<Integer, Object> snapshot) {
+    public void restoreSnapshot(RaftGroupId raftGroupId, int commitIndex, Map<Integer, Object> snapshot) {
         values.clear();
         values.putAll(snapshot);
     }

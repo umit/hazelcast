@@ -4,6 +4,7 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.RaftConfig;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.StaleAppendRequestException;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
@@ -83,12 +84,12 @@ public class RaftNode {
     private long lastAppendEntriesTimestamp;
     private RaftNodeStatus status = ACTIVE;
 
-    public RaftNode(String serviceName, String name, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints,
+    public RaftNode(String serviceName, RaftGroupId groupId, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints,
                     RaftConfig raftConfig, RaftIntegration raftIntegration) {
         this.serviceName = serviceName;
         this.raftIntegration = raftIntegration;
         this.localEndpoint = localEndpoint;
-        this.state = new RaftState(name, localEndpoint, endpoints);
+        this.state = new RaftState(groupId, localEndpoint, endpoints);
         this.logger = getLogger(getClass());
         this.maxUncommittedEntryCount = raftConfig.getUncommittedEntryCountToRejectNewAppends();
         this.appendRequestMaxEntryCount = raftConfig.getAppendRequestMaxEntryCount();
@@ -457,13 +458,13 @@ public class RaftNode {
         }
 
         RaftLog log = state.log();
-        Object snapshot = raftIntegration.runOperation(new TakeSnapshotOp(serviceName, state.name()), commitIndex);
+        Object snapshot = raftIntegration.runOperation(new TakeSnapshotOp(serviceName, state.groupId()), commitIndex);
         if (snapshot instanceof Throwable) {
             Throwable t = (Throwable) snapshot;
             logger.severe("Could not take snapshot from service '" + serviceName + "', commit index: " + commitIndex, t);
             return;
         }
-        RaftOperation snapshotOp = new RestoreSnapshotOp(serviceName, state.name(), commitIndex, snapshot);
+        RaftOperation snapshotOp = new RestoreSnapshotOp(serviceName, state.groupId(), commitIndex, snapshot);
         LogEntry committedEntry = log.getLogEntry(commitIndex);
         SnapshotEntry snapshotEntry = new SnapshotEntry(committedEntry.term(), commitIndex, snapshotOp,
                 state.membersLogIndex(), state.members());
@@ -530,8 +531,9 @@ public class RaftNode {
     }
 
     public void printMemberState() {
+        RaftGroupId groupId = state.groupId();
         StringBuilder sb = new StringBuilder("\n\nRaft Members {")
-                .append("name: ").append(state.name())
+                .append("groupId: ").append(groupId.name()).append("(").append(groupId.commitIndex()).append(")")
                 .append(", size:").append(state.memberCount())
                 .append(", term:").append(state.term())
                 .append(", logIndex:").append(state.membersLogIndex())

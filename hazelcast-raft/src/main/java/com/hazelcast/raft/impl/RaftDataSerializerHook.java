@@ -4,6 +4,7 @@ import com.hazelcast.internal.serialization.DataSerializerHook;
 import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
@@ -26,21 +27,22 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
 
     public static final int F_ID = FactoryIdHelper.getFactoryId(RAFT_DS_FACTORY, RAFT_DS_FACTORY_ID);
 
-    public static final int PRE_VOTE_REQUEST = 1;
-    public static final int PRE_VOTE_RESPONSE = 2;
-    public static final int VOTE_REQUEST = 3;
-    public static final int VOTE_RESPONSE = 4;
-    public static final int APPEND_REQUEST = 5;
-    public static final int APPEND_SUCCESS_RESPONSE = 6;
-    public static final int APPEND_FAILURE_RESPONSE = 7;
-    public static final int INSTALL_SNAPSHOT = 8;
-    public static final int LOG_ENTRY = 9;
-    public static final int SNAPSHOT_ENTRY = 10;
-    public static final int ENDPOINT = 11;
-    public static final int RESTORE_SNAPSHOT_OP = 12;
-    public static final int TERMINATE_RAFT_GROUP_OP = 13;
-    public static final int APPLY_RAFT_GROUP_MEMBERS_OP = 14;
-    public static final int NOP_ENTRY_OP = 15;
+    public static final int GROUP_ID = 1;
+    public static final int ENDPOINT = 2;
+    public static final int PRE_VOTE_REQUEST = 3;
+    public static final int PRE_VOTE_RESPONSE = 4;
+    public static final int VOTE_REQUEST = 5;
+    public static final int VOTE_RESPONSE = 6;
+    public static final int APPEND_REQUEST = 7;
+    public static final int APPEND_SUCCESS_RESPONSE = 8;
+    public static final int APPEND_FAILURE_RESPONSE = 9;
+    public static final int LOG_ENTRY = 10;
+    public static final int SNAPSHOT_ENTRY = 11;
+    public static final int INSTALL_SNAPSHOT = 12;
+    public static final int RESTORE_SNAPSHOT_OP = 13;
+    public static final int TERMINATE_RAFT_GROUP_OP = 14;
+    public static final int APPLY_RAFT_GROUP_MEMBERS_OP = 15;
+    public static final int NOP_ENTRY_OP = 16;
 
     @Override
     public int getFactoryId() {
@@ -53,6 +55,10 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
             @Override
             public IdentifiedDataSerializable create(int typeId) {
                 switch (typeId) {
+                    case GROUP_ID:
+                        return new RaftGroupIdImpl();
+                    case ENDPOINT:
+                        return new RaftEndpoint();
                     case PRE_VOTE_REQUEST:
                         return new PreVoteRequest();
                     case PRE_VOTE_RESPONSE:
@@ -67,14 +73,12 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
                         return new AppendSuccessResponse();
                     case APPEND_FAILURE_RESPONSE:
                         return new AppendFailureResponse();
-                    case INSTALL_SNAPSHOT:
-                        return new InstallSnapshot();
                     case LOG_ENTRY:
                         return new LogEntry();
                     case SNAPSHOT_ENTRY:
                         return new SnapshotEntry();
-                    case ENDPOINT:
-                        return new RaftEndpoint();
+                    case INSTALL_SNAPSHOT:
+                        return new InstallSnapshot();
                     case RESTORE_SNAPSHOT_OP:
                         return new RestoreSnapshotOp();
                     case TERMINATE_RAFT_GROUP_OP:

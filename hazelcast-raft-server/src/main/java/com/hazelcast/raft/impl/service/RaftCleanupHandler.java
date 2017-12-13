@@ -6,6 +6,7 @@ import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.exception.MismatchingGroupMembersCommitIndexException;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
 import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.service.LeavingRaftEndpointContext.RaftGroupLeavingEndpointContext;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOperation;

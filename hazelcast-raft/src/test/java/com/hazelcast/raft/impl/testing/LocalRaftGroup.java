@@ -1,8 +1,10 @@
 package com.hazelcast.raft.impl.testing;
 
 import com.hazelcast.raft.RaftConfig;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftUtil;
 import com.hazelcast.test.AssertTask;
@@ -25,12 +27,13 @@ import static org.junit.Assert.assertThat;
 
 public class LocalRaftGroup {
 
+    private final RaftGroupId groupId;
+    private final RaftConfig raftConfig;
+    private final String serviceName;
+    private final Class<? extends SnapshotAwareService> serviceClazz;
     private RaftEndpoint[] endpoints;
     private LocalRaftIntegration[] integrations;
     private RaftNode[] nodes;
-    private RaftConfig raftConfig;
-    private String serviceName;
-    private Class<? extends SnapshotAwareService> serviceClazz;
     private int createdNodeCount;
 
     public LocalRaftGroup(int size) {
@@ -55,9 +58,10 @@ public class LocalRaftGroup {
         }
 
         nodes = new RaftNode[size];
+        groupId = new RaftGroupIdImpl("test", 1);
         for (int i = 0; i < size; i++) {
             LocalRaftIntegration integration = integrations[i];
-            nodes[i] = new RaftNode(serviceName, "test", endpoints[i], asList(endpoints), raftConfig, integration);
+            nodes[i] = new RaftNode(serviceName, groupId, endpoints[i], asList(endpoints), raftConfig, integration);
         }
     }
 
@@ -115,7 +119,7 @@ public class LocalRaftGroup {
         integrations[oldSize] = integration;
         RaftEndpoint endpoint = integration.getLocalEndpoint();
         endpoints[oldSize] = endpoint;
-        RaftNode node = new RaftNode(serviceName, "test", endpoint, singletonList(endpoint), raftConfig, integration);
+        RaftNode node = new RaftNode(serviceName, groupId, endpoint, singletonList(endpoint), raftConfig, integration);
         nodes[oldSize] = node;
         this.endpoints = endpoints;
         this.integrations = integrations;

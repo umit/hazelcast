@@ -3,7 +3,7 @@ package com.hazelcast.raft.impl.service.proxy;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.operation.RaftOperation;
-import com.hazelcast.raft.impl.service.RaftGroupId;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
 import java.io.IOException;
