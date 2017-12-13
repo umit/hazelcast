@@ -7,7 +7,8 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.raft.impl.service.RaftGroupId;
+import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
@@ -51,10 +52,10 @@ public class CreateAtomicLongMessageTask extends AbstractMessageTask implements 
     protected ClientMessage encodeResponse(Object response) {
         if (response instanceof RaftGroupId) {
             RaftGroupId groupId = (RaftGroupId) response;
-            int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
+            int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
             ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
             clientMessage.setMessageType(1111);
-            RaftGroupId.writeTo(groupId, clientMessage);
+            RaftGroupIdImpl.writeTo(groupId, clientMessage);
             clientMessage.updateFrameLength();
             return clientMessage;
         }

@@ -1,6 +1,7 @@
 package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftNode;
 
 import static com.hazelcast.test.HazelcastTestSupport.getNodeEngineImpl;

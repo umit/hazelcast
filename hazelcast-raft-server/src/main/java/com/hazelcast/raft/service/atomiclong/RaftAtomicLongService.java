@@ -2,7 +2,7 @@ package com.hazelcast.raft.service.atomiclong;
 
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.raft.SnapshotAwareService;
-import com.hazelcast.raft.impl.service.RaftGroupId;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy;
@@ -23,7 +23,7 @@ public class RaftAtomicLongService implements ManagedService, SnapshotAwareServi
     public static final String SERVICE_NAME = "hz:raft:atomicLongService";
     public static final String PREFIX = "atomiclong:";
 
-    private final Map<String, RaftAtomicLong> map = new ConcurrentHashMap<String, RaftAtomicLong>();
+    private final Map<RaftGroupId, RaftAtomicLong> map = new ConcurrentHashMap<RaftGroupId, RaftAtomicLong>();
     private volatile RaftService raftService;
 
     @Override
@@ -40,17 +40,19 @@ public class RaftAtomicLongService implements ManagedService, SnapshotAwareServi
     }
 
     @Override
-    public Long takeSnapshot(String raftName, int commitIndex) {
-        RaftAtomicLong atomicLong = map.get(raftName);
-        assert atomicLong != null : "Name: " + raftName;
+    public Long takeSnapshot(RaftGroupId raftGroupId, int commitIndex) {
+        RaftAtomicLong atomicLong = map.get(raftGroupId);
+        if (atomicLong == null) {
+            throw new IllegalArgumentException("Unknown raftGroupId -> " + raftGroupId);
+        }
         assert atomicLong.commitIndex() == commitIndex : "Value: " + atomicLong + ", Commit-Index: " + commitIndex;
         return atomicLong.value();
     }
 
     @Override
-    public void restoreSnapshot(String raftName, int commitIndex, Long snapshot) {
-        RaftAtomicLong atomicLong = new RaftAtomicLong(raftName, snapshot, commitIndex);
-        map.put(raftName, atomicLong);
+    public void restoreSnapshot(RaftGroupId raftGroupId, int commitIndex, Long snapshot) {
+        RaftAtomicLong atomicLong = new RaftAtomicLong(raftGroupId.name(), snapshot, commitIndex);
+        map.put(raftGroupId, atomicLong);
     }
 
     public static String nameWithoutPrefix(String raftName) {
@@ -70,10 +72,10 @@ public class RaftAtomicLongService implements ManagedService, SnapshotAwareServi
     }
 
     public RaftAtomicLong getAtomicLong(RaftGroupId groupId) {
-        RaftAtomicLong atomicLong = map.get(groupId.name());
+        RaftAtomicLong atomicLong = map.get(groupId);
         if (atomicLong == null) {
             atomicLong = new RaftAtomicLong(groupId.name());
-            map.put(groupId.name(), atomicLong);
+            map.put(groupId, atomicLong);
         }
         return atomicLong;
     }

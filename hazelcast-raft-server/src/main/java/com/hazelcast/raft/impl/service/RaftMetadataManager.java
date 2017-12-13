@@ -5,6 +5,8 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.exception.CannotRemoveEndpointException;
 import com.hazelcast.raft.impl.util.Pair;
@@ -36,7 +38,7 @@ import static java.util.Collections.unmodifiableCollection;
 public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapshot>  {
 
     private static final String METADATA_RAFT = "METADATA";
-    public static final RaftGroupId METADATA_GROUP_ID = new RaftGroupId(METADATA_RAFT, 0);
+    public static final RaftGroupId METADATA_GROUP_ID = new RaftGroupIdImpl(METADATA_RAFT, 0);
 
     private final NodeEngine nodeEngine;
     private final RaftService raftService;
@@ -91,8 +93,8 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     @Override
-    public MetadataSnapshot takeSnapshot(String raftName, int commitIndex) {
-        assert METADATA_RAFT.equals(raftName);
+    public MetadataSnapshot takeSnapshot(RaftGroupId raftGroupId, int commitIndex) {
+        ensureMetadataGroupId(raftGroupId);
 
         MetadataSnapshot snapshot = new MetadataSnapshot();
         for (RaftGroupInfo groupInfo : raftGroups.values()) {
@@ -111,8 +113,9 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     @Override
-    public void restoreSnapshot(String raftName, int commitIndex, MetadataSnapshot snapshot) {
-        assert METADATA_RAFT.equals(raftName);
+    public void restoreSnapshot(RaftGroupId raftGroupId, int commitIndex, MetadataSnapshot snapshot) {
+        ensureMetadataGroupId(raftGroupId);
+
         for (RaftGroupInfo groupInfo : snapshot.getRaftGroups()) {
             RaftGroupInfo existingGroupInfo = raftGroups.get(groupInfo.id());
 
@@ -151,6 +154,13 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         leavingEndpointContext = snapshot.getLeavingRaftEndpointContext();
     }
 
+    private void ensureMetadataGroupId(RaftGroupId raftGroupId) {
+        if (!METADATA_GROUP_ID.equals(raftGroupId)) {
+            throw new IllegalArgumentException("Invalid RaftGroupId! Expected: " + METADATA_GROUP_ID
+                    + ", Actual: " + raftGroupId);
+        }
+    }
+
     public Collection<RaftEndpoint> getAllEndpoints() {
         return allEndpoints;
     }
@@ -177,7 +187,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
                     + " already exists with different group size. Ignoring add raft node request.");
         }
 
-        return createRaftGroup(new RaftGroupInfo(new RaftGroupId(name, commitIndex), endpoints, serviceName));
+        return createRaftGroup(new RaftGroupInfo(new RaftGroupIdImpl(name, commitIndex), endpoints, serviceName));
     }
 
     private RaftGroupId createRaftGroup(RaftGroupInfo groupInfo) {

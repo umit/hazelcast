@@ -7,7 +7,8 @@ import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.raft.impl.service.RaftGroupId;
+import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 
 import java.security.Permission;
@@ -32,7 +33,7 @@ public abstract class AbstractAtomicLongMessageTask extends AbstractMessageTask 
 
     @Override
     protected Object decodeClientMessage(ClientMessage clientMessage) {
-        groupId = RaftGroupId.readFrom(clientMessage);
+        groupId = RaftGroupIdImpl.readFrom(clientMessage);
         return null;
     }
 

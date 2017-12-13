@@ -4,6 +4,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.RaftGroupId;
 
 import java.io.IOException;
 import java.util.Collection;
