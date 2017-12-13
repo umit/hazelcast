@@ -7,6 +7,7 @@ import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.log.RaftLog;
 import com.hazelcast.raft.impl.state.RaftState;
+import com.hazelcast.raft.impl.task.RaftNodeAwareTask;
 import com.hazelcast.util.Clock;
 
 /**
@@ -17,7 +18,7 @@ public class VoteRequestHandlerTask extends RaftNodeAwareTask implements Runnabl
     private final VoteRequest req;
 
     public VoteRequestHandlerTask(RaftNode raftNode, VoteRequest req) {
-        super(raftNode, false);
+        super(raftNode);
         this.req = req;
     }
 
@@ -86,10 +87,5 @@ public class VoteRequestHandlerTask extends RaftNodeAwareTask implements Runnabl
         state.persistVote(req.term(), req.candidate());
 
         raftNode.send(new VoteResponse(localEndpoint, req.term(), true), req.candidate());
-    }
-
-    @Override
-    protected RaftEndpoint senderEndpoint() {
-        return req.candidate();
     }
 }
