@@ -1,4 +1,4 @@
-package com.hazelcast.raft.impl.handler;
+package com.hazelcast.raft.impl.task;
 
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
@@ -13,7 +13,7 @@ import com.hazelcast.raft.impl.state.RaftState;
 public class PreVoteTask extends RaftNodeAwareTask implements Runnable {
 
     public PreVoteTask(RaftNode raftNode) {
-        super(raftNode, false);
+        super(raftNode);
     }
 
     @Override
@@ -44,10 +44,5 @@ public class PreVoteTask extends RaftNodeAwareTask implements Runnable {
 
     private void schedulePreVoteTimeout() {
         raftNode.schedule(new PreVoteTimeoutTask(raftNode), raftNode.getLeaderElectionTimeoutInMillis());
-    }
-
-    @Override
-    protected RaftEndpoint senderEndpoint() {
-        return null;
     }
 }

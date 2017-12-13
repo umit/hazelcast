@@ -18,16 +18,16 @@ import static java.util.Arrays.sort;
  * TODO: Javadoc Pending...
  *
  */
-public class AppendSuccessResponseHandlerTask extends RaftNodeAwareTask implements Runnable {
+public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTask {
     private final AppendSuccessResponse resp;
 
     public AppendSuccessResponseHandlerTask(RaftNode raftNode, AppendSuccessResponse response) {
-        super(raftNode, true);
+        super(raftNode);
         this.resp = response;
     }
 
     @Override
-    protected void innerRun() {
+    protected void handleResponse() {
         RaftState state = raftNode.state();
 
         if (state.role() != RaftRole.LEADER) {

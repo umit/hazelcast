@@ -1,6 +1,5 @@
 package com.hazelcast.raft.impl.handler;
 
-import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
 import com.hazelcast.raft.impl.RaftRole;
@@ -10,8 +9,9 @@ import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.log.RaftLog;
 import com.hazelcast.raft.impl.operation.ApplyRaftGroupMembersOp;
-import com.hazelcast.raft.operation.TerminateRaftGroupOp;
 import com.hazelcast.raft.impl.state.RaftState;
+import com.hazelcast.raft.impl.task.RaftNodeAwareTask;
+import com.hazelcast.raft.operation.TerminateRaftGroupOp;
 
 import java.util.Arrays;
 import java.util.List;
@@ -27,7 +27,7 @@ public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runna
     private final AppendRequest req;
 
     public AppendRequestHandlerTask(RaftNode raftNode, AppendRequest req) {
-        super(raftNode, false);
+        super(raftNode);
         this.req = req;
     }
 
@@ -175,10 +175,5 @@ public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runna
 
     private AppendFailureResponse createFailureResponse(int term) {
         return new AppendFailureResponse(raftNode.getLocalEndpoint(), term, req.prevLogIndex() + 1);
-    }
-
-    @Override
-    protected RaftEndpoint senderEndpoint() {
-        return req.leader();
     }
 }

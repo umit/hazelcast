@@ -1,7 +1,6 @@
-package com.hazelcast.raft.impl.handler;
+package com.hazelcast.raft.impl.task;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNode;
 
 /**
@@ -12,12 +11,10 @@ public abstract class RaftNodeAwareTask implements Runnable {
 
     protected final RaftNode raftNode;
     protected final ILogger logger;
-    private final boolean verifySender;
 
-    protected RaftNodeAwareTask(RaftNode raftNode, boolean verifySender) {
+    protected RaftNodeAwareTask(RaftNode raftNode) {
         this.raftNode = raftNode;
         this.logger = raftNode.getLogger(getClass());
-        this.verifySender = verifySender;
     }
 
     @Override
@@ -27,17 +24,9 @@ public abstract class RaftNodeAwareTask implements Runnable {
             return;
         }
 
-        RaftEndpoint sender = senderEndpoint();
-        if (sender != null && verifySender && !raftNode.state().isKnownEndpoint(sender)) {
-            logger.warning("Won't run, since " + sender + " is unknown to us");
-            return;
-        }
-
         innerRun();
     }
 
     protected abstract void innerRun();
-
-    protected abstract RaftEndpoint senderEndpoint();
 
 }
