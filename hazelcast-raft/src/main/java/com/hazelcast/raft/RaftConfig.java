@@ -36,6 +36,9 @@ public class RaftConfig {
 
     private boolean failOnIndeterminateOperationState;
 
+    // See https://groups.google.com/forum/#!msg/raft-dev/t4xj6dJTP6E/d2D9LrWRza8J
+    private boolean appendNopEntryOnLeaderElection;
+
     private final Collection<RaftMember> members = new HashSet<RaftMember>();
 
     public RaftConfig() {
@@ -48,6 +51,7 @@ public class RaftConfig {
         this.commitIndexAdvanceCountToSnapshot = config.commitIndexAdvanceCountToSnapshot;
         this.uncommittedEntryCountToRejectNewAppends = config.uncommittedEntryCountToRejectNewAppends;
         this.failOnIndeterminateOperationState = config.failOnIndeterminateOperationState;
+        this.appendNopEntryOnLeaderElection = config.appendNopEntryOnLeaderElection;
         for (RaftMember member : config.members) {
             this.members.add(new RaftMember(member));
         }
@@ -114,6 +118,15 @@ public class RaftConfig {
 
     public RaftConfig setFailOnIndeterminateOperationState(boolean failOnIndeterminateOperationState) {
         this.failOnIndeterminateOperationState = failOnIndeterminateOperationState;
+        return this;
+    }
+
+    public boolean isAppendNopEntryOnLeaderElection() {
+        return appendNopEntryOnLeaderElection;
+    }
+
+    public RaftConfig setAppendNopEntryOnLeaderElection(boolean appendNopEntryOnLeaderElection) {
+        this.appendNopEntryOnLeaderElection = appendNopEntryOnLeaderElection;
         return this;
     }
 

@@ -25,6 +25,7 @@ public class MembershipChangeTask implements Runnable {
     private final RaftEndpoint member;
     private final MembershipChangeType changeType;
     private final SimpleCompletableFuture resultFuture;
+    private final ILogger logger;
 
     public MembershipChangeTask(RaftNode raftNode, SimpleCompletableFuture resultFuture, RaftEndpoint member,
                                 MembershipChangeType changeType) {
@@ -33,39 +34,28 @@ public class MembershipChangeTask implements Runnable {
 
     public MembershipChangeTask(RaftNode raftNode, SimpleCompletableFuture resultFuture, RaftEndpoint member,
                                 MembershipChangeType changeType, Integer groupMembersCommitIndex) {
+        if (changeType == null) {
+            throw new IllegalArgumentException("Null membership change type");
+        }
         this.raftNode = raftNode;
         this.groupMembersCommitIndex = groupMembersCommitIndex;
         this.member = member;
         this.changeType = changeType;
         this.resultFuture = resultFuture;
+        this.logger = raftNode.getLogger(getClass());
     }
 
     @Override
     public void run() {
-        if (changeType == null) {
-            resultFuture.setResult(new IllegalArgumentException("Null membership change type"));
+        if (!isValidGroupMemberCommitIndex()) {
             return;
         }
 
-        ILogger logger = raftNode.getLogger(getClass());
+        logger.severe("Changing membership -> " + changeType + ": " + member);
 
         RaftState state = raftNode.state();
-        if (groupMembersCommitIndex != null) {
-            RaftGroupMembers groupMembers = state.committedGroupMembers();
-            if (groupMembers.index() != groupMembersCommitIndex) {
-                logger.severe("Cannot " + changeType + " " + member + " because expected members commit index: "
-                        + groupMembersCommitIndex + " is different than group members commit index: " + groupMembers.index());
-
-                Exception e = new MismatchingGroupMembersCommitIndexException(groupMembers.index(), groupMembers.members());
-                resultFuture.setResult(e);
-                return;
-            }
-        }
-
         Collection<RaftEndpoint> members = new LinkedHashSet<RaftEndpoint>(state.members());
         boolean memberExists = members.contains(member);
-
-        logger.severe("Changing membership -> " + changeType + ": " + member);
 
         switch (changeType) {
             case ADD:
@@ -90,5 +80,21 @@ public class MembershipChangeTask implements Runnable {
         }
         logger.severe("New members after " + changeType + " -> " + members);
         new ReplicateTask(raftNode, new ApplyRaftGroupMembersOp(members), resultFuture).run();
+    }
+
+    private boolean isValidGroupMemberCommitIndex() {
+        if (groupMembersCommitIndex != null) {
+            RaftState state = raftNode.state();
+            RaftGroupMembers groupMembers = state.committedGroupMembers();
+            if (groupMembers.index() != groupMembersCommitIndex) {
+                logger.severe("Cannot " + changeType + " " + member + " because expected members commit index: "
+                        + groupMembersCommitIndex + " is different than group members commit index: " + groupMembers.index());
+
+                Exception e = new MismatchingGroupMembersCommitIndexException(groupMembers.index(), groupMembers.members());
+                resultFuture.setResult(e);
+                return false;
+            }
+        }
+        return true;
     }
 }
