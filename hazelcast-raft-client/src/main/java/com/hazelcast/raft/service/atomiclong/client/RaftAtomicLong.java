@@ -12,7 +12,8 @@ import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.nio.Bits;
-import com.hazelcast.raft.impl.service.RaftGroupId;
+import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.util.ExceptionUtil;
 
@@ -50,7 +51,7 @@ public class RaftAtomicLong implements IAtomicLong {
                 new ClientMessageDecoder() {
             @Override
             public RaftGroupId decodeClientMessage(ClientMessage clientMessage) {
-                return RaftGroupId.readFrom(clientMessage);
+                return RaftGroupIdImpl.readFrom(clientMessage);
             }
         });
 
@@ -249,7 +250,7 @@ public class RaftAtomicLong implements IAtomicLong {
 
     private static ClientMessage encodeRequest(RaftGroupId groupId, long value, int messageTypeId) {
         int dataSize = ClientMessage.HEADER_SIZE
-                + RaftGroupId.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
+                + RaftGroupIdImpl.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
         ClientMessage clientMessage = prepareClientMessage(groupId, dataSize, messageTypeId);
         clientMessage.set(value);
         clientMessage.updateFrameLength();
@@ -258,7 +259,7 @@ public class RaftAtomicLong implements IAtomicLong {
 
     private static ClientMessage encodeRequest(RaftGroupId groupId, long value1, long value2, int messageTypeId) {
         int dataSize = ClientMessage.HEADER_SIZE
-                + RaftGroupId.dataSize(groupId) + 2 * Bits.LONG_SIZE_IN_BYTES;
+                + RaftGroupIdImpl.dataSize(groupId) + 2 * Bits.LONG_SIZE_IN_BYTES;
         ClientMessage clientMessage = prepareClientMessage(groupId, dataSize, messageTypeId);
         clientMessage.set(value1);
         clientMessage.set(value2);
@@ -271,7 +272,7 @@ public class RaftAtomicLong implements IAtomicLong {
         clientMessage.setMessageType(messageTypeId);
         clientMessage.setRetryable(false);
         clientMessage.setOperationName("");
-        RaftGroupId.writeTo(groupId, clientMessage);
+        RaftGroupIdImpl.writeTo(groupId, clientMessage);
         return clientMessage;
     }
 

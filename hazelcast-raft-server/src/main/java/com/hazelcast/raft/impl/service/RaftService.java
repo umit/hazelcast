@@ -6,6 +6,7 @@ import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.ForceSetRaftNodeStatusRunnable;
 import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
@@ -92,13 +93,13 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     }
 
     @Override
-    public MetadataSnapshot takeSnapshot(String raftName, int commitIndex) {
-        return metadataManager.takeSnapshot(raftName, commitIndex);
+    public MetadataSnapshot takeSnapshot(RaftGroupId raftGroupId, int commitIndex) {
+        return metadataManager.takeSnapshot(raftGroupId, commitIndex);
     }
 
     @Override
-    public void restoreSnapshot(String raftName, int commitIndex, MetadataSnapshot snapshot) {
-        metadataManager.restoreSnapshot(raftName, commitIndex, snapshot);
+    public void restoreSnapshot(RaftGroupId raftGroupId, int commitIndex, MetadataSnapshot snapshot) {
+        metadataManager.restoreSnapshot(raftGroupId, commitIndex, snapshot);
     }
 
     @Override
@@ -259,7 +260,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         assert nodes.get(groupId) == null : "Raft node with name " + groupId.name() + " should not exist!";
 
         RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, groupId);
-        RaftNode node = new RaftNode(groupInfo.serviceName(), groupId.name(), metadataManager.getLocalEndpoint(),
+        RaftNode node = new RaftNode(groupInfo.serviceName(), groupId, metadataManager.getLocalEndpoint(),
                 groupInfo.members(), config, raftIntegration);
         nodes.put(groupId, node);
         node.start();

@@ -126,9 +126,13 @@ public class LocalRaftTest extends HazelcastTestSupport {
             public void run() throws Exception {
                 for (int i = 0; i < nodeCount; i++) {
                     RaftNode node = group.getNode(i);
-                    assertEquals(commitIndex, getCommitIndex(node));
+                    int index = getCommitIndex(node);
+                    System.err.println("index = " + index);
+                    assertEquals(commitIndex, index);
                     RaftDataService service = group.getIntegration(i).getService();
-                    assertEquals(val, service.get(commitIndex));
+                    Object actual = service.get(commitIndex);
+                    System.err.println("actual = " + actual);
+                    assertEquals(val, actual);
                 }
             }
         });
@@ -215,12 +219,12 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void when_fourNodeCluster_then_leaderReplicaEntriesSequentially() throws ExecutionException, InterruptedException {
+    public void when_fourNodeCluster_then_leaderReplicateEntriesSequentially() throws ExecutionException, InterruptedException {
         testReplicateEntriesSequentially(4);
     }
 
     @Test
-    public void when_fiveNodeCluster_then_leaderReplicaEntriesSequentially() throws ExecutionException, InterruptedException {
+    public void when_fiveNodeCluster_then_leaderReplicateEntriesSequentially() throws ExecutionException, InterruptedException {
         testReplicateEntriesSequentially(5);
     }
 

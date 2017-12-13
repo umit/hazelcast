@@ -1,5 +1,6 @@
 package com.hazelcast.raft.impl.state;
 
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.VoteRequest;
@@ -14,7 +15,7 @@ import java.util.Collection;
 public class RaftState {
 
     private final RaftEndpoint localEndpoint;
-    private final String name;
+    private final RaftGroupId groupId;
     private RaftGroupMembers committedGroupMembers;
     private RaftGroupMembers lastGroupMembers;
 
@@ -39,10 +40,10 @@ public class RaftState {
     private CandidateState preCandidateState;
     private CandidateState candidateState;
 
-    public RaftState(String name, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints) {
+    public RaftState(RaftGroupId groupId, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints) {
         assert endpoints.contains(localEndpoint)
                 : "Members set must contain local member! Members: " + endpoints + ", Local member: " + localEndpoint;
-        this.name = name;
+        this.groupId = groupId;
         this.localEndpoint = localEndpoint;
         RaftGroupMembers groupMembers = new RaftGroupMembers(0, endpoints, localEndpoint);
         this.committedGroupMembers = groupMembers;
@@ -50,7 +51,11 @@ public class RaftState {
     }
 
     public String name() {
-        return name;
+        return groupId.name();
+    }
+
+    public RaftGroupId groupId() {
+        return groupId;
     }
 
     public Collection<RaftEndpoint> members() {

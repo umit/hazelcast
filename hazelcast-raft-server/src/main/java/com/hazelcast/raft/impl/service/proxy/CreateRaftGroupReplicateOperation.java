@@ -5,10 +5,6 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
-import com.hazelcast.raft.impl.service.RaftGroupId;
-import com.hazelcast.raft.impl.service.RaftService;
-import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOperation;
 import com.hazelcast.raft.operation.RaftOperation;
 
