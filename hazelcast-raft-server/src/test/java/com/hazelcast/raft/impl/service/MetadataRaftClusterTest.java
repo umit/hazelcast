@@ -301,6 +301,10 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
                                                                    .setClassName(RaftAtomicLongService.class.getName());
 
         Config config = super.createConfig(raftAddresses);
+        RaftConfig raftConfig =
+                (RaftConfig) config.getServicesConfig().getServiceConfig(RaftService.SERVICE_NAME).getConfigObject();
+        raftConfig.setAppendNopEntryOnLeaderElection(true);
+
         config.getServicesConfig().addServiceConfig(atomicLongServiceConfig);
         return config;
     }
