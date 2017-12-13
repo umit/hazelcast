@@ -61,6 +61,7 @@ import static java.lang.Math.min;
  */
 public class RaftNode {
 
+
     public enum RaftNodeStatus {
         ACTIVE, CHANGING_MEMBERSHIP, TERMINATING, TERMINATED, STEPPED_DOWN
     }
@@ -80,6 +81,7 @@ public class RaftNode {
     private final int maxUncommittedEntryCount;
     private final int appendRequestMaxEntryCount;
     private final int commitIndexAdvanceCountToSnapshot;
+    private final boolean appendNopEntryOnLeaderElection;
 
     private long lastAppendEntriesTimestamp;
     private RaftNodeStatus status = ACTIVE;
@@ -96,6 +98,7 @@ public class RaftNode {
         this.commitIndexAdvanceCountToSnapshot = raftConfig.getCommitIndexAdvanceCountToSnapshot();
         this.leaderElectionTimeout = (int) raftConfig.getLeaderElectionTimeoutInMillis();
         this.heartbeatPeriodInMillis = raftConfig.getLeaderHeartbeatPeriodInMillis();
+        this.appendNopEntryOnLeaderElection = raftConfig.isAppendNopEntryOnLeaderElection();
     }
 
     public ILogger getLogger(Class clazz) {
@@ -135,6 +138,10 @@ public class RaftNode {
 
     public long getLeaderElectionTimeoutInMillis() {
         return RandomPicker.getInt(leaderElectionTimeout, leaderElectionTimeout + LEADER_ELECTION_TIMEOUT_RANGE);
+    }
+
+    public boolean shouldAppendNopEntryOnLeaderElection() {
+        return appendNopEntryOnLeaderElection;
     }
 
     public boolean canReplicateNewEntry(RaftOperation operation) {

@@ -4,6 +4,8 @@ import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.exception.CannotReplicateException;
 import com.hazelcast.raft.exception.LeaderDemotedException;
+import com.hazelcast.raft.exception.MemberAlreadyExistsException;
+import com.hazelcast.raft.exception.MemberDoesNotExistException;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
 import com.hazelcast.raft.exception.StaleAppendRequestException;
@@ -1431,7 +1433,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
         try {
             leader.replicateMembershipChange(leavingFollower.getLocalEndpoint(), MembershipChangeType.REMOVE).get();
             fail();
-        } catch (IllegalArgumentException ignored) {
+        } catch (MemberDoesNotExistException ignored) {
         }
     }
 
@@ -1447,7 +1449,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
         try {
             leader.replicateMembershipChange(leader.getLocalEndpoint(), MembershipChangeType.ADD).get();
             fail();
-        } catch (IllegalArgumentException ignored) {
+        } catch (MemberAlreadyExistsException ignored) {
         }
     }
 
@@ -1465,6 +1467,24 @@ public class LocalRaftTest extends HazelcastTestSupport {
             fail();
         } catch (CannotReplicateException ignored) {
         }
+    }
+
+    @Test
+    public void when_appendNopEntryOnLeaderElection_then_canMakeMemberChangeAfterNopEntryCommitted() {
+        // https://groups.google.com/forum/#!msg/raft-dev/t4xj6dJTP6E/d2D9LrWRza8J
+
+        group = newGroupWithService(3, new RaftConfig().setAppendNopEntryOnLeaderElection(true));
+        group.start();
+
+        final RaftNode leader = group.waitUntilLeaderElected();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() throws Exception {
+                // may fail until nop-entry is committed
+                leader.replicateMembershipChange(leader.getLocalEndpoint(), MembershipChangeType.REMOVE).get();
+            }
+        });
     }
 
     @Test

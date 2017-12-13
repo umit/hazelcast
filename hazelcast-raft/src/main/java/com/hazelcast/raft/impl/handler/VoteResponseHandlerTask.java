@@ -53,15 +53,18 @@ public class VoteResponseHandlerTask extends AbstractResponseHandlerTask {
         if (candidateState.isMajorityGranted()) {
             logger.info("We are the LEADER!");
             state.toLeader();
-            appendNopEntry(state);
+            appendNopEntry();
             raftNode.printMemberState();
             raftNode.scheduleHeartbeat();
         }
     }
 
-    private void appendNopEntry(RaftState state) {
-        RaftLog log = state.log();
-        log.appendEntries(new LogEntry(state.term(), log.lastLogOrSnapshotIndex() + 1, new NopEntryOp()));
+    private void appendNopEntry() {
+        if (raftNode.shouldAppendNopEntryOnLeaderElection()) {
+            RaftState state = raftNode.state();
+            RaftLog log = state.log();
+            log.appendEntries(new LogEntry(state.term(), log.lastLogOrSnapshotIndex() + 1, new NopEntryOp()));
+        }
     }
 
     @Override
