@@ -1,10 +1,13 @@
 package com.hazelcast.raft.impl;
 
 import com.hazelcast.nio.Address;
+import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
 import com.hazelcast.raft.impl.log.LogEntry;
+import com.hazelcast.raft.impl.service.RaftDataService;
 import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.raft.impl.state.RaftGroupMembers;
+import com.hazelcast.raft.impl.testing.LocalRaftGroup;
 import com.hazelcast.util.ExceptionUtil;
 
 import java.net.InetAddress;
@@ -12,6 +15,7 @@ import java.net.UnknownHostException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
 
+import static com.hazelcast.raft.impl.service.RaftDataService.SERVICE_NAME;
 import static com.hazelcast.test.HazelcastTestSupport.randomString;
 import static com.hazelcast.test.HazelcastTestSupport.sleepSeconds;
 import static org.junit.Assert.fail;
@@ -174,5 +178,9 @@ public class RaftUtil {
 
     public static int minority(int count) {
         return count - majority(count);
+    }
+
+    public static LocalRaftGroup newGroupWithService(int nodeCount, RaftConfig raftConfig) {
+        return new LocalRaftGroup(nodeCount, raftConfig, SERVICE_NAME, RaftDataService.class);
     }
 }

@@ -18,9 +18,9 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import static com.hazelcast.raft.impl.LocalRaftTest.newGroupWithService;
 import static com.hazelcast.raft.impl.RaftUtil.getCommitIndex;
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
+import static com.hazelcast.raft.impl.RaftUtil.newGroupWithService;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;

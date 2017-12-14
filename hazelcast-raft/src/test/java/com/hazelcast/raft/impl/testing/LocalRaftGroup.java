@@ -307,8 +307,6 @@ public class LocalRaftGroup {
             }
         }
 
-        System.err.println("Creating splits. firstSplit = " + Arrays.toString(firstSplit)
-            + ", secondSplit = " + Arrays.toString(secondSplit));
         split(secondSplit, firstSplit);
         split(firstSplit, secondSplit);
 
