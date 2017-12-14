@@ -43,7 +43,7 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
     @Before
     public void setup() {
         Address[] raftAddresses = createAddresses(5);
-        instances = newInstances(raftAddresses, raftAddresses.length + 2);
+        instances = newInstances(raftAddresses, 3, 2);
 
         String name = "id";
         atomicLong = create(instances[RandomPicker.getInt(instances.length)], name, raftGroupSize);
@@ -58,7 +58,7 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
                 int count = 0;
                 RaftAtomicLongProxy proxy = (RaftAtomicLongProxy) atomicLong;
                 for (HazelcastInstance instance : instances) {
-                    RaftNode raftNode = RaftServiceUtil.getRaftService(instance).getRaftNode(proxy.getGroupId());
+                    RaftNode raftNode = RaftServiceUtil.getRaftService(instance).getOrInitRaftNode(proxy.getGroupId());
                     if (raftNode != null) {
                         count++;
                         assertNotNull(getLeaderEndpoint(raftNode));
@@ -222,11 +222,11 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
     }
 
     @Override
-    protected Config createConfig(Address[] raftAddresses) {
+    protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
         ServiceConfig atomicLongServiceConfig = new ServiceConfig().setEnabled(true)
                 .setName(RaftAtomicLongService.SERVICE_NAME).setClassName(RaftAtomicLongService.class.getName());
 
-        Config config = super.createConfig(raftAddresses);
+        Config config = super.createConfig(raftAddresses, metadataGroupSize);
         config.getServicesConfig().addServiceConfig(atomicLongServiceConfig);
         return config;
     }

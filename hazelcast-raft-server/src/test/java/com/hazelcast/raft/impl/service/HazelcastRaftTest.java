@@ -43,7 +43,7 @@ public class HazelcastRaftTest extends HazelcastRaftTestSupport {
         }, 3);
 
         final HazelcastInstance newInstance = factory.newHazelcastInstance(leader.getLocalEndpoint().getAddress(),
-                createConfig(raftAddresses));
+                createConfig(raftAddresses, raftAddresses.length));
         assertClusterSizeEventually(2, followerInstance);
 
         assertTrueAllTheTime(new AssertTask() {
@@ -71,7 +71,7 @@ public class HazelcastRaftTest extends HazelcastRaftTestSupport {
         Address restartingAddress = getAddress(followerInstance);
         followerInstance.shutdown();
 
-        final HazelcastInstance newInstance = factory.newHazelcastInstance(restartingAddress, createConfig(raftAddresses));
+        final HazelcastInstance newInstance = factory.newHazelcastInstance(restartingAddress, createConfig(raftAddresses, raftAddresses.length));
         assertClusterSize(2, leaderInstance);
 
         assertTrueAllTheTime(new AssertTask() {

@@ -150,8 +150,8 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
     }
 
     @Override
-    protected Config createConfig(Address[] raftAddresses) {
-        Config config = super.createConfig(raftAddresses);
+    protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
+        Config config = super.createConfig(raftAddresses, metadataGroupSize);
 
         ServiceConfig raftTestServiceConfig = new ServiceConfig().setEnabled(true)
                 .setName(RaftDataService.SERVICE_NAME)
