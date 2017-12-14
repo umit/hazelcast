@@ -12,12 +12,12 @@ import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.RaftException;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.service.exception.CannotCreateRaftGroupException;
-import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOperation;
-import com.hazelcast.raft.impl.service.operation.metadata.GetActiveEndpointsOperation;
-import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOperation;
-import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
+import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
+import com.hazelcast.raft.impl.service.operation.metadata.GetActiveEndpointsOp;
+import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOp;
+import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftLocalQueryOperation;
-import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
+import com.hazelcast.raft.impl.service.proxy.RaftGroupOperation;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
@@ -91,10 +91,10 @@ public class RaftInvocationManager {
 
     private void invokeGetEndpointsToCreateRaftGroup(final String serviceName, final String raftName, final int nodeCount,
                                                      final SimpleCompletableFuture<RaftGroupId> resultFuture) {
-        ICompletableFuture<List<RaftEndpoint>> f = invoke(new Supplier<RaftReplicateOperation>() {
+        ICompletableFuture<List<RaftEndpoint>> f = invoke(new Supplier<RaftGroupOperation>() {
             @Override
-            public RaftReplicateOperation get() {
-                return new DefaultRaftGroupReplicateOperation(METADATA_GROUP_ID, new GetActiveEndpointsOperation());
+            public RaftGroupOperation get() {
+                return new DefaultRaftGroupOperation(METADATA_GROUP_ID, new GetActiveEndpointsOp());
             }
         });
 
@@ -125,11 +125,10 @@ public class RaftInvocationManager {
     private void invokeCreateRaftGroup(final String serviceName, final String raftName, final int nodeCount,
                                        final List<RaftEndpoint> endpoints,
                                        final SimpleCompletableFuture<RaftGroupId> resultFuture) {
-        ICompletableFuture<RaftGroupId> f = invoke(new Supplier<RaftReplicateOperation>() {
+        ICompletableFuture<RaftGroupId> f = invoke(new Supplier<RaftGroupOperation>() {
             @Override
-            public RaftReplicateOperation get() {
-                return new DefaultRaftGroupReplicateOperation(METADATA_GROUP_ID,
-                        new CreateRaftGroupOperation(serviceName, raftName, endpoints));
+            public RaftGroupOperation get() {
+                return new DefaultRaftGroupOperation(METADATA_GROUP_ID, new CreateRaftGroupOp(serviceName, raftName, endpoints));
             }
         });
 
@@ -154,10 +153,10 @@ public class RaftInvocationManager {
     }
 
     public ICompletableFuture<RaftGroupId> triggerDestroyRaftGroupAsync(final RaftGroupId groupId) {
-        return invoke(new Supplier<RaftReplicateOperation>() {
+        return invoke(new Supplier<RaftGroupOperation>() {
             @Override
-            public RaftReplicateOperation get() {
-                return new DefaultRaftGroupReplicateOperation(METADATA_GROUP_ID, new TriggerDestroyRaftGroupOperation(groupId));
+            public RaftGroupOperation get() {
+                return new DefaultRaftGroupOperation(METADATA_GROUP_ID, new TriggerDestroyRaftGroupOp(groupId));
             }
         });
     }
@@ -166,7 +165,7 @@ public class RaftInvocationManager {
         triggerDestroyRaftGroupAsync(groupId).get();
     }
 
-    public <T> ICompletableFuture<T> invoke(Supplier<RaftReplicateOperation> operationSupplier) {
+    public <T> ICompletableFuture<T> invoke(Supplier<RaftGroupOperation> operationSupplier) {
         RaftInvocationFuture<T> invocationFuture = new RaftInvocationFuture<T>(operationSupplier);
         invocationFuture.invoke();
         return invocationFuture;
@@ -301,11 +300,11 @@ public class RaftInvocationManager {
         }
     }
 
-    private class RaftInvocationFuture<T> extends AbstractRaftInvocationFuture<T, RaftReplicateOperation> {
+    private class RaftInvocationFuture<T> extends AbstractRaftInvocationFuture<T, RaftGroupOperation> {
 
         private volatile RaftEndpoint lastInvocationEndpoint;
 
-        RaftInvocationFuture(Supplier<RaftReplicateOperation> operationSupplier) {
+        RaftInvocationFuture(Supplier<RaftGroupOperation> operationSupplier) {
             super(operationSupplier);
         }
 
@@ -324,7 +323,7 @@ public class RaftInvocationManager {
         }
 
         @Override
-        RaftGroupId getGroupId(RaftReplicateOperation op) {
+        RaftGroupId getGroupId(RaftGroupOperation op) {
             return op.getRaftGroupId();
         }
 
