@@ -3,12 +3,11 @@ package com.hazelcast.raft.impl.service;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftConfig;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.RaftMember;
 import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.test.AssertTask;
@@ -129,6 +128,10 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
     }
 
     protected RaftNode getLeaderNode(final HazelcastInstance[] instances, final RaftGroupId groupId) {
+        return getRaftNode(getLeaderInstance(instances, groupId), groupId);
+    }
+
+    protected HazelcastInstance getLeaderInstance(final HazelcastInstance[] instances, final RaftGroupId groupId) {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run()
@@ -142,9 +145,8 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         RaftEndpoint leaderEndpoint = getLeaderEndpoint(raftNode);
 
         for (HazelcastInstance instance : instances) {
-            Node node = getNode(instance);
-            if (node != null && node.getThisAddress().equals(leaderEndpoint.getAddress())) {
-                return getRaftNode(instance, groupId);
+            if (getAddress(instance).equals(leaderEndpoint.getAddress())) {
+                return instance;
             }
         }
 

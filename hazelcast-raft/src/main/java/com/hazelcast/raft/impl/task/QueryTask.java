@@ -59,6 +59,9 @@ public class QueryTask implements Runnable {
             resultFuture.setResult(new NotLeaderException(raftNode.getLocalEndpoint(), state.leader()));
             return;
         }
+
+        // TODO: We can reject the query, if leader is not able to reach majority of the followers
+
         handleAnyLocalRead();
     }
 
@@ -67,6 +70,8 @@ public class QueryTask implements Runnable {
         if (logger.isFineEnabled()) {
             logger.fine("Querying: " + operation + " with policy: " + queryPolicy + " in term: " + state.term());
         }
+
+        // TODO: We can reject the query, if follower have not received any heartbeat recently
 
         Object result = raftNode.runQueryOperation(operation);
         resultFuture.setResult(result);
