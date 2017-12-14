@@ -253,6 +253,23 @@ public class LocalRaftGroup {
         throw new AssertionError("Leader endpoint is " + leaderEndpoint + ", but this endpoint is unknown to group!");
     }
 
+    public RaftNode getAnyFollowerNode() {
+        RaftEndpoint leaderEndpoint = getLeaderEndpoint();
+        if (leaderEndpoint == null) {
+            throw new AssertionError("Group doesn't have a leader yet!");
+        }
+        for (int i = 0; i < size(); i++) {
+            if (integrations[i].isShutdown()) {
+                continue;
+            }
+            RaftNode node = nodes[i];
+            if (!leaderEndpoint.equals(node.getLocalEndpoint())) {
+                return node;
+            }
+        }
+        throw new AssertionError("There's no follower node available!");
+    }
+
     public int getIndexOf(RaftEndpoint endpoint) {
         Assert.assertNotNull(endpoint);
         for (int i = 0; i < endpoints.length; i++) {
