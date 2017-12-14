@@ -10,14 +10,14 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public class RaftAddOperation extends RaftOperation {
+public class RaftApplyOperation extends RaftOperation {
 
     private Object val;
 
-    public RaftAddOperation() {
+    public RaftApplyOperation() {
     }
 
-    public RaftAddOperation(Object val) {
+    public RaftApplyOperation(Object val) {
         this.val = val;
     }
 

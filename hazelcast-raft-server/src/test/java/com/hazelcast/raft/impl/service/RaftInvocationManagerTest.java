@@ -84,7 +84,7 @@ public class RaftInvocationManagerTest extends HazelcastRaftTestSupport {
         return new Supplier<RaftReplicateOperation>() {
             @Override
             public RaftReplicateOperation get() {
-                return new DefaultRaftGroupReplicateOperation(groupId, new RaftAddOperation(val));
+                return new DefaultRaftGroupReplicateOperation(groupId, new RaftApplyOperation(val));
             }
         };
     }
