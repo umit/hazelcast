@@ -3,21 +3,32 @@ package com.hazelcast.raft.impl.service.operation.metadata;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.raft.impl.service.RaftMetadataManager;
+import com.hazelcast.raft.operation.RaftOperation;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.operation.RaftOperation;
 
 import java.io.IOException;
 
-public class GetActiveEndpointsOperation extends RaftOperation implements IdentifiedDataSerializable {
+public class TriggerDestroyRaftGroupOp
+        extends RaftOperation implements IdentifiedDataSerializable {
 
-    public GetActiveEndpointsOperation() {
+    private RaftGroupId groupId;
+
+    public TriggerDestroyRaftGroupOp() {
+    }
+
+    public TriggerDestroyRaftGroupOp(RaftGroupId groupId) {
+        this.groupId = groupId;
     }
 
     @Override
     protected Object doRun(int commitIndex) {
         RaftService service = getService();
-        return service.getMetadataManager().getActiveEndpoints();
+        RaftMetadataManager metadataManager = service.getMetadataManager();
+        metadataManager.triggerDestroy(groupId);
+        return groupId;
     }
 
     @Override
@@ -28,11 +39,13 @@ public class GetActiveEndpointsOperation extends RaftOperation implements Identi
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
+        out.writeObject(groupId);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
+        groupId = in.readObject();
     }
 
     @Override
@@ -42,7 +55,6 @@ public class GetActiveEndpointsOperation extends RaftOperation implements Identi
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.GET_ACTIVE_ENDPOINTS_OP;
+        return RaftServiceDataSerializerHook.TRIGGER_DESTROY_RAFT_GROUP_OP;
     }
-
 }

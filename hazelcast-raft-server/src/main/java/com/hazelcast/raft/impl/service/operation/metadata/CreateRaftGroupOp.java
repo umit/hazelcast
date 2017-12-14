@@ -17,16 +17,17 @@ import java.util.Collection;
  * TODO: Javadoc Pending...
  *
  */
-public class CreateRaftGroupOperation extends RaftOperation implements IdentifiedDataSerializable {
+public class CreateRaftGroupOp
+        extends RaftOperation implements IdentifiedDataSerializable {
 
     private String serviceName;
     private String name;
     private Collection<RaftEndpoint> endpoints;
 
-    public CreateRaftGroupOperation() {
+    public CreateRaftGroupOp() {
     }
 
-    public CreateRaftGroupOperation(String serviceName, String name, Collection<RaftEndpoint> endpoints) {
+    public CreateRaftGroupOp(String serviceName, String name, Collection<RaftEndpoint> endpoints) {
         this.serviceName = serviceName;
         this.name = name;
         this.endpoints = endpoints;

@@ -3,7 +3,6 @@ package com.hazelcast.raft.impl.service.operation.metadata;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
@@ -11,24 +10,22 @@ import com.hazelcast.raft.operation.RaftOperation;
 
 import java.io.IOException;
 
-public class GetRaftGroupIfMemberOperation extends RaftOperation implements IdentifiedDataSerializable {
-
-    private RaftGroupId groupId;
+public class CheckRemovedEndpointOp
+        extends RaftOperation implements IdentifiedDataSerializable {
 
     private RaftEndpoint endpoint;
 
-    public GetRaftGroupIfMemberOperation() {
+    public CheckRemovedEndpointOp() {
     }
 
-    public GetRaftGroupIfMemberOperation(RaftGroupId groupId, RaftEndpoint endpoint) {
-        this.groupId = groupId;
+    public CheckRemovedEndpointOp(RaftEndpoint endpoint) {
         this.endpoint = endpoint;
     }
 
     @Override
     protected Object doRun(int commitIndex) {
         RaftService service = getService();
-        return service.getMetadataManager().getRaftGroupIfMember(groupId, endpoint);
+        return service.getMetadataManager().isRemoved(endpoint);
     }
 
     @Override
@@ -39,14 +36,12 @@ public class GetRaftGroupIfMemberOperation extends RaftOperation implements Iden
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeObject(groupId);
         out.writeObject(endpoint);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        groupId = in.readObject();
         endpoint = in.readObject();
     }
 
@@ -57,6 +52,7 @@ public class GetRaftGroupIfMemberOperation extends RaftOperation implements Iden
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.GET_RAFT_GROUP_IF_MEMBER_OP;
+        return RaftServiceDataSerializerHook.CHECK_REMOVED_ENDPOINT_OP;
     }
+
 }

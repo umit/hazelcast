@@ -26,15 +26,14 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public abstract class RaftReplicateOperation extends Operation
-        implements IdentifiedDataSerializable, AllowedDuringPassiveState {
+public abstract class RaftGroupOperation extends Operation implements IdentifiedDataSerializable, AllowedDuringPassiveState {
 
     private RaftGroupId raftGroupId;
 
-    public RaftReplicateOperation() {
+    public RaftGroupOperation() {
     }
 
-    public RaftReplicateOperation(RaftGroupId raftGroupId) {
+    public RaftGroupOperation(RaftGroupId raftGroupId) {
         this.raftGroupId = raftGroupId;
     }
 

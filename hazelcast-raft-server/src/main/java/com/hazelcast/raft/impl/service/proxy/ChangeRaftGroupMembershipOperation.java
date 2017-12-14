@@ -12,7 +12,7 @@ import com.hazelcast.raft.operation.RaftOperation;
 
 import java.io.IOException;
 
-public class MembershipChangeReplicateOperation extends RaftReplicateOperation {
+public class ChangeRaftGroupMembershipOperation extends RaftGroupOperation {
 
     private static final int NAN_MEMBERS_COMMIT_INDEX = -1;
 
@@ -20,15 +20,15 @@ public class MembershipChangeReplicateOperation extends RaftReplicateOperation {
     private RaftEndpoint endpoint;
     private MembershipChangeType changeType;
 
-    public MembershipChangeReplicateOperation() {
+    public ChangeRaftGroupMembershipOperation() {
     }
 
-    public MembershipChangeReplicateOperation(RaftGroupId groupId, RaftEndpoint endpoint, MembershipChangeType changeType) {
+    public ChangeRaftGroupMembershipOperation(RaftGroupId groupId, RaftEndpoint endpoint, MembershipChangeType changeType) {
         this(groupId, NAN_MEMBERS_COMMIT_INDEX, endpoint, changeType);
     }
 
-    public MembershipChangeReplicateOperation(RaftGroupId groupId, int membersCommitIndex, RaftEndpoint endpoint,
-            MembershipChangeType changeType) {
+    public ChangeRaftGroupMembershipOperation(RaftGroupId groupId, int membersCommitIndex, RaftEndpoint endpoint,
+                                              MembershipChangeType changeType) {
         super(groupId);
         this.membersCommitIndex = membersCommitIndex;
         this.endpoint = endpoint;
