@@ -3,38 +3,44 @@ package com.hazelcast.raft.impl.service.operation.metadata;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.impl.service.RaftMetadataManager;
-import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
+import com.hazelcast.spi.Operation;
+import com.hazelcast.spi.impl.AllowedDuringPassiveState;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.Collection;
 
-public class CompleteDestroyRaftGroupsOperation extends RaftOperation implements IdentifiedDataSerializable {
+public class DestroyRaftNodesOp
+        extends Operation implements IdentifiedDataSerializable, AllowedDuringPassiveState {
 
-    private Set<RaftGroupId> groupIds;
+    private Collection<RaftGroupId> groupIds;
 
-    public CompleteDestroyRaftGroupsOperation() {
+    public DestroyRaftNodesOp() {
     }
 
-    public CompleteDestroyRaftGroupsOperation(Set<RaftGroupId> groupIds) {
+    public DestroyRaftNodesOp(Collection<RaftGroupId> groupIds) {
         this.groupIds = groupIds;
     }
 
     @Override
-    protected Object doRun(int commitIndex) {
+    public void run() {
         RaftService service = getService();
-        RaftMetadataManager metadataManager = service.getMetadataManager();
-        metadataManager.completeDestroy(groupIds);
-        return null;
+        for (RaftGroupId groupId : groupIds) {
+            service.destroyRaftNode(groupId);
+        }
     }
 
     @Override
     public String getServiceName() {
         return RaftService.SERVICE_NAME;
+    }
+
+    @Override
+    public boolean returnsResponse() {
+        return false;
     }
 
     @Override
@@ -50,7 +56,7 @@ public class CompleteDestroyRaftGroupsOperation extends RaftOperation implements
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         int count = in.readInt();
-        groupIds = new HashSet<RaftGroupId>();
+        groupIds = new ArrayList<RaftGroupId>();
         for (int i = 0; i < count; i++) {
             RaftGroupId groupId = in.readObject();
             groupIds.add(groupId);
@@ -64,7 +70,6 @@ public class CompleteDestroyRaftGroupsOperation extends RaftOperation implements
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.COMPLETE_DESTROY_RAFT_GROUPS_OP;
+        return RaftServiceDataSerializerHook.DESTROY_RAFT_NODES_OP;
     }
-
 }

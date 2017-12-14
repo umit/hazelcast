@@ -12,18 +12,18 @@ import com.hazelcast.raft.impl.service.operation.integration.PreVoteRequestOp;
 import com.hazelcast.raft.impl.service.operation.integration.PreVoteResponseOp;
 import com.hazelcast.raft.impl.service.operation.integration.VoteRequestOp;
 import com.hazelcast.raft.impl.service.operation.integration.VoteResponseOp;
-import com.hazelcast.raft.impl.service.operation.metadata.CheckRemovedEndpointOperation;
-import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOperation;
-import com.hazelcast.raft.impl.service.operation.metadata.CompleteRemoveEndpointOperation;
-import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOperation;
-import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOperation;
-import com.hazelcast.raft.impl.service.operation.metadata.GetActiveEndpointsOperation;
-import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupIfMemberOperation;
-import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOperation;
-import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveEndpointOperation;
+import com.hazelcast.raft.impl.service.operation.metadata.CheckRemovedEndpointOp;
+import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOp;
+import com.hazelcast.raft.impl.service.operation.metadata.CompleteRemoveEndpointOp;
+import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
+import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOp;
+import com.hazelcast.raft.impl.service.operation.metadata.GetActiveEndpointsOp;
+import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupIfMemberOp;
+import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOp;
+import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveEndpointOp;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupLocalQueryOperation;
-import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
-import com.hazelcast.raft.impl.service.proxy.MembershipChangeReplicateOperation;
+import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupOperation;
+import com.hazelcast.raft.impl.service.proxy.ChangeRaftGroupMembershipOperation;
 
 public final class RaftServiceDataSerializerHook implements DataSerializerHook {
 
@@ -88,31 +88,31 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                     case INSTALL_SNAPSHOT_OP:
                         return new InstallSnapshotOp();
                     case CREATE_RAFT_GROUP_OP:
-                        return new CreateRaftGroupOperation();
+                        return new CreateRaftGroupOp();
                     case DEFAULT_RAFT_GROUP_REPLICATE_OP:
-                        return new DefaultRaftGroupReplicateOperation();
+                        return new DefaultRaftGroupOperation();
                     case TRIGGER_DESTROY_RAFT_GROUP_OP:
-                        return new TriggerDestroyRaftGroupOperation();
+                        return new TriggerDestroyRaftGroupOp();
                     case COMPLETE_DESTROY_RAFT_GROUPS_OP:
-                        return new CompleteDestroyRaftGroupsOperation();
+                        return new CompleteDestroyRaftGroupsOp();
                     case TRIGGER_REMOVE_ENDPOINT_OP:
-                        return new TriggerRemoveEndpointOperation();
+                        return new TriggerRemoveEndpointOp();
                     case COMPLETE_REMOVE_ENDPOINT_OP:
-                        return new CompleteRemoveEndpointOperation();
+                        return new CompleteRemoveEndpointOp();
                     case MEMBERSHIP_CHANGE_REPLICATE_OP:
-                        return new MembershipChangeReplicateOperation();
+                        return new ChangeRaftGroupMembershipOperation();
                     case LEAVING_RAFT_ENDPOINT_CTX:
                         return new LeavingRaftEndpointContext();
                     case DEFAULT_RAFT_GROUP_QUERY_OP:
                         return new DefaultRaftGroupLocalQueryOperation();
                     case CHECK_REMOVED_ENDPOINT_OP:
-                        return new CheckRemovedEndpointOperation();
+                        return new CheckRemovedEndpointOp();
                     case DESTROY_RAFT_NODES_OP:
-                        return new DestroyRaftNodesOperation();
+                        return new DestroyRaftNodesOp();
                     case GET_ACTIVE_ENDPOINTS_OP:
-                        return new GetActiveEndpointsOperation();
+                        return new GetActiveEndpointsOp();
                     case GET_RAFT_GROUP_IF_MEMBER_OP:
-                        return new GetRaftGroupIfMemberOperation();
+                        return new GetRaftGroupIfMemberOp();
 
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
