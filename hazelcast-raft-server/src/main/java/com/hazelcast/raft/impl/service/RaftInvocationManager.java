@@ -6,16 +6,19 @@ import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftConfig;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.RaftException;
 import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.service.exception.CannotCreateRaftGroupException;
+import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOperation;
+import com.hazelcast.raft.impl.service.operation.metadata.GetActiveEndpointsOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOperation;
-import com.hazelcast.raft.impl.service.proxy.CreateRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftLocalQueryOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
+import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
@@ -24,12 +27,17 @@ import com.hazelcast.spi.exception.TargetNotMemberException;
 import com.hazelcast.spi.impl.AbstractCompletableFuture;
 import com.hazelcast.util.function.Supplier;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.raft.impl.service.RaftService.METADATA_GROUP_ID;
+import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 
 public class RaftInvocationManager {
 
@@ -40,7 +48,7 @@ public class RaftInvocationManager {
     private final RaftEndpoint[] allEndpoints;
     private final boolean failOnIndeterminateOperationState;
 
-    public RaftInvocationManager(NodeEngine nodeEngine, RaftService raftService, RaftConfig config) {
+    RaftInvocationManager(NodeEngine nodeEngine, RaftService raftService, RaftConfig config) {
         this.nodeEngine = nodeEngine;
         this.logger = nodeEngine.getLogger(getClass());
         this.raftService = raftService;
@@ -69,17 +77,80 @@ public class RaftInvocationManager {
 
     public ICompletableFuture<RaftGroupId> createRaftGroupAsync(final String serviceName, final String raftName,
                                                                 final int nodeCount) {
-        return invoke(new Supplier<RaftReplicateOperation>() {
+        Executor executor = nodeEngine.getExecutionService().getExecutor(ASYNC_EXECUTOR);
+        ILogger logger = nodeEngine.getLogger(getClass());
+        SimpleCompletableFuture<RaftGroupId> resultFuture = new SimpleCompletableFuture<RaftGroupId>(executor, logger);
+        invokeGetEndpointsToCreateRaftGroup(serviceName, raftName, nodeCount, resultFuture);
+        return resultFuture;
+    }
+
+    public RaftGroupId createRaftGroup(final String serviceName, final String raftName, final int nodeCount)
+            throws ExecutionException, InterruptedException {
+        return createRaftGroupAsync(serviceName, raftName, nodeCount).get();
+    }
+
+    private void invokeGetEndpointsToCreateRaftGroup(final String serviceName, final String raftName, final int nodeCount,
+                                                     final SimpleCompletableFuture<RaftGroupId> resultFuture) {
+        ICompletableFuture<List<RaftEndpoint>> f = invoke(new Supplier<RaftReplicateOperation>() {
             @Override
             public RaftReplicateOperation get() {
-                return new CreateRaftGroupReplicateOperation(serviceName, raftName, nodeCount);
+                return new DefaultRaftGroupReplicateOperation(METADATA_GROUP_ID, new GetActiveEndpointsOperation());
+            }
+        });
+
+        f.andThen(new ExecutionCallback<List<RaftEndpoint>>() {
+            @Override
+            public void onResponse(List<RaftEndpoint> endpoints) {
+                endpoints = new ArrayList<RaftEndpoint>(endpoints);
+
+                if (endpoints.size() < nodeCount) {
+                    Exception result = new IllegalArgumentException("There are not enough active endpoints to create raft group "
+                            + raftName + ". Active endpoints: " + endpoints.size() + ", Requested count: " + nodeCount);
+                    resultFuture.setResult(result);
+                    return;
+                }
+
+                Collections.shuffle(endpoints);
+                endpoints = endpoints.subList(0, nodeCount);
+                invokeCreateRaftGroup(serviceName, raftName, nodeCount, endpoints, resultFuture);
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                resultFuture.setResult(t);
             }
         });
     }
 
-    public RaftGroupId createRaftGroup(String serviceName, String raftName, int nodeCount)
-            throws ExecutionException, InterruptedException {
-        return createRaftGroupAsync(serviceName, raftName, nodeCount).get();
+    private void invokeCreateRaftGroup(final String serviceName, final String raftName, final int nodeCount,
+                                       final List<RaftEndpoint> endpoints,
+                                       final SimpleCompletableFuture<RaftGroupId> resultFuture) {
+        ICompletableFuture<RaftGroupId> f = invoke(new Supplier<RaftReplicateOperation>() {
+            @Override
+            public RaftReplicateOperation get() {
+                return new DefaultRaftGroupReplicateOperation(METADATA_GROUP_ID,
+                        new CreateRaftGroupOperation(serviceName, raftName, endpoints));
+            }
+        });
+
+        f.andThen(new ExecutionCallback<RaftGroupId>() {
+            @Override
+            public void onResponse(RaftGroupId groupId) {
+                resultFuture.setResult(groupId);
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                if (t.getCause() instanceof CannotCreateRaftGroupException) {
+                    logger.fine("Could not create raft group: " + raftName + " with endpoints: " + endpoints,
+                            t.getCause());
+                    invokeGetEndpointsToCreateRaftGroup(serviceName, raftName, nodeCount, resultFuture);
+                    return;
+                }
+
+                resultFuture.setResult(t);
+            }
+        });
     }
 
     public ICompletableFuture<RaftGroupId> triggerDestroyRaftGroupAsync(final RaftGroupId groupId) {

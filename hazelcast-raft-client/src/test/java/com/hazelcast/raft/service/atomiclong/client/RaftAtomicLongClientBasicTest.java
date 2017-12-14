@@ -18,8 +18,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.util.concurrent.ExecutionException;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -31,10 +29,10 @@ public class RaftAtomicLongClientBasicTest extends HazelcastRaftTestSupport {
     private IAtomicLong atomicLong;
 
     @Before
-    public void setup() throws ExecutionException, InterruptedException {
+    public void setup() {
         factory = new TestHazelcastFactory();
         Address[] raftAddresses = createAddresses(5);
-        newInstances(raftAddresses, raftAddresses.length + 2);
+        newInstances(raftAddresses, 3, 2);
 
         TestHazelcastFactory f = (TestHazelcastFactory) factory;
         HazelcastInstance client = f.newHazelcastClient();
@@ -182,11 +180,11 @@ public class RaftAtomicLongClientBasicTest extends HazelcastRaftTestSupport {
 //    }
 
     @Override
-    protected Config createConfig(Address[] raftAddresses) {
+    protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
         ServiceConfig atomicLongServiceConfig = new ServiceConfig().setEnabled(true)
                 .setName(RaftAtomicLongService.SERVICE_NAME).setClassName(RaftAtomicLongService.class.getName());
 
-        Config config = super.createConfig(raftAddresses);
+        Config config = super.createConfig(raftAddresses, metadataGroupSize);
         config.getServicesConfig().addServiceConfig(atomicLongServiceConfig);
         return config;
     }

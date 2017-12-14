@@ -49,7 +49,7 @@ public abstract class RaftLocalQueryOperation extends Operation
             if (raftGroupInfo != null && raftGroupInfo.status() == RaftGroupStatus.DESTROYED) {
                 sendResponse(new RaftGroupTerminatedException());
             } else {
-                sendResponse(new NotLeaderException(service.getLocalEndpoint(), null));
+                sendResponse(new NotLeaderException(raftGroupId, service.getLocalEndpoint(), null));
             }
             return;
         }

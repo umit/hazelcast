@@ -12,12 +12,15 @@ import com.hazelcast.raft.impl.service.operation.integration.PreVoteRequestOp;
 import com.hazelcast.raft.impl.service.operation.integration.PreVoteResponseOp;
 import com.hazelcast.raft.impl.service.operation.integration.VoteRequestOp;
 import com.hazelcast.raft.impl.service.operation.integration.VoteResponseOp;
+import com.hazelcast.raft.impl.service.operation.metadata.CheckRemovedEndpointOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteRemoveEndpointOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOperation;
+import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOperation;
+import com.hazelcast.raft.impl.service.operation.metadata.GetActiveEndpointsOperation;
+import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupIfMemberOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveEndpointOperation;
-import com.hazelcast.raft.impl.service.proxy.CreateRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupLocalQueryOperation;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.MembershipChangeReplicateOperation;
@@ -41,7 +44,6 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int INSTALL_SNAPSHOT_OP = 10;
     public static final int DEFAULT_RAFT_GROUP_REPLICATE_OP = 11;
     public static final int CREATE_RAFT_GROUP_OP = 12;
-    public static final int CREATE_RAFT_GROUP_REPLICATE_OP = 13;
     public static final int TRIGGER_DESTROY_RAFT_GROUP_OP = 14;
     public static final int COMPLETE_DESTROY_RAFT_GROUPS_OP = 15;
     public static final int TRIGGER_REMOVE_ENDPOINT_OP = 16;
@@ -49,6 +51,10 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int MEMBERSHIP_CHANGE_REPLICATE_OP = 18;
     public static final int LEAVING_RAFT_ENDPOINT_CTX = 19;
     public static final int DEFAULT_RAFT_GROUP_QUERY_OP = 20;
+    public static final int CHECK_REMOVED_ENDPOINT_OP = 21;
+    public static final int DESTROY_RAFT_NODES_OP = 22;
+    public static final int GET_ACTIVE_ENDPOINTS_OP = 23;
+    public static final int GET_RAFT_GROUP_IF_MEMBER_OP = 24;
 
     @Override
     public int getFactoryId() {
@@ -85,8 +91,6 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new CreateRaftGroupOperation();
                     case DEFAULT_RAFT_GROUP_REPLICATE_OP:
                         return new DefaultRaftGroupReplicateOperation();
-                    case CREATE_RAFT_GROUP_REPLICATE_OP:
-                        return new CreateRaftGroupReplicateOperation();
                     case TRIGGER_DESTROY_RAFT_GROUP_OP:
                         return new TriggerDestroyRaftGroupOperation();
                     case COMPLETE_DESTROY_RAFT_GROUPS_OP:
@@ -101,6 +105,14 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new LeavingRaftEndpointContext();
                     case DEFAULT_RAFT_GROUP_QUERY_OP:
                         return new DefaultRaftGroupLocalQueryOperation();
+                    case CHECK_REMOVED_ENDPOINT_OP:
+                        return new CheckRemovedEndpointOperation();
+                    case DESTROY_RAFT_NODES_OP:
+                        return new DestroyRaftNodesOperation();
+                    case GET_ACTIVE_ENDPOINTS_OP:
+                        return new GetActiveEndpointsOperation();
+                    case GET_RAFT_GROUP_IF_MEMBER_OP:
+                        return new GetRaftGroupIfMemberOperation();
 
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);

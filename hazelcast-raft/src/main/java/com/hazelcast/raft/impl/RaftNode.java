@@ -72,6 +72,7 @@ public class RaftNode {
     private static final int LEADER_ELECTION_TIMEOUT_RANGE = 1000;
 
     private final String serviceName;
+    private final RaftGroupId groupId;
     private final ILogger logger;
     private final RaftState state;
     private final RaftIntegration raftIntegration;
@@ -86,11 +87,12 @@ public class RaftNode {
     private final boolean appendNopEntryOnLeaderElection;
 
     private long lastAppendEntriesTimestamp;
-    private RaftNodeStatus status = ACTIVE;
+    private volatile RaftNodeStatus status = ACTIVE;
 
     public RaftNode(String serviceName, RaftGroupId groupId, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints,
                     RaftConfig raftConfig, RaftIntegration raftIntegration) {
         this.serviceName = serviceName;
+        this.groupId = groupId;
         this.raftIntegration = raftIntegration;
         this.localEndpoint = localEndpoint;
         this.state = new RaftState(groupId, localEndpoint, endpoints);
@@ -101,6 +103,10 @@ public class RaftNode {
         this.leaderElectionTimeout = (int) raftConfig.getLeaderElectionTimeoutInMillis();
         this.heartbeatPeriodInMillis = raftConfig.getLeaderHeartbeatPeriodInMillis();
         this.appendNopEntryOnLeaderElection = raftConfig.isAppendNopEntryOnLeaderElection();
+    }
+
+    public RaftGroupId getGroupId() {
+        return groupId;
     }
 
     public ILogger getLogger(Class clazz) {
@@ -117,10 +123,12 @@ public class RaftNode {
         return state.leader();
     }
 
+    // It reads the volatile status field
     public RaftNodeStatus getStatus() {
         return status;
     }
 
+    // It reads the volatile status field
     public boolean isTerminatedOrSteppedDown() {
         return status == TERMINATED || status == STEPPED_DOWN;
     }
