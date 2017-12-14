@@ -18,6 +18,7 @@ import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOperati
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveEndpointOperation;
 import com.hazelcast.raft.impl.service.proxy.CreateRaftGroupReplicateOperation;
+import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupLocalQueryOperation;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.MembershipChangeReplicateOperation;
 
@@ -47,6 +48,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int COMPLETE_REMOVE_ENDPOINT_OP = 17;
     public static final int MEMBERSHIP_CHANGE_REPLICATE_OP = 18;
     public static final int LEAVING_RAFT_ENDPOINT_CTX = 19;
+    public static final int DEFAULT_RAFT_GROUP_QUERY_OP = 20;
 
     @Override
     public int getFactoryId() {
@@ -97,6 +99,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new MembershipChangeReplicateOperation();
                     case LEAVING_RAFT_ENDPOINT_CTX:
                         return new LeavingRaftEndpointContext();
+                    case DEFAULT_RAFT_GROUP_QUERY_OP:
+                        return new DefaultRaftGroupLocalQueryOperation();
 
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);

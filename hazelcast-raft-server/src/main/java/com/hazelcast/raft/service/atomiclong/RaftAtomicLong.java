@@ -49,11 +49,11 @@ public class RaftAtomicLong {
         return false;
     }
 
-    int commitIndex() {
+    public int commitIndex() {
         return commitIndex;
     }
 
-    long value() {
+    public long value() {
         return value;
     }
 
@@ -61,5 +61,4 @@ public class RaftAtomicLong {
     public String toString() {
         return "AtomicLong{" + "name='" + name + '\'' + ", value=" + value + ", commitIndex=" + commitIndex + '}';
     }
-
 }

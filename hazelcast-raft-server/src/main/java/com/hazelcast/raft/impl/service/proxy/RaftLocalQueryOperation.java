@@ -6,10 +6,11 @@ import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.raft.QueryPolicy;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
 import com.hazelcast.raft.impl.RaftNode;
-import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftGroupInfo;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.RaftService;
@@ -26,15 +27,16 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public abstract class RaftReplicateOperation extends Operation
+public abstract class RaftLocalQueryOperation extends Operation
         implements IdentifiedDataSerializable, AllowedDuringPassiveState {
 
     private RaftGroupId raftGroupId;
+    private QueryPolicy queryPolicy;
 
-    public RaftReplicateOperation() {
+    public RaftLocalQueryOperation() {
     }
 
-    public RaftReplicateOperation(RaftGroupId raftGroupId) {
+    public RaftLocalQueryOperation(RaftGroupId raftGroupId) {
         this.raftGroupId = raftGroupId;
     }
 
@@ -52,10 +54,8 @@ public abstract class RaftReplicateOperation extends Operation
             return;
         }
 
-        ICompletableFuture future = replicate(raftNode);
-        if (future == null) {
-            return;
-        }
+        RaftOperation op = getRaftOperation();
+        ICompletableFuture future = raftNode.query(op, queryPolicy);
         future.andThen(new ExecutionCallback() {
             @Override
             public void onResponse(Object response) {
@@ -69,16 +69,20 @@ public abstract class RaftReplicateOperation extends Operation
         });
     }
 
-    ICompletableFuture replicate(RaftNode raftNode) {
-        RaftOperation op = getRaftOperation();
-        return raftNode.replicate(op);
-    }
-
     public RaftGroupId getRaftGroupId() {
         return raftGroupId;
     }
 
     protected abstract RaftOperation getRaftOperation();
+
+    public QueryPolicy getQueryPolicy() {
+        return queryPolicy;
+    }
+
+    public RaftLocalQueryOperation setQueryPolicy(QueryPolicy queryPolicy) {
+        this.queryPolicy = queryPolicy;
+        return this;
+    }
 
     @Override
     public final boolean returnsResponse() {
@@ -94,12 +98,14 @@ public abstract class RaftReplicateOperation extends Operation
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeObject(raftGroupId);
+        out.writeUTF(queryPolicy.toString());
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         raftGroupId = in.readObject();
+        queryPolicy = QueryPolicy.valueOf(in.readUTF());
     }
 
     @Override
@@ -115,6 +121,7 @@ public abstract class RaftReplicateOperation extends Operation
     @Override
     protected void toString(StringBuilder sb) {
         super.toString(sb);
-        sb.append(", groupId=").append(raftGroupId);
+        sb.append(", groupId=").append(raftGroupId)
+                .append(", policy=").append(queryPolicy);
     }
 }

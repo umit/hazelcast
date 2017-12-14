@@ -7,6 +7,7 @@ import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.nio.Address;
+import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.impl.service.RaftServiceUtil;
@@ -198,6 +199,26 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
 
         assertEquals(4, result);
         assertEquals(2, atomicLong.get());
+    }
+
+    @Test
+    public void testLocalGet_withLeaderLocalPolicy() {
+        atomicLong.set(3);
+
+        RaftAtomicLongProxy atomicLongProxy = (RaftAtomicLongProxy) atomicLong;
+        long v = atomicLongProxy.localGet(QueryPolicy.LEADER_LOCAL);
+
+        assertEquals(3, v);
+    }
+
+    @Test
+    public void testLocalGet_withAnyLocalPolicy() {
+        atomicLong.set(3);
+
+        RaftAtomicLongProxy atomicLongProxy = (RaftAtomicLongProxy) atomicLong;
+        long v = atomicLongProxy.localGet(QueryPolicy.ANY_LOCAL);
+
+        assertEquals(3, v);
     }
 
     @Override
