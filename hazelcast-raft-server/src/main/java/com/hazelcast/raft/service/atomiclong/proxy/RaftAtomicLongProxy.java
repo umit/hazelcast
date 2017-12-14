@@ -1,15 +1,20 @@
 package com.hazelcast.raft.service.atomiclong.proxy;
 
+import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.instance.HazelcastInstanceImpl;
 import com.hazelcast.instance.HazelcastInstanceProxy;
+import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
+import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupLocalQueryOperation;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
+import com.hazelcast.raft.impl.service.proxy.RaftLocalQueryOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
+import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.raft.service.atomiclong.operation.AddAndGetOperation;
@@ -19,6 +24,7 @@ import com.hazelcast.raft.service.atomiclong.operation.ApplyOperation;
 import com.hazelcast.raft.service.atomiclong.operation.CompareAndSetOperation;
 import com.hazelcast.raft.service.atomiclong.operation.GetAndAddOperation;
 import com.hazelcast.raft.service.atomiclong.operation.GetAndSetOperation;
+import com.hazelcast.raft.service.atomiclong.operation.LocalGetOperation;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.function.Supplier;
@@ -242,6 +248,48 @@ public class RaftAtomicLongProxy implements IAtomicLong {
                         return new DefaultRaftGroupReplicateOperation(groupId, new ApplyOperation<R>(groupId, function));
                     }
                 });
+    }
+
+    public long localGet(QueryPolicy queryPolicy) {
+        return join(localGetAsync(queryPolicy));
+    }
+
+    public ICompletableFuture<Long> localGetAsync(final QueryPolicy queryPolicy) {
+        final Supplier<RaftLocalQueryOperation> supplier = new Supplier<RaftLocalQueryOperation>() {
+            @Override
+            public RaftLocalQueryOperation get() {
+                return new DefaultRaftGroupLocalQueryOperation(groupId, new LocalGetOperation(groupId));
+            }
+        };
+
+        final SimpleCompletableFuture<Long> resultFuture = new SimpleCompletableFuture<Long>(null, null);
+        ICompletableFuture<Long> localFuture =
+                raftInvocationManager.queryOnLocal(supplier.get(), queryPolicy);
+
+        localFuture.andThen(new ExecutionCallback<Long>() {
+            @Override
+            public void onResponse(Long response) {
+                resultFuture.setResult(response);
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                ICompletableFuture<Long> future = raftInvocationManager.query(supplier, queryPolicy);
+                future.andThen(new ExecutionCallback<Long>() {
+                    @Override
+                    public void onResponse(Long response) {
+                        resultFuture.setResult(response);
+                    }
+
+                    @Override
+                    public void onFailure(Throwable t) {
+                        resultFuture.setResult(t);
+                    }
+                });
+
+            }
+        });
+        return resultFuture;
     }
 
     @Override

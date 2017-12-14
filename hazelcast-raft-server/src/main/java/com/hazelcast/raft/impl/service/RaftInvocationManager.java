@@ -4,6 +4,7 @@ import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.NotLeaderException;
@@ -13,9 +14,11 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOperation;
 import com.hazelcast.raft.impl.service.proxy.CreateRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
+import com.hazelcast.raft.impl.service.proxy.RaftLocalQueryOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.exception.CallerNotMemberException;
 import com.hazelcast.spi.exception.TargetNotMemberException;
 import com.hazelcast.spi.impl.AbstractCompletableFuture;
@@ -50,6 +53,18 @@ public class RaftInvocationManager {
 
     public void reset() {
         knownLeaders.clear();
+    }
+
+
+    public <T> ICompletableFuture<T> query(Supplier<RaftLocalQueryOperation> operationSupplier, QueryPolicy queryPolicy) {
+        RaftQueryInvocationFuture<T> invocationFuture = new RaftQueryInvocationFuture<T>(operationSupplier, queryPolicy);
+        invocationFuture.invoke();
+        return invocationFuture;
+    }
+
+    public <T> ICompletableFuture<T> queryOnLocal(RaftLocalQueryOperation operation, QueryPolicy queryPolicy) {
+        return nodeEngine.getOperationService().invokeOnTarget(RaftService.SERVICE_NAME,
+                operation.setQueryPolicy(queryPolicy), nodeEngine.getThisAddress());
     }
 
     public ICompletableFuture<RaftGroupId> createRaftGroupAsync(final String serviceName, final String raftName,
@@ -100,22 +115,35 @@ public class RaftInvocationManager {
         return knownLeaders.get(groupId);
     }
 
-    private class RaftInvocationFuture<T> extends AbstractCompletableFuture<T> implements ExecutionCallback<T> {
+    private void updateKnownLeaderOnFailure(RaftGroupId groupId, Throwable cause) {
+        if (cause instanceof RaftException) {
+            RaftException e = (RaftException) cause;
+            RaftEndpoint leader = e.getLeader();
+            if (leader != null) {
+                setKnownLeader(groupId, leader);
+            } else {
+                resetKnownLeader(groupId);
+            }
+        } else {
+            resetKnownLeader(groupId);
+        }
+    }
 
-        private final Supplier<RaftReplicateOperation> operationSupplier;
-        private volatile RaftGroupId groupId;
-        private volatile RaftEndpoint lastInvocationEndpoint;
+    private abstract class AbstractRaftInvocationFuture<T, O extends Operation>
+            extends AbstractCompletableFuture<T> implements ExecutionCallback<T> {
+
+        private final Supplier<O> operationSupplier;
+        volatile RaftGroupId groupId;
         private volatile RaftEndpoint[] endpoints;
         private volatile int endPointIndex;
 
-        RaftInvocationFuture(Supplier<RaftReplicateOperation> operationSupplier) {
+        AbstractRaftInvocationFuture(Supplier<O> operationSupplier) {
             super(nodeEngine, RaftInvocationManager.this.logger);
             this.operationSupplier = operationSupplier;
         }
 
         @Override
         public void onResponse(T response) {
-            setKnownLeader(groupId, lastInvocationEndpoint);
             setResult(response);
         }
 
@@ -123,17 +151,7 @@ public class RaftInvocationManager {
         public void onFailure(Throwable cause) {
             logger.warning(cause);
             if (isRetryable(cause)) {
-                if (cause instanceof RaftException) {
-                    RaftException e = (RaftException) cause;
-                    RaftEndpoint leader = e.getLeader();
-                    if (leader != null) {
-                        setKnownLeader(groupId, leader);
-                    } else {
-                        resetKnownLeader(groupId);
-                    }
-                } else {
-                    resetKnownLeader(groupId);
-                }
+                updateKnownLeaderOnFailure(groupId, cause);
                 try {
                     scheduleRetry();
                 } catch (Throwable e) {
@@ -145,10 +163,7 @@ public class RaftInvocationManager {
             }
         }
 
-        private boolean isRetryable(Throwable cause) {
-            if (failOnIndeterminateOperationState && cause instanceof MemberLeftException) {
-                return false;
-            }
+        boolean isRetryable(Throwable cause) {
             return cause instanceof NotLeaderException
                     || cause instanceof LeaderDemotedException
                     || cause instanceof MemberLeftException
@@ -156,7 +171,7 @@ public class RaftInvocationManager {
                     || cause instanceof TargetNotMemberException;
         }
 
-        private void scheduleRetry() {
+        final void scheduleRetry() {
             // TODO: needs a back-off strategy
             nodeEngine.getExecutionService().schedule(new Runnable() {
                 @Override
@@ -171,26 +186,34 @@ public class RaftInvocationManager {
             }, 250, TimeUnit.MILLISECONDS);
         }
 
-        void invoke() {
-            RaftReplicateOperation op = operationSupplier.get();
-            groupId = op.getRaftGroupId();
-            RaftEndpoint leader = getLeader();
-            if (leader == null) {
+        final void invoke() {
+            O op = createOp();
+            groupId = getGroupId(op);
+            RaftEndpoint target = getTarget();
+            if (target == null) {
                 scheduleRetry();
                 return;
             }
 
-
             InternalCompletableFuture<T> future = nodeEngine.getOperationService()
-                                                            .invokeOnTarget(RaftService.SERVICE_NAME, op, leader.getAddress());
-            lastInvocationEndpoint = leader;
+                    .invokeOnTarget(RaftService.SERVICE_NAME, op, target.getAddress());
+            afterInvoke(target);
             future.andThen(this);
         }
 
-        private RaftEndpoint getLeader() {
-            RaftEndpoint leader = getKnownLeader(groupId);
-            if (leader != null) {
-                return leader;
+        O createOp() {
+            return operationSupplier.get();
+        }
+
+        abstract RaftGroupId getGroupId(O op);
+
+        void afterInvoke(RaftEndpoint target) {
+        }
+
+        RaftEndpoint getTarget() {
+            RaftEndpoint target = getKnownTarget();
+            if (target != null) {
+                return target;
             }
 
             if (endpoints == null || endPointIndex == endpoints.length) {
@@ -200,6 +223,75 @@ public class RaftInvocationManager {
             }
 
             return endpoints != null ? endpoints[endPointIndex++] : null;
+        }
+
+        RaftEndpoint getKnownTarget() {
+            return null;
+        }
+    }
+
+    private class RaftInvocationFuture<T> extends AbstractRaftInvocationFuture<T, RaftReplicateOperation> {
+
+        private volatile RaftEndpoint lastInvocationEndpoint;
+
+        RaftInvocationFuture(Supplier<RaftReplicateOperation> operationSupplier) {
+            super(operationSupplier);
+        }
+
+        @Override
+        public void onResponse(T response) {
+            setKnownLeader(groupId, lastInvocationEndpoint);
+            setResult(response);
+        }
+
+        @Override
+        boolean isRetryable(Throwable cause) {
+            if (failOnIndeterminateOperationState && cause instanceof MemberLeftException) {
+                return false;
+            }
+            return super.isRetryable(cause);
+        }
+
+        @Override
+        RaftGroupId getGroupId(RaftReplicateOperation op) {
+            return op.getRaftGroupId();
+        }
+
+        @Override
+        void afterInvoke(RaftEndpoint target) {
+            lastInvocationEndpoint = target;
+        }
+
+        @Override
+        RaftEndpoint getKnownTarget() {
+            return getKnownLeader(groupId);
+        }
+    }
+
+    private class RaftQueryInvocationFuture<T> extends AbstractRaftInvocationFuture<T, RaftLocalQueryOperation> {
+
+        private final QueryPolicy queryPolicy;
+
+        RaftQueryInvocationFuture(Supplier<RaftLocalQueryOperation> operationSupplier, QueryPolicy queryPolicy) {
+            super(operationSupplier);
+            this.queryPolicy = queryPolicy;
+        }
+
+        @Override
+        RaftLocalQueryOperation createOp() {
+            RaftLocalQueryOperation op = super.createOp();
+            op.setQueryPolicy(queryPolicy);
+            return op;
+        }
+
+        @Override
+        RaftGroupId getGroupId(RaftLocalQueryOperation op) {
+            return op.getRaftGroupId();
+        }
+
+        @Override
+        RaftEndpoint getKnownTarget() {
+            return queryPolicy == QueryPolicy.LEADER_LOCAL ? getKnownLeader(groupId) : null;
         }
     }
 }

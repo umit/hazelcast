@@ -10,6 +10,7 @@ import com.hazelcast.raft.service.atomiclong.operation.ApplyOperation;
 import com.hazelcast.raft.service.atomiclong.operation.CompareAndSetOperation;
 import com.hazelcast.raft.service.atomiclong.operation.GetAndAddOperation;
 import com.hazelcast.raft.service.atomiclong.operation.GetAndSetOperation;
+import com.hazelcast.raft.service.atomiclong.operation.LocalGetOperation;
 
 public final class AtomicLongDataSerializerHook implements DataSerializerHook {
 
@@ -24,6 +25,7 @@ public final class AtomicLongDataSerializerHook implements DataSerializerHook {
     public static final int GET_AND_SET_OP = 4;
     public static final int ALTER_OP = 5;
     public static final int APPLY_OP = 6;
+    public static final int LOCAL_GET_OP = 7;
 
     @Override
     public int getFactoryId() {
@@ -48,6 +50,8 @@ public final class AtomicLongDataSerializerHook implements DataSerializerHook {
                         return new AlterOperation();
                     case APPLY_OP:
                         return new ApplyOperation();
+                    case LOCAL_GET_OP:
+                        return new LocalGetOperation();
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
             }
