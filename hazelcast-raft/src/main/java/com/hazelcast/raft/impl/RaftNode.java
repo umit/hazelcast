@@ -3,6 +3,7 @@ package com.hazelcast.raft.impl;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.MembershipChangeType;
+import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.LeaderDemotedException;
@@ -23,6 +24,7 @@ import com.hazelcast.raft.impl.task.MembershipChangeTask;
 import com.hazelcast.raft.impl.handler.PreVoteRequestHandlerTask;
 import com.hazelcast.raft.impl.handler.PreVoteResponseHandlerTask;
 import com.hazelcast.raft.impl.task.PreVoteTask;
+import com.hazelcast.raft.impl.task.QueryTask;
 import com.hazelcast.raft.impl.task.ReplicateTask;
 import com.hazelcast.raft.impl.handler.VoteRequestHandlerTask;
 import com.hazelcast.raft.impl.handler.VoteResponseHandlerTask;
@@ -371,6 +373,14 @@ public class RaftNode {
         return state;
     }
 
+    public Object runQueryOperation(RaftOperation operation) {
+        int commitIndex = state.commitIndex();
+        if (commitIndex == 0) {
+            return null;
+        }
+        return raftIntegration.runOperation(operation, commitIndex);
+    }
+
     public void execute(Runnable task) {
         raftIntegration.execute(task);
     }
@@ -530,6 +540,12 @@ public class RaftNode {
                                                         int groupMembersCommitIndex) {
         SimpleCompletableFuture resultFuture = raftIntegration.newCompletableFuture();
         raftIntegration.execute(new MembershipChangeTask(this, resultFuture, member, change, groupMembersCommitIndex));
+        return resultFuture;
+    }
+
+    public ICompletableFuture query(RaftOperation operation, QueryPolicy queryPolicy) {
+        SimpleCompletableFuture resultFuture = raftIntegration.newCompletableFuture();
+        raftIntegration.execute(new QueryTask(this, operation, queryPolicy, resultFuture));
         return resultFuture;
     }
 
