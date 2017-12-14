@@ -45,7 +45,7 @@ public class RaftInvocationManagerTest extends HazelcastRaftTestSupport {
     public void when_raftGroupIsCreated_then_raftOperationsAreExecutedOnNonCPNode() throws ExecutionException, InterruptedException {
         int cpNodeCount = 5;
         Address[] raftAddresses = createAddresses(cpNodeCount);
-        instances = newInstances(raftAddresses, cpNodeCount + 1);
+        instances = newInstances(raftAddresses, 3, 1);
 
         RaftInvocationManager invocationService = getRaftInvocationService(instances[instances.length - 1]);
         final RaftGroupId groupId = invocationService.createRaftGroup(RaftDataService.SERVICE_NAME, "test", cpNodeCount);
@@ -90,8 +90,8 @@ public class RaftInvocationManagerTest extends HazelcastRaftTestSupport {
     }
 
     @Override
-    protected Config createConfig(Address[] raftAddresses) {
-        Config config = super.createConfig(raftAddresses);
+    protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
+        Config config = super.createConfig(raftAddresses, metadataGroupSize);
 
         ServiceConfig raftTestServiceConfig = new ServiceConfig().setEnabled(true)
                 .setName(RaftDataService.SERVICE_NAME)

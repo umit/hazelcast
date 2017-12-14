@@ -1,16 +1,20 @@
 package com.hazelcast.raft.impl.service;
 
+import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.MembershipChangeType;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.MismatchingGroupMembersCommitIndexException;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
 import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.service.LeavingRaftEndpointContext.RaftGroupLeavingEndpointContext;
+import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteRemoveEndpointOperation;
+import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOperation;
+import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupIfMemberOperation;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.MembershipChangeReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
@@ -20,6 +24,7 @@ import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.operation.TerminateRaftGroupOp;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.OperationService;
 import com.hazelcast.util.function.Supplier;
 
 import java.util.Collection;
@@ -31,10 +36,11 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.raft.impl.service.RaftService.METADATA_GROUP_ID;
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * TODO: Javadoc Pending...
@@ -42,13 +48,14 @@ import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
  */
 public class RaftCleanupHandler {
 
-    static final long CLEANUP_TASK_PERIOD = 1000;
+    static final long CLEANUP_TASK_PERIOD_IN_MILLIS = SECONDS.toMillis(1);
+    private static final long CHECK_LOCAL_RAFT_NODES_TASK_PERIOD_IN_MILLIS = SECONDS.toMillis(10);
 
     private final NodeEngine nodeEngine;
     private final RaftService raftService;
     private final ILogger logger;
 
-    public RaftCleanupHandler(NodeEngine nodeEngine, RaftService raftService) {
+    RaftCleanupHandler(NodeEngine nodeEngine, RaftService raftService) {
         this.nodeEngine = nodeEngine;
         this.logger = nodeEngine.getLogger(getClass());
         this.raftService = raftService;
@@ -61,10 +68,12 @@ public class RaftCleanupHandler {
 
         ExecutionService executionService = nodeEngine.getExecutionService();
         // scheduleWithRepetition skips subsequent execution if one is already running.
-        executionService.scheduleWithRepetition(new GroupDestroyHandlerTask(),
-                CLEANUP_TASK_PERIOD, CLEANUP_TASK_PERIOD, TimeUnit.MILLISECONDS);
-        executionService.scheduleWithRepetition(new RemoveEndpointHandlerTask(),
-                CLEANUP_TASK_PERIOD, CLEANUP_TASK_PERIOD, TimeUnit.MILLISECONDS);
+        executionService.scheduleWithRepetition(new GroupDestroyHandlerTask(), CLEANUP_TASK_PERIOD_IN_MILLIS,
+                CLEANUP_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
+        executionService.scheduleWithRepetition(new RemoveEndpointHandlerTask(), CLEANUP_TASK_PERIOD_IN_MILLIS,
+                CLEANUP_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
+        executionService.scheduleWithRepetition(new CheckLocalRaftNodesTask(), CHECK_LOCAL_RAFT_NODES_TASK_PERIOD_IN_MILLIS,
+                CHECK_LOCAL_RAFT_NODES_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
     }
 
     private RaftEndpoint getLocalEndpoint() {
@@ -74,7 +83,49 @@ public class RaftCleanupHandler {
     private boolean shouldRunCleanupTask() {
         RaftNode raftNode = raftService.getRaftNode(RaftService.METADATA_GROUP_ID);
         // even if the local leader information is stale, it is fine.
-        return getLocalEndpoint().equals(raftNode.getLeader());
+        return raftNode != null && getLocalEndpoint().equals(raftNode.getLeader());
+    }
+
+    private class CheckLocalRaftNodesTask implements Runnable {
+
+        public void run() {
+            for (RaftNode raftNode : raftService.getAllRaftNodes()) {
+                final RaftGroupId groupId = raftNode.getGroupId();
+                if (groupId.equals(METADATA_GROUP_ID)) {
+                    continue;
+                }
+
+                if (raftNode.isTerminatedOrSteppedDown()) {
+                    raftService.destroyRaftNode(groupId);
+                    continue;
+                }
+
+                ICompletableFuture<RaftGroupInfo> f = invoke(new Supplier<RaftReplicateOperation>() {
+                    @Override
+                    public RaftReplicateOperation get() {
+                        return new DefaultRaftGroupReplicateOperation(METADATA_GROUP_ID,
+                                new GetRaftGroupIfMemberOperation(groupId, raftService.getLocalEndpoint()));
+                    }
+                });
+
+                f.andThen(new ExecutionCallback<RaftGroupInfo>() {
+                    @Override
+                    public void onResponse(RaftGroupInfo groupInfo) {
+                        if (groupInfo == null) {
+                            logger.severe("Could not find raft group for local raft node of " + groupId);
+                        } else if (groupInfo.status() == RaftGroupStatus.DESTROYED) {
+                            raftService.destroyRaftNode(groupId);
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Throwable t) {
+                        logger.warning("Could not get raft group info of " + groupId, t);
+                    }
+                });
+            }
+        }
+
     }
 
     private class GroupDestroyHandlerTask implements Runnable {
@@ -114,6 +165,17 @@ public class RaftCleanupHandler {
             }
 
             commitDestroyedRaftGroups(terminatedGroupIds);
+
+            for (RaftGroupId groupId : terminatedGroupIds) {
+                raftService.destroyRaftNode(groupId);
+            }
+
+            OperationService operationService = nodeEngine.getOperationService();
+            for (RaftEndpoint endpoint : raftService.getAllEndpoints()) {
+                if (!endpoint.equals(raftService.getLocalEndpoint())) {
+                    operationService.send(new DestroyRaftNodesOperation(terminatedGroupIds), endpoint.getAddress());
+                }
+            }
         }
 
         private boolean isTerminated(RaftGroupId groupId, Future<Object> future) {

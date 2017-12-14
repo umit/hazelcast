@@ -16,8 +16,6 @@ import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.util.UuidUtil;
 import org.junit.Before;
 
-import java.util.Arrays;
-
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static com.hazelcast.raft.impl.RaftUtil.getTerm;
 import static com.hazelcast.raft.impl.RaftUtil.waitUntilLeaderElected;
@@ -76,17 +74,17 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
     }
 
     protected HazelcastInstance[] newInstances(Address[] raftAddresses) {
-        return newInstances(raftAddresses, raftAddresses.length);
+        return newInstances(raftAddresses, raftAddresses.length, 0);
     }
 
-    protected HazelcastInstance[] newInstances(Address[] raftAddresses, int nodeCount) {
-        if (nodeCount < raftAddresses.length) {
-            throw new IllegalArgumentException("node count: " + nodeCount + " must be bigger than number of raft addresses: "
-                    + Arrays.toString(raftAddresses));
+    protected HazelcastInstance[] newInstances(Address[] raftAddresses, int metadataGroupSize, int nonCpNodeCount) {
+        if (nonCpNodeCount < 0) {
+            throw new IllegalArgumentException("non-cp node count: " + nonCpNodeCount + " must be non-negative");
         }
 
-        Config config = createConfig(raftAddresses);
+        Config config = createConfig(raftAddresses, metadataGroupSize);
 
+        int nodeCount = raftAddresses.length + nonCpNodeCount;
         HazelcastInstance[] instances = new HazelcastInstance[nodeCount];
         for (int i = 0; i < nodeCount; i++) {
             if (i < raftAddresses.length) {
@@ -101,7 +99,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         return instances;
     }
 
-    protected Config createConfig(Address[] raftAddresses) {
+    protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
         int count = raftAddresses.length;
         RaftMember[] raftMembers = new RaftMember[count];
         for (int i = 0; i < count; i++) {
@@ -114,9 +112,9 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         Config config = new Config();
         configureSplitBrainDelay(config);
 
-        RaftConfig raftConfig = new RaftConfig().setMembers(asList(raftMembers));
+        RaftConfig raftConfig = new RaftConfig().setMembers(asList(raftMembers)).setMetadataGroupSize(metadataGroupSize);
         ServiceConfig raftServiceConfig = new ServiceConfig().setEnabled(true).setName(RaftService.SERVICE_NAME)
-                .setClassName(RaftService.class.getName()).setConfigObject(raftConfig);
+                                                             .setClassName(RaftService.class.getName()).setConfigObject(raftConfig);
         config.getServicesConfig().addServiceConfig(raftServiceConfig);
 
         return config;

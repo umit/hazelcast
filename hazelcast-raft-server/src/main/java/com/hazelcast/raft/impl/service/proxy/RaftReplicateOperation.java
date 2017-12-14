@@ -41,13 +41,13 @@ public abstract class RaftReplicateOperation extends Operation
     @Override
     public final void run() {
         RaftService service = getService();
-        RaftNode raftNode = service.getRaftNode(raftGroupId);
+        RaftNode raftNode = service.getOrInitRaftNode(raftGroupId);
         if (raftNode == null) {
             RaftGroupInfo raftGroupInfo = service.getRaftGroupInfo(raftGroupId);
             if (raftGroupInfo != null && raftGroupInfo.status() == RaftGroupStatus.DESTROYED) {
                 sendResponse(new RaftGroupTerminatedException());
             } else {
-                sendResponse(new NotLeaderException(service.getLocalEndpoint(), null));
+                sendResponse(new NotLeaderException(raftGroupId, service.getLocalEndpoint(), null));
             }
             return;
         }

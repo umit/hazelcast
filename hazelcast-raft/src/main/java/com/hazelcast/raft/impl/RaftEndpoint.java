@@ -9,9 +9,8 @@ import com.hazelcast.util.AddressUtil;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * TODO: Javadoc Pending...
@@ -19,8 +18,8 @@ import java.util.Set;
  */
 public class RaftEndpoint implements IdentifiedDataSerializable {
 
-    public static Collection<RaftEndpoint> parseEndpoints(Collection<RaftMember> members) throws UnknownHostException {
-        Set<RaftEndpoint> endpoints = new HashSet<RaftEndpoint>(members.size());
+    public static List<RaftEndpoint> parseEndpoints(List<RaftMember> members) throws UnknownHostException {
+        List<RaftEndpoint> endpoints = new ArrayList<RaftEndpoint>(members.size());
         for (RaftMember member : members) {
             AddressUtil.AddressHolder addressHolder = AddressUtil.getAddressHolder(member.getAddress());
             Address address = new Address(addressHolder.getAddress(), addressHolder.getPort());

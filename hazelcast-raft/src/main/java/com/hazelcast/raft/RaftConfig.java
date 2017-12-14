@@ -1,7 +1,7 @@
 package com.hazelcast.raft;
 
-import java.util.Collection;
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 
 import static com.hazelcast.util.Preconditions.checkPositive;
 import static com.hazelcast.util.Preconditions.checkTrue;
@@ -39,7 +39,9 @@ public class RaftConfig {
     // See https://groups.google.com/forum/#!msg/raft-dev/t4xj6dJTP6E/d2D9LrWRza8J
     private boolean appendNopEntryOnLeaderElection;
 
-    private final Collection<RaftMember> members = new HashSet<RaftMember>();
+    private final List<RaftMember> members = new ArrayList<RaftMember>();
+
+    private int metadataGroupSize;
 
     public RaftConfig() {
     }
@@ -55,6 +57,7 @@ public class RaftConfig {
         for (RaftMember member : config.members) {
             this.members.add(new RaftMember(member));
         }
+        this.metadataGroupSize = config.metadataGroupSize;
     }
 
     public long getLeaderElectionTimeoutInMillis() {
@@ -130,21 +133,37 @@ public class RaftConfig {
         return this;
     }
 
-    public Collection<RaftMember> getMembers() {
+    public List<RaftMember> getMembers() {
         return members;
     }
 
-    public RaftConfig setMembers(Collection<RaftMember> members) {
-        checkTrue(members.size() > 1, "Raft groups must have at least 2 members");
+    public RaftConfig setMembers(List<RaftMember> m) {
+        checkTrue(m.size() > 1, "Raft groups must have at least 2 members");
 
-        this.members.clear();
-        this.members.addAll(members);
+        members.clear();
+        for (RaftMember member : m) {
+            if (!members.contains(member)) {
+                members.add(member);
+            }
+        }
         return this;
     }
 
-    public RaftConfig addMember(RaftMember member) {
-        members.add(member);
+    public int getMetadataGroupSize() {
+        return metadataGroupSize;
+    }
+
+    public RaftConfig setMetadataGroupSize(int metadataGroupSize) {
+        checkTrue(metadataGroupSize >= 2, "The metadata group must have at least 2 members");
+        checkTrue(metadataGroupSize <= members.size(),
+                "The metadata group cannot be bigger than the number of raft members");
+        this.metadataGroupSize = metadataGroupSize;
+
         return this;
     }
 
+    public List<RaftMember> getMetadataGroupMembers() {
+        checkTrue(metadataGroupSize > 0, "metadata group size is not set");
+        return members.subList(0, metadataGroupSize);
+    }
 }

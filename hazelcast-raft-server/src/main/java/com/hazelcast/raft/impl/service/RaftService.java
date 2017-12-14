@@ -1,12 +1,12 @@
 package com.hazelcast.raft.impl.service;
 
+import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftConfig;
-import com.hazelcast.raft.SnapshotAwareService;
-import com.hazelcast.raft.impl.ForceSetRaftNodeStatusRunnable;
-import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.SnapshotAwareService;
+import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
@@ -20,6 +20,8 @@ import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.exception.CannotRemoveEndpointException;
+import com.hazelcast.raft.impl.service.operation.metadata.CheckRemovedEndpointOperation;
+import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupIfMemberOperation;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveEndpointOperation;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
@@ -31,14 +33,17 @@ import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.function.Supplier;
 
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import static com.hazelcast.raft.impl.service.RaftCleanupHandler.CLEANUP_TASK_PERIOD;
+import static com.hazelcast.raft.impl.service.RaftCleanupHandler.CLEANUP_TASK_PERIOD_IN_MILLIS;
+import static java.util.Collections.newSetFromMap;
 
 /**
  * TODO: Javadoc Pending...
@@ -49,11 +54,14 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     public static final String SERVICE_NAME = "hz:core:raft";
     public static final RaftGroupId METADATA_GROUP_ID = RaftMetadataManager.METADATA_GROUP_ID;
 
-    private final Map<RaftGroupId, RaftNode> nodes = new ConcurrentHashMap<RaftGroupId, RaftNode>();
+    private final ConcurrentMap<RaftGroupId, RaftNode> nodes = new ConcurrentHashMap<RaftGroupId, RaftNode>();
     private final NodeEngineImpl nodeEngine;
     private final ILogger logger;
-    private final RaftCleanupHandler cleanupHandler;
 
+    private final Set<RaftGroupId> getRaftGroupTokens = newSetFromMap(new ConcurrentHashMap<RaftGroupId, Boolean>());
+    private final Set<RaftGroupId> destroyedGroupIds = newSetFromMap(new ConcurrentHashMap<RaftGroupId, Boolean>());
+
+    private volatile RaftCleanupHandler cleanupHandler;
     private volatile RaftInvocationManager invocationManager;
     private volatile RaftMetadataManager metadataManager;
 
@@ -62,7 +70,6 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     public RaftService(NodeEngine nodeEngine) {
         this.nodeEngine = (NodeEngineImpl) nodeEngine;
         this.logger = nodeEngine.getLogger(getClass());
-        cleanupHandler = new RaftCleanupHandler(nodeEngine, this);
     }
 
     @Override
@@ -73,6 +80,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
+        cleanupHandler = new RaftCleanupHandler(nodeEngine, this);
         metadataManager = new RaftMetadataManager(nodeEngine, this, config);
         invocationManager = new RaftInvocationManager(nodeEngine, this, config);
 
@@ -124,13 +132,14 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
                 return true;
             }
             try {
-                Thread.sleep(CLEANUP_TASK_PERIOD);
+                Thread.sleep(CLEANUP_TASK_PERIOD_IN_MILLIS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return false;
             }
-            remainingTimeNanos -= CLEANUP_TASK_PERIOD;
+            remainingTimeNanos -= CLEANUP_TASK_PERIOD_IN_MILLIS;
         }
+
         return false;
     }
 
@@ -164,7 +173,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     }
 
     public void handlePreVoteRequest(RaftGroupId groupId, PreVoteRequest request) {
-        RaftNode node = nodes.get(groupId);
+        RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
             return;
@@ -173,7 +182,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     }
 
     public void handlePreVoteResponse(RaftGroupId groupId, PreVoteResponse response) {
-        RaftNode node = nodes.get(groupId);
+        RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
             return;
@@ -182,7 +191,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     }
 
     public void handleVoteRequest(RaftGroupId groupId, VoteRequest request) {
-        RaftNode node = nodes.get(groupId);
+        RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
             return;
@@ -191,7 +200,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     }
 
     public void handleVoteResponse(RaftGroupId groupId, VoteResponse response) {
-        RaftNode node = nodes.get(groupId);
+        RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
             return;
@@ -200,7 +209,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     }
 
     public void handleAppendEntries(RaftGroupId groupId, AppendRequest request) {
-        RaftNode node = nodes.get(groupId);
+        RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
             return;
@@ -209,7 +218,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     }
 
     public void handleAppendResponse(RaftGroupId groupId, AppendSuccessResponse response) {
-        RaftNode node = nodes.get(groupId);
+        RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
             return;
@@ -218,7 +227,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     }
 
     public void handleAppendResponse(RaftGroupId groupId, AppendFailureResponse response) {
-        RaftNode node = nodes.get(groupId);
+        RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
             return;
@@ -227,7 +236,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     }
 
     public void handleSnapshot(RaftGroupId groupId, InstallSnapshot request) {
-        RaftNode node = nodes.get(groupId);
+        RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
             return;
@@ -235,8 +244,51 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         node.handleInstallSnapshot(request);
     }
 
-    public RaftNode getRaftNode(RaftGroupId groupId) {
+    public Collection<RaftNode> getAllRaftNodes() {
+        return new ArrayList<RaftNode>(nodes.values());
+    }
+
+    public RaftNode getRaftNode(final RaftGroupId groupId) {
         return nodes.get(groupId);
+    }
+
+    public RaftNode getOrInitRaftNode(final RaftGroupId groupId) {
+        RaftNode node = nodes.get(groupId);
+        if (node == null && !destroyedGroupIds.contains(groupId)) {
+            if (getRaftGroupTokens.add(groupId)) {
+                logger.fine("There is no RaftNode for " + groupId + ". Asking to the metadata group...");
+                ICompletableFuture<RaftGroupInfo> f = invocationManager.invoke(new Supplier<RaftReplicateOperation>() {
+                    @Override
+                    public RaftReplicateOperation get() {
+                        return new DefaultRaftGroupReplicateOperation(METADATA_GROUP_ID,
+                                new GetRaftGroupIfMemberOperation(groupId, getLocalEndpoint()));
+                    }
+                });
+                f.andThen(new ExecutionCallback<RaftGroupInfo>() {
+                    @Override
+                    public void onResponse(RaftGroupInfo groupInfo) {
+                        if (groupInfo != null) {
+                            if (groupInfo.status() != RaftGroupStatus.DESTROYED) {
+                                createRaftNode(groupInfo.id(), groupInfo.serviceName(), groupInfo.members());
+                            } else {
+                                destroyRaftNode(groupId);
+                            }
+                        }
+
+                        // TODO [basri] If we are not in the group, we should not hit the metadata for a while if asked again
+                        getRaftGroupTokens.remove(groupId);
+                    }
+
+                    @Override
+                    public void onFailure(Throwable t) {
+                        logger.severe("Cannot get raft group: " + groupId + " from the metadata group", t);
+                        getRaftGroupTokens.remove(groupId);
+                    }
+                });
+            }
+        }
+
+        return node;
     }
 
     public RaftGroupInfo getRaftGroupInfo(RaftGroupId id) {
@@ -255,28 +307,52 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         return metadataManager.getLocalEndpoint();
     }
 
-    void createRaftNode(RaftGroupInfo groupInfo) {
-        RaftGroupId groupId = groupInfo.id();
-        assert nodes.get(groupId) == null : "Raft node with name " + groupId.name() + " should not exist!";
+    void createRaftNode(RaftGroupId groupId, String serviceName, Collection<RaftEndpoint> endpoints) {
+        if (nodes.containsKey(groupId)) {
+            logger.info("Not creating RaftNode for " + groupId + " since it is already created...");
+            return;
+        }
+
+        if (destroyedGroupIds.contains(groupId)) {
+            logger.warning("Not creating RaftNode for " + groupId + " since it is already destroyed");
+            return;
+        }
 
         RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, groupId);
-        RaftNode node = new RaftNode(groupInfo.serviceName(), groupId, metadataManager.getLocalEndpoint(),
-                groupInfo.members(), config, raftIntegration);
-        nodes.put(groupId, node);
-        node.start();
+        RaftNode node = new RaftNode(serviceName, groupId, getLocalEndpoint(), endpoints, config, raftIntegration);
+
+        if (nodes.putIfAbsent(groupId, node) == null) {
+            if (destroyedGroupIds.contains(groupId)) {
+                setTerminatedRaftStatus(node);
+                logger.warning("Not creating RaftNode for " + groupId + " since it is already destroyed");
+                return;
+            }
+
+            // TODO [basri] what if node.execute() is called somewhere else before the start() call here?
+            node.start();
+            logger.severe("RaftNode created for: " + groupId + " with members: " + endpoints);
+        }
     }
 
-    void destroyRaftNode(RaftGroupInfo groupInfo) {
-        if (groupInfo.status() != RaftGroupStatus.DESTROYED) {
-            throw new IllegalStateException(groupInfo + " must be " + RaftGroupStatus.DESTROYED);
-        }
-        RaftNode raftNode = nodes.remove(groupInfo.id());
+    public void destroyRaftNode(RaftGroupId groupId) {
+        destroyedGroupIds.add(groupId);
+        final RaftNode raftNode = nodes.remove(groupId);
         if (raftNode != null) {
-            raftNode.execute(new ForceSetRaftNodeStatusRunnable(raftNode, RaftNodeStatus.TERMINATED));
-            logger.info("Local raft node of " + groupInfo + " is destroyed.");
+            setTerminatedRaftStatus(raftNode);
+            logger.severe("Local raft node of " + groupId + " is destroyed.");
         }
     }
 
+    private void setTerminatedRaftStatus(final RaftNode raftNode) {
+        raftNode.execute(new Runnable() {
+            @Override
+            public void run() {
+                if (!raftNode.isTerminatedOrSteppedDown()) {
+                    raftNode.setStatus(RaftNodeStatus.TERMINATED);
+                }
+            }
+        });
+    }
 
     private ICompletableFuture<RaftGroupId> triggerRemoveEndpointAsync(final RaftEndpoint endpoint) {
         return invocationManager.invoke(new Supplier<RaftReplicateOperation>() {
@@ -287,16 +363,17 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         });
     }
 
-    public boolean isActive(RaftEndpoint endpoint) {
-        LeavingRaftEndpointContext leavingEndpointContext = metadataManager.getLeavingEndpointContext();
-        if (leavingEndpointContext != null && leavingEndpointContext.getEndpoint().equals(endpoint)) {
-            return false;
+    private boolean isRemoved(final RaftEndpoint endpoint) {
+        ICompletableFuture<Boolean> f = invocationManager.invoke(new Supplier<RaftReplicateOperation>() {
+            @Override
+            public RaftReplicateOperation get() {
+                return new DefaultRaftGroupReplicateOperation(METADATA_GROUP_ID, new CheckRemovedEndpointOperation(endpoint));
+            }
+        });
+        try {
+            return f.get();
+        } catch (Exception e) {
+            throw ExceptionUtil.rethrow(e);
         }
-
-        return !metadataManager.isRemoved(endpoint);
-    }
-
-    public boolean isRemoved(RaftEndpoint endpoint) {
-        return metadataManager.isRemoved(endpoint);
     }
 }
