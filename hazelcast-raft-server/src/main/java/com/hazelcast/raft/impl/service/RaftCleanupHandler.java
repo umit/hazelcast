@@ -16,8 +16,8 @@ import com.hazelcast.raft.impl.service.operation.metadata.CompleteRemoveEndpoint
 import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupIfMemberOp;
 import com.hazelcast.raft.impl.service.proxy.ChangeRaftGroupMembershipOperation;
-import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupOperation;
-import com.hazelcast.raft.impl.service.proxy.RaftGroupOperation;
+import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOperation;
+import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
 import com.hazelcast.raft.impl.util.Pair;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.raft.operation.TerminateRaftGroupOp;
@@ -99,10 +99,10 @@ public class RaftCleanupHandler {
                     continue;
                 }
 
-                ICompletableFuture<RaftGroupInfo> f = invoke(new Supplier<RaftGroupOperation>() {
+                ICompletableFuture<RaftGroupInfo> f = invoke(new Supplier<RaftReplicateOperation>() {
                     @Override
-                    public RaftGroupOperation get() {
-                        return new DefaultRaftGroupOperation(METADATA_GROUP_ID,
+                    public RaftReplicateOperation get() {
+                        return new DefaultRaftReplicateOperation(METADATA_GROUP_ID,
                                 new GetRaftGroupIfMemberOp(groupId, raftService.getLocalEndpoint()));
                     }
                 });
@@ -143,10 +143,10 @@ public class RaftCleanupHandler {
 
             Map<RaftGroupId, Future<Object>> futures = new HashMap<RaftGroupId, Future<Object>>();
             for (final RaftGroupId groupId : destroyingRaftGroupIds) {
-                Future<Object> future = invoke(new Supplier<RaftGroupOperation>() {
+                Future<Object> future = invoke(new Supplier<RaftReplicateOperation>() {
                     @Override
-                    public RaftGroupOperation get() {
-                        return new DefaultRaftGroupOperation(groupId, new TerminateRaftGroupOp());
+                    public RaftReplicateOperation get() {
+                        return new DefaultRaftReplicateOperation(groupId, new TerminateRaftGroupOp());
                     }
                 });
                 futures.put(groupId, future);
@@ -196,10 +196,10 @@ public class RaftCleanupHandler {
         }
 
         private void commitDestroyedRaftGroups(final Set<RaftGroupId> destroyedGroupIds) {
-            Future<Collection<RaftGroupId>> f = invoke(new Supplier<RaftGroupOperation>() {
+            Future<Collection<RaftGroupId>> f = invoke(new Supplier<RaftReplicateOperation>() {
                 @Override
-                public RaftGroupOperation get() {
-                    return new DefaultRaftGroupOperation(METADATA_GROUP_ID, new CompleteDestroyRaftGroupsOp(destroyedGroupIds));
+                public RaftReplicateOperation get() {
+                    return new DefaultRaftReplicateOperation(METADATA_GROUP_ID, new CompleteDestroyRaftGroupsOp(destroyedGroupIds));
                 }
             });
 
@@ -253,9 +253,9 @@ public class RaftCleanupHandler {
 
                 logger.severe("Substituting " + leavingEndpoint + " with " + ctx.getSubstitute() + " in " + groupId);
 
-                ICompletableFuture<Integer> future = invoke(new Supplier<RaftGroupOperation>() {
+                ICompletableFuture<Integer> future = invoke(new Supplier<RaftReplicateOperation>() {
                     @Override
-                    public RaftGroupOperation get() {
+                    public RaftReplicateOperation get() {
                         return new ChangeRaftGroupMembershipOperation(groupId, ctx.getMembersCommitIndex(), ctx.getSubstitute(),
                                 MembershipChangeType.ADD);
                     }
@@ -271,9 +271,9 @@ public class RaftCleanupHandler {
                 if (idx != NA_MEMBERS_COMMIT_INDEX) {
                     logger.info(ctx.getSubstitute() + " is added to " + groupId + " for " + leavingEndpoint
                             + " with new members commit index: " + idx);
-                    ICompletableFuture<Integer> future = invoke(new Supplier<RaftGroupOperation>() {
+                    ICompletableFuture<Integer> future = invoke(new Supplier<RaftReplicateOperation>() {
                         @Override
-                        public RaftGroupOperation get() {
+                        public RaftReplicateOperation get() {
                             return new ChangeRaftGroupMembershipOperation(groupId, idx, leavingEndpoint,
                                     MembershipChangeType.REMOVE);
                         }
@@ -399,10 +399,10 @@ public class RaftCleanupHandler {
 
         private void completeRemoveOnMetadata(final RaftEndpoint endpoint,
                                               final Map<RaftGroupId, Pair<Integer, Integer>> leftGroups) {
-            ICompletableFuture<Object> future = invoke(new Supplier<RaftGroupOperation>() {
+            ICompletableFuture<Object> future = invoke(new Supplier<RaftReplicateOperation>() {
                 @Override
-                public RaftGroupOperation get() {
-                    return new DefaultRaftGroupOperation(METADATA_GROUP_ID, new CompleteRemoveEndpointOp(endpoint, leftGroups));
+                public RaftReplicateOperation get() {
+                    return new DefaultRaftReplicateOperation(METADATA_GROUP_ID, new CompleteRemoveEndpointOp(endpoint, leftGroups));
                 }
             });
 
@@ -415,9 +415,9 @@ public class RaftCleanupHandler {
         }
 
         private void removeFromMetadataGroup(final RaftEndpoint endpoint) {
-            ICompletableFuture<Object> future = invoke(new Supplier<RaftGroupOperation>() {
+            ICompletableFuture<Object> future = invoke(new Supplier<RaftReplicateOperation>() {
                 @Override
-                public RaftGroupOperation get() {
+                public RaftReplicateOperation get() {
                     return new ChangeRaftGroupMembershipOperation(METADATA_GROUP_ID, endpoint, MembershipChangeType.REMOVE);
                 }
             });
@@ -432,7 +432,7 @@ public class RaftCleanupHandler {
 
     }
 
-    private <T> ICompletableFuture<T> invoke(Supplier<RaftGroupOperation> supplier) {
+    private <T> ICompletableFuture<T> invoke(Supplier<RaftReplicateOperation> supplier) {
         RaftInvocationManager invocationManager = raftService.getInvocationManager();
         return invocationManager.invoke(supplier);
     }

@@ -23,8 +23,8 @@ import com.hazelcast.raft.impl.service.exception.CannotRemoveEndpointException;
 import com.hazelcast.raft.impl.service.operation.metadata.CheckRemovedEndpointOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupIfMemberOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveEndpointOp;
-import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupOperation;
-import com.hazelcast.raft.impl.service.proxy.RaftGroupOperation;
+import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOperation;
+import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
 import com.hazelcast.spi.ConfigurableService;
 import com.hazelcast.spi.GracefulShutdownAwareService;
 import com.hazelcast.spi.ManagedService;
@@ -257,10 +257,10 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         if (node == null && !destroyedGroupIds.contains(groupId)) {
             if (getRaftGroupTokens.add(groupId)) {
                 logger.fine("There is no RaftNode for " + groupId + ". Asking to the metadata group...");
-                ICompletableFuture<RaftGroupInfo> f = invocationManager.invoke(new Supplier<RaftGroupOperation>() {
+                ICompletableFuture<RaftGroupInfo> f = invocationManager.invoke(new Supplier<RaftReplicateOperation>() {
                     @Override
-                    public RaftGroupOperation get() {
-                        return new DefaultRaftGroupOperation(METADATA_GROUP_ID,
+                    public RaftReplicateOperation get() {
+                        return new DefaultRaftReplicateOperation(METADATA_GROUP_ID,
                                 new GetRaftGroupIfMemberOp(groupId, getLocalEndpoint()));
                     }
                 });
@@ -355,19 +355,19 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     }
 
     private ICompletableFuture<RaftGroupId> triggerRemoveEndpointAsync(final RaftEndpoint endpoint) {
-        return invocationManager.invoke(new Supplier<RaftGroupOperation>() {
+        return invocationManager.invoke(new Supplier<RaftReplicateOperation>() {
             @Override
-            public RaftGroupOperation get() {
-                return new DefaultRaftGroupOperation(METADATA_GROUP_ID, new TriggerRemoveEndpointOp(endpoint));
+            public RaftReplicateOperation get() {
+                return new DefaultRaftReplicateOperation(METADATA_GROUP_ID, new TriggerRemoveEndpointOp(endpoint));
             }
         });
     }
 
     private boolean isRemoved(final RaftEndpoint endpoint) {
-        ICompletableFuture<Boolean> f = invocationManager.invoke(new Supplier<RaftGroupOperation>() {
+        ICompletableFuture<Boolean> f = invocationManager.invoke(new Supplier<RaftReplicateOperation>() {
             @Override
-            public RaftGroupOperation get() {
-                return new DefaultRaftGroupOperation(METADATA_GROUP_ID, new CheckRemovedEndpointOp(endpoint));
+            public RaftReplicateOperation get() {
+                return new DefaultRaftReplicateOperation(METADATA_GROUP_ID, new CheckRemovedEndpointOp(endpoint));
             }
         });
         try {
