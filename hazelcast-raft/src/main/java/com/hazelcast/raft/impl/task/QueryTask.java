@@ -48,6 +48,9 @@ public class QueryTask implements Runnable {
             case ANY_LOCAL:
                 handleAnyLocalRead();
                 break;
+            case LINEARIZABLE:
+                new ReplicateTask(raftNode, operation, resultFuture).run();
+                break;
             default:
                 resultFuture.setResult(new IllegalArgumentException("Invalid query policy: " + queryPolicy));
         }
@@ -73,8 +76,7 @@ public class QueryTask implements Runnable {
 
         // TODO: We can reject the query, if follower have not received any heartbeat recently
 
-        Object result = raftNode.runQueryOperation(operation);
-        resultFuture.setResult(result);
+        raftNode.runQueryOperation(operation, resultFuture);
     }
 
     private boolean verifyOperation() {

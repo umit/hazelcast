@@ -7,6 +7,7 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.exception.CannotRunLocalQueryException;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.RaftException;
@@ -336,7 +337,7 @@ public class RaftInvocationManager {
 
     private class RaftQueryInvocationFuture<T> extends AbstractRaftInvocationFuture<T, RaftQueryOperation> {
 
-        private final QueryPolicy queryPolicy;
+        private volatile QueryPolicy queryPolicy;
 
         RaftQueryInvocationFuture(Supplier<RaftQueryOperation> operationSupplier, QueryPolicy queryPolicy) {
             super(operationSupplier);
@@ -353,6 +354,16 @@ public class RaftInvocationManager {
         @Override
         RaftGroupId getGroupId(RaftQueryOperation op) {
             return op.getRaftGroupId();
+        }
+
+        @Override
+        boolean isRetryable(Throwable cause) {
+            if (cause instanceof CannotRunLocalQueryException) {
+                queryPolicy = QueryPolicy.LINEARIZABLE;
+                return true;
+            }
+
+            return super.isRetryable(cause);
         }
     }
 }

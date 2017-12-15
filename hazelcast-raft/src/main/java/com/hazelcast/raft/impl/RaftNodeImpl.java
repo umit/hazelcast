@@ -8,6 +8,7 @@ import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.RaftNode;
 import com.hazelcast.raft.RaftNodeStatus;
+import com.hazelcast.raft.exception.CannotRunLocalQueryException;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.StaleAppendRequestException;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
@@ -468,12 +469,11 @@ public class RaftNodeImpl implements RaftNode {
         return state;
     }
 
-    public Object runQueryOperation(RaftOperation operation) {
+    public void runQueryOperation(RaftOperation operation, SimpleCompletableFuture resultFuture) {
         int commitIndex = state.commitIndex();
-        if (commitIndex == 0) {
-            return null;
-        }
-        return raftIntegration.runOperation(operation, commitIndex);
+        Object result = (commitIndex > 0) ? raftIntegration.runOperation(operation, commitIndex)
+                : new CannotRunLocalQueryException(state.leader());
+        resultFuture.setResult(result);
     }
 
     public void execute(Runnable task) {

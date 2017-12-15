@@ -2,6 +2,7 @@ package com.hazelcast.raft.impl;
 
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftConfig;
+import com.hazelcast.raft.exception.CannotRunLocalQueryException;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.service.RaftTestApplyOperation;
@@ -24,7 +25,6 @@ import static com.hazelcast.raft.impl.RaftUtil.newGroupWithService;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
@@ -43,37 +43,25 @@ public class LocalQueryTest extends HazelcastTestSupport {
         }
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void when_queryWithInvalidPolicy_thenFail() throws Exception {
+    @Test(expected = CannotRunLocalQueryException.class)
+    public void when_queryFromLeader_withoutAnyCommit_thenFail() throws Exception {
         group = newGroupWithService(3, new RaftConfig());
         group.start();
 
         RaftNodeImpl leader = group.waitUntilLeaderElected();
 
-        leader.query(new RaftTestQueryOperation(), QueryPolicy.LINEARIZABLE).get();
+        leader.query(new RaftTestQueryOperation(), QueryPolicy.LEADER_LOCAL).get();
     }
 
-    @Test
-    public void when_queryFromLeader_withoutAnyCommit_thenReadNull() throws Exception {
-        group = newGroupWithService(3, new RaftConfig());
-        group.start();
-
-        RaftNodeImpl leader = group.waitUntilLeaderElected();
-
-        Object result = leader.query(new RaftTestQueryOperation(), QueryPolicy.LEADER_LOCAL).get();
-        assertNull(result);
-    }
-
-    @Test
-    public void when_queryFromFollower_withoutAnyCommit_thenReadNull() throws Exception {
+    @Test(expected = CannotRunLocalQueryException.class)
+    public void when_queryFromFollower_withoutAnyCommit_thenFail() throws Exception {
         group = newGroupWithService(3, new RaftConfig());
         group.start();
 
         group.waitUntilLeaderElected();
         RaftNodeImpl follower = group.getAnyFollowerNode();
 
-        Object result = follower.query(new RaftTestQueryOperation(), QueryPolicy.ANY_LOCAL).get();
-        assertNull(result);
+        follower.query(new RaftTestQueryOperation(), QueryPolicy.ANY_LOCAL).get();
     }
 
     @Test
