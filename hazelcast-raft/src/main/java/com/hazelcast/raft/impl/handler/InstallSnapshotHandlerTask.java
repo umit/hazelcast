@@ -1,6 +1,6 @@
 package com.hazelcast.raft.impl.handler;
 
-import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
@@ -13,7 +13,7 @@ public class InstallSnapshotHandlerTask extends RaftNodeAwareTask implements Run
 
     private final InstallSnapshot req;
 
-    public InstallSnapshotHandlerTask(RaftNode raftNode, InstallSnapshot req) {
+    public InstallSnapshotHandlerTask(RaftNodeImpl raftNode, InstallSnapshot req) {
         super(raftNode);
         this.req = req;
     }

@@ -4,9 +4,9 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.MembershipChangeType;
-import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.RaftNode;
+import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.operation.RaftOperation;
 
