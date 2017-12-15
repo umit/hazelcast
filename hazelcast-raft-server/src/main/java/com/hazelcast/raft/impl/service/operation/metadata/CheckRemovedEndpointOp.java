@@ -10,8 +10,7 @@ import com.hazelcast.raft.operation.RaftOperation;
 
 import java.io.IOException;
 
-public class CheckRemovedEndpointOp
-        extends RaftOperation implements IdentifiedDataSerializable {
+public class CheckRemovedEndpointOp extends RaftOperation implements IdentifiedDataSerializable {
 
     private RaftEndpoint endpoint;
 

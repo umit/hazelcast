@@ -11,8 +11,7 @@ import com.hazelcast.raft.operation.RaftOperation;
 
 import java.io.IOException;
 
-public class TriggerRemoveEndpointOp
-        extends RaftOperation implements IdentifiedDataSerializable {
+public class TriggerRemoveEndpointOp extends RaftOperation implements IdentifiedDataSerializable {
 
     private RaftEndpoint endpoint;
 

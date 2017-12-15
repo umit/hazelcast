@@ -3,13 +3,13 @@ package com.hazelcast.raft.impl.service;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.RaftEndpoint;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import static com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus.ACTIVE;
@@ -44,7 +44,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
         this.id = id;
         this.serviceName = serviceName;
         this.status = ACTIVE;
-        this.members = Collections.unmodifiableSet(new HashSet<RaftEndpoint>(endpoints));
+        this.members = Collections.unmodifiableSet(new LinkedHashSet<RaftEndpoint>(endpoints));
         this.membersArray = endpoints.toArray(new RaftEndpoint[0]);
     }
 
@@ -110,11 +110,13 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
             return false;
         }
 
-        Set<RaftEndpoint> set = new HashSet<RaftEndpoint>(members);
+        Set<RaftEndpoint> set = new LinkedHashSet<RaftEndpoint>(members);
         boolean removed = set.remove(leaving);
         assert removed : leaving + " is not member of " + toString();
-        boolean added = set.add(joining);
-        assert added : joining + " is already member of " + toString();
+        if (joining != null) {
+            boolean added = set.add(joining);
+            assert added : joining + " is already member of " + toString();
+        }
 
         members = Collections.unmodifiableSet(set);
         membersCommitIndex = newMembersCommitIndex;
@@ -141,7 +143,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     public void readData(ObjectDataInput in) throws IOException {
         id = in.readObject();
         int len = in.readInt();
-        members = new HashSet<RaftEndpoint>(len);
+        members = new LinkedHashSet<RaftEndpoint>(len);
         for (int i = 0; i < len; i++) {
             RaftEndpoint endpoint = in.readObject();
             members.add(endpoint);

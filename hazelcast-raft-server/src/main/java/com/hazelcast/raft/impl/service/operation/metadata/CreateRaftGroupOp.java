@@ -17,8 +17,7 @@ import java.util.Collection;
  * TODO: Javadoc Pending...
  *
  */
-public class CreateRaftGroupOp
-        extends RaftOperation implements IdentifiedDataSerializable {
+public class CreateRaftGroupOp extends RaftOperation implements IdentifiedDataSerializable {
 
     private String serviceName;
     private String name;

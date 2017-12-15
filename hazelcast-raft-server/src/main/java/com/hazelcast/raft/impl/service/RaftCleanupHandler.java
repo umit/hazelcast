@@ -4,6 +4,7 @@ import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.MembershipChangeType;
+import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.RaftNode;
 import com.hazelcast.raft.RaftNodeStatus;
@@ -15,9 +16,13 @@ import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteRemoveEndpointOp;
 import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOp;
-import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupIfMemberOp;
+import com.hazelcast.raft.impl.service.operation.metadata.GetDestroyingRaftGroupIds;
+import com.hazelcast.raft.impl.service.operation.metadata.GetLeavingEndpointContextOp;
+import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
 import com.hazelcast.raft.impl.service.proxy.ChangeRaftGroupMembershipOperation;
+import com.hazelcast.raft.impl.service.proxy.DefaultRaftQueryOperation;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOperation;
+import com.hazelcast.raft.impl.service.proxy.RaftQueryOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
 import com.hazelcast.raft.impl.util.Pair;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
@@ -28,6 +33,7 @@ import com.hazelcast.spi.OperationService;
 import com.hazelcast.util.function.Supplier;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -100,11 +106,11 @@ public class RaftCleanupHandler {
                     continue;
                 }
 
-                ICompletableFuture<RaftGroupInfo> f = invoke(new Supplier<RaftReplicateOperation>() {
+                ICompletableFuture<RaftGroupInfo> f = query(new Supplier<RaftQueryOperation>() {
                     @Override
-                    public RaftReplicateOperation get() {
-                        return new DefaultRaftReplicateOperation(METADATA_GROUP_ID,
-                                new GetRaftGroupIfMemberOp(groupId, raftService.getLocalEndpoint()));
+                    public RaftQueryOperation get() {
+                        return new DefaultRaftQueryOperation(METADATA_GROUP_ID,
+                                new GetRaftGroupOp(groupId));
                     }
                 });
 
@@ -136,8 +142,7 @@ public class RaftCleanupHandler {
                 return;
             }
 
-            // we are reading the destroying group ids locally, since we know they are committed.
-            Collection<RaftGroupId> destroyingRaftGroupIds = raftService.getMetadataManager().getDestroyingRaftGroupIds();
+            Collection<RaftGroupId> destroyingRaftGroupIds = getDestroyingRaftGroupIds();
             if (destroyingRaftGroupIds.isEmpty()) {
                 return;
             }
@@ -175,6 +180,22 @@ public class RaftCleanupHandler {
                 if (!endpoint.equals(raftService.getLocalEndpoint())) {
                     operationService.send(new DestroyRaftNodesOp(terminatedGroupIds), endpoint.getAddress());
                 }
+            }
+        }
+
+        private Collection<RaftGroupId> getDestroyingRaftGroupIds() {
+            Future<Collection<RaftGroupId>> f = query(new Supplier<RaftQueryOperation>() {
+                @Override
+                public RaftQueryOperation get() {
+                    return new DefaultRaftQueryOperation(METADATA_GROUP_ID, new GetDestroyingRaftGroupIds());
+                }
+            });
+
+            try {
+                return f.get();
+            } catch (Exception e) {
+                logger.severe("Cannot get destroying raft group ids", e);
+                return Collections.emptyList();
             }
         }
 
@@ -223,13 +244,28 @@ public class RaftCleanupHandler {
                 return;
             }
 
-            // we are reading the shutting down endpoints locally, since we know they are committed.
-            LeavingRaftEndpointContext leavingEndpointContext = raftService.getMetadataManager().getLeavingEndpointContext();
+            LeavingRaftEndpointContext leavingEndpointContext = getLeavingRaftEndpointContext();
             if (leavingEndpointContext == null) {
                 return;
             }
 
             handle(leavingEndpointContext);
+        }
+
+        private LeavingRaftEndpointContext getLeavingRaftEndpointContext() {
+            Future<LeavingRaftEndpointContext> f = query(new Supplier<RaftQueryOperation>() {
+                @Override
+                public RaftQueryOperation get() {
+                    return new DefaultRaftQueryOperation(METADATA_GROUP_ID, new GetLeavingEndpointContextOp());
+                }
+            });
+
+            try {
+                return f.get();
+            } catch (Exception e) {
+                logger.severe("Cannot get leaving endpoint context", e);
+                return null;
+            }
         }
 
         private void handle(LeavingRaftEndpointContext leavingRaftEndpointContext) {
@@ -436,5 +472,10 @@ public class RaftCleanupHandler {
     private <T> ICompletableFuture<T> invoke(Supplier<RaftReplicateOperation> supplier) {
         RaftInvocationManager invocationManager = raftService.getInvocationManager();
         return invocationManager.invoke(supplier);
+    }
+
+    private <T> ICompletableFuture<T> query(Supplier<RaftQueryOperation> supplier) {
+        RaftInvocationManager invocationManager = raftService.getInvocationManager();
+        return invocationManager.query(supplier, QueryPolicy.LEADER_LOCAL);
     }
 }
