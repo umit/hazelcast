@@ -27,16 +27,15 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public abstract class RaftLocalQueryOperation extends Operation
-        implements IdentifiedDataSerializable, AllowedDuringPassiveState {
+public abstract class RaftQueryOperation extends Operation implements IdentifiedDataSerializable, AllowedDuringPassiveState {
 
     private RaftGroupId raftGroupId;
     private QueryPolicy queryPolicy;
 
-    public RaftLocalQueryOperation() {
+    public RaftQueryOperation() {
     }
 
-    public RaftLocalQueryOperation(RaftGroupId raftGroupId) {
+    public RaftQueryOperation(RaftGroupId raftGroupId) {
         this.raftGroupId = raftGroupId;
     }
 
@@ -79,7 +78,7 @@ public abstract class RaftLocalQueryOperation extends Operation
         return queryPolicy;
     }
 
-    public RaftLocalQueryOperation setQueryPolicy(QueryPolicy queryPolicy) {
+    public RaftQueryOperation setQueryPolicy(QueryPolicy queryPolicy) {
         this.queryPolicy = queryPolicy;
         return this;
     }

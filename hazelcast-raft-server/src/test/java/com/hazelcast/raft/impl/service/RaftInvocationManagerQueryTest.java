@@ -8,8 +8,8 @@ import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.impl.RaftNode;
-import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupLocalQueryOperation;
-import com.hazelcast.raft.impl.service.proxy.RaftLocalQueryOperation;
+import com.hazelcast.raft.impl.service.proxy.DefaultRaftQueryOperation;
+import com.hazelcast.raft.impl.service.proxy.RaftQueryOperation;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
@@ -136,17 +136,17 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         assertEquals(value, future.get());
     }
 
-    private Supplier<RaftLocalQueryOperation> createRaftQueryOperationSupplier(final RaftGroupId groupId) {
-        return new Supplier<RaftLocalQueryOperation>() {
+    private Supplier<RaftQueryOperation> createRaftQueryOperationSupplier(final RaftGroupId groupId) {
+        return new Supplier<RaftQueryOperation>() {
             @Override
-            public RaftLocalQueryOperation get() {
+            public RaftQueryOperation get() {
                 return getRaftQueryOperation(groupId);
             }
         };
     }
 
-    private DefaultRaftGroupLocalQueryOperation getRaftQueryOperation(RaftGroupId groupId) {
-        return new DefaultRaftGroupLocalQueryOperation(groupId, new RaftQueryOperation());
+    private DefaultRaftQueryOperation getRaftQueryOperation(RaftGroupId groupId) {
+        return new DefaultRaftQueryOperation(groupId, new RaftTestQueryOperation());
     }
 
     @Override

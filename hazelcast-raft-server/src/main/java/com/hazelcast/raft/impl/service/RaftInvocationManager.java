@@ -15,9 +15,9 @@ import com.hazelcast.raft.impl.service.exception.CannotCreateRaftGroupException;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetActiveEndpointsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOp;
-import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupOperation;
-import com.hazelcast.raft.impl.service.proxy.RaftLocalQueryOperation;
-import com.hazelcast.raft.impl.service.proxy.RaftGroupOperation;
+import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOperation;
+import com.hazelcast.raft.impl.service.proxy.RaftQueryOperation;
+import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
@@ -64,13 +64,13 @@ public class RaftInvocationManager {
     }
 
 
-    public <T> ICompletableFuture<T> query(Supplier<RaftLocalQueryOperation> operationSupplier, QueryPolicy queryPolicy) {
+    public <T> ICompletableFuture<T> query(Supplier<RaftQueryOperation> operationSupplier, QueryPolicy queryPolicy) {
         RaftQueryInvocationFuture<T> invocationFuture = new RaftQueryInvocationFuture<T>(operationSupplier, queryPolicy);
         invocationFuture.invoke();
         return invocationFuture;
     }
 
-    public <T> ICompletableFuture<T> queryOnLocal(RaftLocalQueryOperation operation, QueryPolicy queryPolicy) {
+    public <T> ICompletableFuture<T> queryOnLocal(RaftQueryOperation operation, QueryPolicy queryPolicy) {
         return nodeEngine.getOperationService().invokeOnTarget(RaftService.SERVICE_NAME,
                 operation.setQueryPolicy(queryPolicy), nodeEngine.getThisAddress());
     }
@@ -91,10 +91,10 @@ public class RaftInvocationManager {
 
     private void invokeGetEndpointsToCreateRaftGroup(final String serviceName, final String raftName, final int nodeCount,
                                                      final SimpleCompletableFuture<RaftGroupId> resultFuture) {
-        ICompletableFuture<List<RaftEndpoint>> f = invoke(new Supplier<RaftGroupOperation>() {
+        ICompletableFuture<List<RaftEndpoint>> f = invoke(new Supplier<RaftReplicateOperation>() {
             @Override
-            public RaftGroupOperation get() {
-                return new DefaultRaftGroupOperation(METADATA_GROUP_ID, new GetActiveEndpointsOp());
+            public RaftReplicateOperation get() {
+                return new DefaultRaftReplicateOperation(METADATA_GROUP_ID, new GetActiveEndpointsOp());
             }
         });
 
@@ -125,10 +125,10 @@ public class RaftInvocationManager {
     private void invokeCreateRaftGroup(final String serviceName, final String raftName, final int nodeCount,
                                        final List<RaftEndpoint> endpoints,
                                        final SimpleCompletableFuture<RaftGroupId> resultFuture) {
-        ICompletableFuture<RaftGroupId> f = invoke(new Supplier<RaftGroupOperation>() {
+        ICompletableFuture<RaftGroupId> f = invoke(new Supplier<RaftReplicateOperation>() {
             @Override
-            public RaftGroupOperation get() {
-                return new DefaultRaftGroupOperation(METADATA_GROUP_ID, new CreateRaftGroupOp(serviceName, raftName, endpoints));
+            public RaftReplicateOperation get() {
+                return new DefaultRaftReplicateOperation(METADATA_GROUP_ID, new CreateRaftGroupOp(serviceName, raftName, endpoints));
             }
         });
 
@@ -153,10 +153,10 @@ public class RaftInvocationManager {
     }
 
     public ICompletableFuture<RaftGroupId> triggerDestroyRaftGroupAsync(final RaftGroupId groupId) {
-        return invoke(new Supplier<RaftGroupOperation>() {
+        return invoke(new Supplier<RaftReplicateOperation>() {
             @Override
-            public RaftGroupOperation get() {
-                return new DefaultRaftGroupOperation(METADATA_GROUP_ID, new TriggerDestroyRaftGroupOp(groupId));
+            public RaftReplicateOperation get() {
+                return new DefaultRaftReplicateOperation(METADATA_GROUP_ID, new TriggerDestroyRaftGroupOp(groupId));
             }
         });
     }
@@ -165,7 +165,7 @@ public class RaftInvocationManager {
         triggerDestroyRaftGroupAsync(groupId).get();
     }
 
-    public <T> ICompletableFuture<T> invoke(Supplier<RaftGroupOperation> operationSupplier) {
+    public <T> ICompletableFuture<T> invoke(Supplier<RaftReplicateOperation> operationSupplier) {
         RaftInvocationFuture<T> invocationFuture = new RaftInvocationFuture<T>(operationSupplier);
         invocationFuture.invoke();
         return invocationFuture;
@@ -300,11 +300,11 @@ public class RaftInvocationManager {
         }
     }
 
-    private class RaftInvocationFuture<T> extends AbstractRaftInvocationFuture<T, RaftGroupOperation> {
+    private class RaftInvocationFuture<T> extends AbstractRaftInvocationFuture<T, RaftReplicateOperation> {
 
         private volatile RaftEndpoint lastInvocationEndpoint;
 
-        RaftInvocationFuture(Supplier<RaftGroupOperation> operationSupplier) {
+        RaftInvocationFuture(Supplier<RaftReplicateOperation> operationSupplier) {
             super(operationSupplier);
         }
 
@@ -323,7 +323,7 @@ public class RaftInvocationManager {
         }
 
         @Override
-        RaftGroupId getGroupId(RaftGroupOperation op) {
+        RaftGroupId getGroupId(RaftReplicateOperation op) {
             return op.getRaftGroupId();
         }
 
@@ -338,24 +338,24 @@ public class RaftInvocationManager {
         }
     }
 
-    private class RaftQueryInvocationFuture<T> extends AbstractRaftInvocationFuture<T, RaftLocalQueryOperation> {
+    private class RaftQueryInvocationFuture<T> extends AbstractRaftInvocationFuture<T, RaftQueryOperation> {
 
         private final QueryPolicy queryPolicy;
 
-        RaftQueryInvocationFuture(Supplier<RaftLocalQueryOperation> operationSupplier, QueryPolicy queryPolicy) {
+        RaftQueryInvocationFuture(Supplier<RaftQueryOperation> operationSupplier, QueryPolicy queryPolicy) {
             super(operationSupplier);
             this.queryPolicy = queryPolicy;
         }
 
         @Override
-        RaftLocalQueryOperation createOp() {
-            RaftLocalQueryOperation op = super.createOp();
+        RaftQueryOperation createOp() {
+            RaftQueryOperation op = super.createOp();
             op.setQueryPolicy(queryPolicy);
             return op;
         }
 
         @Override
-        RaftGroupId getGroupId(RaftLocalQueryOperation op) {
+        RaftGroupId getGroupId(RaftQueryOperation op) {
             return op.getRaftGroupId();
         }
 
