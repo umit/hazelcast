@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl.handler;
 
-import com.hazelcast.raft.impl.RaftNode;
-import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
+import com.hazelcast.raft.impl.RaftNodeImpl;
+import com.hazelcast.raft.RaftNodeStatus;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
@@ -26,7 +26,7 @@ import static java.util.Arrays.asList;
 public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runnable {
     private final AppendRequest req;
 
-    public AppendRequestHandlerTask(RaftNode raftNode, AppendRequest req) {
+    public AppendRequestHandlerTask(RaftNodeImpl raftNode, AppendRequest req) {
         super(raftNode);
         this.req = req;
     }

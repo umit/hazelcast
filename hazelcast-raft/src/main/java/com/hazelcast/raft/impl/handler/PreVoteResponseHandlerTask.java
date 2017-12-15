@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.state.CandidateState;
@@ -15,7 +15,7 @@ import com.hazelcast.raft.impl.task.LeaderElectionTask;
 public class PreVoteResponseHandlerTask extends AbstractResponseHandlerTask {
     private final PreVoteResponse resp;
 
-    public PreVoteResponseHandlerTask(RaftNode raftNode, PreVoteResponse response) {
+    public PreVoteResponseHandlerTask(RaftNodeImpl raftNode, PreVoteResponse response) {
         super(raftNode);
         this.resp = response;
     }

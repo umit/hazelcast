@@ -6,7 +6,7 @@ import com.hazelcast.raft.exception.MemberAlreadyExistsException;
 import com.hazelcast.raft.exception.MemberDoesNotExistException;
 import com.hazelcast.raft.exception.MismatchingGroupMembersCommitIndexException;
 import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.operation.ApplyRaftGroupMembersOp;
 import com.hazelcast.raft.impl.state.RaftGroupMembers;
 import com.hazelcast.raft.impl.state.RaftState;
@@ -20,19 +20,19 @@ import java.util.LinkedHashSet;
  *
  */
 public class MembershipChangeTask implements Runnable {
-    private final RaftNode raftNode;
+    private final RaftNodeImpl raftNode;
     private final Integer groupMembersCommitIndex;
     private final RaftEndpoint member;
     private final MembershipChangeType changeType;
     private final SimpleCompletableFuture resultFuture;
     private final ILogger logger;
 
-    public MembershipChangeTask(RaftNode raftNode, SimpleCompletableFuture resultFuture, RaftEndpoint member,
+    public MembershipChangeTask(RaftNodeImpl raftNode, SimpleCompletableFuture resultFuture, RaftEndpoint member,
                                 MembershipChangeType changeType) {
         this(raftNode, resultFuture, member, changeType, null);
     }
 
-    public MembershipChangeTask(RaftNode raftNode, SimpleCompletableFuture resultFuture, RaftEndpoint member,
+    public MembershipChangeTask(RaftNodeImpl raftNode, SimpleCompletableFuture resultFuture, RaftEndpoint member,
                                 MembershipChangeType changeType, Integer groupMembersCommitIndex) {
         if (changeType == null) {
             throw new IllegalArgumentException("Null membership change type");

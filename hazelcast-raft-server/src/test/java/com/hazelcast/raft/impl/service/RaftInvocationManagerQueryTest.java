@@ -7,7 +7,7 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.NotLeaderException;
-import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftQueryOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftQueryOperation;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -105,7 +105,7 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         String value = "value";
         invocationService.invoke(createRaftApplyOperationSupplier(groupId, value)).get();
 
-        RaftNode leader = getLeaderNode(instances, groupId);
+        RaftNodeImpl leader = getLeaderNode(instances, groupId);
         HazelcastInstance followerInstance = getRandomFollowerInstance(instances, leader);
         RaftInvocationManager followerInvManager = getRaftInvocationService(followerInstance);
 

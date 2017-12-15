@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.task.RaftNodeAwareTask;
 
 /**
@@ -10,7 +10,7 @@ import com.hazelcast.raft.impl.task.RaftNodeAwareTask;
  */
 public abstract class AbstractResponseHandlerTask extends RaftNodeAwareTask {
 
-    public AbstractResponseHandlerTask(RaftNode raftNode) {
+    public AbstractResponseHandlerTask(RaftNodeImpl raftNode) {
         super(raftNode);
     }
 

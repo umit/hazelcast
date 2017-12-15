@@ -4,8 +4,8 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
-import com.hazelcast.raft.impl.RaftNode;
-import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
+import com.hazelcast.raft.impl.RaftNodeImpl;
+import com.hazelcast.raft.RaftNodeStatus;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
@@ -17,13 +17,13 @@ import com.hazelcast.raft.operation.RaftOperation;
  *
  */
 public class QueryTask implements Runnable {
-    private final RaftNode raftNode;
+    private final RaftNodeImpl raftNode;
     private final RaftOperation operation;
     private final QueryPolicy queryPolicy;
     private final SimpleCompletableFuture resultFuture;
     private final ILogger logger;
 
-    public QueryTask(RaftNode raftNode, RaftOperation operation, QueryPolicy policy, SimpleCompletableFuture resultFuture) {
+    public QueryTask(RaftNodeImpl raftNode, RaftOperation operation, QueryPolicy policy, SimpleCompletableFuture resultFuture) {
         this.raftNode = raftNode;
         this.operation = operation;
         this.logger = raftNode.getLogger(getClass());

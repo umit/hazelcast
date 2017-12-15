@@ -11,7 +11,7 @@ import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftIntegration;
-import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
@@ -49,7 +49,7 @@ public class LocalRaftIntegration implements RaftIntegration {
     private final RaftConfig raftConfig;
     private final SnapshotAwareService service;
     private final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
-    private final ConcurrentMap<RaftEndpoint, RaftNode> nodes = new ConcurrentHashMap<RaftEndpoint, RaftNode>();
+    private final ConcurrentMap<RaftEndpoint, RaftNodeImpl> nodes = new ConcurrentHashMap<RaftEndpoint, RaftNodeImpl>();
     private final SerializationService serializationService = new DefaultSerializationServiceBuilder().build();
     private final LoggingServiceImpl loggingService;
 
@@ -68,13 +68,13 @@ public class LocalRaftIntegration implements RaftIntegration {
         return new MemberImpl(localEndpoint.getAddress(), MemberVersion.of(Versions.CURRENT_CLUSTER_VERSION.toString()), true, localEndpoint.getUid());
     }
 
-    public void discoverNode(RaftNode node) {
+    public void discoverNode(RaftNodeImpl node) {
         assertNotEquals(localEndpoint, node.getLocalEndpoint());
-        RaftNode old = nodes.putIfAbsent(node.getLocalEndpoint(), node);
+        RaftNodeImpl old = nodes.putIfAbsent(node.getLocalEndpoint(), node);
         assertThat(old, anyOf(nullValue(), sameInstance(node)));
     }
 
-    public boolean removeNode(RaftNode node) {
+    public boolean removeNode(RaftNodeImpl node) {
         assertNotEquals(localEndpoint, node.getLocalEndpoint());
         return nodes.remove(node.getLocalEndpoint(), node);
     }
@@ -116,7 +116,7 @@ public class LocalRaftIntegration implements RaftIntegration {
     @Override
     public boolean send(PreVoteRequest request, RaftEndpoint target) {
         assertNotEquals(localEndpoint, target);
-        RaftNode node = nodes.get(target);
+        RaftNodeImpl node = nodes.get(target);
         if (node == null) {
             return false;
         }
@@ -131,7 +131,7 @@ public class LocalRaftIntegration implements RaftIntegration {
     @Override
     public boolean send(PreVoteResponse response, RaftEndpoint target) {
         assertNotEquals(localEndpoint, target);
-        RaftNode node = nodes.get(target);
+        RaftNodeImpl node = nodes.get(target);
         if (node == null) {
             return false;
         }
@@ -146,7 +146,7 @@ public class LocalRaftIntegration implements RaftIntegration {
     @Override
     public boolean send(VoteRequest request, RaftEndpoint target) {
         assertNotEquals(localEndpoint, target);
-        RaftNode node = nodes.get(target);
+        RaftNodeImpl node = nodes.get(target);
         if (node == null) {
             return false;
         }
@@ -161,7 +161,7 @@ public class LocalRaftIntegration implements RaftIntegration {
     @Override
     public boolean send(VoteResponse response, RaftEndpoint target) {
         assertNotEquals(localEndpoint, target);
-        RaftNode node = nodes.get(target);
+        RaftNodeImpl node = nodes.get(target);
         if (node == null) {
             return false;
         }
@@ -176,7 +176,7 @@ public class LocalRaftIntegration implements RaftIntegration {
     @Override
     public boolean send(AppendRequest request, RaftEndpoint target) {
         assertNotEquals(localEndpoint, target);
-        RaftNode node = nodes.get(target);
+        RaftNodeImpl node = nodes.get(target);
         if (node == null) {
             return false;
         }
@@ -192,7 +192,7 @@ public class LocalRaftIntegration implements RaftIntegration {
     @Override
     public boolean send(AppendSuccessResponse response, RaftEndpoint target) {
         assertNotEquals(localEndpoint, target);
-        RaftNode node = nodes.get(target);
+        RaftNodeImpl node = nodes.get(target);
         if (node == null) {
             return false;
         }
@@ -207,7 +207,7 @@ public class LocalRaftIntegration implements RaftIntegration {
     @Override
     public boolean send(AppendFailureResponse response, RaftEndpoint target) {
         assertNotEquals(localEndpoint, target);
-        RaftNode node = nodes.get(target);
+        RaftNodeImpl node = nodes.get(target);
         if (node == null) {
             return false;
         }
@@ -222,7 +222,7 @@ public class LocalRaftIntegration implements RaftIntegration {
     @Override
     public boolean send(InstallSnapshot request, RaftEndpoint target) {
         assertNotEquals(localEndpoint, target);
-        RaftNode node = nodes.get(target);
+        RaftNodeImpl node = nodes.get(target);
         if (node == null) {
             return false;
         }
