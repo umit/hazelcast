@@ -57,7 +57,7 @@ public class SnapshotTest extends HazelcastTestSupport {
         group = newGroupWithService(3, raftConfig);
         group.start();
 
-        final RaftNode leader = group.waitUntilLeaderElected();
+        final RaftNodeImpl leader = group.waitUntilLeaderElected();
 
         for (int i = 0; i < entryCount; i++) {
             leader.replicate(new RaftTestApplyOperation("val" + i)).get();
@@ -66,7 +66,7 @@ public class SnapshotTest extends HazelcastTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
-                for (RaftNode raftNode : group.getNodes()) {
+                for (RaftNodeImpl raftNode : group.getNodes()) {
                     assertEquals(entryCount, getCommitIndex(raftNode));
                     assertEquals(entryCount, getSnapshotEntry(raftNode).index());
                     RaftDataService service = group.getService(raftNode);
@@ -86,7 +86,7 @@ public class SnapshotTest extends HazelcastTestSupport {
         group = newGroupWithService(3, raftConfig);
         group.start();
 
-        final RaftNode leader = group.waitUntilLeaderElected();
+        final RaftNodeImpl leader = group.waitUntilLeaderElected();
 
         for (int i = 0; i < entryCount; i++) {
             leader.replicate(new RaftTestApplyOperation("val" + i)).get();
@@ -95,7 +95,7 @@ public class SnapshotTest extends HazelcastTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
-                for (RaftNode raftNode : group.getNodes()) {
+                for (RaftNodeImpl raftNode : group.getNodes()) {
                     assertEquals(entryCount, getCommitIndex(raftNode));
                     assertEquals(entryCount, getSnapshotEntry(raftNode).index());
                 }
@@ -107,7 +107,7 @@ public class SnapshotTest extends HazelcastTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
-                for (RaftNode raftNode : group.getNodes()) {
+                for (RaftNodeImpl raftNode : group.getNodes()) {
                     assertEquals(entryCount + 1, getCommitIndex(raftNode));
                     RaftDataService service = group.getService(raftNode);
                     assertEquals(entryCount + 1, service.size());
@@ -127,10 +127,10 @@ public class SnapshotTest extends HazelcastTestSupport {
         group = newGroupWithService(3, raftConfig);
         group.start();
 
-        final RaftNode leader = group.waitUntilLeaderElected();
+        final RaftNodeImpl leader = group.waitUntilLeaderElected();
 
-        RaftNode[] followers = group.getNodesExcept(leader.getLocalEndpoint());
-        final RaftNode slowFollower = followers[1];
+        RaftNodeImpl[] followers = group.getNodesExcept(leader.getLocalEndpoint());
+        final RaftNodeImpl slowFollower = followers[1];
 
         group.dropMessagesToEndpoint(leader.getLocalEndpoint(), slowFollower.getLocalEndpoint(), AppendRequest.class);
 
@@ -152,7 +152,7 @@ public class SnapshotTest extends HazelcastTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
-                for (RaftNode raftNode : group.getNodes()) {
+                for (RaftNodeImpl raftNode : group.getNodes()) {
                     assertEquals(entryCount + 1, getCommitIndex(raftNode));
                     RaftDataService service = group.getService(raftNode);
                     assertEquals(entryCount + 1, service.size());
@@ -172,10 +172,10 @@ public class SnapshotTest extends HazelcastTestSupport {
         group = newGroupWithService(3, raftConfig);
         group.start();
 
-        final RaftNode leader = group.waitUntilLeaderElected();
+        final RaftNodeImpl leader = group.waitUntilLeaderElected();
 
-        RaftNode[] followers = group.getNodesExcept(leader.getLocalEndpoint());
-        final RaftNode slowFollower = followers[1];
+        RaftNodeImpl[] followers = group.getNodesExcept(leader.getLocalEndpoint());
+        final RaftNodeImpl slowFollower = followers[1];
 
         for (int i = 0; i < entryCount - 1; i++) {
             leader.replicate(new RaftTestApplyOperation("val" + i)).get();
@@ -184,7 +184,7 @@ public class SnapshotTest extends HazelcastTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
-                for (RaftNode follower : group.getNodesExcept(leader.getLocalEndpoint())) {
+                for (RaftNodeImpl follower : group.getNodesExcept(leader.getLocalEndpoint())) {
                     assertEquals(entryCount - 1, getMatchIndex(leader, follower.getLocalEndpoint()));
                 }
             }
@@ -208,7 +208,7 @@ public class SnapshotTest extends HazelcastTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
-                for (RaftNode raftNode : group.getNodes()) {
+                for (RaftNodeImpl raftNode : group.getNodes()) {
                     assertEquals(entryCount + 1, getCommitIndex(raftNode));
                     RaftDataService service = group.getService(raftNode);
                     assertEquals(entryCount + 1, service.size());
@@ -228,8 +228,8 @@ public class SnapshotTest extends HazelcastTestSupport {
         group = newGroupWithService(3, raftConfig);
         group.start();
 
-        final RaftNode leader = group.waitUntilLeaderElected();
-        final RaftNode[] followers = group.getNodesExcept(leader.getLocalEndpoint());
+        final RaftNodeImpl leader = group.waitUntilLeaderElected();
+        final RaftNodeImpl[] followers = group.getNodesExcept(leader.getLocalEndpoint());
 
         for (int i = 0; i < 40; i++) {
             leader.replicate(new RaftTestApplyOperation("val" + i)).get();
@@ -238,7 +238,7 @@ public class SnapshotTest extends HazelcastTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
-                for (RaftNode raftNode : group.getNodes()) {
+                for (RaftNodeImpl raftNode : group.getNodes()) {
                     assertEquals(40, getCommitIndex(raftNode));
                 }
             }
@@ -249,7 +249,7 @@ public class SnapshotTest extends HazelcastTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
-                for (RaftNode raftNode : followers) {
+                for (RaftNodeImpl raftNode : followers) {
                     RaftEndpoint leaderEndpoint = getLeaderEndpoint(raftNode);
                     assertNotNull(leaderEndpoint);
                     assertNotEquals(leader.getLocalEndpoint(), leaderEndpoint);
@@ -263,7 +263,7 @@ public class SnapshotTest extends HazelcastTestSupport {
             futures.add(f);
         }
 
-        final RaftNode newLeader = group.getNode(getLeaderEndpoint(followers[0]));
+        final RaftNodeImpl newLeader = group.getNode(getLeaderEndpoint(followers[0]));
 
         for (int i = 40; i < 51; i++) {
             newLeader.replicate(new RaftTestApplyOperation("val" + i)).get();
@@ -272,7 +272,7 @@ public class SnapshotTest extends HazelcastTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
-                for (RaftNode raftNode : followers) {
+                for (RaftNodeImpl raftNode : followers) {
                     assertTrue(getSnapshotEntry(raftNode).index() > 0);
                 }
             }
@@ -293,7 +293,7 @@ public class SnapshotTest extends HazelcastTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
-                for (RaftNode raftNode : group.getNodes()) {
+                for (RaftNodeImpl raftNode : group.getNodes()) {
                     assertEquals(51, getCommitIndex(raftNode));
                     RaftDataService service = group.getService(raftNode);
                     assertEquals(51, service.size());

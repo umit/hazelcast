@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.log.LogEntry;
@@ -21,7 +21,7 @@ import static java.util.Arrays.sort;
 public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTask {
     private final AppendSuccessResponse resp;
 
-    public AppendSuccessResponseHandlerTask(RaftNode raftNode, AppendSuccessResponse response) {
+    public AppendSuccessResponseHandlerTask(RaftNodeImpl raftNode, AppendSuccessResponse response) {
         super(raftNode);
         this.resp = response;
     }

@@ -7,7 +7,7 @@ import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy;
 import com.hazelcast.test.AssertTask;
@@ -145,7 +145,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
             public void run() throws Exception {
                 int count = 0;
                 for (HazelcastInstance instance : instances) {
-                    RaftNode raftNode = getRaftNode(instance, atomicLong.getGroupId());
+                    RaftNodeImpl raftNode = getRaftNode(instance, atomicLong.getGroupId());
                     if (raftNode != null) {
                         count++;
                     }
@@ -265,7 +265,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
             @Override
             public void run() throws Exception {
                 for (HazelcastInstance instance : instances) {
-                    RaftNode raftNode = getRaftNode(instance, METADATA_GROUP_ID);
+                    RaftNodeImpl raftNode = getRaftNode(instance, METADATA_GROUP_ID);
                     assertNotNull(raftNode);
                 }
             }

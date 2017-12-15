@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
@@ -17,7 +17,7 @@ import com.hazelcast.util.Clock;
 public class VoteRequestHandlerTask extends RaftNodeAwareTask implements Runnable {
     private final VoteRequest req;
 
-    public VoteRequestHandlerTask(RaftNode raftNode, VoteRequest req) {
+    public VoteRequestHandlerTask(RaftNodeImpl raftNode, VoteRequest req) {
         super(raftNode);
         this.req = req;
     }

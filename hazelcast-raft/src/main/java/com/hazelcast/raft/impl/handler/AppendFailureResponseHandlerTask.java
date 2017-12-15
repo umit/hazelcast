@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.state.LeaderState;
@@ -11,7 +11,7 @@ public class AppendFailureResponseHandlerTask extends AbstractResponseHandlerTas
 
     private final AppendFailureResponse resp;
 
-    public AppendFailureResponseHandlerTask(RaftNode raftNode, AppendFailureResponse response) {
+    public AppendFailureResponseHandlerTask(RaftNodeImpl raftNode, AppendFailureResponse response) {
         super(raftNode);
         this.resp = response;
     }

@@ -1,6 +1,6 @@
 package com.hazelcast.raft.impl.task;
 
-import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.RaftRole;
 
 /**
@@ -9,7 +9,7 @@ import com.hazelcast.raft.impl.RaftRole;
  */
 public class LeaderElectionTimeoutTask extends RaftNodeAwareTask implements Runnable {
 
-    public LeaderElectionTimeoutTask(RaftNode raftNode) {
+    public LeaderElectionTimeoutTask(RaftNodeImpl raftNode) {
         super(raftNode);
     }
 

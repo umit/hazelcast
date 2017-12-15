@@ -8,7 +8,7 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.QueryPolicy;
-import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.impl.service.RaftServiceUtil;
 import com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy;
@@ -58,7 +58,7 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
                 int count = 0;
                 RaftAtomicLongProxy proxy = (RaftAtomicLongProxy) atomicLong;
                 for (HazelcastInstance instance : instances) {
-                    RaftNode raftNode = RaftServiceUtil.getRaftService(instance).getOrInitRaftNode(proxy.getGroupId());
+                    RaftNodeImpl raftNode = (RaftNodeImpl) RaftServiceUtil.getRaftService(instance).getOrInitRaftNode(proxy.getGroupId());
                     if (raftNode != null) {
                         count++;
                         assertNotNull(getLeaderEndpoint(raftNode));

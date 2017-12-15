@@ -2,7 +2,7 @@ package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
-import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -27,7 +27,7 @@ public class HazelcastRaftTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(2);
         HazelcastInstance[] instances = newInstances(raftAddresses);
 
-        RaftNode leader = waitAllForLeaderElection(instances, METADATA_GROUP_ID);
+        RaftNodeImpl leader = waitAllForLeaderElection(instances, METADATA_GROUP_ID);
 
         HazelcastInstance leaderInstance = factory.getInstance(leader.getLocalEndpoint().getAddress());
         final HazelcastInstance followerInstance = getRandomFollowerInstance(instances, leader);
@@ -37,7 +37,7 @@ public class HazelcastRaftTest extends HazelcastRaftTestSupport {
         assertTrueAllTheTime(new AssertTask() {
             @Override
             public void run() throws Exception {
-                RaftNode raftNode = getRaftNode(followerInstance, METADATA_GROUP_ID);
+                RaftNodeImpl raftNode = getRaftNode(followerInstance, METADATA_GROUP_ID);
                 Assert.assertEquals(RaftRole.FOLLOWER, getRole(raftNode));
             }
         }, 3);
@@ -49,7 +49,7 @@ public class HazelcastRaftTest extends HazelcastRaftTestSupport {
         assertTrueAllTheTime(new AssertTask() {
             @Override
             public void run() throws Exception {
-                RaftNode raftNode = getRaftNode(followerInstance, METADATA_GROUP_ID);
+                RaftNodeImpl raftNode = getRaftNode(followerInstance, METADATA_GROUP_ID);
                 assertEquals(RaftRole.FOLLOWER, getRole(raftNode));
 
                 raftNode = getRaftNode(newInstance, METADATA_GROUP_ID);
@@ -63,7 +63,7 @@ public class HazelcastRaftTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(2);
         HazelcastInstance[] instances = newInstances(raftAddresses);
 
-        final RaftNode leader = waitAllForLeaderElection(instances, METADATA_GROUP_ID);
+        final RaftNodeImpl leader = waitAllForLeaderElection(instances, METADATA_GROUP_ID);
 
         final HazelcastInstance leaderInstance = factory.getInstance(leader.getLocalEndpoint().getAddress());
         HazelcastInstance followerInstance = getRandomFollowerInstance(instances, leader);
@@ -77,7 +77,7 @@ public class HazelcastRaftTest extends HazelcastRaftTestSupport {
         assertTrueAllTheTime(new AssertTask() {
             @Override
             public void run() throws Exception {
-                RaftNode raftNode = getRaftNode(leaderInstance, METADATA_GROUP_ID);
+                RaftNodeImpl raftNode = getRaftNode(leaderInstance, METADATA_GROUP_ID);
                 assertEquals(RaftRole.LEADER, getRole(raftNode));
 
                 raftNode = getRaftNode(newInstance, METADATA_GROUP_ID);

@@ -5,11 +5,11 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.RaftNode;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftIntegration;
-import com.hazelcast.raft.impl.RaftNode;
-import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
+import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
@@ -295,6 +295,10 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         return metadataManager.getRaftGroupInfo(id);
     }
 
+    public boolean isDestroyed(RaftGroupId groupId) {
+        return destroyedGroupIds.contains(groupId);
+    }
+
     public RaftConfig getConfig() {
         return config;
     }
@@ -319,16 +323,15 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         }
 
         RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, groupId);
-        RaftNode node = new RaftNode(serviceName, groupId, getLocalEndpoint(), endpoints, config, raftIntegration);
+        RaftNodeImpl node = new RaftNodeImpl(serviceName, groupId, getLocalEndpoint(), endpoints, config, raftIntegration);
 
         if (nodes.putIfAbsent(groupId, node) == null) {
             if (destroyedGroupIds.contains(groupId)) {
-                setTerminatedRaftStatus(node);
+                node.forceSetTerminatedStatus();
                 logger.warning("Not creating RaftNode for " + groupId + " since it is already destroyed");
                 return;
             }
 
-            // TODO [basri] what if node.execute() is called somewhere else before the start() call here?
             node.start();
             logger.severe("RaftNode created for: " + groupId + " with members: " + endpoints);
         }
@@ -336,22 +339,11 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
 
     public void destroyRaftNode(RaftGroupId groupId) {
         destroyedGroupIds.add(groupId);
-        final RaftNode raftNode = nodes.remove(groupId);
-        if (raftNode != null) {
-            setTerminatedRaftStatus(raftNode);
+        RaftNode node = nodes.remove(groupId);
+        if (node != null) {
+            node.forceSetTerminatedStatus();
             logger.severe("Local raft node of " + groupId + " is destroyed.");
         }
-    }
-
-    private void setTerminatedRaftStatus(final RaftNode raftNode) {
-        raftNode.execute(new Runnable() {
-            @Override
-            public void run() {
-                if (!raftNode.isTerminatedOrSteppedDown()) {
-                    raftNode.setStatus(RaftNodeStatus.TERMINATED);
-                }
-            }
-        });
     }
 
     private ICompletableFuture<RaftGroupId> triggerRemoveEndpointAsync(final RaftEndpoint endpoint) {

@@ -6,6 +6,8 @@ import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.RaftNode;
+import com.hazelcast.raft.RaftNodeStatus;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.StaleAppendRequestException;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
@@ -50,23 +52,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static com.hazelcast.raft.impl.RaftNode.RaftNodeStatus.ACTIVE;
-import static com.hazelcast.raft.impl.RaftNode.RaftNodeStatus.CHANGING_MEMBERSHIP;
-import static com.hazelcast.raft.impl.RaftNode.RaftNodeStatus.STEPPED_DOWN;
-import static com.hazelcast.raft.impl.RaftNode.RaftNodeStatus.TERMINATED;
-import static com.hazelcast.raft.impl.RaftNode.RaftNodeStatus.TERMINATING;
+import static com.hazelcast.raft.RaftNodeStatus.ACTIVE;
+import static com.hazelcast.raft.RaftNodeStatus.CHANGING_MEMBERSHIP;
+import static com.hazelcast.raft.RaftNodeStatus.STEPPED_DOWN;
+import static com.hazelcast.raft.RaftNodeStatus.TERMINATED;
+import static com.hazelcast.raft.RaftNodeStatus.TERMINATING;
 import static java.lang.Math.min;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public class RaftNode {
-
-
-    public enum RaftNodeStatus {
-        ACTIVE, CHANGING_MEMBERSHIP, TERMINATING, TERMINATED, STEPPED_DOWN
-    }
+public class RaftNodeImpl implements RaftNode {
 
     private static final long SNAPSHOT_TASK_PERIOD_IN_SECONDS = 1;
     private static final int LEADER_ELECTION_TIMEOUT_RANGE = 1000;
@@ -89,8 +86,8 @@ public class RaftNode {
     private long lastAppendEntriesTimestamp;
     private volatile RaftNodeStatus status = ACTIVE;
 
-    public RaftNode(String serviceName, RaftGroupId groupId, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints,
-                    RaftConfig raftConfig, RaftIntegration raftIntegration) {
+    public RaftNodeImpl(String serviceName, RaftGroupId groupId, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints,
+                        RaftConfig raftConfig, RaftIntegration raftIntegration) {
         this.serviceName = serviceName;
         this.groupId = groupId;
         this.raftIntegration = raftIntegration;
@@ -105,27 +102,135 @@ public class RaftNode {
         this.appendNopEntryOnLeaderElection = raftConfig.isAppendNopEntryOnLeaderElection();
     }
 
-    public RaftGroupId getGroupId() {
-        return groupId;
-    }
-
     public ILogger getLogger(Class clazz) {
         String name = state.name();
         return raftIntegration.getLogger(clazz.getName() + "(" + name + ")");
     }
 
+    @Override
+    public RaftGroupId getGroupId() {
+        return groupId;
+    }
+
+    @Override
     public RaftEndpoint getLocalEndpoint() {
         return localEndpoint;
     }
 
     // It reads the most recent write to the volatile leader field, however leader might be already changed.
+    @Override
     public RaftEndpoint getLeader() {
         return state.leader();
     }
 
     // It reads the volatile status field
+    @Override
     public RaftNodeStatus getStatus() {
         return status;
+    }
+    @Override
+    public void forceSetTerminatedStatus() {
+        execute(new Runnable() {
+            @Override
+            public void run() {
+                if (!isTerminatedOrSteppedDown()) {
+                    setStatus(RaftNodeStatus.TERMINATED);
+                }
+            }
+        });
+    }
+
+    @Override
+    public void start() {
+        if (!raftIntegration.isJoined()) {
+            raftIntegration.schedule(new Runnable() {
+                @Override
+                public void run() {
+                    start();
+                }
+            }, 500, TimeUnit.MILLISECONDS);
+            return;
+        }
+
+        logger.info("Starting raft node: " + localEndpoint + " for raft cluster: " + state.name()
+                + " with members[" + state.memberCount() + "]: " + state.members());
+        raftIntegration.execute(new PreVoteTask(this));
+
+        scheduleLeaderFailureDetection();
+        scheduleSnapshot();
+    }
+
+    @Override
+    public void handlePreVoteRequest(PreVoteRequest request) {
+        execute(new PreVoteRequestHandlerTask(this, request));
+    }
+
+    @Override
+    public void handlePreVoteResponse(PreVoteResponse response) {
+        execute(new PreVoteResponseHandlerTask(this, response));
+    }
+
+    @Override
+    public void handleVoteRequest(VoteRequest request) {
+        execute(new VoteRequestHandlerTask(this, request));
+    }
+
+    @Override
+    public void handleVoteResponse(VoteResponse response) {
+        execute(new VoteResponseHandlerTask(this, response));
+    }
+
+    @Override
+    public void handleAppendRequest(AppendRequest request) {
+        execute(new AppendRequestHandlerTask(this, request));
+    }
+
+    @Override
+    public void handleAppendResponse(AppendSuccessResponse response) {
+        execute(new AppendSuccessResponseHandlerTask(this, response));
+    }
+
+    @Override
+    public void handleAppendResponse(AppendFailureResponse response) {
+        execute(new AppendFailureResponseHandlerTask(this, response));
+    }
+
+    @Override
+    public void handleInstallSnapshot(InstallSnapshot request) {
+        execute(new InstallSnapshotHandlerTask(this, request));
+    }
+
+    @Override
+    public ICompletableFuture replicate(RaftOperation operation) {
+        SimpleCompletableFuture resultFuture = raftIntegration.newCompletableFuture();
+        raftIntegration.execute(new ReplicateTask(this, operation, resultFuture));
+        return resultFuture;
+    }
+
+    @Override
+    public ICompletableFuture replicateMembershipChange(RaftEndpoint member, MembershipChangeType change) {
+        SimpleCompletableFuture resultFuture = raftIntegration.newCompletableFuture();
+        raftIntegration.execute(new MembershipChangeTask(this, resultFuture, member, change));
+        return resultFuture;
+    }
+
+    @Override
+    public ICompletableFuture replicateMembershipChange(RaftEndpoint member, MembershipChangeType change,
+                                                        int groupMembersCommitIndex) {
+        SimpleCompletableFuture resultFuture = raftIntegration.newCompletableFuture();
+        raftIntegration.execute(new MembershipChangeTask(this, resultFuture, member, change, groupMembersCommitIndex));
+        return resultFuture;
+    }
+
+    @Override
+    public ICompletableFuture query(RaftOperation operation, QueryPolicy queryPolicy) {
+        SimpleCompletableFuture resultFuture = raftIntegration.newCompletableFuture();
+        raftIntegration.execute(new QueryTask(this, operation, queryPolicy, resultFuture));
+        return resultFuture;
+    }
+
+    public String getServiceName() {
+        return serviceName;
     }
 
     // It reads the volatile status field
@@ -186,6 +291,19 @@ public class RaftNode {
         return true;
     }
 
+    private void scheduleLeaderFailureDetection() {
+        schedule(new LeaderFailureDetectionTask(), getLeaderElectionTimeoutInMillis());
+    }
+
+    private void scheduleSnapshot() {
+        schedule(new SnapshotTask(), TimeUnit.SECONDS.toMillis(SNAPSHOT_TASK_PERIOD_IN_SECONDS));
+    }
+
+    public void scheduleHeartbeat() {
+        broadcastAppendRequest();
+        schedule(new HeartbeatTask(), heartbeatPeriodInMillis);
+    }
+
     public void send(PreVoteRequest request, RaftEndpoint target) {
         raftIntegration.send(request, target);
     }
@@ -212,38 +330,6 @@ public class RaftNode {
 
     public void send(AppendFailureResponse response, RaftEndpoint target) {
         raftIntegration.send(response, target);
-    }
-
-    public void start() {
-        if (!raftIntegration.isJoined()) {
-            raftIntegration.schedule(new Runnable() {
-                @Override
-                public void run() {
-                    start();
-                }
-            }, 500, TimeUnit.MILLISECONDS);
-            return;
-        }
-
-        logger.info("Starting raft node: " + localEndpoint + " for raft cluster: " + state.name()
-                + " with members[" + state.memberCount() + "]: " + state.members());
-        raftIntegration.execute(new PreVoteTask(this));
-
-        scheduleLeaderFailureDetection();
-        scheduleSnapshot();
-    }
-
-    private void scheduleSnapshot() {
-        schedule(new SnapshotTask(), TimeUnit.SECONDS.toMillis(SNAPSHOT_TASK_PERIOD_IN_SECONDS));
-    }
-
-    private void scheduleLeaderFailureDetection() {
-        schedule(new LeaderFailureDetectionTask(), getLeaderElectionTimeoutInMillis());
-    }
-
-    public void scheduleHeartbeat() {
-        broadcastAppendRequest();
-        schedule(new HeartbeatTask(), heartbeatPeriodInMillis);
     }
 
     public void broadcastAppendRequest() {
@@ -310,6 +396,7 @@ public class RaftNode {
     }
 
     // If commitIndex > lastApplied: increment lastApplied, apply log[lastApplied] to state machine (§5.3)
+
     public void processLogs() {
         // Reject logs we've applied already
         int commitIndex = state.commitIndex();
@@ -400,45 +487,13 @@ public class RaftNode {
 
         raftIntegration.schedule(task, delayInMillis, TimeUnit.MILLISECONDS);
     }
-
-    public void handlePreVoteRequest(PreVoteRequest request) {
-        execute(new PreVoteRequestHandlerTask(this, request));
-    }
-
-    public void handlePreVoteResponse(PreVoteResponse response) {
-        execute(new PreVoteResponseHandlerTask(this, response));
-    }
-
-    public void handleVoteRequest(VoteRequest request) {
-        execute(new VoteRequestHandlerTask(this, request));
-    }
-
-    public void handleVoteResponse(VoteResponse response) {
-        execute(new VoteResponseHandlerTask(this, response));
-    }
-
-    public void handleAppendRequest(AppendRequest request) {
-        execute(new AppendRequestHandlerTask(this, request));
-    }
-
-    public void handleAppendResponse(AppendSuccessResponse response) {
-        execute(new AppendSuccessResponseHandlerTask(this, response));
-    }
-
-    public void handleAppendResponse(AppendFailureResponse response) {
-        execute(new AppendFailureResponseHandlerTask(this, response));
-    }
-
-    public void handleInstallSnapshot(InstallSnapshot request) {
-        execute(new InstallSnapshotHandlerTask(this, request));
-    }
-
     public void registerFuture(int entryIndex, SimpleCompletableFuture future) {
         SimpleCompletableFuture f = futures.put(entryIndex, future);
         assert f == null : "Future object is already registered for entry index: " + entryIndex;
     }
 
     // entryIndex is inclusive
+
     public void invalidateFuturesFrom(int entryIndex) {
         int count = 0;
         Iterator<Map.Entry<Long, SimpleCompletableFuture>> iterator = futures.entrySet().iterator();
@@ -532,35 +587,6 @@ public class RaftNode {
         return true;
     }
 
-    public ICompletableFuture replicate(RaftOperation operation) {
-        SimpleCompletableFuture resultFuture = raftIntegration.newCompletableFuture();
-        raftIntegration.execute(new ReplicateTask(this, operation, resultFuture));
-        return resultFuture;
-    }
-
-    public ICompletableFuture replicateMembershipChange(RaftEndpoint member, MembershipChangeType change) {
-        SimpleCompletableFuture resultFuture = raftIntegration.newCompletableFuture();
-        raftIntegration.execute(new MembershipChangeTask(this, resultFuture, member, change));
-        return resultFuture;
-    }
-
-    public ICompletableFuture replicateMembershipChange(RaftEndpoint member, MembershipChangeType change,
-                                                        int groupMembersCommitIndex) {
-        SimpleCompletableFuture resultFuture = raftIntegration.newCompletableFuture();
-        raftIntegration.execute(new MembershipChangeTask(this, resultFuture, member, change, groupMembersCommitIndex));
-        return resultFuture;
-    }
-
-    public ICompletableFuture query(RaftOperation operation, QueryPolicy queryPolicy) {
-        SimpleCompletableFuture resultFuture = raftIntegration.newCompletableFuture();
-        raftIntegration.execute(new QueryTask(this, operation, queryPolicy, resultFuture));
-        return resultFuture;
-    }
-
-    public String getServiceName() {
-        return serviceName;
-    }
-
     public void printMemberState() {
         RaftGroupId groupId = state.groupId();
         StringBuilder sb = new StringBuilder("\n\nRaft Members {")
@@ -628,7 +654,7 @@ public class RaftNode {
 
         private void runPreVoteTask() {
             if (state.preCandidateState() == null) {
-                new PreVoteTask(RaftNode.this).run();
+                new PreVoteTask(RaftNodeImpl.this).run();
             }
         }
     }

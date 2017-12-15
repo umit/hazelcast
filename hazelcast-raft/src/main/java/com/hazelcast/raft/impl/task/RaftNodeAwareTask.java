@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl.task;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftNodeImpl;
 
 /**
  * TODO: Javadoc Pending...
@@ -9,10 +9,10 @@ import com.hazelcast.raft.impl.RaftNode;
  */
 public abstract class RaftNodeAwareTask implements Runnable {
 
-    protected final RaftNode raftNode;
+    protected final RaftNodeImpl raftNode;
     protected final ILogger logger;
 
-    protected RaftNodeAwareTask(RaftNode raftNode) {
+    protected RaftNodeAwareTask(RaftNodeImpl raftNode) {
         this.raftNode = raftNode;
         this.logger = raftNode.getLogger(getClass());
     }

@@ -4,8 +4,8 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.exception.CannotReplicateException;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
-import com.hazelcast.raft.impl.RaftNode;
-import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
+import com.hazelcast.raft.impl.RaftNodeImpl;
+import com.hazelcast.raft.RaftNodeStatus;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.operation.ApplyRaftGroupMembersOp;
@@ -20,12 +20,12 @@ import com.hazelcast.raft.operation.TerminateRaftGroupOp;
  *
  */
 public class ReplicateTask implements Runnable {
-    private final RaftNode raftNode;
+    private final RaftNodeImpl raftNode;
     private final RaftOperation operation;
     private final SimpleCompletableFuture resultFuture;
     private final ILogger logger;
 
-    public ReplicateTask(RaftNode raftNode, RaftOperation operation, SimpleCompletableFuture resultFuture) {
+    public ReplicateTask(RaftNodeImpl raftNode, RaftOperation operation, SimpleCompletableFuture resultFuture) {
         this.raftNode = raftNode;
         this.operation = operation;
         this.logger = raftNode.getLogger(getClass());
