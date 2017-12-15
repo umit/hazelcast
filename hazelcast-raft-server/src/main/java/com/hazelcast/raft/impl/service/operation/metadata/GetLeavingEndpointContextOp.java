@@ -1,38 +1,21 @@
 package com.hazelcast.raft.impl.service.operation.metadata;
 
-import com.hazelcast.nio.ObjectDataInput;
-import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.operation.RaftOperation;
 
-import java.io.IOException;
-
-public class GetActiveEndpointsOp extends RaftOperation implements IdentifiedDataSerializable {
-
-    public GetActiveEndpointsOp() {
-    }
+public class GetLeavingEndpointContextOp extends RaftOperation implements IdentifiedDataSerializable {
 
     @Override
     protected Object doRun(int commitIndex) {
         RaftService service = getService();
-        return service.getMetadataManager().getActiveEndpoints();
+        return service.getMetadataManager().getLeavingEndpointContext();
     }
 
     @Override
     public String getServiceName() {
         return RaftService.SERVICE_NAME;
-    }
-
-    @Override
-    protected void writeInternal(ObjectDataOutput out) throws IOException {
-        super.writeInternal(out);
-    }
-
-    @Override
-    protected void readInternal(ObjectDataInput in) throws IOException {
-        super.readInternal(in);
     }
 
     @Override
@@ -42,7 +25,7 @@ public class GetActiveEndpointsOp extends RaftOperation implements IdentifiedDat
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.GET_ACTIVE_ENDPOINTS_OP;
+        return RaftServiceDataSerializerHook.GET_LEAVING_ENDPOINT_CONTEXT_OP;
     }
 
 }

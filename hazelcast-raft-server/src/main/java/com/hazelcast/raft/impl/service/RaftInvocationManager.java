@@ -15,6 +15,7 @@ import com.hazelcast.raft.impl.service.exception.CannotCreateRaftGroupException;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetActiveEndpointsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOp;
+import com.hazelcast.raft.impl.service.proxy.DefaultRaftQueryOperation;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftQueryOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
@@ -91,12 +92,12 @@ public class RaftInvocationManager {
 
     private void invokeGetEndpointsToCreateRaftGroup(final String serviceName, final String raftName, final int nodeCount,
                                                      final SimpleCompletableFuture<RaftGroupId> resultFuture) {
-        ICompletableFuture<List<RaftEndpoint>> f = invoke(new Supplier<RaftReplicateOperation>() {
+        ICompletableFuture<List<RaftEndpoint>> f = query(new Supplier<RaftQueryOperation>() {
             @Override
-            public RaftReplicateOperation get() {
-                return new DefaultRaftReplicateOperation(METADATA_GROUP_ID, new GetActiveEndpointsOp());
+            public RaftQueryOperation get() {
+                return new DefaultRaftQueryOperation(METADATA_GROUP_ID, new GetActiveEndpointsOp());
             }
-        });
+        }, QueryPolicy.LEADER_LOCAL);
 
         f.andThen(new ExecutionCallback<List<RaftEndpoint>>() {
             @Override
@@ -332,10 +333,6 @@ public class RaftInvocationManager {
             lastInvocationEndpoint = target;
         }
 
-        @Override
-        RaftEndpoint getKnownTarget() {
-            return getKnownLeader(groupId);
-        }
     }
 
     private class RaftQueryInvocationFuture<T> extends AbstractRaftInvocationFuture<T, RaftQueryOperation> {
