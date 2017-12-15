@@ -16,8 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-public class CompleteRemoveEndpointOp
-        extends RaftOperation implements IdentifiedDataSerializable {
+public class CompleteRemoveEndpointOp extends RaftOperation implements IdentifiedDataSerializable {
 
     private RaftEndpoint endpoint;
 

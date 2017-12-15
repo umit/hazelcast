@@ -3,9 +3,9 @@ package com.hazelcast.raft.impl.service;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftConfig;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.exception.CannotCreateRaftGroupException;
@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -295,12 +295,9 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             return;
         }
 
-        Map<RaftGroupId, RaftGroupLeavingEndpointContext> leavingGroups = new HashMap<RaftGroupId, RaftGroupLeavingEndpointContext>();
+        Map<RaftGroupId, RaftGroupLeavingEndpointContext> leavingGroups = new LinkedHashMap<RaftGroupId, RaftGroupLeavingEndpointContext>();
         for (RaftGroupInfo groupInfo : raftGroups.values()) {
             RaftGroupId groupId = groupInfo.id();
-            if (groupId.equals(METADATA_GROUP_ID)) {
-                continue;
-            }
             if (groupInfo.containsMember(leavingEndpoint)) {
                 boolean foundSubstitute = false;
                 for (RaftEndpoint substitute : allEndpoints) {
@@ -363,9 +360,6 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
 
         boolean safeToRemove = true;
         for (RaftGroupInfo groupInfo : raftGroups.values()) {
-            if (groupInfo.id().equals(METADATA_GROUP_ID)) {
-                continue;
-            }
             if (groupInfo.containsMember(leavingEndpoint)) {
                 safeToRemove = false;
                 break;
@@ -396,16 +390,6 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         return active;
     }
 
-    public RaftGroupInfo getRaftGroupIfMember(RaftGroupId groupId, RaftEndpoint endpoint) {
-        RaftGroupInfo groupInfo = raftGroups.get(groupId);
-        if (groupInfo == null) {
-            return null;
-        }
-
-        return groupInfo.containsMember(endpoint) ? groupInfo : null;
-    }
-
-    // !!! Called out side of Raft !!!
     public Collection<RaftGroupId> getDestroyingRaftGroupIds() {
         Collection<RaftGroupId> groupIds = new ArrayList<RaftGroupId>();
         for (RaftGroupInfo groupInfo : raftGroups.values()) {
@@ -416,7 +400,6 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         return groupIds;
     }
 
-    // Called outside of Raft
     public LeavingRaftEndpointContext getLeavingEndpointContext() {
         return leavingEndpointContext;
     }

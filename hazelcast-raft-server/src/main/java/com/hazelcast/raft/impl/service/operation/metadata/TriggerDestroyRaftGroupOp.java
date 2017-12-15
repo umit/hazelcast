@@ -11,8 +11,7 @@ import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
 import java.io.IOException;
 
-public class TriggerDestroyRaftGroupOp
-        extends RaftOperation implements IdentifiedDataSerializable {
+public class TriggerDestroyRaftGroupOp extends RaftOperation implements IdentifiedDataSerializable {
 
     private RaftGroupId groupId;
 

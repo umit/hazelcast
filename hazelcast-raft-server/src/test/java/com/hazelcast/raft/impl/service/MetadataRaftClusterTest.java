@@ -3,24 +3,36 @@ package com.hazelcast.raft.impl.service;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.nio.Address;
+import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNodeImpl;
+import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
+import com.hazelcast.raft.impl.service.operation.metadata.GetActiveEndpointsOp;
+import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
+import com.hazelcast.raft.impl.service.proxy.DefaultRaftQueryOperation;
+import com.hazelcast.raft.impl.service.proxy.RaftQueryOperation;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
+import com.hazelcast.util.function.Supplier;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static com.hazelcast.raft.impl.RaftUtil.getSnapshotEntry;
@@ -29,6 +41,7 @@ import static com.hazelcast.raft.impl.service.RaftServiceUtil.getRaftNode;
 import static com.hazelcast.test.SplitBrainTestSupport.blockCommunicationBetween;
 import static com.hazelcast.test.SplitBrainTestSupport.unblockCommunicationBetween;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -201,14 +214,32 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         instances = newInstances(raftAddresses, metadataGroupSize, 0);
 
         final RaftAtomicLongProxy atomicLong = (RaftAtomicLongProxy) RaftAtomicLongProxy.create(instances[0], "id", cpNodeCount);
+        final RaftGroupId groupId = atomicLong.getGroupId();
         atomicLong.destroy();
 
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
                 for (HazelcastInstance instance : instances) {
-                    assertNull(getRaftNode(instance, atomicLong.getGroupId()));
+                    assertNull(getRaftNode(instance, groupId));
                 }
+            }
+        });
+
+        final RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() throws Exception {
+                Future<RaftGroupInfo> f = invocationService.query(new Supplier<RaftQueryOperation>() {
+                    @Override
+                    public RaftQueryOperation get() {
+                        return new DefaultRaftQueryOperation(METADATA_GROUP_ID, new GetRaftGroupOp(groupId));
+                    }
+                }, QueryPolicy.LEADER_LOCAL);
+
+                RaftGroupInfo groupInfo = f.get();
+                assertEquals(RaftGroupStatus.DESTROYED, groupInfo.status());
             }
         });
     }
@@ -311,13 +342,104 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void when_shutdownMember_blabla() {
-        int nodeCount = 4;
-        Address[] raftAddresses = createAddresses(nodeCount);
-        instances = newInstances(raftAddresses);
+    public void when_memberIsShutdown_then_itIsRemovedFromRaftGroups()
+            throws ExecutionException, InterruptedException {
+        int cpNodeCount = 5;
+        int metadataGroupSize = cpNodeCount - 1;
+        int atomicLong1GroupSize = cpNodeCount - 2;
+        Address[] raftAddresses = createAddresses(cpNodeCount);
+        instances = newInstances(raftAddresses, metadataGroupSize, 0);
 
-        RaftAtomicLongProxy atomicLong = (RaftAtomicLongProxy) RaftAtomicLongProxy.create(instances[0], "id", nodeCount - 1);
-        instances[0].shutdown();
+        RaftAtomicLongProxy atomicLong1 = (RaftAtomicLongProxy) RaftAtomicLongProxy.create(instances[0], "id1", atomicLong1GroupSize);
+        final RaftGroupId groupId1 = atomicLong1.getGroupId();
+        RaftAtomicLongProxy atomicLong2 = (RaftAtomicLongProxy) RaftAtomicLongProxy.create(instances[0], "id2", cpNodeCount);
+        final RaftGroupId groupId2 = atomicLong2.getGroupId();
+
+        RaftEndpoint endpoint = findCommonEndpoint(instances[0], METADATA_GROUP_ID, groupId1);
+        assertNotNull(endpoint);
+
+        RaftInvocationManager invocationService = null;
+        for (HazelcastInstance instance : instances) {
+            if (!getAddress(instance).equals(endpoint.getAddress())) {
+                invocationService = getRaftInvocationService(instance);
+                break;
+            }
+        }
+        assertNotNull(invocationService);
+
+        factory.getInstance(endpoint.getAddress()).shutdown();
+
+        ICompletableFuture<List<RaftEndpoint>> f1 = invocationService.query(new Supplier<RaftQueryOperation>() {
+            @Override
+            public RaftQueryOperation get() {
+                return new DefaultRaftQueryOperation(METADATA_GROUP_ID, new GetActiveEndpointsOp());
+            }
+        }, QueryPolicy.LEADER_LOCAL);
+
+        boolean active = false;
+        for (RaftEndpoint activeEndpoint : f1.get()) {
+            if (activeEndpoint.equals(endpoint)) {
+                active = true;
+                break;
+            }
+        }
+
+        assertFalse(active);
+
+        ICompletableFuture<RaftGroupInfo> f2 = invocationService.query(new Supplier<RaftQueryOperation>() {
+            @Override
+            public RaftQueryOperation get() {
+                return new DefaultRaftQueryOperation(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID));
+            }
+        }, QueryPolicy.LEADER_LOCAL);
+
+        ICompletableFuture<RaftGroupInfo> f3 = invocationService.query(new Supplier<RaftQueryOperation>() {
+            @Override
+            public RaftQueryOperation get() {
+                return new DefaultRaftQueryOperation(METADATA_GROUP_ID, new GetRaftGroupOp(groupId1));
+            }
+        }, QueryPolicy.LEADER_LOCAL);
+
+        ICompletableFuture<RaftGroupInfo> f4 = invocationService.query(new Supplier<RaftQueryOperation>() {
+            @Override
+            public RaftQueryOperation get() {
+                return new DefaultRaftQueryOperation(METADATA_GROUP_ID, new GetRaftGroupOp(groupId2));
+            }
+        }, QueryPolicy.LEADER_LOCAL);
+
+        RaftGroupInfo metadataGroup = f2.get();
+        assertFalse(metadataGroup.containsMember(endpoint));
+        assertEquals(metadataGroupSize, metadataGroup.memberCount());
+        RaftGroupInfo atomicLongGroup1 = f3.get();
+        assertFalse(atomicLongGroup1.containsMember(endpoint));
+        assertEquals(atomicLong1GroupSize, atomicLongGroup1.memberCount());
+        RaftGroupInfo atomicLongGroup2 = f4.get();
+        assertFalse(atomicLongGroup2.containsMember(endpoint));
+        assertEquals(cpNodeCount - 1, atomicLongGroup2.memberCount());
+    }
+
+    private RaftEndpoint findCommonEndpoint(HazelcastInstance instance, final RaftGroupId groupId1, final RaftGroupId groupId2)
+            throws ExecutionException, InterruptedException {
+        RaftInvocationManager invocationService = getRaftInvocationService(instance);
+        ICompletableFuture<RaftGroupInfo> f1 = invocationService.query(new Supplier<RaftQueryOperation>() {
+            @Override
+            public RaftQueryOperation get() {
+                return new DefaultRaftQueryOperation(METADATA_GROUP_ID, new GetRaftGroupOp(groupId1));
+            }
+        }, QueryPolicy.LEADER_LOCAL);
+        ICompletableFuture<RaftGroupInfo> f2 = invocationService.query(new Supplier<RaftQueryOperation>() {
+            @Override
+            public RaftQueryOperation get() {
+                return new DefaultRaftQueryOperation(METADATA_GROUP_ID, new GetRaftGroupOp(groupId2));
+            }
+        }, QueryPolicy.LEADER_LOCAL);
+        RaftGroupInfo group1 = f1.get();
+        RaftGroupInfo group2 = f2.get();
+
+        Set<RaftEndpoint> members = new HashSet<RaftEndpoint>(group1.members());
+        members.retainAll(group2.members());
+
+        return members.isEmpty() ? null : members.iterator().next();
     }
 
     @Override

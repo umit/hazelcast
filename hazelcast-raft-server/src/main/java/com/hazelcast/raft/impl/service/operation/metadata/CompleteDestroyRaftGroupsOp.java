@@ -13,8 +13,7 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
-public class CompleteDestroyRaftGroupsOp
-        extends RaftOperation implements IdentifiedDataSerializable {
+public class CompleteDestroyRaftGroupsOp extends RaftOperation implements IdentifiedDataSerializable {
 
     private Set<RaftGroupId> groupIds;
 

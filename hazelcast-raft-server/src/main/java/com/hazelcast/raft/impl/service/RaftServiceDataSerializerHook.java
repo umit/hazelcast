@@ -18,12 +18,14 @@ import com.hazelcast.raft.impl.service.operation.metadata.CompleteRemoveEndpoint
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetActiveEndpointsOp;
-import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupIfMemberOp;
+import com.hazelcast.raft.impl.service.operation.metadata.GetDestroyingRaftGroupIds;
+import com.hazelcast.raft.impl.service.operation.metadata.GetLeavingEndpointContextOp;
+import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveEndpointOp;
+import com.hazelcast.raft.impl.service.proxy.ChangeRaftGroupMembershipOperation;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftQueryOperation;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOperation;
-import com.hazelcast.raft.impl.service.proxy.ChangeRaftGroupMembershipOperation;
 
 public final class RaftServiceDataSerializerHook implements DataSerializerHook {
 
@@ -54,7 +56,9 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int CHECK_REMOVED_ENDPOINT_OP = 21;
     public static final int DESTROY_RAFT_NODES_OP = 22;
     public static final int GET_ACTIVE_ENDPOINTS_OP = 23;
-    public static final int GET_RAFT_GROUP_IF_MEMBER_OP = 24;
+    public static final int GET_DESTROYING_RAFT_GROUP_IDS_OP = 24;
+    public static final int GET_LEAVING_ENDPOINT_CONTEXT_OP = 25;
+    public static final int GET_RAFT_GROUP_OP = 26;
 
     @Override
     public int getFactoryId() {
@@ -111,8 +115,12 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new DestroyRaftNodesOp();
                     case GET_ACTIVE_ENDPOINTS_OP:
                         return new GetActiveEndpointsOp();
-                    case GET_RAFT_GROUP_IF_MEMBER_OP:
-                        return new GetRaftGroupIfMemberOp();
+                    case GET_DESTROYING_RAFT_GROUP_IDS_OP:
+                        return new GetDestroyingRaftGroupIds();
+                    case GET_LEAVING_ENDPOINT_CONTEXT_OP:
+                        return new GetLeavingEndpointContextOp();
+                    case GET_RAFT_GROUP_OP:
+                        return new GetRaftGroupOp();
 
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
