@@ -60,7 +60,7 @@ public class MembershipChangeTask implements Runnable {
         switch (changeType) {
             case ADD:
                 if (memberExists) {
-                    resultFuture.setResult(new MemberAlreadyExistsException());
+                    resultFuture.setResult(new MemberAlreadyExistsException(member));
                     return;
                 }
                 members.add(member);
@@ -68,7 +68,7 @@ public class MembershipChangeTask implements Runnable {
 
             case REMOVE:
                 if (!memberExists) {
-                    resultFuture.setResult(new MemberDoesNotExistException());
+                    resultFuture.setResult(new MemberDoesNotExistException(member));
                     return;
                 }
                 members.remove(member);

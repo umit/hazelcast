@@ -63,7 +63,6 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
 
     private final Set<RaftGroupId> destroyedGroupIds = newSetFromMap(new ConcurrentHashMap<RaftGroupId, Boolean>());
 
-    private volatile RaftCleanupHandler cleanupHandler;
     private volatile RaftInvocationManager invocationManager;
     private volatile RaftMetadataManager metadataManager;
 
@@ -82,7 +81,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
-        cleanupHandler = new RaftCleanupHandler(nodeEngine, this);
+        RaftCleanupHandler cleanupHandler = new RaftCleanupHandler(nodeEngine, this);
         metadataManager = new RaftMetadataManager(nodeEngine, this, config);
         invocationManager = new RaftInvocationManager(nodeEngine, this, config);
 
