@@ -54,10 +54,10 @@ public class RaftConfig {
         this.uncommittedEntryCountToRejectNewAppends = config.uncommittedEntryCountToRejectNewAppends;
         this.failOnIndeterminateOperationState = config.failOnIndeterminateOperationState;
         this.appendNopEntryOnLeaderElection = config.appendNopEntryOnLeaderElection;
+        this.metadataGroupSize = config.metadataGroupSize;
         for (RaftMember member : config.members) {
             this.members.add(new RaftMember(member));
         }
-        this.metadataGroupSize = config.metadataGroupSize;
     }
 
     public long getLeaderElectionTimeoutInMillis() {
@@ -163,7 +163,9 @@ public class RaftConfig {
     }
 
     public List<RaftMember> getMetadataGroupMembers() {
-        checkTrue(metadataGroupSize > 0, "metadata group size is not set");
+        if (metadataGroupSize == 0) {
+            metadataGroupSize = members.size();
+        }
         return members.subList(0, metadataGroupSize);
     }
 }

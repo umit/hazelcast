@@ -281,7 +281,7 @@ public class RaftInvocationManager {
         void afterInvoke(RaftEndpoint target) {
         }
 
-        RaftEndpoint getTarget() {
+        private RaftEndpoint getTarget() {
             RaftEndpoint target = getKnownTarget();
             if (target != null) {
                 return target;
@@ -332,7 +332,6 @@ public class RaftInvocationManager {
         void afterInvoke(RaftEndpoint target) {
             lastInvocationEndpoint = target;
         }
-
     }
 
     private class RaftQueryInvocationFuture<T> extends AbstractRaftInvocationFuture<T, RaftQueryOperation> {
@@ -354,11 +353,6 @@ public class RaftInvocationManager {
         @Override
         RaftGroupId getGroupId(RaftQueryOperation op) {
             return op.getRaftGroupId();
-        }
-
-        @Override
-        RaftEndpoint getKnownTarget() {
-            return queryPolicy == QueryPolicy.LEADER_LOCAL ? getKnownLeader(groupId) : null;
         }
     }
 }
