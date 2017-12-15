@@ -24,4 +24,9 @@ public class PartitionSpecificRunnableAdaptor implements PartitionSpecificRunnab
     public void run() {
         task.run();
     }
+
+    @Override
+    public String toString() {
+        return "PartitionSpecificRunnableAdaptor{" + "task=" + task + ", partitionId=" + partitionId + '}';
+    }
 }

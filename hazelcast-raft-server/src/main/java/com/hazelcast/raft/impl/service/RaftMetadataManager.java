@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +30,6 @@ import static com.hazelcast.raft.impl.RaftEndpoint.parseEndpoints;
 import static com.hazelcast.raft.impl.service.LeavingRaftEndpointContext.RaftGroupLeavingEndpointContext;
 import static com.hazelcast.raft.impl.service.RaftService.SERVICE_NAME;
 import static com.hazelcast.util.Preconditions.checkNotNull;
-import static java.util.Collections.newSetFromMap;
 import static java.util.Collections.unmodifiableList;
 
 /**
@@ -51,10 +51,8 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     private final List<RaftEndpoint> allEndpoints;
     private final RaftEndpoint localEndpoint;
 
-    // read outside of Raft
-    private final Collection<RaftEndpoint> removedEndpoints = newSetFromMap(new ConcurrentHashMap<RaftEndpoint, Boolean>());
-    // read outside of Raft
-    private volatile LeavingRaftEndpointContext leavingEndpointContext;
+    private final Collection<RaftEndpoint> removedEndpoints = new HashSet<RaftEndpoint>();
+    private LeavingRaftEndpointContext leavingEndpointContext;
 
     RaftMetadataManager(NodeEngine nodeEngine, RaftService raftService, RaftConfig config) {
         this.nodeEngine = nodeEngine;

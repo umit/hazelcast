@@ -643,13 +643,20 @@ public class RaftNodeImpl implements RaftNode {
                     }
                 } else if (!raftIntegration.isReachable(leader)) {
                     logger.warning("Current leader " + leader + " is not reachable. Will start new election round...");
-                    state.leader(null);
-                    printMemberState();
-                    runPreVoteTask();
+                    resetLeaderAndStartElection();
+                } else if (!state.committedGroupMembers().isKnownEndpoint(leader)) {
+                    logger.warning("Current leader " + leader + " is not member anymore. Will start new election round...");
+                    resetLeaderAndStartElection();
                 }
             } finally {
                 scheduleLeaderFailureDetection();
             }
+        }
+
+        private void resetLeaderAndStartElection() {
+            state.leader(null);
+            printMemberState();
+            runPreVoteTask();
         }
 
         private void runPreVoteTask() {
