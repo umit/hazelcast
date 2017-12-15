@@ -296,7 +296,7 @@ public class RaftInvocationManager {
         }
 
         RaftEndpoint getKnownTarget() {
-            return null;
+            return getKnownLeader(groupId);
         }
     }
 
