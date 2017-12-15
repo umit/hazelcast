@@ -6,7 +6,7 @@ import com.hazelcast.raft.operation.RaftOperation;
  * TODO: Javadoc Pending...
  *
  */
-public class RaftQueryOperation extends RaftOperation {
+public class RaftTestQueryOperation extends RaftOperation {
 
     @Override
     public Object doRun(int commitIndex) {

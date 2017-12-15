@@ -6,8 +6,8 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
-import com.hazelcast.raft.impl.service.proxy.DefaultRaftGroupOperation;
-import com.hazelcast.raft.impl.service.proxy.RaftGroupOperation;
+import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOperation;
+import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -80,11 +80,11 @@ public class RaftInvocationManagerTest extends HazelcastRaftTestSupport {
         });
     }
 
-    static Supplier<RaftGroupOperation> createRaftApplyOperationSupplier(final RaftGroupId groupId, final Object val) {
-        return new Supplier<RaftGroupOperation>() {
+    static Supplier<RaftReplicateOperation> createRaftApplyOperationSupplier(final RaftGroupId groupId, final Object val) {
+        return new Supplier<RaftReplicateOperation>() {
             @Override
-            public RaftGroupOperation get() {
-                return new DefaultRaftGroupOperation(groupId, new RaftApplyOperation(val));
+            public RaftReplicateOperation get() {
+                return new DefaultRaftReplicateOperation(groupId, new RaftTestApplyOperation(val));
             }
         };
     }

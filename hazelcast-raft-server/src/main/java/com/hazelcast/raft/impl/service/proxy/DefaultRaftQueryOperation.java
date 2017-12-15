@@ -2,21 +2,20 @@ package com.hazelcast.raft.impl.service.proxy;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
+import com.hazelcast.raft.operation.RaftOperation;
 
 import java.io.IOException;
 
-public class DefaultRaftGroupOperation
-        extends RaftGroupOperation {
+public class DefaultRaftQueryOperation extends RaftQueryOperation {
 
     private RaftOperation raftOperation;
 
-    public DefaultRaftGroupOperation() {
+    public DefaultRaftQueryOperation() {
     }
 
-    public DefaultRaftGroupOperation(RaftGroupId groupId, RaftOperation raftOperation) {
+    public DefaultRaftQueryOperation(RaftGroupId groupId, RaftOperation raftOperation) {
         super(groupId);
         this.raftOperation = raftOperation;
     }
@@ -33,7 +32,7 @@ public class DefaultRaftGroupOperation
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.DEFAULT_RAFT_GROUP_REPLICATE_OP;
+        return RaftServiceDataSerializerHook.DEFAULT_RAFT_GROUP_QUERY_OP;
     }
 
     @Override

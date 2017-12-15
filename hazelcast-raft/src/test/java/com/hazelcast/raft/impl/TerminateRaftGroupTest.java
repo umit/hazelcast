@@ -5,7 +5,7 @@ import com.hazelcast.raft.exception.CannotReplicateException;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
 import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
 import com.hazelcast.raft.impl.dto.AppendRequest;
-import com.hazelcast.raft.impl.service.RaftApplyOperation;
+import com.hazelcast.raft.impl.service.RaftTestApplyOperation;
 import com.hazelcast.raft.impl.testing.LocalRaftGroup;
 import com.hazelcast.raft.operation.TerminateRaftGroupOp;
 import com.hazelcast.test.AssertTask;
@@ -60,7 +60,7 @@ public class TerminateRaftGroupTest extends HazelcastTestSupport {
         leader.replicate(new TerminateRaftGroupOp());
 
         try {
-            leader.replicate(new RaftApplyOperation("val")).get();
+            leader.replicate(new RaftTestApplyOperation("val")).get();
             fail();
         } catch (CannotReplicateException ignored) {
         }
@@ -108,14 +108,14 @@ public class TerminateRaftGroupTest extends HazelcastTestSupport {
         });
 
         try {
-            leader.replicate(new RaftApplyOperation("val")).get();
+            leader.replicate(new RaftTestApplyOperation("val")).get();
             fail();
         } catch (RaftGroupTerminatedException ignored) {
 
         }
 
         try {
-            follower.replicate(new RaftApplyOperation("val")).get();
+            follower.replicate(new RaftTestApplyOperation("val")).get();
             fail();
         } catch (RaftGroupTerminatedException ignored) {
         }
@@ -149,7 +149,7 @@ public class TerminateRaftGroupTest extends HazelcastTestSupport {
         final RaftNode newLeader = group.getNode(getLeaderEndpoint(followers[0]));
 
         for (int i = 0; i < 10; i++) {
-            newLeader.replicate(new RaftApplyOperation("val" + i)).get();
+            newLeader.replicate(new RaftTestApplyOperation("val" + i)).get();
         }
 
         group.merge();

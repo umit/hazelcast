@@ -9,7 +9,7 @@ import com.hazelcast.raft.impl.RaftNode.RaftNodeStatus;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
-import com.hazelcast.raft.impl.service.RaftApplyOperation;
+import com.hazelcast.raft.impl.service.RaftTestApplyOperation;
 import com.hazelcast.raft.impl.service.RaftDataService;
 import com.hazelcast.raft.impl.state.RaftGroupMembers;
 import com.hazelcast.raft.impl.testing.LocalRaftGroup;
@@ -66,7 +66,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
         group.start();
 
         final RaftNode leader = group.waitUntilLeaderElected();
-        leader.replicate(new RaftApplyOperation("val")).get();
+        leader.replicate(new RaftTestApplyOperation("val")).get();
 
         final RaftNode newRaftNode = group.createNewRaftNode();
 
@@ -109,7 +109,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
         final RaftNode leavingFollower = followers[0];
         final RaftNode stayingFollower = followers[1];
 
-        leader.replicate(new RaftApplyOperation("val")).get();
+        leader.replicate(new RaftTestApplyOperation("val")).get();
 
         leader.replicateMembershipChange(leavingFollower.getLocalEndpoint(), REMOVE).get();
 
@@ -134,7 +134,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
         final RaftNode leader = group.waitUntilLeaderElected();
         final RaftNode[] followers = group.getNodesExcept(leader.getLocalEndpoint());
 
-        leader.replicate(new RaftApplyOperation("val")).get();
+        leader.replicate(new RaftTestApplyOperation("val")).get();
         leader.replicateMembershipChange(leader.getLocalEndpoint(), REMOVE).get();
 
         assertEquals(RaftNodeStatus.STEPPED_DOWN, getStatus(leader));
@@ -159,7 +159,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
         RaftNode[] followers = group.getNodesExcept(leader.getLocalEndpoint());
 
         group.dropMessagesToEndpoint(followers[0].getLocalEndpoint(), leader.getLocalEndpoint(), AppendSuccessResponse.class);
-        leader.replicate(new RaftApplyOperation("val")).get();
+        leader.replicate(new RaftTestApplyOperation("val")).get();
 
         leader.replicateMembershipChange(leader.getLocalEndpoint(), MembershipChangeType.REMOVE);
 
@@ -179,7 +179,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
         final RaftNode leader = group.waitUntilLeaderElected();
         final RaftNode[] followers = group.getNodesExcept(leader.getLocalEndpoint());
 
-        leader.replicate(new RaftApplyOperation("val")).get();
+        leader.replicate(new RaftTestApplyOperation("val")).get();
         leader.replicateMembershipChange(leader.getLocalEndpoint(), REMOVE).get();
 
         assertTrueEventually(new AssertTask() {
@@ -210,7 +210,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
         group.start();
 
         final RaftNode leader = group.waitUntilLeaderElected();
-        leader.replicate(new RaftApplyOperation("val")).get();
+        leader.replicate(new RaftTestApplyOperation("val")).get();
 
         try {
             leader.replicateMembershipChange(leader.getLocalEndpoint(), null).get();
@@ -227,7 +227,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
         final RaftNode leader = group.waitUntilLeaderElected();
         final RaftNode leavingFollower = group.getAnyFollowerNode();
 
-        leader.replicate(new RaftApplyOperation("val")).get();
+        leader.replicate(new RaftTestApplyOperation("val")).get();
         leader.replicateMembershipChange(leavingFollower.getLocalEndpoint(), MembershipChangeType.REMOVE).get();
 
         try {
@@ -244,7 +244,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
 
         final RaftNode leader = group.waitUntilLeaderElected();
 
-        leader.replicate(new RaftApplyOperation("val")).get();
+        leader.replicate(new RaftTestApplyOperation("val")).get();
 
         try {
             leader.replicateMembershipChange(leader.getLocalEndpoint(), MembershipChangeType.ADD).get();
@@ -298,7 +298,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
 
         final RaftNode leader = group.waitUntilLeaderElected();
         for (int i = 0; i < 4; i++) {
-            leader.replicate(new RaftApplyOperation("val" + i)).get();
+            leader.replicate(new RaftTestApplyOperation("val" + i)).get();
         }
 
         final RaftNode newRaftNode = group.createNewRaftNode();
@@ -336,7 +336,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
         final RaftNode leader = group.waitUntilLeaderElected();
         final RaftNode[] followers = group.getNodesExcept(leader.getLocalEndpoint());
 
-        leader.replicate(new RaftApplyOperation("val")).get();
+        leader.replicate(new RaftTestApplyOperation("val")).get();
 
         for (RaftNode follower : followers) {
             group.dropMessagesToEndpoint(follower.getLocalEndpoint(), leader.getLocalEndpoint(), AppendSuccessResponse.class);
@@ -368,7 +368,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
         });
 
         final RaftNode newLeader = group.getNode(getLeaderEndpoint(followers[0]));
-        newLeader.replicate(new RaftApplyOperation("val2"));
+        newLeader.replicate(new RaftTestApplyOperation("val2"));
 
         assertTrueEventually(new AssertTask() {
             @Override

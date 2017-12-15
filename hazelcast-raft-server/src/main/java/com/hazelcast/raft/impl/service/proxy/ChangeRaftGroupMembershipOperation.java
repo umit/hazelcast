@@ -12,7 +12,7 @@ import com.hazelcast.raft.operation.RaftOperation;
 
 import java.io.IOException;
 
-public class ChangeRaftGroupMembershipOperation extends RaftGroupOperation {
+public class ChangeRaftGroupMembershipOperation extends RaftReplicateOperation {
 
     private static final int NAN_MEMBERS_COMMIT_INDEX = -1;
 
