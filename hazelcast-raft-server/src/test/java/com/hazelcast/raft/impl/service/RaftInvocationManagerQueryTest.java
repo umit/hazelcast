@@ -22,7 +22,9 @@ import java.util.concurrent.ExecutionException;
 
 import static com.hazelcast.raft.QueryPolicy.ANY_LOCAL;
 import static com.hazelcast.raft.QueryPolicy.LEADER_LOCAL;
+import static com.hazelcast.raft.impl.RaftUtil.getCommitIndex;
 import static com.hazelcast.raft.impl.service.RaftInvocationManagerTest.createRaftApplyOperationSupplier;
+import static com.hazelcast.raft.impl.service.RaftServiceUtil.getRaftNode;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -33,7 +35,7 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
     private HazelcastInstance[] instances;
 
     @Test
-    public void when_queryFromLeader_withoutAnyCommit_thenReadNull() throws Exception {
+    public void when_queryFromLeader_withoutAnyCommit_thenReadLinearizable() throws Exception {
         int nodeCount = 3;
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
@@ -44,10 +46,13 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         ICompletableFuture<Object> future = invocationService.query(createRaftQueryOperationSupplier(groupId), LEADER_LOCAL);
 
         assertNull(future.get());
+
+        RaftNodeImpl raftNode = getRaftNode(getLeaderInstance(instances, groupId), groupId);
+        assertEquals(1, getCommitIndex(raftNode));
     }
 
     @Test
-    public void when_queryFromFollower_withoutAnyCommit_thenReadNull() throws Exception {
+    public void when_queryFromFollower_withoutAnyCommit_thenReadLinearizable() throws Exception {
         int nodeCount = 3;
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
@@ -58,6 +63,9 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         ICompletableFuture<Object> future = invocationService.query(createRaftQueryOperationSupplier(groupId), ANY_LOCAL);
 
         assertNull(future.get());
+
+        RaftNodeImpl raftNode = getRaftNode(getLeaderInstance(instances, groupId), groupId);
+        assertEquals(1, getCommitIndex(raftNode));
     }
 
     @Test
