@@ -28,6 +28,8 @@ public interface RaftNode {
 
     RaftNodeStatus getStatus();
 
+    boolean isTerminatedOrSteppedDown();
+
     void forceSetTerminatedStatus();
 
     void start();
