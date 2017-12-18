@@ -463,11 +463,9 @@ public class RaftCleanupHandler {
             try {
                 future.get();
                 logger.info(endpoint + " is removed from metadata cluster.");
+            } catch (MemberDoesNotExistException e) {
+                logger.fine("Cannot commit remove for: " + endpoint, e);
             } catch (Exception e) {
-                if (e.getCause() instanceof MemberDoesNotExistException) {
-                    logger.fine("Cannot commit remove for: " + endpoint, e);
-                    return;
-                }
                 logger.severe("Cannot commit remove for: " + endpoint, e);
             }
         }
