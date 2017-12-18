@@ -205,7 +205,7 @@ public class RaftState {
         if (leaderState != null) {
             for (RaftEndpoint endpoint : endpoints) {
                 if (!committedGroupMembers.isKnownEndpoint(endpoint)) {
-                    leaderState.add(endpoint, 0);
+                    leaderState.add(endpoint, log.lastLogOrSnapshotIndex());
                 }
             }
 

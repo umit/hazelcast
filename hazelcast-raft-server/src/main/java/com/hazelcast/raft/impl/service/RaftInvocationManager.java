@@ -43,6 +43,8 @@ import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 
 public class RaftInvocationManager {
 
+    private static final int MAX_RETRY_DELAY = 250;
+
     private final NodeEngine nodeEngine;
     private final RaftService raftService;
     private final ILogger logger;
@@ -206,8 +208,7 @@ public class RaftInvocationManager {
 
         private final Supplier<O> operationSupplier;
         volatile RaftGroupId groupId;
-        private volatile RaftEndpoint[] endpoints;
-        private volatile int endPointIndex;
+        private volatile EndpointCursor endpointCursor;
 
         AbstractRaftInvocationFuture(Supplier<O> operationSupplier) {
             super(nodeEngine, RaftInvocationManager.this.logger);
@@ -221,12 +222,8 @@ public class RaftInvocationManager {
 
         @Override
         public void onFailure(Throwable cause) {
-            if (logger.isFineEnabled()) {
-                logger.warning("Failure while invoking " + operationSupplier, cause);
-            } else {
-                logger.warning("Failure while invoking " + operationSupplier + " -> " + cause);
-            }
             if (isRetryable(cause)) {
+                logger.warning("Failure while invoking " + operationSupplier + " -> " + cause);
                 updateKnownLeaderOnFailure(groupId, cause);
                 try {
                     scheduleRetry();
@@ -235,6 +232,7 @@ public class RaftInvocationManager {
                     setResult(e);
                 }
             } else {
+                logger.severe("Failure while invoking " + operationSupplier, cause);
                 setResult(cause);
             }
         }
@@ -259,7 +257,7 @@ public class RaftInvocationManager {
                         setResult(e);
                     }
                 }
-            }, 250, TimeUnit.MILLISECONDS);
+            }, MAX_RETRY_DELAY, TimeUnit.MILLISECONDS);
         }
 
         final void invoke() {
@@ -292,13 +290,19 @@ public class RaftInvocationManager {
                 return target;
             }
 
-            if (endpoints == null || endPointIndex == endpoints.length) {
-                RaftGroupInfo raftGroupInfo = raftService.getRaftGroupInfo(groupId);
-                endpoints = raftGroupInfo != null ? raftGroupInfo.membersArray() : allEndpoints;
-                endPointIndex = 0;
+            EndpointCursor cursor = endpointCursor;
+            if (cursor == null || !cursor.advance()) {
+                cursor = newEndpointCursor();
+                cursor.advance();
+                endpointCursor = cursor;
             }
+            return cursor.get();
+        }
 
-            return endpoints != null ? endpoints[endPointIndex++] : null;
+        private EndpointCursor newEndpointCursor() {
+            RaftGroupInfo raftGroupInfo = raftService.getRaftGroupInfo(groupId);
+            RaftEndpoint[] endpoints = raftGroupInfo != null ? raftGroupInfo.membersArray() : allEndpoints;
+            return new EndpointCursor(endpoints);
         }
 
         RaftEndpoint getKnownTarget() {
@@ -370,4 +374,22 @@ public class RaftInvocationManager {
             return super.isRetryable(cause);
         }
     }
+
+    private static class EndpointCursor {
+        private final RaftEndpoint[] endpoints;
+        private int index = -1;
+
+        private EndpointCursor(RaftEndpoint[] endpoints) {
+            this.endpoints = endpoints;
+        }
+
+        boolean advance() {
+            return ++index < endpoints.length;
+        }
+
+        RaftEndpoint get() {
+            return endpoints[index];
+        }
+    }
+
 }

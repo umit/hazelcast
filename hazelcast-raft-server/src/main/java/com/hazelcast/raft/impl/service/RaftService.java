@@ -38,6 +38,7 @@ import com.hazelcast.util.function.Supplier;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -281,7 +282,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
                     }
 
                     if (groupInfo.containsMember(getLocalEndpoint())) {
-                        createRaftNode(groupInfo.id(), groupInfo.serviceName(), groupInfo.members());
+                        createRaftNode(groupInfo.id(), groupInfo.serviceName(), Collections.singletonList(getLocalEndpoint()));
                     }
                 }
 

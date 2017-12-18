@@ -6,6 +6,8 @@ import com.hazelcast.raft.impl.dto.PreVoteRequest;
 import com.hazelcast.raft.impl.log.RaftLog;
 import com.hazelcast.raft.impl.state.RaftState;
 
+import java.util.Collection;
+
 /**
  * TODO: Javadoc Pending...
  *
@@ -21,9 +23,16 @@ public class PreVoteTask extends RaftNodeAwareTask implements Runnable {
         RaftState state = raftNode.state();
 
         if (state.leader() != null) {
-            logger.warning("No new pre-vote phase, we already have a LEADER: " + state.leader());
+            logger.info("No new pre-vote phase, we already have a LEADER: " + state.leader());
             return;
         }
+
+        Collection<RaftEndpoint> remoteMembers = state.remoteMembers();
+        if (remoteMembers.isEmpty()) {
+            logger.fine("Remote members is empty. No need for pre-voting.");
+            return;
+        }
+
 
         state.initPreCandidateState();
         int nextTerm = state.term() + 1;
@@ -35,7 +44,7 @@ public class PreVoteTask extends RaftNodeAwareTask implements Runnable {
                 + ", last log term: " + request.lastLogTerm());
         raftNode.printMemberState();
 
-        for (RaftEndpoint endpoint : state.remoteMembers()) {
+        for (RaftEndpoint endpoint : remoteMembers) {
             raftNode.send(request, endpoint);
         }
 
