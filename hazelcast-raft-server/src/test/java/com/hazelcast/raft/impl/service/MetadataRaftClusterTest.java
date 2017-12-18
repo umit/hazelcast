@@ -16,11 +16,11 @@ import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftQueryOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftQueryOperation;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
-import com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
+import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.function.Supplier;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -36,14 +36,18 @@ import java.util.concurrent.Future;
 
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static com.hazelcast.raft.impl.RaftUtil.getSnapshotEntry;
+import static com.hazelcast.raft.impl.RaftUtil.waitUntilLeaderElected;
 import static com.hazelcast.raft.impl.service.RaftService.METADATA_GROUP_ID;
 import static com.hazelcast.raft.impl.service.RaftServiceUtil.getRaftNode;
 import static com.hazelcast.test.SplitBrainTestSupport.blockCommunicationBetween;
 import static com.hazelcast.test.SplitBrainTestSupport.unblockCommunicationBetween;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -90,13 +94,13 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
 
-        final RaftAtomicLongProxy atomicLong = (RaftAtomicLongProxy) RaftAtomicLongProxy.create(instances[0], "id", nodeCount);
+        final RaftGroupId groupId = createNewRaftGroup(instances[0], "id", nodeCount);
 
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
                 for (HazelcastInstance instance : instances) {
-                    assertNotNull(getRaftNode(instance, atomicLong.getGroupId()));
+                    assertNotNull(getRaftNode(instance, groupId));
                 }
             }
         });
@@ -150,15 +154,14 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         final int newGroupCount = metadataGroupSize + 1;
 
         HazelcastInstance instance = instances[invokeOnCP ? 0 : instances.length - 1];
-        final RaftAtomicLongProxy atomicLong = (RaftAtomicLongProxy) RaftAtomicLongProxy.create(instance, "id", newGroupCount);
-        atomicLong.set(5);
+        final RaftGroupId groupId = createNewRaftGroup(instance, "id", newGroupCount);
 
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
                 int count = 0;
                 for (HazelcastInstance instance : instances) {
-                    RaftNodeImpl raftNode = getRaftNode(instance, atomicLong.getGroupId());
+                    RaftNodeImpl raftNode = getRaftNode(instance, groupId);
                     if (raftNode != null) {
                         count++;
                     }
@@ -176,7 +179,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         instances = newInstances(raftAddresses);
 
         try {
-            RaftAtomicLongProxy.create(instances[0], "id", nodeCount + 1);
+            createNewRaftGroup(instances[0], "id", nodeCount + 1);
             fail();
         } catch (IllegalArgumentException ignored) {
         }
@@ -187,9 +190,9 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         int nodeCount = 3;
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
-        final RaftAtomicLongProxy atomicLong1 = (RaftAtomicLongProxy) RaftAtomicLongProxy.create(instances[0], "id", nodeCount);
-        final RaftAtomicLongProxy atomicLong2 = (RaftAtomicLongProxy) RaftAtomicLongProxy.create(instances[1], "id", nodeCount);
-        assertEquals(atomicLong1.getGroupId(), atomicLong2.getGroupId());
+        RaftGroupId groupId1 = createNewRaftGroup(instances[0], "id", nodeCount);
+        RaftGroupId groupId2 = createNewRaftGroup(instances[1], "id", nodeCount);
+        assertEquals(groupId1, groupId2);
     }
 
     @Test
@@ -198,9 +201,9 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
 
-        RaftAtomicLongProxy.create(instances[0], "id", nodeCount);
+        createNewRaftGroup(instances[0], "id", nodeCount);
         try {
-            RaftAtomicLongProxy.create(instances[0], "id", nodeCount - 1);
+            createNewRaftGroup(instances[0], "id", nodeCount - 1);
             fail();
         } catch (IllegalStateException ignored) {
         }
@@ -213,9 +216,8 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(cpNodeCount);
         instances = newInstances(raftAddresses, metadataGroupSize, 0);
 
-        final RaftAtomicLongProxy atomicLong = (RaftAtomicLongProxy) RaftAtomicLongProxy.create(instances[0], "id", cpNodeCount);
-        final RaftGroupId groupId = atomicLong.getGroupId();
-        atomicLong.destroy();
+        final RaftGroupId groupId = createNewRaftGroup(instances[0], "id", cpNodeCount);
+        destroyRaftGroup(instances[0], groupId);
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -251,9 +253,9 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(cpNodeCount);
         instances = newInstances(raftAddresses, metadataGroupSize, 0);
 
-        final RaftAtomicLongProxy atomicLong = (RaftAtomicLongProxy) RaftAtomicLongProxy.create(instances[0], "id", cpNodeCount);
-        atomicLong.destroy();
-        atomicLong.destroy();
+        RaftGroupId groupId = createNewRaftGroup(instances[0], "id", cpNodeCount);
+        destroyRaftGroup(instances[0], groupId);
+        destroyRaftGroup(instances[0], groupId);
     }
 
     @Test
@@ -263,19 +265,19 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(cpNodeCount);
         instances = newInstances(raftAddresses, metadataGroupSize, 0);
 
-        final RaftAtomicLongProxy atomicLong = (RaftAtomicLongProxy) RaftAtomicLongProxy.create(instances[0], "id", cpNodeCount);
-        atomicLong.destroy();
+        final RaftGroupId groupId = createNewRaftGroup(instances[0], "id", cpNodeCount);
+        destroyRaftGroup(instances[0], groupId);
 
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
                 for (HazelcastInstance instance : instances) {
-                    assertNull(getRaftNode(instance, atomicLong.getGroupId()));
+                    assertNull(getRaftNode(instance, groupId));
                 }
             }
         });
 
-        RaftAtomicLongProxy.create(instances[0], "id", cpNodeCount - 1);
+        createNewRaftGroup(instances[0], "id", cpNodeCount - 1);
     }
 
     @Test
@@ -317,8 +319,8 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
 
         final List<RaftGroupId> groupIds = new ArrayList<RaftGroupId>();
         for (int i = 0; i < commitCountToSnapshot; i++) {
-            RaftAtomicLongProxy atomicLong = (RaftAtomicLongProxy) RaftAtomicLongProxy.create(leader, "id" + i, nodeCount);
-            groupIds.add(atomicLong.getGroupId());
+            RaftGroupId groupId = createNewRaftGroup(leader, "id" + i, nodeCount);
+            groupIds.add(groupId);
         }
 
         assertTrueEventually(new AssertTask() {
@@ -342,6 +344,29 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
     }
 
     @Test
+    public void when_shutdownLeader_thenNewLeaderElected() {
+        int cpNodeCount = 5;
+        int metadataGroupSize = cpNodeCount - 1;
+        Address[] raftAddresses = createAddresses(cpNodeCount);
+        instances = newInstances(raftAddresses, metadataGroupSize, 0);
+
+        HazelcastInstance leaderInstance = getLeaderInstance(instances, METADATA_GROUP_ID);
+        leaderInstance.shutdown();
+
+        for (HazelcastInstance instance : instances) {
+            if (instance == leaderInstance) {
+                continue;
+            }
+            RaftNodeImpl raftNode = getRaftNode(instance, METADATA_GROUP_ID);
+            while (raftNode == null) {
+                sleepMillis(100);
+                raftNode = getRaftNode(instance, METADATA_GROUP_ID);
+            }
+            waitUntilLeaderElected(raftNode);
+        }
+    }
+
+    @Test
     public void when_memberIsShutdown_then_itIsRemovedFromRaftGroups()
             throws ExecutionException, InterruptedException {
         int cpNodeCount = 5;
@@ -350,10 +375,8 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(cpNodeCount);
         instances = newInstances(raftAddresses, metadataGroupSize, 0);
 
-        RaftAtomicLongProxy atomicLong1 = (RaftAtomicLongProxy) RaftAtomicLongProxy.create(instances[0], "id1", atomicLong1GroupSize);
-        final RaftGroupId groupId1 = atomicLong1.getGroupId();
-        RaftAtomicLongProxy atomicLong2 = (RaftAtomicLongProxy) RaftAtomicLongProxy.create(instances[0], "id2", cpNodeCount);
-        final RaftGroupId groupId2 = atomicLong2.getGroupId();
+        final RaftGroupId groupId1 = createNewRaftGroup(instances[0], "id1", atomicLong1GroupSize);
+        final RaftGroupId groupId2 = createNewRaftGroup(instances[0], "id2", cpNodeCount);
 
         RaftEndpoint endpoint = findCommonEndpoint(instances[0], METADATA_GROUP_ID, groupId1);
         assertNotNull(endpoint);
@@ -376,15 +399,8 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
             }
         }, QueryPolicy.LEADER_LOCAL);
 
-        boolean active = false;
-        for (RaftEndpoint activeEndpoint : f1.get()) {
-            if (activeEndpoint.equals(endpoint)) {
-                active = true;
-                break;
-            }
-        }
-
-        assertFalse(active);
+        List<RaftEndpoint> activeEndpoints = f1.get();
+        assertThat(activeEndpoints, not(hasItem(endpoint)));
 
         ICompletableFuture<RaftGroupInfo> f2 = invocationService.query(new Supplier<RaftQueryOperation>() {
             @Override
@@ -416,6 +432,24 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         RaftGroupInfo atomicLongGroup2 = f4.get();
         assertFalse(atomicLongGroup2.containsMember(endpoint));
         assertEquals(cpNodeCount - 1, atomicLongGroup2.memberCount());
+    }
+
+    private RaftGroupId createNewRaftGroup(HazelcastInstance instance, String name, int nodeCount) {
+        RaftInvocationManager invocationManager = RaftServiceUtil.getRaftService(instance).getInvocationManager();
+        try {
+            return invocationManager.createRaftGroup(RaftService.SERVICE_NAME, name, nodeCount);
+        } catch (Exception e) {
+            throw ExceptionUtil.rethrow(e);
+        }
+    }
+
+    private void destroyRaftGroup(HazelcastInstance instance, RaftGroupId groupId) {
+        RaftInvocationManager invocationManager = RaftServiceUtil.getRaftService(instance).getInvocationManager();
+        try {
+            invocationManager.triggerDestroyRaftGroupAsync(groupId).get();
+        } catch (Exception e) {
+            throw ExceptionUtil.rethrow(e);
+        }
     }
 
     private RaftEndpoint findCommonEndpoint(HazelcastInstance instance, final RaftGroupId groupId1, final RaftGroupId groupId2)
@@ -451,7 +485,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         Config config = super.createConfig(raftAddresses, metadataGroupSize);
         RaftConfig raftConfig =
                 (RaftConfig) config.getServicesConfig().getServiceConfig(RaftService.SERVICE_NAME).getConfigObject();
-        raftConfig.setAppendNopEntryOnLeaderElection(true);
+        raftConfig.setAppendNopEntryOnLeaderElection(true).setLeaderHeartbeatPeriodInMillis(1000);
 
         config.getServicesConfig().addServiceConfig(atomicLongServiceConfig);
         return config;

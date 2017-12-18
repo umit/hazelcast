@@ -21,12 +21,8 @@ import com.hazelcast.raft.impl.handler.AppendFailureResponseHandlerTask;
 import com.hazelcast.raft.impl.handler.AppendRequestHandlerTask;
 import com.hazelcast.raft.impl.handler.AppendSuccessResponseHandlerTask;
 import com.hazelcast.raft.impl.handler.InstallSnapshotHandlerTask;
-import com.hazelcast.raft.impl.task.MembershipChangeTask;
 import com.hazelcast.raft.impl.handler.PreVoteRequestHandlerTask;
 import com.hazelcast.raft.impl.handler.PreVoteResponseHandlerTask;
-import com.hazelcast.raft.impl.task.PreVoteTask;
-import com.hazelcast.raft.impl.task.QueryTask;
-import com.hazelcast.raft.impl.task.ReplicateTask;
 import com.hazelcast.raft.impl.handler.VoteRequestHandlerTask;
 import com.hazelcast.raft.impl.handler.VoteResponseHandlerTask;
 import com.hazelcast.raft.impl.log.LogEntry;
@@ -37,6 +33,10 @@ import com.hazelcast.raft.impl.operation.RestoreSnapshotOp;
 import com.hazelcast.raft.impl.operation.TakeSnapshotOp;
 import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.raft.impl.state.RaftState;
+import com.hazelcast.raft.impl.task.MembershipChangeTask;
+import com.hazelcast.raft.impl.task.PreVoteTask;
+import com.hazelcast.raft.impl.task.QueryTask;
+import com.hazelcast.raft.impl.task.ReplicateTask;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.raft.operation.RaftCommandOperation;
 import com.hazelcast.raft.operation.RaftOperation;
@@ -45,6 +45,7 @@ import com.hazelcast.util.Clock;
 import com.hazelcast.util.RandomPicker;
 import com.hazelcast.util.collection.Long2ObjectHashMap;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -92,7 +93,7 @@ public class RaftNodeImpl implements RaftNode {
         this.raftIntegration = raftIntegration;
         this.localEndpoint = localEndpoint;
         this.state = new RaftState(groupId, localEndpoint, endpoints);
-        this.logger = getLogger(getClass());
+        this.logger = getLogger(RaftNode.class);
         this.maxUncommittedEntryCount = raftConfig.getUncommittedEntryCountToRejectNewAppends();
         this.appendRequestMaxEntryCount = raftConfig.getAppendRequestMaxEntryCount();
         this.commitIndexAdvanceCountToSnapshot = raftConfig.getCommitIndexAdvanceCountToSnapshot();
@@ -385,6 +386,11 @@ public class RaftNodeImpl implements RaftNode {
 
         assert prevEntry != null : "Follower: " + follower + ", next index: " + nextIndex;
 
+        if (prevEntry.index() < state.commitIndex()) {
+            // send at most one ApplyRaftGroupMembersOp in single batch
+            entries = trimEntriesIfContainsMultipleMembershipChanges(entries);
+        }
+
         AppendRequest appendRequest = new AppendRequest(getLocalEndpoint(), state.term(), prevEntry.term(), prevEntry.index(),
                 state.commitIndex(), entries);
 
@@ -395,8 +401,29 @@ public class RaftNodeImpl implements RaftNode {
         send(appendRequest, follower);
     }
 
-    // If commitIndex > lastApplied: increment lastApplied, apply log[lastApplied] to state machine (§5.3)
+    private LogEntry[] trimEntriesIfContainsMultipleMembershipChanges(LogEntry[] entries) {
+        int trim = entries.length;
+        boolean found = false;
+        for (int i = 0; i < entries.length; i++) {
+            LogEntry entry = entries[i];
+            if (entry.operation() instanceof ApplyRaftGroupMembersOp) {
+                if (found) {
+                    trim = i;
+                    break;
+                } else {
+                    found = true;
+                }
+            }
+        }
 
+        if (trim < entries.length) {
+            logger.fine("Trimming append entries up to index of the second ApplyRaftGroupMembersOp: " + trim);
+            return Arrays.copyOf(entries, trim);
+        }
+        return entries;
+    }
+
+    // If commitIndex > lastApplied: increment lastApplied, apply log[lastApplied] to state machine (§5.3)
     public void processLogs() {
         // Reject logs we've applied already
         int commitIndex = state.commitIndex();
