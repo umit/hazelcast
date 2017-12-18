@@ -221,7 +221,11 @@ public class RaftInvocationManager {
 
         @Override
         public void onFailure(Throwable cause) {
-            logger.warning(cause);
+            if (logger.isFineEnabled()) {
+                logger.warning("Failure while invoking " + operationSupplier, cause);
+            } else {
+                logger.warning("Failure while invoking " + operationSupplier + " -> " + cause);
+            }
             if (isRetryable(cause)) {
                 updateKnownLeaderOnFailure(groupId, cause);
                 try {
@@ -251,7 +255,7 @@ public class RaftInvocationManager {
                     try {
                         invoke();
                     } catch (Throwable e) {
-                        logger.severe(e);
+                        logger.warning(e);
                         setResult(e);
                     }
                 }
