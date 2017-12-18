@@ -1,7 +1,6 @@
 package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.config.Config;
-import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.nio.Address;
@@ -11,11 +10,13 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
+import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetActiveEndpointsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftQueryOperation;
+import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOperation;
 import com.hazelcast.raft.impl.service.proxy.RaftQueryOperation;
-import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
+import com.hazelcast.raft.impl.service.proxy.RaftReplicateOperation;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -28,6 +29,7 @@ import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -39,6 +41,7 @@ import static com.hazelcast.raft.impl.RaftUtil.getSnapshotEntry;
 import static com.hazelcast.raft.impl.RaftUtil.waitUntilLeaderElected;
 import static com.hazelcast.raft.impl.service.RaftService.METADATA_GROUP_ID;
 import static com.hazelcast.raft.impl.service.RaftServiceUtil.getRaftNode;
+import static com.hazelcast.raft.impl.service.RaftServiceUtil.getRaftService;
 import static com.hazelcast.test.SplitBrainTestSupport.blockCommunicationBetween;
 import static com.hazelcast.test.SplitBrainTestSupport.unblockCommunicationBetween;
 import static org.hamcrest.Matchers.hasItem;
@@ -344,6 +347,52 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
     }
 
     @Test
+    public void when_raftGroupIsCreated_onNonMetadataMembers_thenLeaderShouldBeElected()
+            throws ExecutionException, InterruptedException {
+        int metadataGroupSize = 3;
+        int otherRaftGroupSize = 2;
+        Address[] raftAddresses = createAddresses(metadataGroupSize + otherRaftGroupSize);
+        instances = newInstances(raftAddresses, metadataGroupSize, 0);
+
+        HazelcastInstance leaderInstance = getLeaderInstance(instances, METADATA_GROUP_ID);
+        RaftService raftService = getRaftService(leaderInstance);
+        Collection<RaftEndpoint> allEndpoints = raftService.getAllEndpoints();
+        RaftGroupInfo metadataGroup = raftService.getRaftGroupInfo(METADATA_GROUP_ID);
+
+        final Collection<RaftEndpoint> endpoints = new HashSet<RaftEndpoint>(otherRaftGroupSize);
+        for (RaftEndpoint endpoint : allEndpoints) {
+            if (!metadataGroup.containsMember(endpoint)) {
+                endpoints.add(endpoint);
+            }
+        }
+        assertEquals(otherRaftGroupSize, endpoints.size());
+
+        ICompletableFuture<RaftGroupId> f = raftService.getInvocationManager()
+                .invoke(new Supplier<RaftReplicateOperation>() {
+            @Override
+            public RaftReplicateOperation get() {
+                return new DefaultRaftReplicateOperation(METADATA_GROUP_ID,
+                        new CreateRaftGroupOp(RaftService.SERVICE_NAME, "test", endpoints));
+            }
+        });
+
+        final RaftGroupId groupId = f.get();
+
+        for (final HazelcastInstance instance : instances) {
+            if (endpoints.contains(getRaftService(instance).getLocalEndpoint())) {
+                assertTrueEventually(new AssertTask() {
+                    @Override
+                    public void run() {
+                        RaftNodeImpl raftNode = getRaftNode(instance, groupId);
+                        assertNotNull(raftNode);
+                        waitUntilLeaderElected(raftNode);
+                    }
+                });
+            }
+        }
+    }
+
+    @Test
     public void when_shutdownLeader_thenNewLeaderElected() {
         int cpNodeCount = 5;
         int metadataGroupSize = cpNodeCount - 1;
@@ -435,7 +484,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
     }
 
     private RaftGroupId createNewRaftGroup(HazelcastInstance instance, String name, int nodeCount) {
-        RaftInvocationManager invocationManager = RaftServiceUtil.getRaftService(instance).getInvocationManager();
+        RaftInvocationManager invocationManager = getRaftService(instance).getInvocationManager();
         try {
             return invocationManager.createRaftGroup(RaftService.SERVICE_NAME, name, nodeCount);
         } catch (Exception e) {
@@ -444,7 +493,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
     }
 
     private void destroyRaftGroup(HazelcastInstance instance, RaftGroupId groupId) {
-        RaftInvocationManager invocationManager = RaftServiceUtil.getRaftService(instance).getInvocationManager();
+        RaftInvocationManager invocationManager = getRaftService(instance).getInvocationManager();
         try {
             invocationManager.triggerDestroyRaftGroupAsync(groupId).get();
         } catch (Exception e) {
@@ -478,16 +527,10 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
 
     @Override
     protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
-        ServiceConfig atomicLongServiceConfig = new ServiceConfig().setEnabled(true)
-                                                                   .setName(RaftAtomicLongService.SERVICE_NAME)
-                                                                   .setClassName(RaftAtomicLongService.class.getName());
-
         Config config = super.createConfig(raftAddresses, metadataGroupSize);
         RaftConfig raftConfig =
                 (RaftConfig) config.getServicesConfig().getServiceConfig(RaftService.SERVICE_NAME).getConfigObject();
         raftConfig.setAppendNopEntryOnLeaderElection(true).setLeaderHeartbeatPeriodInMillis(1000);
-
-        config.getServicesConfig().addServiceConfig(atomicLongServiceConfig);
         return config;
     }
 

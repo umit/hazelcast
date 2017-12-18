@@ -10,8 +10,10 @@ import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.exception.CannotCreateRaftGroupException;
 import com.hazelcast.raft.impl.service.exception.CannotRemoveEndpointException;
+import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftNodeOp;
 import com.hazelcast.raft.impl.util.Pair;
 import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.OperationService;
 
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -216,6 +218,15 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         RaftGroupId groupId = groupInfo.id();
         if (groupInfo.containsMember(localEndpoint)) {
             raftService.createRaftNode(groupId, groupInfo.serviceName(), groupInfo.members());
+        } else {
+            // Broadcast group-info to non-metadata group members
+            OperationService operationService = nodeEngine.getOperationService();
+            RaftGroupInfo metadataGroup = raftGroups.get(RaftService.METADATA_GROUP_ID);
+            for (RaftEndpoint endpoint : groupInfo.members()) {
+                if (!metadataGroup.containsMember(endpoint)) {
+                    operationService.send(new CreateRaftNodeOp(groupInfo), endpoint.getAddress());
+                }
+            }
         }
 
         return groupId;
@@ -350,6 +361,9 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
                 if (localEndpoint.equals(joining)) {
                     // we are the added member to the group, we can try to create the local raft node if not created already
                     raftService.createRaftNode(groupId, groupInfo.serviceName(), groupInfo.members());
+                } else if (joining != null) {
+                    // publish group-info to the joining member
+                    nodeEngine.getOperationService().send(new CreateRaftNodeOp(groupInfo), joining.getAddress());
                 }
             } else {
                 logger.warning("Could not substitute " + leavingEndpoint + " with " + joining + " in " + groupId);
