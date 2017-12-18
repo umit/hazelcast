@@ -16,6 +16,7 @@ import com.hazelcast.raft.impl.service.operation.metadata.CheckRemovedEndpointOp
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteRemoveEndpointOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
+import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftNodeOp;
 import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetActiveEndpointsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetDestroyingRaftGroupIds;
@@ -59,6 +60,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int GET_DESTROYING_RAFT_GROUP_IDS_OP = 24;
     public static final int GET_LEAVING_ENDPOINT_CONTEXT_OP = 25;
     public static final int GET_RAFT_GROUP_OP = 26;
+    public static final int CREATE_RAFT_NODE_OP = 27;
 
     @Override
     public int getFactoryId() {
@@ -121,6 +123,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new GetLeavingEndpointContextOp();
                     case GET_RAFT_GROUP_OP:
                         return new GetRaftGroupOp();
+                    case CREATE_RAFT_NODE_OP:
+                        return new CreateRaftNodeOp();
 
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);

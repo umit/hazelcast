@@ -6,10 +6,10 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftIntegration;
+import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
@@ -38,7 +38,6 @@ import com.hazelcast.util.function.Supplier;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -48,6 +47,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.raft.impl.service.RaftCleanupHandler.CLEANUP_TASK_PERIOD_IN_MILLIS;
 import static java.util.Collections.newSetFromMap;
+import static java.util.Collections.singletonList;
 
 /**
  * TODO: Javadoc Pending...
@@ -281,9 +281,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
                         return;
                     }
 
-                    if (groupInfo.containsMember(getLocalEndpoint())) {
-                        createRaftNode(groupInfo.id(), groupInfo.serviceName(), Collections.singletonList(getLocalEndpoint()));
-                    }
+                    createRaftNode(groupInfo);
                 }
 
                 @Override
@@ -339,6 +337,15 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
 
             node.start();
             logger.info("RaftNode created for: " + groupId + " with members: " + endpoints);
+        }
+    }
+
+    public void createRaftNode(RaftGroupInfo groupInfo) {
+        RaftEndpoint localEndpoint = getLocalEndpoint();
+        if (groupInfo.containsMember(localEndpoint)) {
+            Collection<RaftEndpoint> members = groupInfo.isInitialMember(localEndpoint)
+                    ? groupInfo.members() : singletonList(localEndpoint);
+            createRaftNode(groupInfo.id(), groupInfo.serviceName(), members);
         }
     }
 
