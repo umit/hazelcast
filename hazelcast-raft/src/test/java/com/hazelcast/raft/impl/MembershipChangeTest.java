@@ -5,7 +5,6 @@ import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.exception.CannotReplicateException;
 import com.hazelcast.raft.exception.MemberAlreadyExistsException;
 import com.hazelcast.raft.exception.MemberDoesNotExistException;
-import com.hazelcast.raft.RaftNodeStatus;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;

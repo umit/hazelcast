@@ -2,7 +2,6 @@ package com.hazelcast.raft.impl;
 
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftConfig;
-import com.hazelcast.raft.RaftNodeStatus;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.service.RaftDataService;
 import com.hazelcast.raft.impl.state.LeaderState;

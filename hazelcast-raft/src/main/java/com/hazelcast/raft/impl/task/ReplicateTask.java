@@ -5,7 +5,7 @@ import com.hazelcast.raft.exception.CannotReplicateException;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
 import com.hazelcast.raft.impl.RaftNodeImpl;
-import com.hazelcast.raft.RaftNodeStatus;
+import com.hazelcast.raft.impl.RaftNodeStatus;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.operation.ApplyRaftGroupMembersOp;
