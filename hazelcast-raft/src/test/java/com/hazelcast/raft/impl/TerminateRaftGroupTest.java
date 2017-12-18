@@ -3,7 +3,6 @@ package com.hazelcast.raft.impl;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.exception.CannotReplicateException;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
-import com.hazelcast.raft.RaftNodeStatus;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.service.RaftTestApplyOperation;
 import com.hazelcast.raft.impl.testing.LocalRaftGroup;

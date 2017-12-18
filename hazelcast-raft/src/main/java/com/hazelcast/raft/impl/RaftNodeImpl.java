@@ -6,8 +6,6 @@ import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.RaftNode;
-import com.hazelcast.raft.RaftNodeStatus;
 import com.hazelcast.raft.exception.CannotRunLocalQueryException;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.StaleAppendRequestException;
@@ -53,11 +51,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static com.hazelcast.raft.RaftNodeStatus.ACTIVE;
-import static com.hazelcast.raft.RaftNodeStatus.CHANGING_MEMBERSHIP;
-import static com.hazelcast.raft.RaftNodeStatus.STEPPED_DOWN;
-import static com.hazelcast.raft.RaftNodeStatus.TERMINATED;
-import static com.hazelcast.raft.RaftNodeStatus.TERMINATING;
+import static com.hazelcast.raft.impl.RaftNodeStatus.ACTIVE;
+import static com.hazelcast.raft.impl.RaftNodeStatus.CHANGING_MEMBERSHIP;
+import static com.hazelcast.raft.impl.RaftNodeStatus.STEPPED_DOWN;
+import static com.hazelcast.raft.impl.RaftNodeStatus.TERMINATED;
+import static com.hazelcast.raft.impl.RaftNodeStatus.TERMINATING;
 import static java.lang.Math.min;
 
 /**
