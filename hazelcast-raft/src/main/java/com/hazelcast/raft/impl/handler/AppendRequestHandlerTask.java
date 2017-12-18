@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl.handler;
 
 import com.hazelcast.raft.impl.RaftNodeImpl;
-import com.hazelcast.raft.RaftNodeStatus;
+import com.hazelcast.raft.impl.RaftNodeStatus;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;

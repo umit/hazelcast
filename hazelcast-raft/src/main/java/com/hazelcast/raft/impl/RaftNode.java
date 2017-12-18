@@ -1,7 +1,9 @@
-package com.hazelcast.raft;
+package com.hazelcast.raft.impl;
 
 import com.hazelcast.core.ICompletableFuture;
-import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.MembershipChangeType;
+import com.hazelcast.raft.QueryPolicy;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
