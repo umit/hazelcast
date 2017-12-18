@@ -51,7 +51,7 @@ public class MembershipChangeTask implements Runnable {
             return;
         }
 
-        logger.severe("Changing membership -> " + changeType + ": " + member);
+        logger.info("Changing membership -> " + changeType + ": " + member);
 
         RaftState state = raftNode.state();
         Collection<RaftEndpoint> members = new LinkedHashSet<RaftEndpoint>(state.members());
@@ -78,7 +78,7 @@ public class MembershipChangeTask implements Runnable {
                 resultFuture.setResult(new IllegalArgumentException("Unknown type: " + changeType));
                 return;
         }
-        logger.severe("New members after " + changeType + " -> " + members);
+        logger.info("New members after " + changeType + " -> " + members);
         new ReplicateTask(raftNode, new ApplyRaftGroupMembersOp(members), resultFuture).run();
     }
 

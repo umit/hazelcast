@@ -79,8 +79,10 @@ public class ReplicateTask implements Runnable {
     private boolean verifyRaftNodeStatus() {
         if (raftNode.getStatus() == RaftNodeStatus.TERMINATED) {
             resultFuture.setResult(new RaftGroupTerminatedException());
+            logger.fine("Won't run " + operation + ", since raft node is terminated");
             return false;
         } else if (raftNode.getStatus() == RaftNodeStatus.STEPPED_DOWN) {
+            logger.fine("Won't run " + operation + ", since raft node is stepped down");
             resultFuture.setResult(new NotLeaderException(raftNode.getGroupId(), raftNode.getLocalEndpoint(), null));
             return false;
         }

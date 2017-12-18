@@ -233,6 +233,7 @@ public class RaftNodeImpl implements RaftNode {
     }
 
     // It reads the volatile status field
+    @Override
     public boolean isTerminatedOrSteppedDown() {
         return status == TERMINATED || status == STEPPED_DOWN;
     }

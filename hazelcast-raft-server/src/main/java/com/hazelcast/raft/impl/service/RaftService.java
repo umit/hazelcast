@@ -112,13 +112,13 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     }
 
     @Override
-    public boolean onShutdown(long timeout, TimeUnit unit) {
+    public boolean onShutdown(final long timeout, TimeUnit unit) {
         RaftEndpoint localEndpoint = getLocalEndpoint();
         if (localEndpoint == null) {
             return true;
         }
 
-        logger.severe("ON SHUTDOWN " + localEndpoint);
+        logger.fine("Triggering remove member procedure for " + localEndpoint);
 
         long remainingTimeNanos = unit.toNanos(timeout);
         long start = System.nanoTime();
@@ -128,8 +128,11 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
 
         // wait for us being replaced in all raft groups we are participating
         // and removed from all raft groups
+        logger.fine("Waiting remove member procedure to be completed for " + localEndpoint
+                + ", remaining time: " + TimeUnit.NANOSECONDS.toMillis(remainingTimeNanos) + " ms.");
         while (remainingTimeNanos > 0) {
             if (isRemoved(localEndpoint)) {
+                logger.fine("Remove member procedure completed for " + localEndpoint);
                 return true;
             }
             try {
@@ -140,18 +143,19 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
             }
             remainingTimeNanos -= CLEANUP_TASK_PERIOD_IN_MILLIS;
         }
-
+        logger.fine("Remove member procedure NOT completed for " + localEndpoint + " in "
+                + unit.toMillis(timeout) + " ms.");
         return false;
     }
 
-    private void ensureTriggerShutdown(RaftEndpoint localEndpoint, long remainingTimeNanos) {
+    private void ensureTriggerShutdown(RaftEndpoint endpoint, long remainingTimeNanos) {
         while (remainingTimeNanos > 0) {
             long start = System.nanoTime();
             try {
                 // mark us as shutting-down in metadata
-                Future<RaftGroupId> future = triggerRemoveEndpointAsync(localEndpoint);
+                Future<RaftGroupId> future = triggerRemoveEndpointAsync(endpoint);
                 future.get(remainingTimeNanos, TimeUnit.NANOSECONDS);
-                logger.severe("TRIGGERED SHUTDOWN FOR " + localEndpoint);
+                logger.fine(endpoint + " is marked as being removed.");
                 return;
             } catch (CannotRemoveEndpointException e) {
                 remainingTimeNanos -= (System.nanoTime() - start);
@@ -283,7 +287,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
 
                 @Override
                 public void onFailure(Throwable t) {
-                    logger.severe("Cannot get raft group: " + groupId + " from the metadata group", t);
+                    logger.warning("Cannot get raft group: " + groupId + " from the metadata group", t);
                 }
             });
         }
@@ -333,7 +337,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
             }
 
             node.start();
-            logger.severe("RaftNode created for: " + groupId + " with members: " + endpoints);
+            logger.info("RaftNode created for: " + groupId + " with members: " + endpoints);
         }
     }
 
@@ -342,7 +346,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         RaftNode node = nodes.remove(groupId);
         if (node != null) {
             node.forceSetTerminatedStatus();
-            logger.severe("Local raft node of " + groupId + " is destroyed.");
+            logger.info("Local raft node of " + groupId + " is destroyed.");
         }
     }
 

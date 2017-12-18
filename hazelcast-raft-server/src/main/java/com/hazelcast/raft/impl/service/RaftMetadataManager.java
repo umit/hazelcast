@@ -365,7 +365,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         }
 
         if (safeToRemove) {
-            logger.severe("Remove member completed for " + leavingEndpoint);
+            logger.info("Remove member procedure completed for " + leavingEndpoint);
             removedEndpoints.add(leavingEndpoint);
             leavingEndpointContext = null;
         } else if (!leftGroups.isEmpty()) {

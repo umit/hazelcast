@@ -6,11 +6,12 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.RaftNode;
-import com.hazelcast.raft.impl.RaftNodeStatus;
+import com.hazelcast.raft.exception.MemberDoesNotExistException;
 import com.hazelcast.raft.exception.MismatchingGroupMembersCommitIndexException;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
 import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftNodeStatus;
 import com.hazelcast.raft.impl.service.LeavingRaftEndpointContext.RaftGroupLeavingEndpointContext;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOp;
@@ -89,7 +90,7 @@ public class RaftCleanupHandler {
     private boolean shouldRunCleanupTask() {
         RaftNode raftNode = raftService.getRaftNode(RaftService.METADATA_GROUP_ID);
         // even if the local leader information is stale, it is fine.
-        return raftNode != null && getLocalEndpoint().equals(raftNode.getLeader());
+        return raftNode != null && !raftNode.isTerminatedOrSteppedDown() && getLocalEndpoint().equals(raftNode.getLeader());
     }
 
     private class CheckLocalRaftNodesTask implements Runnable {
@@ -270,7 +271,7 @@ public class RaftCleanupHandler {
 
         private void handle(LeavingRaftEndpointContext leavingRaftEndpointContext) {
             final RaftEndpoint leavingEndpoint = leavingRaftEndpointContext.getEndpoint();
-            logger.severe("Handling remove of " + leavingEndpoint + " => " + leavingRaftEndpointContext);
+            logger.fine("Handling remove of " + leavingEndpoint + " => " + leavingRaftEndpointContext);
 
             Map<RaftGroupId, Future<Integer>> joinFutures = new HashMap<RaftGroupId, Future<Integer>>();
             Map<RaftGroupId, RaftGroupLeavingEndpointContext> leavingGroups = leavingRaftEndpointContext.getGroups();
@@ -288,7 +289,7 @@ public class RaftCleanupHandler {
                     continue;
                 }
 
-                logger.severe("Substituting " + leavingEndpoint + " with " + ctx.getSubstitute() + " in " + groupId);
+                logger.fine("Substituting " + leavingEndpoint + " with " + ctx.getSubstitute() + " in " + groupId);
 
                 ICompletableFuture<Integer> future = invoke(new Supplier<RaftReplicateOperation>() {
                     @Override
@@ -463,6 +464,10 @@ public class RaftCleanupHandler {
                 future.get();
                 logger.info(endpoint + " is removed from metadata cluster.");
             } catch (Exception e) {
+                if (e.getCause() instanceof MemberDoesNotExistException) {
+                    logger.fine("Cannot commit remove for: " + endpoint, e);
+                    return;
+                }
                 logger.severe("Cannot commit remove for: " + endpoint, e);
             }
         }
