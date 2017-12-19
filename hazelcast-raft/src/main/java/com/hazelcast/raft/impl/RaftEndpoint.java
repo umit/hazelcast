@@ -13,8 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * {@code RaftEndpoint} represents a member in Raft group.
+ * Each endpoint must have a unique address and id in the group.
  */
 public class RaftEndpoint implements IdentifiedDataSerializable {
 
