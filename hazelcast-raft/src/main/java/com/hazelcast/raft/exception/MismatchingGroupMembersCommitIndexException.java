@@ -8,6 +8,10 @@ import java.io.ObjectOutputStream;
 import java.util.Collection;
 import java.util.HashSet;
 
+/**
+ * A {@code RaftException} which is thrown when a membership change is requested
+ * but expected members commitIndex doesn't match the actual members commitIndex in the Raft state.
+ */
 public class MismatchingGroupMembersCommitIndexException extends RaftException {
 
     private transient int commitIndex;

@@ -1,7 +1,7 @@
 package com.hazelcast.raft.exception;
 
 /**
- * TODO: Javadoc Pending...
+ * A {@code RaftException} which is thrown when a request is sent to a terminated Raft group.
  */
 public class RaftGroupTerminatedException extends RaftException {
 
