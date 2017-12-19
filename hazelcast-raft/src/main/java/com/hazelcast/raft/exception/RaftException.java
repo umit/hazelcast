@@ -9,8 +9,10 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * Base exception for Raft related failures.
+ * <p>
+ * This exception can include the known leader of a Raft group when & where it's thrown.
+ * Leader endpoint can be accessed by {@link #getLeader()}, if available.
  */
 public class RaftException extends HazelcastException {
 
@@ -25,6 +27,10 @@ public class RaftException extends HazelcastException {
         this.leader = leader;
     }
 
+    /**
+     * Returns the leader endpoint of related Raft group, if known/available
+     * by the time this exception is thrown.
+     */
     public RaftEndpoint getLeader() {
         return leader;
     }

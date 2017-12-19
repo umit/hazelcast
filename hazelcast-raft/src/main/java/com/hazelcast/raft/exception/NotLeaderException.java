@@ -4,7 +4,7 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftEndpoint;
 
 /**
- * TODO: Javadoc Pending...
+ * A {@code RaftException} which is thrown when a leader-only request is received by a non-leader member.
  */
 public class NotLeaderException extends RaftException {
     public NotLeaderException(RaftGroupId groupId, RaftEndpoint local, RaftEndpoint leader) {

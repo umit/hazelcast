@@ -1,8 +1,8 @@
 package com.hazelcast.raft;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * Represents a member of the Raft group.
+ * Each member must have a unique address and id in the group.
  */
 public class RaftMember {
 
@@ -49,17 +49,13 @@ public class RaftMember {
         }
 
         RaftMember that = (RaftMember) o;
-
-        if (address != null ? !address.equals(that.address) : that.address != null) {
-            return false;
-        }
-        return id != null ? id.equals(that.id) : that.id == null;
+        return address.equals(that.address) && id.equals(that.id);
     }
 
     @Override
     public int hashCode() {
-        int result = address != null ? address.hashCode() : 0;
-        result = 31 * result + (id != null ? id.hashCode() : 0);
+        int result = address.hashCode();
+        result = 31 * result + id.hashCode();
         return result;
     }
 

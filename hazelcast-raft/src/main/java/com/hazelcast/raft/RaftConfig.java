@@ -7,41 +7,87 @@ import static com.hazelcast.util.Preconditions.checkPositive;
 import static com.hazelcast.util.Preconditions.checkTrue;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * Configuration for Raft groups.
  */
 public class RaftConfig {
 
-
+    /**
+     * Default leader election timeout in millis. See {@link #leaderElectionTimeoutInMillis}.
+     */
     public static final long DEFAULT_LEADER_ELECTION_TIMEOUT_IN_MILLIS = 2000;
 
+    /**
+     * Default leader heartbeat period in millis. See {@link #leaderHeartbeatPeriodInMillis}.
+     */
     public static final long DEFAULT_LEADER_HEARTBEAT_PERIOD_IN_MILLIS = 5000;
 
+    /**
+     * Default max append request entry count. See {@link #appendRequestMaxEntryCount}.
+     */
     public static final int DEFAULT_APPEND_REQUEST_MAX_ENTRY_COUNT = 50;
 
+    /**
+     * Default commit index advance to initiate a snapshot. See {@link #commitIndexAdvanceCountToSnapshot}.
+     */
     public static final int DEFAULT_COMMIT_INDEX_ADVANCE_COUNT_TO_SNAPSHOT = 1000;
 
+    /**
+     * Default max allowed uncommitted entry count. See {@link #uncommittedEntryCountToRejectNewAppends}.
+     */
     public static final int DEFAULT_UNCOMMITTED_ENTRY_COUNT_TO_REJECT_NEW_APPENDS = 100;
 
-
+    /**
+     * Leader election timeout in milliseconds.
+     * If a candidate cannot win majority of the votes in time, a new election round is initiated.
+     */
     private long leaderElectionTimeoutInMillis = DEFAULT_LEADER_ELECTION_TIMEOUT_IN_MILLIS;
 
+    /**
+     * Period for leader to send heartbeat messages to its followers.
+     */
     private long leaderHeartbeatPeriodInMillis = DEFAULT_LEADER_HEARTBEAT_PERIOD_IN_MILLIS;
 
+    /**
+     * Max entry count that can be sent in a single batch of append entries request.
+     */
     private int appendRequestMaxEntryCount = DEFAULT_APPEND_REQUEST_MAX_ENTRY_COUNT;
 
+    /**
+     * Number of commits to initiate a new snapshot after the last snapshot's index.
+     */
     private int commitIndexAdvanceCountToSnapshot = DEFAULT_COMMIT_INDEX_ADVANCE_COUNT_TO_SNAPSHOT;
 
+    /**
+     * Max number of allowed uncommitted entries before rejecting new append requests
+     * with {@link com.hazelcast.raft.exception.CannotReplicateException}.
+     */
     private int uncommittedEntryCountToRejectNewAppends = DEFAULT_UNCOMMITTED_ENTRY_COUNT_TO_REJECT_NEW_APPENDS;
 
+    /**
+     * When enabled, an append request fails if the target member (leader) leaves the cluster.
+     * At this point result of append request is indeterminate, it may have been replicated by the leader
+     * to some of the followers.
+     */
     private boolean failOnIndeterminateOperationState;
 
-    // See https://groups.google.com/forum/#!msg/raft-dev/t4xj6dJTP6E/d2D9LrWRza8J
+    /**
+     * Enabled appending a no-op entry to the log when a new leader is elected.
+     * <p>
+     * See <a href="https://groups.google.com/forum/#!msg/raft-dev/t4xj6dJTP6E/d2D9LrWRza8J">
+     * <i>Bug in single-server membership changes</i></a> post by Diego Ongaro for more info.
+     */
     private boolean appendNopEntryOnLeaderElection;
 
-    private final List<RaftMember> members = new ArrayList<RaftMember>();
-
+    /**
+     * Size of the metadata Raft group. If not specified explicitly, then all Raft members will be in metadata group.
+     */
     private int metadataGroupSize;
+
+    /**
+     * Raft members. Members of a Raft group are selected among these pre-defined members.
+     * First {@link #metadataGroupSize} of these will be members of the metadata Raft group.
+     */
+    private final List<RaftMember> members = new ArrayList<RaftMember>();
 
     public RaftConfig() {
     }

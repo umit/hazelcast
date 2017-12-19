@@ -12,8 +12,8 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * A {@code RaftCommandOperation} to update members of an existing Raft group. This operation is generated
+ * as a result of member add or remove request.
  */
 public class ApplyRaftGroupMembersOp extends RaftCommandOperation implements IdentifiedDataSerializable {
 

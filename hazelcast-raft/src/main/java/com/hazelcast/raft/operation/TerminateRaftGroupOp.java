@@ -8,8 +8,7 @@ import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * A {@code RaftCommandOperation} to terminate an existing Raft group.
  */
 public class TerminateRaftGroupOp extends RaftCommandOperation implements IdentifiedDataSerializable {
 

@@ -1,8 +1,7 @@
 package com.hazelcast.raft.operation;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * Internal {@link RaftOperation} to handle Raft group management tasks.
  */
 public abstract class RaftCommandOperation extends RaftOperation {
 
