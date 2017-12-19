@@ -60,8 +60,7 @@ import static com.hazelcast.raft.impl.RaftNodeStatus.TERMINATING;
 import static java.lang.Math.min;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * Implementation of {@link RaftNode}.
  */
 public class RaftNodeImpl implements RaftNode {
 
@@ -128,6 +127,7 @@ public class RaftNodeImpl implements RaftNode {
     public RaftNodeStatus getStatus() {
         return status;
     }
+
     @Override
     public void forceSetTerminatedStatus() {
         execute(new Runnable() {
@@ -140,7 +140,9 @@ public class RaftNodeImpl implements RaftNode {
         });
     }
 
-    @Override
+    /**
+     * Starts the periodic tasks, such as voting, leader failure-detection, snapshot handling.
+     */
     public void start() {
         if (!raftIntegration.isJoined()) {
             raftIntegration.schedule(new Runnable() {

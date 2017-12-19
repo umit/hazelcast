@@ -11,8 +11,7 @@ import com.hazelcast.raft.RaftGroupId;
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * Implementation of {@link RaftGroupId}.
  */
 public final class RaftGroupIdImpl implements RaftGroupId, IdentifiedDataSerializable {
 
