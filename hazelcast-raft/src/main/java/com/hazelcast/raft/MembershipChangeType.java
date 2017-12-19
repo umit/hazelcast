@@ -1,7 +1,7 @@
 package com.hazelcast.raft;
 
 /**
- * TODO: Javadoc Pending...
+ * Defines type of the membership change.
  */
 public enum MembershipChangeType {
     ADD, REMOVE
