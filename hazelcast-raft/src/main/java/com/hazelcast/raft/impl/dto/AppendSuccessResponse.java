@@ -9,8 +9,13 @@ import com.hazelcast.raft.impl.RaftEndpoint;
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * Struct for successful response to AppendEntries RPC.
+ * <p>
+ * See <i>5.3 Log replication</i> section of <i>In Search of an Understandable Consensus Algorithm</i>
+ * paper by <i>Diego Ongaro</i> and <i>John Ousterhout</i>.
  *
+ * @see AppendRequest
+ * @see AppendFailureResponse
  */
 public class AppendSuccessResponse implements IdentifiedDataSerializable {
 

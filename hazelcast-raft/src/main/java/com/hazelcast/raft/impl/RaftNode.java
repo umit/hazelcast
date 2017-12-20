@@ -145,7 +145,7 @@ public interface RaftNode {
      *
      * @param operation RaftOperation to query
      * @param queryPolicy query policy to decide where to execute operation
-     * @return future to getr notified about result of the query
+     * @return future to get notified about result of the query
      */
     ICompletableFuture query(RaftOperation operation, QueryPolicy queryPolicy);
 

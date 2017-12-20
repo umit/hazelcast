@@ -145,7 +145,7 @@ public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runna
             int newCommitIndex = min(req.leaderCommitIndex(), lastLogIndex);
             logger.info("Setting commit index: " + newCommitIndex);
             state.commitIndex(newCommitIndex);
-            raftNode.processLogs();
+            raftNode.processLogEntries();
         }
 
         raftNode.updateLastAppendEntriesTimestamp();
