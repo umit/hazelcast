@@ -3,16 +3,20 @@ package com.hazelcast.raft.impl.dto;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.impl.log.LogEntry;
 
 import java.io.IOException;
 import java.util.Arrays;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * Struct for AppendEntries RPC.
+ * <p>
+ * See <i>5.3 Log replication</i> section of <i>In Search of an Understandable Consensus Algorithm</i>
+ * paper by <i>Diego Ongaro</i> and <i>John Ousterhout</i>.
+ * <p>
+ * Invoked by leader to replicate log entries (§5.3); also used as heartbeat (§5.2).
  */
 public class AppendRequest implements IdentifiedDataSerializable {
 
@@ -26,7 +30,8 @@ public class AppendRequest implements IdentifiedDataSerializable {
     public AppendRequest() {
     }
 
-    public AppendRequest(RaftEndpoint leader, int term, int prevLogTerm, int prevLogIndex, int leaderCommitIndex, LogEntry[] entries) {
+    public AppendRequest(RaftEndpoint leader, int term, int prevLogTerm, int prevLogIndex, int leaderCommitIndex,
+            LogEntry[] entries) {
         this.term = term;
         this.leader = leader;
         this.prevLogTerm = prevLogTerm;
@@ -104,8 +109,9 @@ public class AppendRequest implements IdentifiedDataSerializable {
 
     @Override
     public String toString() {
-        return "AppendRequest{" + "leader=" + leader + ", term=" + term + ", prevLogTerm=" + prevLogTerm + ", prevLogIndex="
-                + prevLogIndex + ", leaderCommitIndex=" + leaderCommitIndex + ", entries=" + Arrays.toString(entries) + '}';
+        return "AppendRequest{" + "leader=" + leader + ", term=" + term + ", prevLogTerm=" + prevLogTerm
+                + ", prevLogIndex=" + prevLogIndex + ", leaderCommitIndex=" + leaderCommitIndex + ", entries=" + Arrays
+                .toString(entries) + '}';
     }
 
 }

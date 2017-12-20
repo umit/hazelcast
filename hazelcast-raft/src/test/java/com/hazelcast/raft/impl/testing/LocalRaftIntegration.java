@@ -104,7 +104,7 @@ public class LocalRaftIntegration implements RaftIntegration {
     }
 
     @Override
-    public boolean isJoined() {
+    public boolean isReady() {
         return true;
     }
 

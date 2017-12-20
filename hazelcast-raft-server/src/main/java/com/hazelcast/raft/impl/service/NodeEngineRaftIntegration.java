@@ -81,7 +81,7 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
     }
 
     @Override
-    public boolean isJoined() {
+    public boolean isReady() {
         return nodeEngine.getClusterService().isJoined();
     }
 

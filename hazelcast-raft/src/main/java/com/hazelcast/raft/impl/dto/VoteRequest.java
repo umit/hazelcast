@@ -9,8 +9,12 @@ import com.hazelcast.raft.impl.RaftEndpoint;
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * Struct for VoteRequest RPC.
+ * <p>
+ * See <i>5.2 Leader election</i> section of <i>In Search of an Understandable Consensus Algorithm</i>
+ * paper by <i>Diego Ongaro</i> and <i>John Ousterhout</i>.
+ * <p>
+ * Invoked by candidates to gather votes (§5.2).
  */
 public class VoteRequest implements IdentifiedDataSerializable {
 
@@ -73,8 +77,8 @@ public class VoteRequest implements IdentifiedDataSerializable {
 
     @Override
     public String toString() {
-        return "VoteRequest{" + "candidate=" + candidate + ", term=" + term + ", lastLogTerm=" + lastLogTerm + ", lastLogIndex="
-                + lastLogIndex + '}';
+        return "VoteRequest{" + "candidate=" + candidate + ", term=" + term + ", lastLogTerm=" + lastLogTerm
+                + ", lastLogIndex=" + lastLogIndex + '}';
     }
 
 }

@@ -9,8 +9,12 @@ import com.hazelcast.raft.impl.RaftEndpoint;
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * Struct for response to PreVoteRequest RPC.
+ * <p>
+ * See <i>Four modifications for the Raft consensus algorithm</i> by Henrik Ingo.
  *
+ * @see PreVoteRequest
+ * @see VoteResponse
  */
 public class PreVoteResponse implements IdentifiedDataSerializable {
 
