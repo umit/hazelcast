@@ -16,8 +16,15 @@ import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.operation.TerminateRaftGroupOp;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * ReplicateTask is executed to append a {@link RaftOperation} to Raft log
+ * and replicate the new entry to followers. It's scheduled by
+ * {@link com.hazelcast.raft.impl.RaftNode#replicate(RaftOperation)}
+ * or by {@link MembershipChangeTask} for membership changes.
+ * <p>
+ * If this node is not the leader, future is immediately notified with {@link NotLeaderException}.
+ * <p>
+ * If replication of the operation is not allowed at the moment (see {@link RaftNodeImpl#canReplicateNewEntry(RaftOperation)}),
+ * future is immediately notified with {@link CannotReplicateException}.
  */
 public class ReplicateTask implements Runnable {
     private final RaftNodeImpl raftNode;

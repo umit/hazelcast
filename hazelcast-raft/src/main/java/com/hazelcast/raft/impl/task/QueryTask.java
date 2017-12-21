@@ -13,8 +13,10 @@ import com.hazelcast.raft.operation.RaftCommandOperation;
 import com.hazelcast.raft.operation.RaftOperation;
 
 /**
- * TODO: Javadoc Pending...
+ * QueryTask is executed to query/read Raft state without appending log entry. It's scheduled by
+ * {@link RaftNodeImpl#query(RaftOperation, QueryPolicy)}.
  *
+ * @see QueryPolicy
  */
 public class QueryTask implements Runnable {
     private final RaftNodeImpl raftNode;

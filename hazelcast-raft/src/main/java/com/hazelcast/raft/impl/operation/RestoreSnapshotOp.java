@@ -4,12 +4,18 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
+import com.hazelcast.raft.operation.RaftOperation;
 
 import java.io.IOException;
 
+/**
+ * {@code RaftOperation} to restore snapshot using related {@link SnapshotAwareService#takeSnapshot(RaftGroupId, int)}.
+ * <p>
+ * This operation is appended to Raft log in {@link com.hazelcast.raft.impl.log.SnapshotEntry} and send to followers
+ * via {@link com.hazelcast.raft.impl.dto.InstallSnapshot} RPC.
+ */
 public class RestoreSnapshotOp extends RaftOperation implements IdentifiedDataSerializable {
 
     private RaftGroupId groupId;
@@ -28,8 +34,8 @@ public class RestoreSnapshotOp extends RaftOperation implements IdentifiedDataSe
 
     @Override
     public Object doRun(int commitIndex) {
-        assert this.commitIndex == commitIndex : " expected restore commit index: " + this.commitIndex + " given commit index: "
-                + commitIndex;
+        assert this.commitIndex == commitIndex :
+                " expected restore commit index: " + this.commitIndex + " given commit index: " + commitIndex;
 
         SnapshotAwareService service = getService();
         service.restoreSnapshot(groupId, commitIndex, snapshot);
@@ -64,6 +70,7 @@ public class RestoreSnapshotOp extends RaftOperation implements IdentifiedDataSe
 
     @Override
     public String toString() {
-        return "RestoreSnapshotOp{" + "groupId='" + groupId + '\'' + ", commitIndex=" + commitIndex + ", snapshot=" + snapshot + '}';
+        return "RestoreSnapshotOp{" + "groupId='" + groupId + '\'' + ", commitIndex=" + commitIndex + ", snapshot="
+                + snapshot + '}';
     }
 }

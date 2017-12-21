@@ -9,8 +9,12 @@ import com.hazelcast.raft.impl.state.RaftState;
 import java.util.Collection;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * PreVoteTask is scheduled when current leader is null, unreachable or unknown.
+ * It sends {@link PreVoteRequest}s to other members to receive make sure majority is reachable
+ * and ready to elect a new leader.
+ * <p>
+ * Also a {@link PreVoteTimeoutTask} is scheduled with a {@link RaftNodeImpl#getLeaderElectionTimeoutInMillis()}
+ * delay to trigger pre-voting if a leader is not available yet.
  */
 public class PreVoteTask extends RaftNodeAwareTask implements Runnable {
 
