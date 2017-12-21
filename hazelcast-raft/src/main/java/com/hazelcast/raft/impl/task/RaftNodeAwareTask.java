@@ -4,8 +4,10 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * Base class for tasks need to know current {@link RaftNodeImpl}. If this not is terminated or stepped down,
+ * task will be skipped.
+ * <p>
+ * Subclasses must implement {@link #innerRun()} method.
  */
 public abstract class RaftNodeAwareTask implements Runnable {
 

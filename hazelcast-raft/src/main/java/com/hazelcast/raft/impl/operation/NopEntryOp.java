@@ -5,8 +5,8 @@ import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.operation.RaftOperation;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * No-op entry operation which is appended in the Raft log when a new leader is elected and
+ * {@link com.hazelcast.raft.RaftConfig#appendNopEntryOnLeaderElection} is enabled.
  */
 public class NopEntryOp extends RaftOperation implements IdentifiedDataSerializable {
 

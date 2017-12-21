@@ -4,8 +4,9 @@ import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.RaftRole;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * PreVoteTimeoutTask is scheduled by {@link PreVoteTask}
+ * to trigger pre-voting again if this node is still a follower
+ * and a leader is not available after leader election timeout.
  */
 public class PreVoteTimeoutTask extends RaftNodeAwareTask implements Runnable {
 

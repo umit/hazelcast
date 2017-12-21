@@ -16,8 +16,18 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 
 /**
- * TODO: Javadoc Pending...
+ * MembershipChangeTask is executed to add/remove a member to the Raft group.
+ * <p>
+ * If membership change type is ADD but the member already exists in the group,
+ * then future is notified with {@link MemberAlreadyExistsException}.
+ * <p>
+ * If membership change type is REMOVE but the member doesn't exist in the group,
+ * then future is notified with {@link MemberDoesNotExistException}.
+ * <p>
+ * {@link ApplyRaftGroupMembersOp} Raft operation is created with members according to the member parameter
+ * and membership change and it's replicated via {@link ReplicateTask}.
  *
+ * @see MembershipChangeType
  */
 public class MembershipChangeTask implements Runnable {
     private final RaftNodeImpl raftNode;
