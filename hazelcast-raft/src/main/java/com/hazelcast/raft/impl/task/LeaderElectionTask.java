@@ -6,8 +6,13 @@ import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.state.RaftState;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * LeaderElectionTask is scheduled when current leader is null, unreachable or unknown
+ * by {@link com.hazelcast.raft.impl.handler.PreVoteResponseHandlerTask} after a follower receives votes
+ * from at least majority.
+ * Local member becomes a candidate using {@link RaftState#toCandidate()} and sends {@link VoteRequest}s to other members.
+ * <p>
+ * Also a {@link LeaderElectionTimeoutTask} is scheduled with a {@link RaftNodeImpl#getLeaderElectionTimeoutInMillis()}
+ * delay to trigger leader election if one is not elected yet.
  */
 public class LeaderElectionTask extends RaftNodeAwareTask implements Runnable {
 

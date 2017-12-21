@@ -3,11 +3,16 @@ package com.hazelcast.raft.impl.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.SnapshotAwareService;
+import com.hazelcast.raft.operation.RaftOperation;
 
 import java.io.IOException;
 
+/**
+ * {@code RaftOperation} to take snapshot using related {@link SnapshotAwareService#takeSnapshot(RaftGroupId, int)}.
+ * <p>
+ * This operation is executed locally, is not appended to Raft log and never serialized.
+ */
 public class TakeSnapshotOp extends RaftOperation {
 
     private final RaftGroupId groupId;
