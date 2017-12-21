@@ -3,17 +3,18 @@ package com.hazelcast.raft.impl.log;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.operation.RaftOperation;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * Represents a snapshot in the {@link RaftLog}.
+ * <p>
+ * Snapshot entry is sent to followers via {@link com.hazelcast.raft.impl.dto.InstallSnapshot} RPC.
  */
 public class SnapshotEntry extends LogEntry implements IdentifiedDataSerializable {
     private int groupMembersLogIndex;
