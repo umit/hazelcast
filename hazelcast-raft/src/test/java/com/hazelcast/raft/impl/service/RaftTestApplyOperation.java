@@ -6,10 +6,6 @@ import com.hazelcast.raft.operation.RaftOperation;
 
 import java.io.IOException;
 
-/**
- * TODO: Javadoc Pending...
- *
- */
 public class RaftTestApplyOperation extends RaftOperation {
 
     private Object val;

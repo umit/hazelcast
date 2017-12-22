@@ -20,8 +20,15 @@ import static java.lang.Math.min;
 import static java.util.Arrays.asList;
 
 /**
- * TODO: Javadoc Pending...
+ * Handles {@link AppendRequest} sent by the leader. Responds with an {@link AppendSuccessResponse} if append
+ * is successful, responds with an {@link AppendFailureResponse} otherwise.
+ * <p>
+ * See <i>5.3 Log replication</i> section of <i>In Search of an Understandable Consensus Algorithm</i>
+ * paper by <i>Diego Ongaro</i> and <i>John Ousterhout</i>.
  *
+ * @see AppendRequest
+ * @see AppendSuccessResponse
+ * @see AppendFailureResponse
  */
 public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runnable {
     private final AppendRequest req;

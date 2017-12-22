@@ -10,8 +10,15 @@ import com.hazelcast.raft.impl.task.RaftNodeAwareTask;
 import com.hazelcast.util.Clock;
 
 /**
- * TODO: Javadoc Pending...
+ * Handles {@link PreVoteRequest} and responds to the sender with a {@link PreVoteResponse}.
+ * Pre-voting is initiated by {@link com.hazelcast.raft.impl.task.PreVoteTask}.
+ * <p>
+ * Grants vote or rejects the request as if responding to a {@link com.hazelcast.raft.impl.dto.VoteRequest}
+ * but differently Raft state is not mutated/updated, this task is completely read-only.
  *
+ * @see PreVoteRequest
+ * @see PreVoteResponse
+ * @see com.hazelcast.raft.impl.task.PreVoteTask
  */
 public class PreVoteRequestHandlerTask extends RaftNodeAwareTask implements Runnable {
     private final PreVoteRequest req;

@@ -2,10 +2,6 @@ package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.raft.operation.RaftOperation;
 
-/**
- * TODO: Javadoc Pending...
- *
- */
 public class RaftTestQueryOperation extends RaftOperation {
 
     @Override
