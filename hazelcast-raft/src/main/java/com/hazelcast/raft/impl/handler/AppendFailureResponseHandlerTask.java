@@ -7,6 +7,19 @@ import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.raft.impl.state.RaftState;
 
+/**
+ * Handles {@link AppendFailureResponse} sent by {@link AppendRequestHandlerTask} after an append-entries request
+ * or {@link InstallSnapshotHandlerTask} after an install snapshot request.
+ * <p>
+ * Decrements {@code nextIndex} of the follower by 1 if the response is valid.
+ * <p>
+ * See <i>5.3 Log replication</i> section of <i>In Search of an Understandable Consensus Algorithm</i>
+ * paper by <i>Diego Ongaro</i> and <i>John Ousterhout</i>.
+ *
+ * @see com.hazelcast.raft.impl.dto.AppendRequest
+ * @see com.hazelcast.raft.impl.dto.AppendSuccessResponse
+ * @see com.hazelcast.raft.impl.dto.AppendFailureResponse
+ */
 public class AppendFailureResponseHandlerTask extends AbstractResponseHandlerTask {
 
     private final AppendFailureResponse resp;

@@ -7,7 +7,6 @@ import com.hazelcast.internal.serialization.impl.DefaultSerializationServiceBuil
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.LoggingServiceImpl;
 import com.hazelcast.raft.RaftConfig;
-import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftIntegration;
@@ -21,6 +20,7 @@ import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
+import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.spi.serialization.SerializationService;
 import com.hazelcast.version.MemberVersion;
 
@@ -40,8 +40,10 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertThat;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * In-memory {@link RaftIntegration} implementation for Raft core testing. Creates a single thread executor
+ * to execute/schedule tasks and operations.
+ * <p>
+ * Additionally provides a mechanism to define custom drop/allow rules for specific message types and endpoints.
  */
 public class LocalRaftIntegration implements RaftIntegration {
 

@@ -11,8 +11,18 @@ import com.hazelcast.raft.impl.state.CandidateState;
 import com.hazelcast.raft.impl.state.RaftState;
 
 /**
- * TODO: Javadoc Pending...
+ * Handles {@link VoteResponse} sent by {@link VoteRequestHandlerTask}.
+ * <p>
+ * Changes node to {@link RaftRole#LEADER} if if majority of the nodes grants vote for this term
+ * via {@link RaftState#toLeader()}.
+ * <p>
+ * Appends a no-op entry if {@link com.hazelcast.raft.RaftConfig#appendNopEntryOnLeaderElection} is enabled.
+ * <p>
+ * See <i>5.2 Leader election</i> section of <i>In Search of an Understandable Consensus Algorithm</i>
+ * paper by <i>Diego Ongaro</i> and <i>John Ousterhout</i>.
  *
+ * @see VoteResponse
+ * @see com.hazelcast.raft.impl.dto.VoteRequest
  */
 public class VoteResponseHandlerTask extends AbstractResponseHandlerTask {
     private final VoteResponse resp;

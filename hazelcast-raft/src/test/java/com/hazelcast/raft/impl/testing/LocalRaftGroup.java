@@ -25,6 +25,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
+/**
+ * Represents a local single Raft group, provides methods to access specific nodes, to terminate nodes,
+ * to split/merge the group and to define allow/drop rules between nodes.
+ */
 public class LocalRaftGroup {
 
     private final RaftGroupId groupId;

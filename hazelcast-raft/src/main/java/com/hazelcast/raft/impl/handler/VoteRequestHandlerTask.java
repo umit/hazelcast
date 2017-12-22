@@ -11,8 +11,15 @@ import com.hazelcast.raft.impl.task.RaftNodeAwareTask;
 import com.hazelcast.util.Clock;
 
 /**
- * TODO: Javadoc Pending...
+ * Handles {@link VoteRequest} sent by a candidate. Responds with a {@link VoteResponse} to the sender.
+ * Leader election is initiated by {@link com.hazelcast.raft.impl.task.LeaderElectionTask}.
+ * <p>
+ * See <i>5.2 Leader election</i> section of <i>In Search of an Understandable Consensus Algorithm</i>
+ * paper by <i>Diego Ongaro</i> and <i>John Ousterhout</i>.
  *
+ * @see VoteRequest
+ * @see VoteResponse
+ * @see com.hazelcast.raft.impl.task.LeaderElectionTask
  */
 public class VoteRequestHandlerTask extends RaftNodeAwareTask implements Runnable {
     private final VoteRequest req;
