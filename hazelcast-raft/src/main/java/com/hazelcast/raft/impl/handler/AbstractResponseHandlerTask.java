@@ -5,8 +5,10 @@ import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.task.RaftNodeAwareTask;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * Base class for response handler tasks.
+ * Subclasses must implement {@link #handleResponse()}.
+ * <p>
+ * If {@link #senderEndpoint()} is not a known endpoint, then response is ignored.
  */
 public abstract class AbstractResponseHandlerTask extends RaftNodeAwareTask {
 

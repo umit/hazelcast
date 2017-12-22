@@ -9,8 +9,12 @@ import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.task.LeaderElectionTask;
 
 /**
- * TODO: Javadoc Pending...
+ * Handles {@link PreVoteResponse} sent by {@link PreVoteRequestHandlerTask}.
+ * <p>
+ * Initiates leader election by executing {@link LeaderElectionTask}
+ * if majority grants vote for this pre-voting term.
  *
+ * @see PreVoteResponse
  */
 public class PreVoteResponseHandlerTask extends AbstractResponseHandlerTask {
     private final PreVoteResponse resp;

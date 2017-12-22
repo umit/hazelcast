@@ -10,10 +10,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * TODO: Javadoc Pending...
- *
- */
 public class RaftDataService implements SnapshotAwareService<Map<Integer, Object>> {
 
     public static final String SERVICE_NAME = "RaftTestService";
