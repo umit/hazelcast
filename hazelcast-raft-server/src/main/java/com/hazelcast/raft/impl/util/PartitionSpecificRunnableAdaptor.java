@@ -3,7 +3,7 @@ package com.hazelcast.raft.impl.util;
 import com.hazelcast.spi.impl.PartitionSpecificRunnable;
 
 /**
- * TODO: Javadoc Pending...
+ * A {@link PartitionSpecificRunnable} implementation which wraps a plain {@link Runnable}
  *
  */
 public class PartitionSpecificRunnableAdaptor implements PartitionSpecificRunnable {
