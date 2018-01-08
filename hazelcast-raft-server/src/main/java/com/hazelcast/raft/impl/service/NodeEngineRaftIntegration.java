@@ -2,7 +2,6 @@ package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
@@ -23,6 +22,7 @@ import com.hazelcast.raft.impl.service.operation.integration.VoteRequestOp;
 import com.hazelcast.raft.impl.service.operation.integration.VoteResponseOp;
 import com.hazelcast.raft.impl.util.PartitionSpecificRunnableAdaptor;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
+import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationAccessor;
 import com.hazelcast.spi.TaskScheduler;
@@ -50,7 +50,7 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
         this.nodeEngine = nodeEngine;
         this.raftGroupId = groupId;
         this.operationService = nodeEngine.getOperationService();
-        this.partitionId = groupId.hashCode() % nodeEngine.getPartitionService().getPartitionCount();
+        this.partitionId = nodeEngine.getPartitionService().getPartitionId(groupId);
         this.taskScheduler = nodeEngine.getExecutionService().getGlobalTaskScheduler();
     }
 
