@@ -6,7 +6,6 @@ import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.exception.NotLeaderException;
@@ -22,25 +21,23 @@ import com.hazelcast.spi.impl.AllowedDuringPassiveState;
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * The base class that replicates the given {@link RaftOperation} to the target raft group
  */
-public abstract class RaftQueryOperation extends Operation implements IdentifiedDataSerializable, AllowedDuringPassiveState {
+public abstract class RaftReplicateOp extends Operation implements IdentifiedDataSerializable, AllowedDuringPassiveState {
 
     private RaftGroupId raftGroupId;
-    private QueryPolicy queryPolicy;
 
-    public RaftQueryOperation() {
+    public RaftReplicateOp() {
     }
 
-    public RaftQueryOperation(RaftGroupId raftGroupId) {
+    public RaftReplicateOp(RaftGroupId raftGroupId) {
         this.raftGroupId = raftGroupId;
     }
 
     @Override
     public final void run() {
         RaftService service = getService();
-        RaftNode raftNode = service.getRaftNode(raftGroupId);
+        RaftNode raftNode = service.getOrInitRaftNode(raftGroupId);
         if (raftNode == null) {
             if (service.isDestroyed(raftGroupId)) {
                 sendResponse(new RaftGroupTerminatedException());
@@ -50,8 +47,10 @@ public abstract class RaftQueryOperation extends Operation implements Identified
             return;
         }
 
-        RaftOperation op = getRaftOperation();
-        ICompletableFuture future = raftNode.query(op, queryPolicy);
+        ICompletableFuture future = replicate(raftNode);
+        if (future == null) {
+            return;
+        }
         future.andThen(new ExecutionCallback() {
             @Override
             public void onResponse(Object response) {
@@ -65,19 +64,15 @@ public abstract class RaftQueryOperation extends Operation implements Identified
         });
     }
 
-    public RaftGroupId getRaftGroupId() {
-        return raftGroupId;
+    ICompletableFuture replicate(RaftNode raftNode) {
+        RaftOperation op = getRaftOperation();
+        return raftNode.replicate(op);
     }
 
     protected abstract RaftOperation getRaftOperation();
 
-    public QueryPolicy getQueryPolicy() {
-        return queryPolicy;
-    }
-
-    public RaftQueryOperation setQueryPolicy(QueryPolicy queryPolicy) {
-        this.queryPolicy = queryPolicy;
-        return this;
+    public final RaftGroupId getRaftGroupId() {
+        return raftGroupId;
     }
 
     @Override
@@ -94,14 +89,12 @@ public abstract class RaftQueryOperation extends Operation implements Identified
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeObject(raftGroupId);
-        out.writeUTF(queryPolicy.toString());
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         raftGroupId = in.readObject();
-        queryPolicy = QueryPolicy.valueOf(in.readUTF());
     }
 
     @Override
@@ -117,7 +110,6 @@ public abstract class RaftQueryOperation extends Operation implements Identified
     @Override
     protected void toString(StringBuilder sb) {
         super.toString(sb);
-        sb.append(", groupId=").append(raftGroupId)
-                .append(", policy=").append(queryPolicy);
+        sb.append(", groupId=").append(raftGroupId);
     }
 }
