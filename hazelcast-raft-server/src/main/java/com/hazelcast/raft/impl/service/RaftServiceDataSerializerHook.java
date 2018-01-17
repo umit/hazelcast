@@ -24,9 +24,9 @@ import com.hazelcast.raft.impl.service.operation.metadata.GetLeavingEndpointCont
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveEndpointOp;
-import com.hazelcast.raft.impl.service.proxy.ChangeRaftGroupMembershipOperation;
-import com.hazelcast.raft.impl.service.proxy.DefaultRaftQueryOperation;
-import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOperation;
+import com.hazelcast.raft.impl.service.proxy.ChangeRaftGroupMembershipOp;
+import com.hazelcast.raft.impl.service.proxy.RaftQueryOp;
+import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOp;
 
 public final class RaftServiceDataSerializerHook implements DataSerializerHook {
 
@@ -96,7 +96,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                     case CREATE_RAFT_GROUP_OP:
                         return new CreateRaftGroupOp();
                     case DEFAULT_RAFT_GROUP_REPLICATE_OP:
-                        return new DefaultRaftReplicateOperation();
+                        return new DefaultRaftReplicateOp();
                     case TRIGGER_DESTROY_RAFT_GROUP_OP:
                         return new TriggerDestroyRaftGroupOp();
                     case COMPLETE_DESTROY_RAFT_GROUPS_OP:
@@ -106,11 +106,11 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                     case COMPLETE_REMOVE_ENDPOINT_OP:
                         return new CompleteRemoveEndpointOp();
                     case MEMBERSHIP_CHANGE_REPLICATE_OP:
-                        return new ChangeRaftGroupMembershipOperation();
+                        return new ChangeRaftGroupMembershipOp();
                     case LEAVING_RAFT_ENDPOINT_CTX:
                         return new LeavingRaftEndpointContext();
                     case DEFAULT_RAFT_GROUP_QUERY_OP:
-                        return new DefaultRaftQueryOperation();
+                        return new RaftQueryOp();
                     case CHECK_REMOVED_ENDPOINT_OP:
                         return new CheckRemovedEndpointOp();
                     case DESTROY_RAFT_NODES_OP:
