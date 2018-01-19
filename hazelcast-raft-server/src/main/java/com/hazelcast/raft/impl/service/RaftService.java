@@ -98,12 +98,12 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
     }
 
     @Override
-    public MetadataSnapshot takeSnapshot(RaftGroupId raftGroupId, int commitIndex) {
+    public MetadataSnapshot takeSnapshot(RaftGroupId raftGroupId, long commitIndex) {
         return metadataManager.takeSnapshot(raftGroupId, commitIndex);
     }
 
     @Override
-    public void restoreSnapshot(RaftGroupId raftGroupId, int commitIndex, MetadataSnapshot snapshot) {
+    public void restoreSnapshot(RaftGroupId raftGroupId, long commitIndex, MetadataSnapshot snapshot) {
         metadataManager.restoreSnapshot(raftGroupId, commitIndex, snapshot);
     }
 

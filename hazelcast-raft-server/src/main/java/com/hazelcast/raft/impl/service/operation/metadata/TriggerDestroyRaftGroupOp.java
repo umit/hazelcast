@@ -23,7 +23,7 @@ public class TriggerDestroyRaftGroupOp extends RaftOperation implements Identifi
     }
 
     @Override
-    protected Object doRun(int commitIndex) {
+    protected Object doRun(long commitIndex) {
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
         metadataManager.triggerDestroy(groupId);

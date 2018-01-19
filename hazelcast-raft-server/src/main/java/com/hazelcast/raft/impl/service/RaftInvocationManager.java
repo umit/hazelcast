@@ -151,7 +151,7 @@ public class RaftInvocationManager {
         return invocationFuture;
     }
 
-    <T> ICompletableFuture<T> changeRaftGroupMembership(RaftGroupId groupId, int membersCommitIndex, RaftEndpoint endpoint,
+    <T> ICompletableFuture<T> changeRaftGroupMembership(RaftGroupId groupId, long membersCommitIndex, RaftEndpoint endpoint,
                                                         MembershipChangeType changeType) {
         ChangeRaftGroupMembershipInvocationFuture<T> invocationFuture =
                 new ChangeRaftGroupMembershipInvocationFuture<T>(groupId, membersCommitIndex, endpoint, changeType);
@@ -380,12 +380,12 @@ public class RaftInvocationManager {
 
     private class ChangeRaftGroupMembershipInvocationFuture<T> extends AbstractRaftInvocationFuture<T, RaftReplicateOp> {
 
-        private final int membersCommitIndex;
+        private final long membersCommitIndex;
         private final RaftEndpoint endpoint;
         private final MembershipChangeType changeType;
         private volatile RaftEndpoint lastInvocationEndpoint;
 
-        ChangeRaftGroupMembershipInvocationFuture(RaftGroupId groupId, int membersCommitIndex, RaftEndpoint endpoint,
+        ChangeRaftGroupMembershipInvocationFuture(RaftGroupId groupId, long membersCommitIndex, RaftEndpoint endpoint,
                                                   MembershipChangeType changeType) {
             super(groupId);
             this.membersCommitIndex = membersCommitIndex;

@@ -111,12 +111,10 @@ public class LocalRaftTest extends HazelcastTestSupport {
             public void run() throws Exception {
                 for (int i = 0; i < nodeCount; i++) {
                     RaftNodeImpl node = group.getNode(i);
-                    int index = getCommitIndex(node);
-                    System.err.println("index = " + index);
+                    long index = getCommitIndex(node);
                     assertEquals(commitIndex, index);
                     RaftDataService service = group.getIntegration(i).getService();
                     Object actual = service.get(commitIndex);
-                    System.err.println("actual = " + actual);
                     assertEquals(val, actual);
                 }
             }
@@ -534,7 +532,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
 
         final RaftNodeImpl[] followers = group.getNodesExcept(leader.getLocalEndpoint());
         final RaftNodeImpl nextLeader = followers[0];
-        final int commitIndex = getCommitIndex(leader);
+        final long commitIndex = getCommitIndex(leader);
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -608,7 +606,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
 
         final RaftNodeImpl[] followers = group.getNodesExcept(leader.getLocalEndpoint());
         final RaftNodeImpl nextLeader = followers[0];
-        final int commitIndex = getCommitIndex(leader);
+        final long commitIndex = getCommitIndex(leader);
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -684,7 +682,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
 
         final RaftNodeImpl[] followers = group.getNodesExcept(leader.getLocalEndpoint());
         final RaftNodeImpl followerWithLongerLog = followers[0];
-        final int commitIndex = getCommitIndex(leader);
+        final long commitIndex = getCommitIndex(leader);
 
         assertTrueEventually(new AssertTask() {
             @Override

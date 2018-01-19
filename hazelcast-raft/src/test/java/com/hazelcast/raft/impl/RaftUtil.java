@@ -63,10 +63,10 @@ public class RaftUtil {
         return readRaftState(node, task);
     }
 
-    public static int getCommitIndex(final RaftNodeImpl node) {
-        Callable<Integer> task = new Callable<Integer>() {
+    public static long getCommitIndex(final RaftNodeImpl node) {
+        Callable<Long> task = new Callable<Long>() {
             @Override
-            public Integer call() {
+            public Long call() {
                 return node.state().commitIndex();
             }
         };
@@ -85,10 +85,10 @@ public class RaftUtil {
         return readRaftState(node, task);
     }
 
-    public static int getNextIndex(final RaftNodeImpl leader, final RaftEndpoint follower) {
-        Callable<Integer> task = new Callable<Integer>() {
+    public static long getNextIndex(final RaftNodeImpl leader, final RaftEndpoint follower) {
+        Callable<Long> task = new Callable<Long>() {
             @Override
-            public Integer call() {
+            public Long call() {
                 LeaderState leaderState = leader.state().leaderState();
                 return leaderState.getNextIndex(follower);
             }
@@ -97,10 +97,10 @@ public class RaftUtil {
         return readRaftState(leader, task);
     }
 
-    public static int getMatchIndex(final RaftNodeImpl leader, final RaftEndpoint follower) {
-        Callable<Integer> task = new Callable<Integer>() {
+    public static long getMatchIndex(final RaftNodeImpl leader, final RaftEndpoint follower) {
+        Callable<Long> task = new Callable<Long>() {
             @Override
-            public Integer call() {
+            public Long call() {
                 LeaderState leaderState = leader.state().leaderState();
                 return leaderState.getMatchIndex(follower);
             }

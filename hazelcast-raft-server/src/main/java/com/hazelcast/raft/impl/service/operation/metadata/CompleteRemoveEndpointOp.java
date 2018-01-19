@@ -20,18 +20,18 @@ public class CompleteRemoveEndpointOp extends RaftOperation implements Identifie
 
     private RaftEndpoint endpoint;
 
-    private Map<RaftGroupId, Pair<Integer, Integer>> leftGroups;
+    private Map<RaftGroupId, Pair<Long, Long>> leftGroups;
 
     public CompleteRemoveEndpointOp() {
     }
 
-    public CompleteRemoveEndpointOp(RaftEndpoint endpoint, Map<RaftGroupId, Pair<Integer, Integer>> leftGroups) {
+    public CompleteRemoveEndpointOp(RaftEndpoint endpoint, Map<RaftGroupId, Pair<Long, Long>> leftGroups) {
         this.endpoint = endpoint;
         this.leftGroups = leftGroups;
     }
 
     @Override
-    protected Object doRun(int commitIndex) {
+    protected Object doRun(long commitIndex) {
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
         metadataManager.completeRemoveEndpoint(endpoint, leftGroups);
@@ -48,11 +48,11 @@ public class CompleteRemoveEndpointOp extends RaftOperation implements Identifie
         super.writeInternal(out);
         out.writeObject(endpoint);
         out.writeInt(leftGroups.size());
-        for (Entry<RaftGroupId, Pair<Integer, Integer>> e : leftGroups.entrySet()) {
+        for (Entry<RaftGroupId, Pair<Long, Long>> e : leftGroups.entrySet()) {
             out.writeObject(e.getKey());
-            Pair<Integer, Integer> value = e.getValue();
-            out.writeInt(value.getPrimary());
-            out.writeInt(value.getSecondary());
+            Pair<Long, Long> value = e.getValue();
+            out.writeLong(value.getPrimary());
+            out.writeLong(value.getSecondary());
         }
     }
 
@@ -61,12 +61,12 @@ public class CompleteRemoveEndpointOp extends RaftOperation implements Identifie
         super.readInternal(in);
         endpoint = in.readObject();
         int count = in.readInt();
-        leftGroups = new HashMap<RaftGroupId, Pair<Integer, Integer>>(count);
+        leftGroups = new HashMap<RaftGroupId, Pair<Long, Long>>(count);
         for (int i = 0; i < count; i++) {
             RaftGroupId groupId = in.readObject();
-            int currMembersCommitIndex = in.readInt();
-            int newMembersCommitIndex = in.readInt();
-            leftGroups.put(groupId, new Pair<Integer, Integer>(currMembersCommitIndex, newMembersCommitIndex));
+            long currMembersCommitIndex = in.readLong();
+            long newMembersCommitIndex = in.readLong();
+            leftGroups.put(groupId, new Pair<Long, Long>(currMembersCommitIndex, newMembersCommitIndex));
         }
     }
 

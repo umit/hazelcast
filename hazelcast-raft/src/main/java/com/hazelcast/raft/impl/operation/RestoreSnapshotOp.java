@@ -11,7 +11,7 @@ import com.hazelcast.raft.operation.RaftOperation;
 import java.io.IOException;
 
 /**
- * {@code RaftOperation} to restore snapshot using related {@link SnapshotAwareService#takeSnapshot(RaftGroupId, int)}.
+ * {@code RaftOperation} to restore snapshot using related {@link SnapshotAwareService#takeSnapshot(RaftGroupId, long)}.
  * <p>
  * This operation is appended to Raft log in {@link com.hazelcast.raft.impl.log.SnapshotEntry} and send to followers
  * via {@link com.hazelcast.raft.impl.dto.InstallSnapshot} RPC.
@@ -19,13 +19,13 @@ import java.io.IOException;
 public class RestoreSnapshotOp extends RaftOperation implements IdentifiedDataSerializable {
 
     private RaftGroupId groupId;
-    private int commitIndex;
+    private long commitIndex;
     private Object snapshot;
 
     public RestoreSnapshotOp() {
     }
 
-    public RestoreSnapshotOp(String serviceName, RaftGroupId groupId, int commitIndex, Object snapshot) {
+    public RestoreSnapshotOp(String serviceName, RaftGroupId groupId, long commitIndex, Object snapshot) {
         this.groupId = groupId;
         setServiceName(serviceName);
         this.commitIndex = commitIndex;
@@ -33,7 +33,7 @@ public class RestoreSnapshotOp extends RaftOperation implements IdentifiedDataSe
     }
 
     @Override
-    public Object doRun(int commitIndex) {
+    public Object doRun(long commitIndex) {
         assert this.commitIndex == commitIndex :
                 " expected restore commit index: " + this.commitIndex + " given commit index: " + commitIndex;
 
@@ -46,7 +46,7 @@ public class RestoreSnapshotOp extends RaftOperation implements IdentifiedDataSe
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeObject(groupId);
-        out.writeInt(commitIndex);
+        out.writeLong(commitIndex);
         out.writeObject(snapshot);
     }
 
@@ -54,7 +54,7 @@ public class RestoreSnapshotOp extends RaftOperation implements IdentifiedDataSe
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         groupId = in.readObject();
-        commitIndex = in.readInt();
+        commitIndex = in.readLong();
         snapshot = in.readObject();
     }
 

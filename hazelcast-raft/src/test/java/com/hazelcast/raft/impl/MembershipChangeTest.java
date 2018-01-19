@@ -71,7 +71,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
 
         leader.replicateMembershipChange(newRaftNode.getLocalEndpoint(), MembershipChangeType.ADD).get();
 
-        final int commitIndex = getCommitIndex(leader);
+        final long commitIndex = getCommitIndex(leader);
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {

@@ -5,7 +5,7 @@ import com.hazelcast.raft.operation.RaftOperation;
 public class RaftTestQueryOperation extends RaftOperation {
 
     @Override
-    public Object doRun(int commitIndex) {
+    public Object doRun(long commitIndex) {
         RaftDataService service = getService();
         return service.get(commitIndex);
     }

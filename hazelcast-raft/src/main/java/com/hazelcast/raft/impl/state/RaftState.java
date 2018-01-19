@@ -51,14 +51,14 @@ public class RaftState {
     /**
      * Index of highest log entry known to be committed (initialized to 0, increases monotonically)
      */
-    private int commitIndex;
+    private long commitIndex;
 
     /**
      * Index of highest log entry applied to state machine (initialized to 0, increases monotonically)
      * <p>
      * {@code lastApplied <= commitIndex} condition holds true always.
      */
-    private int lastApplied;
+    private long lastApplied;
 
     /**
      * Endpoint that received vote in {@link #lastVoteTerm} (or null if none)
@@ -143,7 +143,7 @@ public class RaftState {
     /**
      * Returns log index of the last applied group members
      */
-    public int membersLogIndex() {
+    public long membersLogIndex() {
         return lastGroupMembers.index();
     }
 
@@ -216,7 +216,7 @@ public class RaftState {
      * Returns the index of highest log entry known to be committed
      * @see #commitIndex
      */
-    public int commitIndex() {
+    public long commitIndex() {
         return commitIndex;
     }
 
@@ -224,7 +224,7 @@ public class RaftState {
      * Updates commit index
      * @see #commitIndex
      */
-    public void commitIndex(int index) {
+    public void commitIndex(long index) {
         assert index >= commitIndex : "new commit index: " + index + " is smaller than current commit index: " + commitIndex;
         commitIndex = index;
     }
@@ -233,7 +233,7 @@ public class RaftState {
      * Returns the index of highest log entry applied to state machine
      * @see #lastApplied
      */
-    public int lastApplied() {
+    public long lastApplied() {
         return lastApplied;
     }
 
@@ -241,7 +241,7 @@ public class RaftState {
      * Updates the last applied index
      * @see #lastApplied
      */
-    public void lastApplied(int index) {
+    public void lastApplied(long index) {
         assert index >= lastApplied : "new last applied: " + index + " is smaller than current last applied: " + lastApplied;
         lastApplied = index;
     }
@@ -351,7 +351,7 @@ public class RaftState {
      * @param logIndex log index of membership change
      * @param endpoints latest applied endpoints
      */
-    public void updateGroupMembers(int logIndex, Collection<RaftEndpoint> endpoints) {
+    public void updateGroupMembers(long logIndex, Collection<RaftEndpoint> endpoints) {
         assert committedGroupMembers == lastGroupMembers
                 : "Cannot update group members to: " + endpoints + " at log index: " + logIndex + " because last group members: "
                 + lastGroupMembers + " is different than committed group members: " + committedGroupMembers;
@@ -404,7 +404,7 @@ public class RaftState {
      * Restores group members from the snapshot. Both {@link #committedGroupMembers}
      * and {@link #lastGroupMembers} are overwritten and they become the same.
      */
-    public void restoreGroupMembers(int logIndex, Collection<RaftEndpoint> endpoints) {
+    public void restoreGroupMembers(long logIndex, Collection<RaftEndpoint> endpoints) {
         assert committedGroupMembers == lastGroupMembers
                 : "Cannot restore group members to: " + endpoints + " at log index: " + logIndex + " because last group members: "
                 + lastGroupMembers + " is different than committed group members: " + committedGroupMembers;

@@ -40,7 +40,7 @@ public class RaftAtomicLongService implements ManagedService, SnapshotAwareServi
     }
 
     @Override
-    public Long takeSnapshot(RaftGroupId raftGroupId, int commitIndex) {
+    public Long takeSnapshot(RaftGroupId raftGroupId, long commitIndex) {
         RaftAtomicLong atomicLong = map.get(raftGroupId);
         if (atomicLong == null) {
             throw new IllegalArgumentException("Unknown raftGroupId -> " + raftGroupId);
@@ -50,7 +50,7 @@ public class RaftAtomicLongService implements ManagedService, SnapshotAwareServi
     }
 
     @Override
-    public void restoreSnapshot(RaftGroupId raftGroupId, int commitIndex, Long snapshot) {
+    public void restoreSnapshot(RaftGroupId raftGroupId, long commitIndex, Long snapshot) {
         RaftAtomicLong atomicLong = new RaftAtomicLong(raftGroupId.name(), snapshot, commitIndex);
         map.put(raftGroupId, atomicLong);
     }

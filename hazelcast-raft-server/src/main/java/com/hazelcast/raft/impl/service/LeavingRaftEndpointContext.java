@@ -46,7 +46,7 @@ public class LeavingRaftEndpointContext implements IdentifiedDataSerializable {
 
     public static class RaftGroupLeavingEndpointContext implements DataSerializable {
 
-        private int membersCommitIndex;
+        private long membersCommitIndex;
 
         private Collection<RaftEndpoint> members;
 
@@ -55,13 +55,13 @@ public class LeavingRaftEndpointContext implements IdentifiedDataSerializable {
         public RaftGroupLeavingEndpointContext() {
         }
 
-        public RaftGroupLeavingEndpointContext(int membersCommitIndex, Collection<RaftEndpoint> members, RaftEndpoint substitute) {
+        public RaftGroupLeavingEndpointContext(long membersCommitIndex, Collection<RaftEndpoint> members, RaftEndpoint substitute) {
             this.membersCommitIndex = membersCommitIndex;
             this.members = members;
             this.substitute = substitute;
         }
 
-        public int getMembersCommitIndex() {
+        public long getMembersCommitIndex() {
             return membersCommitIndex;
         }
 
@@ -75,7 +75,7 @@ public class LeavingRaftEndpointContext implements IdentifiedDataSerializable {
 
         @Override
         public void writeData(ObjectDataOutput out) throws IOException {
-            out.writeInt(membersCommitIndex);
+            out.writeLong(membersCommitIndex);
             out.writeInt(members.size());
             for (RaftEndpoint member : members) {
                 out.writeObject(member);
@@ -85,7 +85,7 @@ public class LeavingRaftEndpointContext implements IdentifiedDataSerializable {
 
         @Override
         public void readData(ObjectDataInput in) throws IOException {
-            membersCommitIndex = in.readInt();
+            membersCommitIndex = in.readLong();
             int len = in.readInt();
             members = new HashSet<RaftEndpoint>(len);
             for (int i = 0; i < len; i++) {

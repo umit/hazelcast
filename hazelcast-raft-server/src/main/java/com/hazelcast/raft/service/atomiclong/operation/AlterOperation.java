@@ -39,7 +39,7 @@ public class AlterOperation extends AbstractAtomicLongOperation {
     }
 
     @Override
-    protected Object doRun(int commitIndex) {
+    protected Object doRun(long commitIndex) {
         RaftAtomicLong atomic = getAtomicLong();
         long before = atomic.getAndAdd(0, commitIndex);
         long after = function.apply(before);

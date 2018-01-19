@@ -23,7 +23,7 @@ public class TriggerRemoveEndpointOp extends RaftOperation implements Identified
     }
 
     @Override
-    protected Object doRun(int commitIndex) {
+    protected Object doRun(long commitIndex) {
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
         metadataManager.triggerRemoveEndpoint(endpoint);

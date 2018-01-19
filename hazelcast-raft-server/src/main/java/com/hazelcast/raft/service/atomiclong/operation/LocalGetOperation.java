@@ -18,7 +18,7 @@ public class LocalGetOperation extends AbstractAtomicLongOperation {
     }
 
     @Override
-    public Object doRun(int commitIndex) {
+    public Object doRun(long commitIndex) {
         RaftAtomicLong atomic = getAtomicLong();
         if (atomic.commitIndex() < commitIndex) {
             throw new IllegalArgumentException("");

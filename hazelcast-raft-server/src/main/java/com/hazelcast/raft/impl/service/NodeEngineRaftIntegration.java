@@ -131,7 +131,7 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
     }
 
     @Override
-    public Object runOperation(RaftOperation operation, int commitIndex) {
+    public Object runOperation(RaftOperation operation, long commitIndex) {
         operation.setCommitIndex(commitIndex).setNodeEngine(nodeEngine);
         OperationAccessor.setCallerAddress(operation, nodeEngine.getThisAddress());
         try {

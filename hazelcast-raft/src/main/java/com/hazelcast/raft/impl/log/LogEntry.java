@@ -17,19 +17,19 @@ import java.io.IOException;
  */
 public class LogEntry implements IdentifiedDataSerializable {
     private int term;
-    private int index;
+    private long index;
     private RaftOperation operation;
 
     public LogEntry() {
     }
 
-    public LogEntry(int term, int index, RaftOperation operation) {
+    public LogEntry(int term, long index, RaftOperation operation) {
         this.term = term;
         this.index = index;
         this.operation = operation;
     }
 
-    public int index() {
+    public long index() {
         return index;
     }
 
@@ -44,14 +44,14 @@ public class LogEntry implements IdentifiedDataSerializable {
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeInt(term);
-        out.writeInt(index);
+        out.writeLong(index);
         out.writeObject(operation);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         term = in.readInt();
-        index = in.readInt();
+        index = in.readLong();
         operation = in.readObject();
     }
 

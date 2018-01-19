@@ -103,7 +103,7 @@ public interface RaftNode {
     /**
      * Replicates the {@code RaftOperation} to the Raft group. Only leader can process replicate requests.
      * <p>
-     * If operation is replicated and committed, then return value of {@link RaftOperation#doRun(int)}
+     * If operation is replicated and committed, then return value of {@link RaftOperation#doRun(long)}
      * is set as a result to the future.
      * <p>
      * Otherwise, if this node is not leader, or leader is demoted before committing the operation,
@@ -137,11 +137,11 @@ public interface RaftNode {
      * @param groupMembersCommitIndex expected members commit index
      * @return future to get notified about result of the membership change
      */
-    ICompletableFuture replicateMembershipChange(RaftEndpoint member, MembershipChangeType change, int groupMembersCommitIndex);
+    ICompletableFuture replicateMembershipChange(RaftEndpoint member, MembershipChangeType change, long groupMembersCommitIndex);
 
     /**
      * Executes given {@code RaftOperation} on Raft group depending on the {@link QueryPolicy}
-     * and returns the return value of {@link RaftOperation#doRun(int)} if operation is executed successfully.
+     * and returns the return value of {@link RaftOperation#doRun(long)} if operation is executed successfully.
      *
      * @param operation RaftOperation to query
      * @param queryPolicy query policy to decide where to execute operation

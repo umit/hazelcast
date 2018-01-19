@@ -23,14 +23,14 @@ public class AppendRequest implements IdentifiedDataSerializable {
     private RaftEndpoint leader;
     private int term;
     private int prevLogTerm;
-    private int prevLogIndex;
-    private int leaderCommitIndex;
+    private long prevLogIndex;
+    private long leaderCommitIndex;
     private LogEntry[] entries;
 
     public AppendRequest() {
     }
 
-    public AppendRequest(RaftEndpoint leader, int term, int prevLogTerm, int prevLogIndex, int leaderCommitIndex,
+    public AppendRequest(RaftEndpoint leader, int term, int prevLogTerm, long prevLogIndex, long leaderCommitIndex,
             LogEntry[] entries) {
         this.term = term;
         this.leader = leader;
@@ -52,11 +52,11 @@ public class AppendRequest implements IdentifiedDataSerializable {
         return prevLogTerm;
     }
 
-    public int prevLogIndex() {
+    public long prevLogIndex() {
         return prevLogIndex;
     }
 
-    public int leaderCommitIndex() {
+    public long leaderCommitIndex() {
         return leaderCommitIndex;
     }
 
@@ -83,8 +83,8 @@ public class AppendRequest implements IdentifiedDataSerializable {
         out.writeInt(term);
         out.writeObject(leader);
         out.writeInt(prevLogTerm);
-        out.writeInt(prevLogIndex);
-        out.writeInt(leaderCommitIndex);
+        out.writeLong(prevLogIndex);
+        out.writeLong(leaderCommitIndex);
 
         out.writeInt(entries.length);
         for (LogEntry entry : entries) {
@@ -97,8 +97,8 @@ public class AppendRequest implements IdentifiedDataSerializable {
         term = in.readInt();
         leader = in.readObject();
         prevLogTerm = in.readInt();
-        prevLogIndex = in.readInt();
-        leaderCommitIndex = in.readInt();
+        prevLogIndex = in.readLong();
+        leaderCommitIndex = in.readLong();
 
         int len = in.readInt();
         entries = new LogEntry[len];

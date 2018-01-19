@@ -11,7 +11,7 @@ public class GetDestroyingRaftGroupIds extends RaftOperation implements Identifi
     }
 
     @Override
-    protected Object doRun(int commitIndex) {
+    protected Object doRun(long commitIndex) {
         RaftService service = getService();
         return service.getMetadataManager().getDestroyingRaftGroupIds();
     }

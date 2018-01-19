@@ -26,7 +26,7 @@ public class CompareAndSetOperation extends AbstractAtomicLongOperation {
     }
 
     @Override
-    public Object doRun(int commitIndex) {
+    public Object doRun(long commitIndex) {
         RaftAtomicLong atomic = getAtomicLong();
         return atomic.compareAndSet(currentValue, newValue, commitIndex);
     }

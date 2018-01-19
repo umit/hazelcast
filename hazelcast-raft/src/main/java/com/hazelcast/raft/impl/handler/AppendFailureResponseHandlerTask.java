@@ -57,8 +57,8 @@ public class AppendFailureResponseHandlerTask extends AbstractResponseHandlerTas
 
     private boolean updateNextIndex(RaftState state) {
         LeaderState leaderState = state.leaderState();
-        int nextIndex = leaderState.getNextIndex(resp.follower());
-        int matchIndex = leaderState.getMatchIndex(resp.follower());
+        long nextIndex = leaderState.getNextIndex(resp.follower());
+        long matchIndex = leaderState.getMatchIndex(resp.follower());
 
         if (resp.expectedNextIndex() == nextIndex) {
             // this is the response of the request I have sent for this nextIndex
