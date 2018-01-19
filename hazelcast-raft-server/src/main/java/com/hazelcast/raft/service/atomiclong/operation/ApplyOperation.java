@@ -27,7 +27,7 @@ public class ApplyOperation<R> extends AbstractAtomicLongOperation {
     }
 
     @Override
-    protected Object doRun(int commitIndex) {
+    protected Object doRun(long commitIndex) {
         RaftAtomicLong atomic = getAtomicLong();
         long val = atomic.getAndAdd(0, commitIndex);
         return function.apply(val);

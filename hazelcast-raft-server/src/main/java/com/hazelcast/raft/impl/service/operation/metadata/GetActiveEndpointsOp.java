@@ -15,7 +15,7 @@ public class GetActiveEndpointsOp extends RaftOperation implements IdentifiedDat
     }
 
     @Override
-    protected Object doRun(int commitIndex) {
+    protected Object doRun(long commitIndex) {
         RaftService service = getService();
         return service.getMetadataManager().getActiveEndpoints();
     }

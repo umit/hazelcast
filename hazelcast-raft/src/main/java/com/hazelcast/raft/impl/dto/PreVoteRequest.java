@@ -20,12 +20,12 @@ public class PreVoteRequest implements IdentifiedDataSerializable {
     private RaftEndpoint candidate;
     private int nextTerm;
     private int lastLogTerm;
-    private int lastLogIndex;
+    private long lastLogIndex;
 
     public PreVoteRequest() {
     }
 
-    public PreVoteRequest(RaftEndpoint candidate, int nextTerm, int lastLogTerm, int lastLogIndex) {
+    public PreVoteRequest(RaftEndpoint candidate, int nextTerm, int lastLogTerm, long lastLogIndex) {
         this.nextTerm = nextTerm;
         this.candidate = candidate;
         this.lastLogTerm = lastLogTerm;
@@ -44,7 +44,7 @@ public class PreVoteRequest implements IdentifiedDataSerializable {
         return lastLogTerm;
     }
 
-    public int lastLogIndex() {
+    public long lastLogIndex() {
         return lastLogIndex;
     }
 
@@ -63,7 +63,7 @@ public class PreVoteRequest implements IdentifiedDataSerializable {
         out.writeInt(nextTerm);
         out.writeObject(candidate);
         out.writeInt(lastLogTerm);
-        out.writeInt(lastLogIndex);
+        out.writeLong(lastLogIndex);
     }
 
     @Override
@@ -71,7 +71,7 @@ public class PreVoteRequest implements IdentifiedDataSerializable {
         nextTerm = in.readInt();
         candidate = in.readObject();
         lastLogTerm = in.readInt();
-        lastLogIndex = in.readInt();
+        lastLogIndex = in.readLong();
     }
 
     @Override

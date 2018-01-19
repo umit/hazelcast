@@ -34,7 +34,7 @@ public class RaftLog {
      * Returns the last entry index in the Raft log,
      * either from the last log entry or from the last snapshot if no logs are available.
      */
-    public int lastLogOrSnapshotIndex() {
+    public long lastLogOrSnapshotIndex() {
         return lastLogOrSnapshotEntry().index();
     }
 
@@ -62,7 +62,7 @@ public class RaftLog {
      * <p>
      * Important: Log entry indices start from 1, not 0.
      */
-    public LogEntry getLogEntry(int entryIndex) {
+    public LogEntry getLogEntry(long entryIndex) {
         if (entryIndex < 1) {
             throw new IllegalArgumentException("Illegal index: " + entryIndex + ". Index starts from 1.");
         }
@@ -80,7 +80,7 @@ public class RaftLog {
      * @throws IllegalArgumentException If no entries are available to truncate, if {@code entryIndex} is greater
      *                                  than last log index or smaller than snapshot index.
      */
-    public List<LogEntry> truncateEntriesFrom(int entryIndex) {
+    public List<LogEntry> truncateEntriesFrom(long entryIndex) {
         if (entryIndex <= snapshotIndex()) {
             throw new IllegalArgumentException("Illegal index: " + entryIndex + ", snapshot index: " + snapshotIndex());
         }
@@ -106,7 +106,7 @@ public class RaftLog {
      */
     public void appendEntries(LogEntry... newEntries) {
         int lastTerm = lastLogOrSnapshotTerm();
-        int lastIndex = lastLogOrSnapshotIndex();
+        long lastIndex = lastLogOrSnapshotIndex();
 
         for (LogEntry entry : newEntries) {
             if (entry.term() < lastTerm) {
@@ -131,7 +131,7 @@ public class RaftLog {
      *                                  or if {@code fromEntryIndex} is greater than last log index
      *                                  or if {@code toEntryIndex} is greater than last log index.
      */
-    public LogEntry[] getEntriesBetween(int fromEntryIndex, int toEntryIndex) {
+    public LogEntry[] getEntriesBetween(long fromEntryIndex, long toEntryIndex) {
         if (fromEntryIndex > toEntryIndex) {
             throw new IllegalArgumentException("Illegal from entry index: " + fromEntryIndex + ", to entry index: " + toEntryIndex);
         }
@@ -181,7 +181,7 @@ public class RaftLog {
     /**
      * Returns snapshot entry index.
      */
-    public int snapshotIndex() {
+    public long snapshotIndex() {
         return snapshot.index();
     }
 
@@ -192,7 +192,7 @@ public class RaftLog {
         return snapshot;
     }
 
-    private int toArrayIndex(int entryIndex) {
-        return (entryIndex - snapshotIndex()) - 1;
+    private int toArrayIndex(long entryIndex) {
+        return (int)(entryIndex - snapshotIndex()) - 1;
     }
 }

@@ -25,7 +25,7 @@ public class CompleteDestroyRaftGroupsOp extends RaftOperation implements Identi
     }
 
     @Override
-    protected Object doRun(int commitIndex) {
+    protected Object doRun(long commitIndex) {
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
         metadataManager.completeDestroy(groupIds);

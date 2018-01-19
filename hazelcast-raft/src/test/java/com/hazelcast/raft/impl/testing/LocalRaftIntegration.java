@@ -242,7 +242,7 @@ public class LocalRaftIntegration implements RaftIntegration {
     }
 
     @Override
-    public Object runOperation(RaftOperation operation, int commitIndex) {
+    public Object runOperation(RaftOperation operation, long commitIndex) {
         if (operation == null) {
             return null;
         }

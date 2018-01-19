@@ -22,7 +22,7 @@ public class CheckRemovedEndpointOp extends RaftOperation implements IdentifiedD
     }
 
     @Override
-    protected Object doRun(int commitIndex) {
+    protected Object doRun(long commitIndex) {
         RaftService service = getService();
         return service.getMetadataManager().isRemoved(endpoint);
     }

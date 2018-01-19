@@ -21,12 +21,12 @@ public class AppendFailureResponse implements IdentifiedDataSerializable {
 
     private RaftEndpoint follower;
     private int term;
-    private int expectedNextIndex;
+    private long expectedNextIndex;
 
     public AppendFailureResponse() {
     }
 
-    public AppendFailureResponse(RaftEndpoint follower, int term, int expectedNextIndex) {
+    public AppendFailureResponse(RaftEndpoint follower, int term, long expectedNextIndex) {
         this.follower = follower;
         this.term = term;
         this.expectedNextIndex = expectedNextIndex;
@@ -40,7 +40,7 @@ public class AppendFailureResponse implements IdentifiedDataSerializable {
         return term;
     }
 
-    public int expectedNextIndex() {
+    public long expectedNextIndex() {
         return expectedNextIndex;
     }
 
@@ -58,14 +58,14 @@ public class AppendFailureResponse implements IdentifiedDataSerializable {
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeInt(term);
         out.writeObject(follower);
-        out.writeInt(expectedNextIndex);
+        out.writeLong(expectedNextIndex);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         term = in.readInt();
         follower = in.readObject();
-        expectedNextIndex = in.readInt();
+        expectedNextIndex = in.readLong();
     }
 
     @Override

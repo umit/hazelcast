@@ -171,7 +171,7 @@ public class RaftStateTest {
         int term = state.term();
         RaftLog log = state.log();
         log.appendEntries(new LogEntry(term, 1, null), new LogEntry(term, 2, null), new LogEntry(term, 3, null));
-        int lastLogIndex = log.lastLogOrSnapshotIndex();
+        long lastLogIndex = log.lastLogOrSnapshotIndex();
 
         state.toLeader();
 
@@ -187,9 +187,9 @@ public class RaftStateTest {
             assertEquals(lastLogIndex + 1, leaderState.getNextIndex(endpoint));
         }
 
-        Collection<Integer> matchIndices = leaderState.matchIndices();
+        Collection<Long> matchIndices = leaderState.matchIndices();
         assertEquals(state.remoteMembers().size(), matchIndices.size());
-        for (int index : matchIndices) {
+        for (long index : matchIndices) {
             assertEquals(0, index);
         }
     }

@@ -16,13 +16,13 @@ import static com.hazelcast.util.Preconditions.checkTrue;
  * They should perform the same action and produce the same result always,
  * independent of where and when they are executed.
  * <p>
- * {@link #doRun(int)} method must be implemented by subclasses.
+ * {@link #doRun(long)} method must be implemented by subclasses.
  */
 public abstract class RaftOperation extends Operation {
 
     private static final int NA_COMMIT_INDEX = 0;
 
-    private int commitIndex = NA_COMMIT_INDEX;
+    private long commitIndex = NA_COMMIT_INDEX;
 
     private Object response;
 
@@ -33,9 +33,9 @@ public abstract class RaftOperation extends Operation {
      * @param commitIndex commitIndex of the log entry containing this operation
      * @return result of the operation execution
      */
-    protected abstract Object doRun(int commitIndex);
+    protected abstract Object doRun(long commitIndex);
 
-    public final RaftOperation setCommitIndex(int commitIndex) {
+    public final RaftOperation setCommitIndex(long commitIndex) {
         checkTrue(commitIndex > NA_COMMIT_INDEX, "Cannot set commit index:" + commitIndex);
         checkTrue(this.commitIndex == NA_COMMIT_INDEX,
                 "cannot set commit index: " + commitIndex + " because it is already set to: " + this.commitIndex

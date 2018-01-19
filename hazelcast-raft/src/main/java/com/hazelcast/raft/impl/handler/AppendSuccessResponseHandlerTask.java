@@ -55,8 +55,8 @@ public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTas
 
         // If there exists an N such that N > commitIndex, a majority of matchIndex[i] ≥ N, and log[N].term == currentTerm:
         // set commitIndex = N (§5.3, §5.4)
-        int quorumMatchIndex = findQuorumMatchIndex(state);
-        int commitIndex = state.commitIndex();
+        long quorumMatchIndex = findQuorumMatchIndex(state);
+        long commitIndex = state.commitIndex();
         RaftLog raftLog = state.log();
         for (; quorumMatchIndex > commitIndex; quorumMatchIndex--) {
             // Only log entries from the leader’s current term are committed by counting replicas; once an entry
@@ -75,11 +75,11 @@ public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTas
     private void updateFollowerIndices(RaftState state) {
         RaftEndpoint follower = resp.follower();
         LeaderState leaderState = state.leaderState();
-        int matchIndex = leaderState.getMatchIndex(follower);
-        int followerLastLogIndex = resp.lastLogIndex();
+        long matchIndex = leaderState.getMatchIndex(follower);
+        long followerLastLogIndex = resp.lastLogIndex();
 
         if (followerLastLogIndex > matchIndex) {
-            int newNextIndex = followerLastLogIndex + 1;
+            long newNextIndex = followerLastLogIndex + 1;
             logger.info("Updating match index: " + followerLastLogIndex + " and next index: " + newNextIndex
                     + " for follower: " + follower);
             leaderState.setMatchIndex(follower, followerLastLogIndex);
@@ -90,29 +90,29 @@ public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTas
         }
     }
 
-    private int findQuorumMatchIndex(RaftState state) {
+    private long findQuorumMatchIndex(RaftState state) {
         LeaderState leaderState = state.leaderState();
-        Collection<Integer> matchIndices = leaderState.matchIndices();
+        Collection<Long> matchIndices = leaderState.matchIndices();
 
-        int[] indices;
+        long[] indices;
         int k;
 
         // if the leader is leaving, it should not count its vote for quorum...
         if (raftNode.state().isKnownEndpoint(raftNode.getLocalEndpoint())) {
-            indices = new int[matchIndices.size() + 1];
+            indices = new long[matchIndices.size() + 1];
             indices[0] = state.log().lastLogOrSnapshotIndex();
             k = 1;
         } else {
-            indices = new int[matchIndices.size()];
+            indices = new long[matchIndices.size()];
             k = 0;
         }
 
-        for (int index : matchIndices) {
+        for (long index : matchIndices) {
             indices[k++] = index;
         }
         sort(indices);
 
-        int quorumMatchIndex = indices[(indices.length - 1) / 2];
+        long quorumMatchIndex = indices[(indices.length - 1) / 2];
         if (logger.isFineEnabled()) {
             logger.fine("Quorum match index: " + quorumMatchIndex + ", indices: " + Arrays.toString(indices));
         }
@@ -120,7 +120,7 @@ public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTas
         return quorumMatchIndex;
     }
 
-    private void commitEntries(RaftState state, int commitIndex) {
+    private void commitEntries(RaftState state, long commitIndex) {
         logger.info("Setting commit index: " + commitIndex);
         state.commitIndex(commitIndex);
         raftNode.broadcastAppendRequest();

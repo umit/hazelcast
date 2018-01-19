@@ -14,17 +14,17 @@ import java.util.HashSet;
  */
 public class MismatchingGroupMembersCommitIndexException extends RaftException {
 
-    private transient int commitIndex;
+    private transient long commitIndex;
 
     private transient Collection<RaftEndpoint> members;
 
-    public MismatchingGroupMembersCommitIndexException(int commitIndex, Collection<RaftEndpoint> members) {
+    public MismatchingGroupMembersCommitIndexException(long commitIndex, Collection<RaftEndpoint> members) {
         super(null);
         this.commitIndex = commitIndex;
         this.members = members;
     }
 
-    public int getCommitIndex() {
+    public long getCommitIndex() {
         return commitIndex;
     }
 
@@ -34,7 +34,7 @@ public class MismatchingGroupMembersCommitIndexException extends RaftException {
 
     private void writeObject(ObjectOutputStream out) throws IOException {
         out.defaultWriteObject();
-        out.writeInt(commitIndex);
+        out.writeLong(commitIndex);
         out.writeInt(members.size());
         for (RaftEndpoint endpoint : members) {
             writeEndpoint(endpoint, out);
@@ -43,7 +43,7 @@ public class MismatchingGroupMembersCommitIndexException extends RaftException {
 
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
-        commitIndex = in.readInt();
+        commitIndex = in.readLong();
         int count = in.readInt();
         members = new HashSet<RaftEndpoint>(count);
         for (int i = 0; i < count; i++) {

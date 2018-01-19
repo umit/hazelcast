@@ -17,14 +17,14 @@ import java.util.Map;
  */
 public class LeaderState {
 
-    private final Map<RaftEndpoint, Integer> nextIndices = new HashMap<RaftEndpoint, Integer>();
+    private final Map<RaftEndpoint, Long> nextIndices = new HashMap<RaftEndpoint, Long>();
 
-    private final Map<RaftEndpoint, Integer> matchIndices = new HashMap<RaftEndpoint, Integer>();
+    private final Map<RaftEndpoint, Long> matchIndices = new HashMap<RaftEndpoint, Long>();
 
-    public LeaderState(Collection<RaftEndpoint> remoteMembers, int lastLogIndex) {
+    public LeaderState(Collection<RaftEndpoint> remoteMembers, long lastLogIndex) {
         for (RaftEndpoint follower : remoteMembers) {
             nextIndices.put(follower, lastLogIndex + 1);
-            matchIndices.put(follower, 0);
+            matchIndices.put(follower, 0L);
         }
     }
 
@@ -32,10 +32,10 @@ public class LeaderState {
      * Add a new follower with the leader's {@code lastLogIndex}. Follower's {@code nextIndex} will be set
      * to {@code lastLogIndex + 1} and {@code matchIndex} to 0.
      */
-    public void add(RaftEndpoint follower, int lastLogIndex) {
+    public void add(RaftEndpoint follower, long lastLogIndex) {
         assertNotFollower(nextIndices, follower);
         nextIndices.put(follower, lastLogIndex + 1);
-        matchIndices.put(follower, 0);
+        matchIndices.put(follower, 0L);
     }
 
     /**
@@ -50,7 +50,7 @@ public class LeaderState {
     /**
      * Sets {@code nextIndex} for a known follower.
      */
-    public void setNextIndex(RaftEndpoint follower, int index) {
+    public void setNextIndex(RaftEndpoint follower, long index) {
         assertFollower(nextIndices, follower);
         assert index > 0 : "Invalid next index: " + index;
         nextIndices.put(follower, index);
@@ -59,20 +59,20 @@ public class LeaderState {
     /**
      * Sets {@code matchIndex} for a known follower.
      */
-    public void setMatchIndex(RaftEndpoint follower, int index) {
+    public void setMatchIndex(RaftEndpoint follower, long index) {
         assertFollower(matchIndices, follower);
         assert index >= 0 : "Invalid match index: " + index;
         matchIndices.put(follower, index);
     }
 
-    public Collection<Integer> matchIndices() {
+    public Collection<Long> matchIndices() {
         return matchIndices.values();
     }
 
     /**
      * Returns the {@code nextIndex} for a known follower.
      */
-    public int getNextIndex(RaftEndpoint follower) {
+    public long getNextIndex(RaftEndpoint follower) {
         assertFollower(nextIndices, follower);
         return nextIndices.get(follower);
     }
@@ -80,16 +80,16 @@ public class LeaderState {
     /**
      * Returns the {@code matchIndex} for a known follower.
      */
-    public int getMatchIndex(RaftEndpoint follower) {
+    public long getMatchIndex(RaftEndpoint follower) {
         assertFollower(matchIndices, follower);
         return matchIndices.get(follower);
     }
 
-    private void assertFollower(Map<RaftEndpoint, Integer> indices, RaftEndpoint follower) {
+    private void assertFollower(Map<RaftEndpoint, Long> indices, RaftEndpoint follower) {
         assert indices.containsKey(follower) : "Unknown follower " + follower;
     }
 
-    private void assertNotFollower(Map<RaftEndpoint, Integer> indices, RaftEndpoint follower) {
+    private void assertNotFollower(Map<RaftEndpoint, Long> indices, RaftEndpoint follower) {
         assert !indices.containsKey(follower) : "Already known follower " + follower;
     }
 

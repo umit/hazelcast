@@ -15,7 +15,7 @@ public interface SnapshotAwareService<T> {
      * @param commitIndex commitIndex of the Raft state when the snapshot is requested
      * @return snapshot for specified {@link RaftGroupId}.
      */
-    T takeSnapshot(RaftGroupId raftGroupId, int commitIndex);
+    T takeSnapshot(RaftGroupId raftGroupId, long commitIndex);
 
     /**
      * Restores the snapshot for specified {@link RaftGroupId}.
@@ -24,6 +24,6 @@ public interface SnapshotAwareService<T> {
      * @param commitIndex commitIndex of the Raft state when snapshot is created
      * @param snapshot snapshot for specified {@link RaftGroupId}
      */
-    void restoreSnapshot(RaftGroupId raftGroupId, int commitIndex, T snapshot);
+    void restoreSnapshot(RaftGroupId raftGroupId, long commitIndex, T snapshot);
 
 }

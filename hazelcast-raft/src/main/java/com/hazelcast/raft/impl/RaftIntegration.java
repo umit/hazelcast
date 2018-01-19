@@ -109,13 +109,13 @@ public interface RaftIntegration {
 
     /**
      * Executes the operation on underlying operation execution mechanism
-     * and returns the return value of {@link RaftOperation#doRun(int)}.
+     * and returns the return value of {@link RaftOperation#doRun(long)}.
      *
      * @param operation   raft operation
      * @param commitIndex commit index
      * @return operation execution result
      */
-    Object runOperation(RaftOperation operation, int commitIndex);
+    Object runOperation(RaftOperation operation, long commitIndex);
 
     /**
      * Executes the task on underlying task execution mechanism.

@@ -9,38 +9,38 @@ public class RaftAtomicLong {
     private final String name;
 
     private long value;
-    private int commitIndex;
+    private long commitIndex;
 
     RaftAtomicLong(String name) {
         this.name = name;
     }
 
-    RaftAtomicLong(String name, long value, int commitIndex) {
+    RaftAtomicLong(String name, long value, long commitIndex) {
         this.name = name;
         this.value = value;
         this.commitIndex = commitIndex;
     }
 
-    public long addAndGet(long delta, int commitIndex) {
+    public long addAndGet(long delta, long commitIndex) {
         this.commitIndex = commitIndex;
         return value += delta;
     }
 
-    public long getAndAdd(long delta, int commitIndex) {
+    public long getAndAdd(long delta, long commitIndex) {
         this.commitIndex = commitIndex;
         long v = value;
         value += delta;
         return v;
     }
 
-    public long getAndSet(long value, int commitIndex) {
+    public long getAndSet(long value, long commitIndex) {
         this.commitIndex = commitIndex;
         long v = this.value;
         this.value = value;
         return v;
     }
 
-    public boolean compareAndSet(long currentValue, long newValue, int commitIndex) {
+    public boolean compareAndSet(long currentValue, long newValue, long commitIndex) {
         this.commitIndex = commitIndex;
         if (value == currentValue) {
             value = newValue;
@@ -49,7 +49,7 @@ public class RaftAtomicLong {
         return false;
     }
 
-    public int commitIndex() {
+    public long commitIndex() {
         return commitIndex;
     }
 
