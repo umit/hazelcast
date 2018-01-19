@@ -11,7 +11,7 @@ import com.hazelcast.raft.operation.RaftOperation;
 public class NopEntryOp extends RaftOperation implements IdentifiedDataSerializable {
 
     @Override
-    protected Object doRun(int commitIndex) {
+    protected Object doRun(long commitIndex) {
         return null;
     }
 

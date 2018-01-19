@@ -121,7 +121,7 @@ public class LocalQueryTest extends HazelcastTestSupport {
 
         Object firstValue = "value1";
         leader.replicate(new RaftTestApplyOperation(firstValue)).get();
-        final int leaderCommitIndex = getCommitIndex(leader);
+        final long leaderCommitIndex = getCommitIndex(leader);
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -172,7 +172,7 @@ public class LocalQueryTest extends HazelcastTestSupport {
 
         Object firstValue = "value1";
         leader.replicate(new RaftTestApplyOperation(firstValue)).get();
-        final int leaderCommitIndex = getCommitIndex(leader);
+        final long leaderCommitIndex = getCommitIndex(leader);
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -215,7 +215,7 @@ public class LocalQueryTest extends HazelcastTestSupport {
 
         Object firstValue = "value1";
         leader.replicate(new RaftTestApplyOperation(firstValue)).get();
-        final int leaderCommitIndex = getCommitIndex(leader);
+        final long leaderCommitIndex = getCommitIndex(leader);
 
         assertTrueEventually(new AssertTask() {
             @Override

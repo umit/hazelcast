@@ -14,5 +14,5 @@ public interface RaftGroupId {
     /**
      * Returns the commit index of the log when this Raft group is created.
      */
-    int commitIndex();
+    long commitIndex();
 }

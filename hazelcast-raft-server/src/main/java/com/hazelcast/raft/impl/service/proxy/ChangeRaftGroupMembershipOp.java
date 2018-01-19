@@ -16,14 +16,14 @@ public class ChangeRaftGroupMembershipOp extends RaftReplicateOp {
 
     public static final int NAN_MEMBERS_COMMIT_INDEX = -1;
 
-    private int membersCommitIndex;
+    private long membersCommitIndex;
     private RaftEndpoint endpoint;
     private MembershipChangeType changeType;
 
     public ChangeRaftGroupMembershipOp() {
     }
 
-    public ChangeRaftGroupMembershipOp(RaftGroupId groupId, int membersCommitIndex, RaftEndpoint endpoint,
+    public ChangeRaftGroupMembershipOp(RaftGroupId groupId, long membersCommitIndex, RaftEndpoint endpoint,
                                        MembershipChangeType changeType) {
         super(groupId);
         this.membersCommitIndex = membersCommitIndex;
@@ -58,7 +58,7 @@ public class ChangeRaftGroupMembershipOp extends RaftReplicateOp {
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeInt(membersCommitIndex);
+        out.writeLong(membersCommitIndex);
         out.writeObject(endpoint);
         out.writeUTF(changeType.toString());
     }
@@ -66,7 +66,7 @@ public class ChangeRaftGroupMembershipOp extends RaftReplicateOp {
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        membersCommitIndex = in.readInt();
+        membersCommitIndex = in.readLong();
         endpoint = in.readObject();
         changeType = MembershipChangeType.valueOf(in.readUTF());
     }

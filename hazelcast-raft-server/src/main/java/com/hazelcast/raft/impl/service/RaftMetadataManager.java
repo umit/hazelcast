@@ -107,7 +107,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     @Override
-    public MetadataSnapshot takeSnapshot(RaftGroupId raftGroupId, int commitIndex) {
+    public MetadataSnapshot takeSnapshot(RaftGroupId raftGroupId, long commitIndex) {
         ensureMetadataGroupId(raftGroupId);
 
         MetadataSnapshot snapshot = new MetadataSnapshot();
@@ -127,7 +127,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     @Override
-    public void restoreSnapshot(RaftGroupId raftGroupId, int commitIndex, MetadataSnapshot snapshot) {
+    public void restoreSnapshot(RaftGroupId raftGroupId, long commitIndex, MetadataSnapshot snapshot) {
         ensureMetadataGroupId(raftGroupId);
 
         for (RaftGroupInfo groupInfo : snapshot.getRaftGroups()) {
@@ -187,7 +187,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         return raftGroups.get(id);
     }
 
-    public RaftGroupId createRaftGroup(String serviceName, String name, Collection<RaftEndpoint> endpoints, int commitIndex) {
+    public RaftGroupId createRaftGroup(String serviceName, String name, Collection<RaftEndpoint> endpoints, long commitIndex) {
         // keep configuration on every metadata node
         RaftGroupInfo groupInfo = getRaftGroupInfoByName(name);
         if (groupInfo != null) {
@@ -329,7 +329,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         leavingEndpointContext = new LeavingRaftEndpointContext(leavingEndpoint, leavingGroups);
     }
 
-    public void completeRemoveEndpoint(RaftEndpoint leavingEndpoint, Map<RaftGroupId, Pair<Integer, Integer>> leftGroups) {
+    public void completeRemoveEndpoint(RaftEndpoint leavingEndpoint, Map<RaftGroupId, Pair<Long, Long>> leftGroups) {
         if (!allEndpoints.contains(leavingEndpoint)) {
             throw new IllegalArgumentException("Cannot remove " + leavingEndpoint + " from groups: " + leftGroups.keySet()
                     + " since " +  leavingEndpoint + " doesn't exist!");
@@ -346,13 +346,13 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         }
 
         Map<RaftGroupId, RaftGroupLeavingEndpointContext> leavingGroups = leavingEndpointContext.getGroups();
-        for (Entry<RaftGroupId, Pair<Integer, Integer>> e : leftGroups.entrySet()) {
+        for (Entry<RaftGroupId, Pair<Long, Long>> e : leftGroups.entrySet()) {
             RaftGroupId groupId = e.getKey();
             RaftGroupInfo groupInfo = raftGroups.get(groupId);
 
-            Pair<Integer, Integer> value = e.getValue();
-            int expectedMembersCommitIndex = value.getPrimary();
-            int newMembersCommitIndex = value.getSecondary();
+            Pair<Long, Long> value = e.getValue();
+            long expectedMembersCommitIndex = value.getPrimary();
+            long newMembersCommitIndex = value.getSecondary();
             RaftEndpoint joining = leavingGroups.get(groupId).getSubstitute();
 
             if (groupInfo.substitute(leavingEndpoint, joining, expectedMembersCommitIndex, newMembersCommitIndex)) {

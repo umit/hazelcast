@@ -28,7 +28,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     }
 
     private RaftGroupId id;
-    private int membersCommitIndex;
+    private long membersCommitIndex;
     // endpoint -> TRUE: initial-member | FALSE: substitute-member
     private Map<RaftEndpoint, Boolean> members;
     private String serviceName;
@@ -61,7 +61,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
         return id.name();
     }
 
-    public int commitIndex() {
+    public long commitIndex() {
         return id.commitIndex();
     }
 
@@ -110,12 +110,12 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
         return true;
     }
 
-    public int getMembersCommitIndex() {
+    public long getMembersCommitIndex() {
         return membersCommitIndex;
     }
 
     public boolean substitute(RaftEndpoint leaving, RaftEndpoint joining,
-            int expectedMembersCommitIndex, int newMembersCommitIndex) {
+            long expectedMembersCommitIndex, long newMembersCommitIndex) {
         if (membersCommitIndex != expectedMembersCommitIndex) {
             return false;
         }
@@ -141,6 +141,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeObject(id);
+        out.writeLong(membersCommitIndex);
         out.writeInt(members.size());
         for (Map.Entry<RaftEndpoint, Boolean> entry : members.entrySet()) {
             out.writeObject(entry.getKey());
@@ -153,6 +154,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         id = in.readObject();
+        membersCommitIndex = in.readLong();
         int len = in.readInt();
         members = new LinkedHashMap<RaftEndpoint, Boolean>(len);
         for (int i = 0; i < len; i++) {

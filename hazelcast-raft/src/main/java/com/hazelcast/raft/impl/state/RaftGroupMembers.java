@@ -14,13 +14,13 @@ import static java.util.Collections.unmodifiableSet;
  */
 public class RaftGroupMembers {
 
-    private final int index;
+    private final long index;
 
     private final Collection<RaftEndpoint> members;
 
     private final Collection<RaftEndpoint> remoteMembers;
 
-    public RaftGroupMembers(int index, Collection<RaftEndpoint> endpoints, RaftEndpoint localEndpoint) {
+    public RaftGroupMembers(long index, Collection<RaftEndpoint> endpoints, RaftEndpoint localEndpoint) {
         this.index = index;
         this.members = unmodifiableSet(new LinkedHashSet<RaftEndpoint>(endpoints));
         Set<RaftEndpoint> remoteMembers = new LinkedHashSet<RaftEndpoint>(endpoints);
@@ -31,7 +31,7 @@ public class RaftGroupMembers {
     /**
      * Returns the position of the membership change that leads to formation of this group.
      */
-    public int index() {
+    public long index() {
         return index;
     }
 

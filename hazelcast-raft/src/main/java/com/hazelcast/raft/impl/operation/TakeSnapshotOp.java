@@ -9,7 +9,7 @@ import com.hazelcast.raft.operation.RaftOperation;
 import java.io.IOException;
 
 /**
- * {@code RaftOperation} to take snapshot using related {@link SnapshotAwareService#takeSnapshot(RaftGroupId, int)}.
+ * {@code RaftOperation} to take snapshot using related {@link SnapshotAwareService#takeSnapshot(RaftGroupId, long)}.
  * <p>
  * This operation is executed locally, is not appended to Raft log and never serialized.
  */
@@ -23,7 +23,7 @@ public class TakeSnapshotOp extends RaftOperation {
     }
 
     @Override
-    public Object doRun(int commitIndex) {
+    public Object doRun(long commitIndex) {
         SnapshotAwareService service = getService();
         return service.takeSnapshot(groupId, commitIndex);
     }

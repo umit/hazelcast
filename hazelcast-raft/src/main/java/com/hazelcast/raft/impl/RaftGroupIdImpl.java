@@ -16,12 +16,12 @@ import java.io.IOException;
 public final class RaftGroupIdImpl implements RaftGroupId, IdentifiedDataSerializable {
 
     private String name;
-    private int commitIndex;
+    private long commitIndex;
 
     public RaftGroupIdImpl() {
     }
 
-    public RaftGroupIdImpl(String name, int commitIndex) {
+    public RaftGroupIdImpl(String name, long commitIndex) {
         assert name != null;
         this.name = name;
         this.commitIndex = commitIndex;
@@ -33,20 +33,20 @@ public final class RaftGroupIdImpl implements RaftGroupId, IdentifiedDataSeriali
     }
 
     @Override
-    public int commitIndex() {
+    public long commitIndex() {
         return commitIndex;
     }
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeUTF(name);
-        out.writeInt(commitIndex);
+        out.writeLong(commitIndex);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         name = in.readUTF();
-        commitIndex = in.readInt();
+        commitIndex = in.readLong();
     }
 
     @Override
@@ -75,7 +75,7 @@ public final class RaftGroupIdImpl implements RaftGroupId, IdentifiedDataSeriali
     @Override
     public int hashCode() {
         int result = name.hashCode();
-        result = 31 * result + commitIndex;
+        result = 31 * result + (int) (commitIndex ^ (commitIndex >>> 32));
         return result;
     }
 
@@ -87,7 +87,7 @@ public final class RaftGroupIdImpl implements RaftGroupId, IdentifiedDataSeriali
     // ----- CLIENT CONVENIENCE METHODS -----
     public static RaftGroupId readFrom(ClientMessage message) {
         String name = message.getStringUtf8();
-        int commitIndex = message.getInt();
+        long commitIndex = message.getLong();
         return new RaftGroupIdImpl(name, commitIndex);
     }
 
@@ -97,6 +97,6 @@ public final class RaftGroupIdImpl implements RaftGroupId, IdentifiedDataSeriali
     }
 
     public static int dataSize(RaftGroupId groupId) {
-        return ParameterUtil.calculateDataSize(groupId.name()) + Bits.INT_SIZE_IN_BYTES;
+        return ParameterUtil.calculateDataSize(groupId.name()) + Bits.LONG_SIZE_IN_BYTES;
     }
 }

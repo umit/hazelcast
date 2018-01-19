@@ -64,7 +64,7 @@ public class ReplicateTask implements Runnable {
             logger.fine("Replicating: " + operation + " in term: " + state.term());
         }
 
-        int newEntryLogIndex = state.log().lastLogOrSnapshotIndex() + 1;
+        long newEntryLogIndex = state.log().lastLogOrSnapshotIndex() + 1;
         raftNode.registerFuture(newEntryLogIndex, resultFuture);
         state.log().appendEntries(new LogEntry(state.term(), newEntryLogIndex, operation));
 
@@ -97,7 +97,7 @@ public class ReplicateTask implements Runnable {
         return true;
     }
 
-    private void handleInternalRaftOperation(int logIndex, RaftOperation operation) {
+    private void handleInternalRaftOperation(long logIndex, RaftOperation operation) {
         if (operation instanceof TerminateRaftGroupOp) {
             raftNode.setStatus(RaftNodeStatus.TERMINATING);
         } else if (operation instanceof ApplyRaftGroupMembersOp) {

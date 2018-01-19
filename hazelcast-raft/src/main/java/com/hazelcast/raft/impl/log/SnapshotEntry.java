@@ -17,20 +17,20 @@ import java.util.HashSet;
  * Snapshot entry is sent to followers via {@link com.hazelcast.raft.impl.dto.InstallSnapshot} RPC.
  */
 public class SnapshotEntry extends LogEntry implements IdentifiedDataSerializable {
-    private int groupMembersLogIndex;
+    private long groupMembersLogIndex;
     private Collection<RaftEndpoint> groupMembers;
 
     public SnapshotEntry() {
     }
 
-    public SnapshotEntry(int term, int index, RaftOperation operation,
-            int groupMembersLogIndex, Collection<RaftEndpoint> groupMembers) {
+    public SnapshotEntry(int term, long index, RaftOperation operation,
+            long groupMembersLogIndex, Collection<RaftEndpoint> groupMembers) {
         super(term, index, operation);
         this.groupMembersLogIndex = groupMembersLogIndex;
         this.groupMembers = groupMembers;
     }
 
-    public int groupMembersLogIndex() {
+    public long groupMembersLogIndex() {
         return groupMembersLogIndex;
     }
 
@@ -41,7 +41,7 @@ public class SnapshotEntry extends LogEntry implements IdentifiedDataSerializabl
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         super.writeData(out);
-        out.writeInt(groupMembersLogIndex);
+        out.writeLong(groupMembersLogIndex);
         out.writeInt(groupMembers.size());
         for (RaftEndpoint endpoint : groupMembers) {
             out.writeObject(endpoint);
@@ -51,7 +51,7 @@ public class SnapshotEntry extends LogEntry implements IdentifiedDataSerializabl
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         super.readData(in);
-        groupMembersLogIndex = in.readInt();
+        groupMembersLogIndex = in.readLong();
         int count = in.readInt();
         groupMembers = new HashSet<RaftEndpoint>(count);
         for (int i = 0; i < count; i++) {

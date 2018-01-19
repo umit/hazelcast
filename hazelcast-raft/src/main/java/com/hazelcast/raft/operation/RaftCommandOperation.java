@@ -6,7 +6,7 @@ package com.hazelcast.raft.operation;
 public abstract class RaftCommandOperation extends RaftOperation {
 
     @Override
-    protected final Object doRun(int commitIndex) {
+    protected final Object doRun(long commitIndex) {
         throw new UnsupportedOperationException();
     }
 

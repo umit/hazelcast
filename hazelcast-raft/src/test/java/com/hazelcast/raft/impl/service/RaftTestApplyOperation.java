@@ -18,7 +18,7 @@ public class RaftTestApplyOperation extends RaftOperation {
     }
 
     @Override
-    public Object doRun(int commitIndex) {
+    public Object doRun(long commitIndex) {
         RaftDataService service = getService();
         return service.apply(commitIndex, val);
     }

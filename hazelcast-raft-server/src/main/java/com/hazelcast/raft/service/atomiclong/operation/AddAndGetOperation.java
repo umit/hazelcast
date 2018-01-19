@@ -24,7 +24,7 @@ public class AddAndGetOperation extends AbstractAtomicLongOperation {
     }
 
     @Override
-    public Object doRun(int commitIndex) {
+    public Object doRun(long commitIndex) {
         RaftAtomicLong atomic = getAtomicLong();
         return atomic.addAndGet(delta, commitIndex);
     }

@@ -33,7 +33,7 @@ public class CreateRaftGroupOp extends RaftOperation implements IdentifiedDataSe
     }
 
     @Override
-    public Object doRun(int commitIndex) {
+    public Object doRun(long commitIndex) {
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
         return metadataManager.createRaftGroup(serviceName, name, endpoints, commitIndex);

@@ -31,7 +31,7 @@ import java.util.LinkedHashSet;
  */
 public class MembershipChangeTask implements Runnable {
     private final RaftNodeImpl raftNode;
-    private final Integer groupMembersCommitIndex;
+    private final Long groupMembersCommitIndex;
     private final RaftEndpoint member;
     private final MembershipChangeType changeType;
     private final SimpleCompletableFuture resultFuture;
@@ -43,7 +43,7 @@ public class MembershipChangeTask implements Runnable {
     }
 
     public MembershipChangeTask(RaftNodeImpl raftNode, SimpleCompletableFuture resultFuture, RaftEndpoint member,
-                                MembershipChangeType changeType, Integer groupMembersCommitIndex) {
+                                MembershipChangeType changeType, Long groupMembersCommitIndex) {
         if (changeType == null) {
             throw new IllegalArgumentException("Null membership change type");
         }

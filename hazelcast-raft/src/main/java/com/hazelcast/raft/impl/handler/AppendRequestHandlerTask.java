@@ -72,7 +72,7 @@ public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runna
 
         // Verify the last log entry
         if (req.prevLogIndex() > 0) {
-            int lastLogIndex = raftLog.lastLogOrSnapshotIndex();
+            long lastLogIndex = raftLog.lastLogOrSnapshotIndex();
             int lastLogTerm = raftLog.lastLogOrSnapshotTerm();
 
             int prevLogTerm;
@@ -99,7 +99,7 @@ public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runna
         // Process any new entries
         if (req.entryCount() > 0) {
             // Delete any conflicting entries, skip any duplicates
-            int lastLogIndex = raftLog.lastLogOrSnapshotIndex();
+            long lastLogIndex = raftLog.lastLogOrSnapshotIndex();
 
             LogEntry[] newEntries = null;
             for (int i = 0; i < req.entryCount(); i++) {
@@ -144,12 +144,12 @@ public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runna
             }
         }
 
-        int lastLogIndex = req.prevLogIndex() + req.entryCount();
+        long lastLogIndex = req.prevLogIndex() + req.entryCount();
 
         // Update the commit index
         if (req.leaderCommitIndex() > state.commitIndex()) {
             // If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
-            int newCommitIndex = min(req.leaderCommitIndex(), lastLogIndex);
+            long newCommitIndex = min(req.leaderCommitIndex(), lastLogIndex);
             logger.info("Setting commit index: " + newCommitIndex);
             state.commitIndex(newCommitIndex);
             raftNode.processLogEntries();
