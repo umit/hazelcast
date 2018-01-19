@@ -210,7 +210,6 @@ public class RaftInvocationManager {
 
         final RaftGroupId groupId;
         private volatile EndpointCursor endpointCursor;
-        private volatile O operation;
 
         AbstractRaftInvocationFuture(RaftGroupId groupId) {
             super(nodeEngine, RaftInvocationManager.this.logger);
@@ -225,7 +224,7 @@ public class RaftInvocationManager {
         @Override
         public void onFailure(Throwable cause) {
             if (isRetryable(cause)) {
-                logger.warning("Failure while invoking " + operation + " -> " + cause);
+                logger.warning("Failure while invoking " + operationToString() + " -> " + cause);
                 updateKnownLeaderOnFailure(groupId, cause);
                 try {
                     scheduleRetry();
@@ -234,10 +233,12 @@ public class RaftInvocationManager {
                     setResult(e);
                 }
             } else {
-                logger.severe("Failure while invoking " + operation, cause);
+                logger.severe("Failure while invoking " + operationToString(), cause);
                 setResult(cause);
             }
         }
+
+        abstract String operationToString();
 
         boolean isRetryable(Throwable cause) {
             return cause instanceof NotLeaderException
@@ -263,7 +264,7 @@ public class RaftInvocationManager {
         }
 
         final void invoke() {
-            operation = createOp();
+            O operation = createOp();
             RaftEndpoint target = getTarget();
             if (target == null) {
                 scheduleRetry();
@@ -282,7 +283,7 @@ public class RaftInvocationManager {
         }
 
         private RaftEndpoint getTarget() {
-            RaftEndpoint target = getKnownTarget();
+            RaftEndpoint target = getKnownLeader(groupId);
             if (target != null) {
                 return target;
             }
@@ -301,10 +302,6 @@ public class RaftInvocationManager {
             RaftEndpoint[] endpoints = raftGroupInfo != null ? raftGroupInfo.membersArray() : allEndpoints;
             return new EndpointCursor(endpoints);
         }
-
-        RaftEndpoint getKnownTarget() {
-            return getKnownLeader(groupId);
-        }
     }
 
     private class RaftInvocationFuture<T> extends AbstractRaftInvocationFuture<T, RaftReplicateOp> {
@@ -320,6 +317,11 @@ public class RaftInvocationManager {
         @Override
         RaftReplicateOp createOp() {
             return new DefaultRaftReplicateOp(groupId, raftOperation);
+        }
+
+        @Override
+        String operationToString() {
+            return raftOperation.toString();
         }
 
         @Override
@@ -361,6 +363,11 @@ public class RaftInvocationManager {
         }
 
         @Override
+        String operationToString() {
+            return raftOperation.toString();
+        }
+
+        @Override
         boolean isRetryable(Throwable cause) {
             if (cause instanceof CannotRunLocalQueryException) {
                 queryPolicy = QueryPolicy.LINEARIZABLE;
@@ -389,6 +396,12 @@ public class RaftInvocationManager {
         @Override
         RaftReplicateOp createOp() {
             return new ChangeRaftGroupMembershipOp(groupId, membersCommitIndex, endpoint, changeType);
+        }
+
+        @Override
+        String operationToString() {
+            return "MembershipChange{groupId=" + groupId + ", membersCommitIndex=" + membersCommitIndex
+                    + ", endpoint=" + endpoint + ", changeType=" + changeType + '}';
         }
 
         @Override
