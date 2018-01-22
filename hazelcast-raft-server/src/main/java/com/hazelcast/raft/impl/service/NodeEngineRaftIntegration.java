@@ -27,7 +27,10 @@ import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationAccessor;
 import com.hazelcast.spi.TaskScheduler;
 import com.hazelcast.spi.impl.NodeEngineImpl;
+import com.hazelcast.spi.impl.operationexecutor.impl.OperationExecutorImpl;
+import com.hazelcast.spi.impl.operationexecutor.impl.PartitionOperationThread;
 import com.hazelcast.spi.impl.operationservice.InternalOperationService;
+import com.hazelcast.spi.impl.operationservice.impl.OperationServiceImpl;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
@@ -45,18 +48,28 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
     private final InternalOperationService operationService;
     private final TaskScheduler taskScheduler;
     private final int partitionId;
+    private final int threadId;
 
     NodeEngineRaftIntegration(NodeEngineImpl nodeEngine, RaftGroupId groupId) {
         this.nodeEngine = nodeEngine;
         this.raftGroupId = groupId;
-        this.operationService = nodeEngine.getOperationService();
+        OperationServiceImpl operationService = (OperationServiceImpl) nodeEngine.getOperationService();
+        this.operationService = operationService;
         this.partitionId = nodeEngine.getPartitionService().getPartitionId(groupId);
+        OperationExecutorImpl operationExecutor = (OperationExecutorImpl) operationService.getOperationExecutor();
+        this.threadId = operationExecutor.toPartitionThreadIndex(partitionId);
         this.taskScheduler = nodeEngine.getExecutionService().getGlobalTaskScheduler();
     }
 
     @Override
     public void execute(Runnable task) {
-        operationService.execute(new PartitionSpecificRunnableAdaptor(task, partitionId));
+        Thread currentThread = Thread.currentThread();
+        if (currentThread instanceof PartitionOperationThread
+                && ((PartitionOperationThread) currentThread).getThreadId() == threadId) {
+            task.run();
+        } else {
+            operationService.execute(new PartitionSpecificRunnableAdaptor(task, partitionId));
+        }
     }
 
     @Override
@@ -145,6 +158,6 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
     }
 
     private boolean send(Operation operation, RaftEndpoint target) {
-        return nodeEngine.getOperationService().send(operation, target.getAddress());
+        return nodeEngine.getOperationService().send(operation.setPartitionId(partitionId), target.getAddress());
     }
 }

@@ -15,7 +15,7 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public abstract class AsyncRaftOp extends Operation implements IdentifiedDataSerializable, AllowedDuringPassiveState {
+abstract class AsyncRaftOp extends Operation implements IdentifiedDataSerializable, AllowedDuringPassiveState {
 
     protected RaftGroupId groupId;
 
@@ -39,6 +39,12 @@ public abstract class AsyncRaftOp extends Operation implements IdentifiedDataSer
     @Override
     public String getServiceName() {
         return RaftService.SERVICE_NAME;
+    }
+
+    // Raft ops are executed on partition threads but not sent to partition owners.
+    @Override
+    public boolean validatesTarget() {
+        return false;
     }
 
     @Override

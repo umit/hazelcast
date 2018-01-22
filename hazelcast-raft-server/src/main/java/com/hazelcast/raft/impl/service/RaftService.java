@@ -41,6 +41,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.raft.impl.service.RaftCleanupHandler.CLEANUP_TASK_PERIOD_IN_MILLIS;
+import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 import static java.util.Collections.newSetFromMap;
 import static java.util.Collections.singletonList;
 
@@ -257,30 +258,8 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         RaftNode node = nodes.get(groupId);
         if (node == null && !destroyedGroupIds.contains(groupId)) {
             logger.fine("There is no RaftNode for " + groupId + ". Asking to the metadata group...");
-            ICompletableFuture<RaftGroupInfo> f = invocationManager.query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId),
-                    QueryPolicy.LEADER_LOCAL);
-            f.andThen(new ExecutionCallback<RaftGroupInfo>() {
-                @Override
-                public void onResponse(RaftGroupInfo groupInfo) {
-                    if (groupInfo == null) {
-                        return;
-                    }
-
-                    if (groupInfo.status() == RaftGroupStatus.DESTROYED) {
-                        destroyRaftNode(groupId);
-                        return;
-                    }
-
-                    createRaftNode(groupInfo);
-                }
-
-                @Override
-                public void onFailure(Throwable t) {
-                    logger.warning("Cannot get raft group: " + groupId + " from the metadata group", t);
-                }
-            });
+            nodeEngine.getExecutionService().execute(ASYNC_EXECUTOR, new QueryRaftGroupInfoTask(groupId));
         }
-
         return node;
     }
 
@@ -359,6 +338,40 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
             return f.get();
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
+        }
+    }
+
+    private class QueryRaftGroupInfoTask implements Runnable {
+        private final RaftGroupId groupId;
+
+        QueryRaftGroupInfoTask(RaftGroupId groupId) {
+            this.groupId = groupId;
+        }
+
+        @Override
+        public void run() {
+            ICompletableFuture<RaftGroupInfo> f = invocationManager.query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId),
+                    QueryPolicy.LEADER_LOCAL);
+            f.andThen(new ExecutionCallback<RaftGroupInfo>() {
+                @Override
+                public void onResponse(RaftGroupInfo groupInfo) {
+                    if (groupInfo == null) {
+                        return;
+                    }
+
+                    if (groupInfo.status() == RaftGroupStatus.DESTROYED) {
+                        destroyRaftNode(groupId);
+                        return;
+                    }
+
+                    createRaftNode(groupInfo);
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    logger.warning("Cannot get raft group: " + groupId + " from the metadata group", t);
+                }
+            });
         }
     }
 }
