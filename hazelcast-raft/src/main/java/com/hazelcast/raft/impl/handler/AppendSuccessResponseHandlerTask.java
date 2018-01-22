@@ -80,12 +80,14 @@ public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTas
 
         if (followerLastLogIndex > matchIndex) {
             long newNextIndex = followerLastLogIndex + 1;
-            logger.info("Updating match index: " + followerLastLogIndex + " and next index: " + newNextIndex
-                    + " for follower: " + follower);
+            if (logger.isFineEnabled()) {
+                logger.fine("Updating match index: " + followerLastLogIndex + " and next index: " + newNextIndex
+                        + " for follower: " + follower);
+            }
             leaderState.setMatchIndex(follower, followerLastLogIndex);
             leaderState.setNextIndex(follower, newNextIndex);
         } else if (followerLastLogIndex < matchIndex) {
-            logger.warning("Will not update match index for follower: " + follower + ". follower last log index: "
+            logger.info("Will not update match index for follower: " + follower + ". follower last log index: "
                     + followerLastLogIndex + ", match index: " + matchIndex);
         }
     }
@@ -121,7 +123,7 @@ public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTas
     }
 
     private void commitEntries(RaftState state, long commitIndex) {
-        logger.info("Setting commit index: " + commitIndex);
+        logger.fine("Setting commit index: " + commitIndex);
         state.commitIndex(commitIndex);
         raftNode.broadcastAppendRequest();
         raftNode.processLogEntries();
