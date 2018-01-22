@@ -150,7 +150,7 @@ public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runna
         if (req.leaderCommitIndex() > state.commitIndex()) {
             // If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
             long newCommitIndex = min(req.leaderCommitIndex(), lastLogIndex);
-            logger.info("Setting commit index: " + newCommitIndex);
+            logger.fine("Setting commit index: " + newCommitIndex);
             state.commitIndex(newCommitIndex);
             raftNode.processLogEntries();
         }
