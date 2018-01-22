@@ -74,6 +74,11 @@ public class RaftQueryOp extends Operation implements IdentifiedDataSerializable
     }
 
     @Override
+    public boolean validatesTarget() {
+        return false;
+    }
+
+    @Override
     public final String getServiceName() {
         return RaftService.SERVICE_NAME;
     }
