@@ -46,6 +46,7 @@ import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 public class RaftInvocationManager {
 
     private static final int MAX_RETRY_DELAY = 250;
+    private static final Executor CALLER_RUNS_EXECUTOR = new CallerRunsExecutor();
 
     private final NodeEngine nodeEngine;
     private final RaftService raftService;
@@ -276,7 +277,7 @@ public class RaftInvocationManager {
             InternalCompletableFuture<T> future = nodeEngine.getOperationService()
                     .invokeOnTarget(RaftService.SERVICE_NAME, operation.setPartitionId(partitionId), target.getAddress());
             afterInvoke(target);
-            future.andThen(this);
+            future.andThen(this, CALLER_RUNS_EXECUTOR);
         }
 
         abstract O createOp();
@@ -443,4 +444,10 @@ public class RaftInvocationManager {
         }
     }
 
+    private static class CallerRunsExecutor implements Executor {
+        @Override
+        public void execute(Runnable command) {
+            command.run();
+        }
+    }
 }
