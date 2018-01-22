@@ -209,11 +209,13 @@ public class RaftInvocationManager {
             extends AbstractCompletableFuture<T> implements ExecutionCallback<T> {
 
         final RaftGroupId groupId;
+        private final int partitionId;
         private volatile EndpointCursor endpointCursor;
 
         AbstractRaftInvocationFuture(RaftGroupId groupId) {
             super(nodeEngine, RaftInvocationManager.this.logger);
             this.groupId = groupId;
+            partitionId = nodeEngine.getPartitionService().getPartitionId(groupId);
         }
 
         @Override
@@ -272,7 +274,7 @@ public class RaftInvocationManager {
             }
 
             InternalCompletableFuture<T> future = nodeEngine.getOperationService()
-                    .invokeOnTarget(RaftService.SERVICE_NAME, operation, target.getAddress());
+                    .invokeOnTarget(RaftService.SERVICE_NAME, operation.setPartitionId(partitionId), target.getAddress());
             afterInvoke(target);
             future.andThen(this);
         }

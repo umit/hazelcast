@@ -81,6 +81,11 @@ public abstract class RaftReplicateOp extends Operation implements IdentifiedDat
     }
 
     @Override
+    public boolean validatesTarget() {
+        return false;
+    }
+
+    @Override
     public final String getServiceName() {
         return RaftService.SERVICE_NAME;
     }
