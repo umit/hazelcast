@@ -70,7 +70,7 @@ public class AppendFailureResponseHandlerTask extends AbstractResponseHandlerTas
             }
 
             if (logger.isFineEnabled()) {
-                logger.info("Updating next index: " + nextIndex + " for follower: " + resp.follower());
+                logger.fine("Updating next index: " + nextIndex + " for follower: " + resp.follower());
             }
             leaderState.setNextIndex(resp.follower(), nextIndex);
             return true;
