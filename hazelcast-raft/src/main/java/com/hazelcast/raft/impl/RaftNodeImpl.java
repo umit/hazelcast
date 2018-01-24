@@ -544,10 +544,11 @@ public class RaftNodeImpl implements RaftNode {
             response = raftIntegration.runOperation(operation, entry.index());
         }
 
-        SimpleCompletableFuture future = futures.remove(entry.index());
-        if (future != null) {
-            future.setResult(response);
+        if (response == RaftOperation.BLOCKED_RESPONSE) {
+            // TODO: postpone sending response
+            return;
         }
+        completeFuture(entry.index(), response);
     }
 
     public void updateLastAppendEntriesTimestamp() {
@@ -597,6 +598,16 @@ public class RaftNodeImpl implements RaftNode {
     public void registerFuture(long entryIndex, SimpleCompletableFuture future) {
         SimpleCompletableFuture f = futures.put(entryIndex, future);
         assert f == null : "Future object is already registered for entry index: " + entryIndex;
+    }
+
+    /**
+     * Completes the future registered with {@code entryIndex}.
+     */
+    public void completeFuture(long entryIndex, Object response) {
+        SimpleCompletableFuture f = futures.remove(entryIndex);
+        if (f != null) {
+            f.setResult(response);
+        }
     }
 
     /**

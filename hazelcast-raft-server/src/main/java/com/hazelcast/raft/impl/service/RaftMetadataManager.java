@@ -11,7 +11,7 @@ import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.exception.CannotCreateRaftGroupException;
 import com.hazelcast.raft.impl.service.exception.CannotRemoveEndpointException;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftNodeOp;
-import com.hazelcast.raft.impl.util.Pair;
+import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.OperationService;
 
@@ -329,7 +329,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         leavingEndpointContext = new LeavingRaftEndpointContext(leavingEndpoint, leavingGroups);
     }
 
-    public void completeRemoveEndpoint(RaftEndpoint leavingEndpoint, Map<RaftGroupId, Pair<Long, Long>> leftGroups) {
+    public void completeRemoveEndpoint(RaftEndpoint leavingEndpoint, Map<RaftGroupId, Tuple2<Long, Long>> leftGroups) {
         if (!allEndpoints.contains(leavingEndpoint)) {
             throw new IllegalArgumentException("Cannot remove " + leavingEndpoint + " from groups: " + leftGroups.keySet()
                     + " since " +  leavingEndpoint + " doesn't exist!");
@@ -346,13 +346,13 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         }
 
         Map<RaftGroupId, RaftGroupLeavingEndpointContext> leavingGroups = leavingEndpointContext.getGroups();
-        for (Entry<RaftGroupId, Pair<Long, Long>> e : leftGroups.entrySet()) {
+        for (Entry<RaftGroupId, Tuple2<Long, Long>> e : leftGroups.entrySet()) {
             RaftGroupId groupId = e.getKey();
             RaftGroupInfo groupInfo = raftGroups.get(groupId);
 
-            Pair<Long, Long> value = e.getValue();
-            long expectedMembersCommitIndex = value.getPrimary();
-            long newMembersCommitIndex = value.getSecondary();
+            Tuple2<Long, Long> value = e.getValue();
+            long expectedMembersCommitIndex = value.element1;
+            long newMembersCommitIndex = value.element2;
             RaftEndpoint joining = leavingGroups.get(groupId).getSubstitute();
 
             if (groupInfo.substitute(leavingEndpoint, joining, expectedMembersCommitIndex, newMembersCommitIndex)) {

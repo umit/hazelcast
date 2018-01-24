@@ -8,7 +8,7 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftMetadataManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.util.Pair;
+import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.operation.RaftOperation;
 
 import java.io.IOException;
@@ -20,12 +20,12 @@ public class CompleteRemoveEndpointOp extends RaftOperation implements Identifie
 
     private RaftEndpoint endpoint;
 
-    private Map<RaftGroupId, Pair<Long, Long>> leftGroups;
+    private Map<RaftGroupId, Tuple2<Long, Long>> leftGroups;
 
     public CompleteRemoveEndpointOp() {
     }
 
-    public CompleteRemoveEndpointOp(RaftEndpoint endpoint, Map<RaftGroupId, Pair<Long, Long>> leftGroups) {
+    public CompleteRemoveEndpointOp(RaftEndpoint endpoint, Map<RaftGroupId, Tuple2<Long, Long>> leftGroups) {
         this.endpoint = endpoint;
         this.leftGroups = leftGroups;
     }
@@ -48,11 +48,11 @@ public class CompleteRemoveEndpointOp extends RaftOperation implements Identifie
         super.writeInternal(out);
         out.writeObject(endpoint);
         out.writeInt(leftGroups.size());
-        for (Entry<RaftGroupId, Pair<Long, Long>> e : leftGroups.entrySet()) {
+        for (Entry<RaftGroupId, Tuple2<Long, Long>> e : leftGroups.entrySet()) {
             out.writeObject(e.getKey());
-            Pair<Long, Long> value = e.getValue();
-            out.writeLong(value.getPrimary());
-            out.writeLong(value.getSecondary());
+            Tuple2<Long, Long> value = e.getValue();
+            out.writeLong(value.element1);
+            out.writeLong(value.element2);
         }
     }
 
@@ -61,12 +61,12 @@ public class CompleteRemoveEndpointOp extends RaftOperation implements Identifie
         super.readInternal(in);
         endpoint = in.readObject();
         int count = in.readInt();
-        leftGroups = new HashMap<RaftGroupId, Pair<Long, Long>>(count);
+        leftGroups = new HashMap<RaftGroupId, Tuple2<Long, Long>>(count);
         for (int i = 0; i < count; i++) {
             RaftGroupId groupId = in.readObject();
             long currMembersCommitIndex = in.readLong();
             long newMembersCommitIndex = in.readLong();
-            leftGroups.put(groupId, new Pair<Long, Long>(currMembersCommitIndex, newMembersCommitIndex));
+            leftGroups.put(groupId, new Tuple2<Long, Long>(currMembersCommitIndex, newMembersCommitIndex));
         }
     }
 

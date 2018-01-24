@@ -20,7 +20,7 @@ import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetDestroyingRaftGroupIds;
 import com.hazelcast.raft.impl.service.operation.metadata.GetLeavingEndpointContextOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
-import com.hazelcast.raft.impl.util.Pair;
+import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.raft.operation.RaftOperation;
 import com.hazelcast.raft.operation.TerminateRaftGroupOp;
@@ -283,14 +283,14 @@ public class RaftCleanupHandler {
                 }
             }
 
-            Map<RaftGroupId, Pair<Long, Long>> leftGroups = new HashMap<RaftGroupId, Pair<Long, Long>>();
+            Map<RaftGroupId, Tuple2<Long, Long>> leftGroups = new HashMap<RaftGroupId, Tuple2<Long, Long>>();
             for (Entry<RaftGroupId, Future<Long>> entry : leaveFutures.entrySet()) {
                 RaftGroupId groupId = entry.getKey();
                 RaftGroupLeavingEndpointContext ctx = leavingGroups.get(groupId);
                 long idx = getMemberRemoveCommitIndex(groupId, leavingEndpoint, ctx, entry.getValue());
                 if (idx != NA_MEMBERS_COMMIT_INDEX) {
                     logger.info(leavingEndpoint + " is removed from " + groupId + " with new members commit index: " + idx);
-                    leftGroups.put(groupId, new Pair<Long, Long>(ctx.getMembersCommitIndex(), idx));
+                    leftGroups.put(groupId, new Tuple2<Long, Long>(ctx.getMembersCommitIndex(), idx));
                 }
             }
 
@@ -399,7 +399,7 @@ public class RaftCleanupHandler {
         }
 
         private void completeRemoveOnMetadata(final RaftEndpoint endpoint,
-                                              final Map<RaftGroupId, Pair<Long, Long>> leftGroups) {
+                                              final Map<RaftGroupId, Tuple2<Long, Long>> leftGroups) {
             ICompletableFuture<Object> future = invocationManager.invoke(METADATA_GROUP_ID,
                     new CompleteRemoveEndpointOp(endpoint, leftGroups));
 

@@ -20,6 +20,8 @@ import static com.hazelcast.util.Preconditions.checkTrue;
  */
 public abstract class RaftOperation extends Operation {
 
+    public static final Object BLOCKED_RESPONSE = new Object();
+
     private static final int NA_COMMIT_INDEX = 0;
 
     private long commitIndex = NA_COMMIT_INDEX;
