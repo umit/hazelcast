@@ -9,12 +9,12 @@ import java.util.UUID;
 /**
  * TODO: Javadoc Pending...
  */
-public class UnlockOperation extends AbstractLockOperation {
+public class TryLockOp extends AbstractLockOp {
 
-    public UnlockOperation() {
+    public TryLockOp() {
     }
 
-    public UnlockOperation(RaftGroupId groupId, String uid, long threadId, UUID invUid) {
+    public TryLockOp(RaftGroupId groupId, String uid, long threadId, UUID invUid) {
         super(groupId, uid, threadId, invUid);
     }
 
@@ -22,7 +22,6 @@ public class UnlockOperation extends AbstractLockOperation {
     protected Object doRun(long commitIndex) {
         RaftLockService service = getService();
         LockEndpoint endpoint = new LockEndpoint(uid, threadId);
-        service.release(groupId, endpoint, invUid);
-        return true;
+        return service.acquire(groupId, endpoint, commitIndex, invUid, false);
     }
 }
