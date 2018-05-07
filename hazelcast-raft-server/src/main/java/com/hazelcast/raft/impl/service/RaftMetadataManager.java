@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -31,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import static com.hazelcast.raft.impl.RaftEndpointImpl.parseEndpoints;
 import static com.hazelcast.raft.impl.service.LeavingRaftEndpointContext.RaftGroupLeavingEndpointContext;
 import static com.hazelcast.util.Preconditions.checkNotNull;
-import static java.util.Collections.unmodifiableList;
+import static java.util.Collections.unmodifiableCollection;
 
 /**
  * TODO: Javadoc Pending...
@@ -49,7 +50,8 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
 
     // raftGroups are read outside of Raft
     private final Map<RaftGroupId, RaftGroupInfo> raftGroups = new ConcurrentHashMap<RaftGroupId, RaftGroupInfo>();
-    private final List<RaftEndpointImpl> allEndpoints;
+    // allEndpoints must be an ordered collection
+    private final Collection<RaftEndpointImpl> allEndpoints;
     private final RaftEndpointImpl localEndpoint;
 
     private final Collection<RaftEndpointImpl> removedEndpoints = new HashSet<RaftEndpointImpl>();
@@ -62,7 +64,8 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         this.config = config;
 
         try {
-            this.allEndpoints = unmodifiableList(sort(parseEndpoints(config.getMembers())));
+            this.allEndpoints = unmodifiableCollection(
+                    new LinkedHashSet<RaftEndpointImpl>(sort(parseEndpoints(config.getMembers()))));
         } catch (UnknownHostException e) {
             throw new HazelcastException(e);
         }
@@ -85,7 +88,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         }
     }
 
-    private List<RaftEndpointImpl> sort(List<RaftEndpointImpl> endpoints) {
+    private static List<RaftEndpointImpl> sort(List<RaftEndpointImpl> endpoints) {
         Collections.sort(endpoints, new Comparator<RaftEndpointImpl>() {
             @Override
             public int compare(RaftEndpointImpl e1, RaftEndpointImpl e2) {
@@ -169,7 +172,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         leavingEndpointContext = snapshot.getLeavingRaftEndpointContext();
     }
 
-    private void ensureMetadataGroupId(RaftGroupId raftGroupId) {
+    private static void ensureMetadataGroupId(RaftGroupId raftGroupId) {
         if (!METADATA_GROUP_ID.equals(raftGroupId)) {
             throw new IllegalArgumentException("Invalid RaftGroupId! Expected: " + METADATA_GROUP_ID
                     + ", Actual: " + raftGroupId);
@@ -218,12 +221,12 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
 
         RaftGroupId groupId = groupInfo.id();
         if (groupInfo.containsMember(localEndpoint)) {
-            raftService.createRaftNode(groupId, (Collection) groupInfo.members());
+            raftService.createRaftNode(groupId, groupInfo.members());
         } else {
             // Broadcast group-info to non-metadata group members
             OperationService operationService = nodeEngine.getOperationService();
             RaftGroupInfo metadataGroup = raftGroups.get(RaftService.METADATA_GROUP_ID);
-            for (RaftEndpointImpl endpoint : groupInfo.members()) {
+            for (RaftEndpointImpl endpoint : groupInfo.endpointImpls()) {
                 if (!metadataGroup.containsMember(endpoint)) {
                     operationService.send(new CreateRaftNodeOp(groupInfo), endpoint.getAddress());
                 }
@@ -313,7 +316,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
                 for (RaftEndpointImpl substitute : allEndpoints) {
                     if (!removedEndpoints.contains(substitute) && !groupInfo.containsMember(substitute)) {
                         leavingGroups.put(groupId, new RaftGroupLeavingEndpointContext(groupInfo.getMembersCommitIndex(),
-                                groupInfo.members(), substitute));
+                                groupInfo.endpointImpls(), substitute));
                         logger.fine("Substituted " + leavingEndpoint + " with " + substitute + " in " + groupInfo);
                         foundSubstitute = true;
                         break;
@@ -322,7 +325,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
                 if (!foundSubstitute) {
                     logger.fine("Cannot find a substitute for " + leavingEndpoint + " in " + groupInfo);
                     leavingGroups.put(groupId, new RaftGroupLeavingEndpointContext(groupInfo.getMembersCommitIndex(),
-                            groupInfo.members(), null));
+                            groupInfo.endpointImpls(), null));
                 }
             }
         }

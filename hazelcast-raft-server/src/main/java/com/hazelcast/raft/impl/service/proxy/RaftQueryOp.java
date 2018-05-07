@@ -22,7 +22,7 @@ import com.hazelcast.spi.impl.AllowedDuringPassiveState;
 
 import java.io.IOException;
 
-public class RaftQueryOp extends Operation implements IdentifiedDataSerializable, AllowedDuringPassiveState {
+public class RaftQueryOp extends Operation implements IdentifiedDataSerializable, AllowedDuringPassiveState, ExecutionCallback {
 
     private RaftGroupId raftGroupId;
     private QueryPolicy queryPolicy;
@@ -50,22 +50,22 @@ public class RaftQueryOp extends Operation implements IdentifiedDataSerializable
         }
 
         ICompletableFuture future = raftNode.query(raftOp, queryPolicy);
-        future.andThen(new ExecutionCallback() {
-            @Override
-            public void onResponse(Object response) {
-                sendResponse(response);
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-                sendResponse(t);
-            }
-        });
+        future.andThen(this);
     }
 
     public RaftQueryOp setQueryPolicy(QueryPolicy queryPolicy) {
         this.queryPolicy = queryPolicy;
         return this;
+    }
+
+    @Override
+    public void onResponse(Object response) {
+        sendResponse(response);
+    }
+
+    @Override
+    public void onFailure(Throwable t) {
+        sendResponse(t);
     }
 
     @Override
