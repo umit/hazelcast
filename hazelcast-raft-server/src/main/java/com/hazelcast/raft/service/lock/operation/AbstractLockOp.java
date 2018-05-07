@@ -3,45 +3,30 @@ package com.hazelcast.raft.service.lock.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.util.Tuple2;
-import com.hazelcast.raft.operation.RaftOperation;
-import com.hazelcast.raft.service.lock.LockEndpoint;
+import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.service.lock.RaftLockService;
 
 import java.io.IOException;
+import java.util.UUID;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class GetLockCountOperation extends RaftOperation {
+abstract class AbstractLockOp extends RaftOp {
 
     RaftGroupId groupId;
     String uid;
     long threadId;
+    UUID invUid;
 
-    public GetLockCountOperation() {
+    public AbstractLockOp() {
     }
 
-    public GetLockCountOperation(RaftGroupId groupId) {
-        this.groupId = groupId;
-    }
-
-    public GetLockCountOperation(RaftGroupId groupId, String uid, long threadId) {
+    public AbstractLockOp(RaftGroupId groupId, String uid, long threadId, UUID invUid) {
         this.groupId = groupId;
         this.uid = uid;
         this.threadId = threadId;
-    }
-
-    @Override
-    protected Object doRun(long commitIndex) {
-        RaftLockService service = getService();
-        Tuple2<LockEndpoint, Integer> result = service.lockCount(groupId);
-
-        if (uid != null) {
-            LockEndpoint endpoint = new LockEndpoint(uid, threadId);
-            return endpoint.equals(result.element1) ? result.element2 : 0;
-        }
-        return result.element2;
+        this.invUid = invUid;
     }
 
     @Override
@@ -55,6 +40,8 @@ public class GetLockCountOperation extends RaftOperation {
         out.writeObject(groupId);
         out.writeUTF(uid);
         out.writeLong(threadId);
+        out.writeLong(invUid.getLeastSignificantBits());
+        out.writeLong(invUid.getMostSignificantBits());
     }
 
     @Override
@@ -63,5 +50,8 @@ public class GetLockCountOperation extends RaftOperation {
         groupId = in.readObject();
         uid = in.readUTF();
         threadId = in.readLong();
+        long least = in.readLong();
+        long most = in.readLong();
+        invUid = new UUID(most, least);
     }
 }
