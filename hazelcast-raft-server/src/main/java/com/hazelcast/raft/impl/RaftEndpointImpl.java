@@ -20,14 +20,13 @@ public class RaftEndpointImpl implements RaftEndpoint, Serializable {
 
     private static final long serialVersionUID = 5628148969327743953L;
 
-
     public static List<RaftEndpointImpl> parseEndpoints(List<RaftMember> members) throws UnknownHostException {
         List<RaftEndpointImpl> endpoints = new ArrayList<RaftEndpointImpl>(members.size());
         for (RaftMember member : members) {
             AddressUtil.AddressHolder addressHolder = AddressUtil.getAddressHolder(member.getAddress());
             Address address = new Address(addressHolder.getAddress(), addressHolder.getPort());
             address.setScopeId(addressHolder.getScopeId());
-            endpoints.add(new RaftEndpointImpl(member.getId(), address));
+            endpoints.add(new RaftEndpointImpl(member.getUid(), address));
         }
         return endpoints;
     }

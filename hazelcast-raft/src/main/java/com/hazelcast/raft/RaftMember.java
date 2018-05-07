@@ -7,18 +7,18 @@ package com.hazelcast.raft;
 public class RaftMember {
 
     private String address;
-    private String id;
+    private String uid;
 
     public RaftMember() {
     }
 
     public RaftMember(RaftMember member) {
-        this(member.address, member.id);
+        this(member.address, member.uid);
     }
 
-    public RaftMember(String address, String id) {
+    public RaftMember(String address, String uid) {
         this.address = address;
-        this.id = id;
+        this.uid = uid;
     }
 
     public String getAddress() {
@@ -30,12 +30,12 @@ public class RaftMember {
         return this;
     }
 
-    public String getId() {
-        return id;
+    public String getUid() {
+        return uid;
     }
 
-    public RaftMember setId(String id) {
-        this.id = id;
+    public RaftMember setUid(String uid) {
+        this.uid = uid;
         return this;
     }
 
@@ -49,18 +49,18 @@ public class RaftMember {
         }
 
         RaftMember that = (RaftMember) o;
-        return address.equals(that.address) && id.equals(that.id);
+        return address.equals(that.address) && uid.equals(that.uid);
     }
 
     @Override
     public int hashCode() {
         int result = address.hashCode();
-        result = 31 * result + id.hashCode();
+        result = 31 * result + uid.hashCode();
         return result;
     }
 
     @Override
     public String toString() {
-        return "RaftMember{" + "address='" + address + '\'' + ", id='" + id + '\'' + '}';
+        return "RaftMember{" + "address='" + address + '\'' + ", id='" + uid + '\'' + '}';
     }
 }

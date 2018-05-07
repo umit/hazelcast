@@ -314,7 +314,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         RaftEndpointImpl localEndpoint = getLocalEndpoint();
         if (groupInfo.containsMember(localEndpoint)) {
             Collection<RaftEndpoint> members = groupInfo.isInitialMember(localEndpoint)
-                    ? ((Collection) groupInfo.members()) : singletonList((RaftEndpoint) localEndpoint);
+                    ? groupInfo.members() : singletonList((RaftEndpoint) localEndpoint);
             createRaftNode(groupInfo.id(), members);
         }
     }

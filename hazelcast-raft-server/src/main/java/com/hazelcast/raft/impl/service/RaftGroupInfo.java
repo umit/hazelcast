@@ -4,6 +4,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftEndpointImpl;
 
 import java.io.IOException;
@@ -63,7 +64,12 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
         return id.commitIndex();
     }
 
-    public Collection<RaftEndpointImpl> members() {
+    @SuppressWarnings("unchecked")
+    public Collection<RaftEndpoint> members() {
+        return (Collection) members.keySet();
+    }
+
+    public Collection<RaftEndpointImpl> endpointImpls() {
         return members.keySet();
     }
 
