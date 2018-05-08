@@ -1,5 +1,6 @@
 package com.hazelcast.raft.service.lock;
 
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.impl.util.Tuple3;
 
@@ -17,6 +18,7 @@ import java.util.UUID;
  */
 public class RaftLock {
 
+    private final RaftGroupId groupId;
     private final String name;
 
     private LockEndpoint owner;
@@ -24,7 +26,8 @@ public class RaftLock {
     private UUID refUid;
     private LinkedList<Tuple3<LockEndpoint, Long, UUID>> waiters = new LinkedList<Tuple3<LockEndpoint, Long, UUID>>();
 
-    public RaftLock(String name) {
+    public RaftLock(RaftGroupId groupId, String name) {
+        this.groupId = groupId;
         this.name = name;
     }
 
@@ -39,7 +42,7 @@ public class RaftLock {
             return true;
         }
         if (wait) {
-            waiters.offer(new Tuple3<LockEndpoint, Long, UUID>(endpoint, commitIndex, invUid));
+            waiters.offer(Tuple3.of(endpoint, commitIndex, invUid));
         }
         return false;
     }
@@ -82,7 +85,7 @@ public class RaftLock {
     }
 
     public Tuple2<LockEndpoint, Integer> lockCount() {
-        return new Tuple2<LockEndpoint, Integer>(owner, lockCount);
+        return Tuple2.of(owner, lockCount);
     }
 
 }

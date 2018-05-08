@@ -359,7 +359,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         assertEquals(otherRaftGroupSize, endpoints.size());
 
         ICompletableFuture<RaftGroupId> f = raftService.getInvocationManager()
-                .invoke(METADATA_GROUP_ID, new CreateRaftGroupOp(RaftService.SERVICE_NAME, "test", endpoints));
+                .invoke(METADATA_GROUP_ID, new CreateRaftGroupOp("test", endpoints));
 
         final RaftGroupId groupId = f.get();
 
@@ -455,7 +455,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
     private RaftGroupId createNewRaftGroup(HazelcastInstance instance, String name, int nodeCount) {
         RaftInvocationManager invocationManager = getRaftService(instance).getInvocationManager();
         try {
-            return invocationManager.createRaftGroup(RaftService.SERVICE_NAME, name, nodeCount);
+            return invocationManager.createRaftGroup(name, nodeCount);
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }

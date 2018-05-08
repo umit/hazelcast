@@ -16,8 +16,8 @@ public class ApplyOp<R> extends AbstractAtomicLongOp {
     public ApplyOp() {
     }
 
-    public ApplyOp(RaftGroupId groupId, IFunction<Long, R> function) {
-        super(groupId);
+    public ApplyOp(RaftGroupId groupId, String name, IFunction<Long, R> function) {
+        super(groupId, name);
         this.function = function;
     }
 
@@ -29,7 +29,7 @@ public class ApplyOp<R> extends AbstractAtomicLongOp {
     @Override
     protected Object doRun(long commitIndex) {
         RaftAtomicLong atomic = getAtomicLong();
-        long val = atomic.getAndAdd(0, commitIndex);
+        long val = atomic.getAndAdd(0);
         return function.apply(val);
     }
 

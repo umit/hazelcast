@@ -19,16 +19,14 @@ import java.util.Collection;
  */
 public class CreateRaftGroupOp extends RaftOp implements IdentifiedDataSerializable {
 
-    private String serviceName;
-    private String name;
+    private String groupName;
     private Collection<RaftEndpointImpl> endpoints;
 
     public CreateRaftGroupOp() {
     }
 
-    public CreateRaftGroupOp(String serviceName, String name, Collection<RaftEndpointImpl> endpoints) {
-        this.serviceName = serviceName;
-        this.name = name;
+    public CreateRaftGroupOp(String groupName, Collection<RaftEndpointImpl> endpoints) {
+        this.groupName = groupName;
         this.endpoints = endpoints;
     }
 
@@ -36,7 +34,7 @@ public class CreateRaftGroupOp extends RaftOp implements IdentifiedDataSerializa
     public Object doRun(long commitIndex) {
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
-        return metadataManager.createRaftGroup(serviceName, name, endpoints, commitIndex);
+        return metadataManager.createRaftGroup(groupName, endpoints, commitIndex);
     }
 
     @Override
@@ -47,8 +45,7 @@ public class CreateRaftGroupOp extends RaftOp implements IdentifiedDataSerializa
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeUTF(serviceName);
-        out.writeUTF(name);
+        out.writeUTF(groupName);
         out.writeInt(endpoints.size());
         for (RaftEndpointImpl endpoint : endpoints) {
             out.writeObject(endpoint);
@@ -58,8 +55,7 @@ public class CreateRaftGroupOp extends RaftOp implements IdentifiedDataSerializa
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        serviceName = in.readUTF();
-        name = in.readUTF();
+        groupName = in.readUTF();
         int len = in.readInt();
         endpoints = new ArrayList<RaftEndpointImpl>(len);
         for (int i = 0; i < len; i++) {

@@ -16,18 +16,21 @@ import java.io.IOException;
 public class GetLockCountOp extends RaftOp {
 
     RaftGroupId groupId;
+    String name;
     String uid;
     long threadId;
 
     public GetLockCountOp() {
     }
 
-    public GetLockCountOp(RaftGroupId groupId) {
+    public GetLockCountOp(RaftGroupId groupId, String name) {
         this.groupId = groupId;
+        this.name = name;
     }
 
-    public GetLockCountOp(RaftGroupId groupId, String uid, long threadId) {
+    public GetLockCountOp(RaftGroupId groupId, String name, String uid, long threadId) {
         this.groupId = groupId;
+        this.name = name;
         this.uid = uid;
         this.threadId = threadId;
     }
@@ -35,7 +38,7 @@ public class GetLockCountOp extends RaftOp {
     @Override
     protected Object doRun(long commitIndex) {
         RaftLockService service = getService();
-        Tuple2<LockEndpoint, Integer> result = service.lockCount(groupId);
+        Tuple2<LockEndpoint, Integer> result = service.lockCount(groupId, name);
 
         if (uid != null) {
             LockEndpoint endpoint = new LockEndpoint(uid, threadId);
@@ -53,6 +56,7 @@ public class GetLockCountOp extends RaftOp {
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeObject(groupId);
+        out.writeUTF(name);
         out.writeUTF(uid);
         out.writeLong(threadId);
     }
@@ -61,6 +65,7 @@ public class GetLockCountOp extends RaftOp {
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         groupId = in.readObject();
+        name = in.readUTF();
         uid = in.readUTF();
         threadId = in.readLong();
     }

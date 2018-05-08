@@ -34,7 +34,10 @@ import com.hazelcast.spi.impl.operationexecutor.impl.OperationExecutorImpl;
 import com.hazelcast.spi.impl.operationexecutor.impl.PartitionOperationThread;
 import com.hazelcast.spi.impl.operationservice.InternalOperationService;
 import com.hazelcast.spi.impl.operationservice.impl.OperationServiceImpl;
+import com.hazelcast.spi.impl.servicemanager.ServiceInfo;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
@@ -48,16 +51,14 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
 
     private final NodeEngineImpl nodeEngine;
     private final RaftGroupId raftGroupId;
-    private final String serviceName;
     private final InternalOperationService operationService;
     private final TaskScheduler taskScheduler;
     private final int partitionId;
     private final int threadId;
 
-    NodeEngineRaftIntegration(NodeEngineImpl nodeEngine, RaftGroupId groupId, String serviceName) {
+    NodeEngineRaftIntegration(NodeEngineImpl nodeEngine, RaftGroupId groupId) {
         this.nodeEngine = nodeEngine;
         this.raftGroupId = groupId;
-        this.serviceName = serviceName;
         OperationServiceImpl operationService = (OperationServiceImpl) nodeEngine.getOperationService();
         this.operationService = operationService;
         this.partitionId = nodeEngine.getPartitionService().getPartitionId(groupId);
@@ -166,11 +167,30 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
     @Override
     public Object takeSnapshot(long commitIndex) {
         try {
-            SnapshotAwareService service = nodeEngine.getService(serviceName);
-            Object snapshot = service.takeSnapshot(raftGroupId, commitIndex);
-            return new RestoreSnapshotOp(serviceName, raftGroupId, commitIndex, snapshot);
+            List<RestoreSnapshotOp> snapshotOps = new ArrayList<RestoreSnapshotOp>();
+            for (ServiceInfo serviceInfo : nodeEngine.getServiceInfos(SnapshotAwareService.class)) {
+                SnapshotAwareService service = serviceInfo.getService();
+                Object snapshot = service.takeSnapshot(raftGroupId, commitIndex);
+                if (snapshot != null) {
+                    snapshotOps.add(new RestoreSnapshotOp(serviceInfo.getName(), raftGroupId, commitIndex, snapshot));
+                }
+            }
+
+            return snapshotOps;
         } catch (Throwable t) {
             return t;
+        }
+    }
+
+    @Override
+    public void restoreSnapshot(Object op, long commitIndex) {
+        ILogger logger = nodeEngine.getLogger(this.getClass());
+        List<RestoreSnapshotOp> snapshotOps = (List<RestoreSnapshotOp>) op;
+        for (RestoreSnapshotOp snapshotOp : snapshotOps) {
+            Object result = runOperation(snapshotOp, commitIndex);
+            if (result instanceof Throwable) {
+                logger.severe("Restore of " + snapshotOp + " failed...", (Throwable) result);
+            }
         }
     }
 

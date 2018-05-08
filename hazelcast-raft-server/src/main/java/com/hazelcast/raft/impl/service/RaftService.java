@@ -284,7 +284,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         return metadataManager.getLocalEndpoint();
     }
 
-    void createRaftNode(RaftGroupId groupId, String serviceName, Collection<RaftEndpoint> endpoints) {
+    void createRaftNode(RaftGroupId groupId, Collection<RaftEndpoint> endpoints) {
         if (nodes.containsKey(groupId)) {
             logger.info("Not creating RaftNode for " + groupId + " since it is already created...");
             return;
@@ -295,8 +295,8 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
             return;
         }
 
-        RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, groupId, serviceName);
-        RaftNodeImpl node = new RaftNodeImpl(serviceName, groupId, getLocalEndpoint(), endpoints, config, raftIntegration);
+        RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, groupId);
+        RaftNodeImpl node = new RaftNodeImpl(groupId, getLocalEndpoint(), endpoints, config, raftIntegration);
 
         if (nodes.putIfAbsent(groupId, node) == null) {
             if (destroyedGroupIds.contains(groupId)) {
@@ -315,7 +315,7 @@ public class RaftService implements ManagedService, ConfigurableService<RaftConf
         if (groupInfo.containsMember(localEndpoint)) {
             Collection<RaftEndpoint> members = groupInfo.isInitialMember(localEndpoint)
                     ? ((Collection) groupInfo.members()) : singletonList((RaftEndpoint) localEndpoint);
-            createRaftNode(groupInfo.id(), groupInfo.serviceName(), members);
+            createRaftNode(groupInfo.id(), members);
         }
     }
 

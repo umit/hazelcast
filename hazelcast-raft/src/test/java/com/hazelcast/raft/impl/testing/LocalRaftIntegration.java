@@ -263,6 +263,11 @@ public class LocalRaftIntegration implements RaftIntegration {
         }
     }
 
+    @Override
+    public void restoreSnapshot(Object operation, long commitIndex) {
+        runOperation(operation, commitIndex);
+    }
+
     void dropMessagesToEndpoint(RaftEndpoint endpoint, Class messageType) {
         endpointDropRules.add(new EndpointDropEntry(messageType, endpoint));
     }

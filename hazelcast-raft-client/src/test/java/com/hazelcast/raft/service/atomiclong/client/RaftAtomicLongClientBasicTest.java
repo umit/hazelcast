@@ -39,7 +39,7 @@ public class RaftAtomicLongClientBasicTest extends HazelcastRaftTestSupport {
 
         String name = "id";
         int raftGroupSize = 3;
-        atomicLong = RaftAtomicLong.create(client, name, raftGroupSize);
+        atomicLong = RaftAtomicLongProxy.create(client, name, raftGroupSize);
     }
 
     @After

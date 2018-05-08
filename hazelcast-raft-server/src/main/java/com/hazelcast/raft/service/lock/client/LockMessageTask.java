@@ -1,7 +1,6 @@
 package com.hazelcast.raft.service.lock.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
@@ -23,12 +22,11 @@ public class LockMessageTask extends AbstractLockMessageTask {
     }
 
     @Override
-    protected void processMessage() throws Throwable {
+    protected void processMessage() {
         RaftLockProxy lockProxy = getProxy();
         ThreadUtil.setThreadId(threadId);
         try {
-            ICompletableFuture future = lockProxy.lockAsync(invUuid);
-            future.andThen(this);
+            lockProxy.lockAsync(invUuid).andThen(this);
         } finally {
             ThreadUtil.removeThreadId();
         }

@@ -31,7 +31,6 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     private long membersCommitIndex;
     // endpoint -> TRUE: initial-member | FALSE: substitute-member
     private Map<RaftEndpointImpl, Boolean> members;
-    private String serviceName;
 
     // read outside of Raft
     private volatile RaftGroupStatus status;
@@ -41,9 +40,8 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     public RaftGroupInfo() {
     }
 
-    public RaftGroupInfo(RaftGroupId id, Collection<RaftEndpointImpl> endpoints, String serviceName) {
+    public RaftGroupInfo(RaftGroupId id, Collection<RaftEndpointImpl> endpoints) {
         this.id = id;
-        this.serviceName = serviceName;
         this.status = ACTIVE;
         LinkedHashMap<RaftEndpointImpl, Boolean> map = new LinkedHashMap<RaftEndpointImpl, Boolean>(endpoints.size());
         for (RaftEndpointImpl endpoint : endpoints) {
@@ -80,10 +78,6 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     public boolean isInitialMember(RaftEndpointImpl endpoint) {
         assert members.containsKey(endpoint);
         return members.get(endpoint);
-    }
-
-    public String serviceName() {
-        return serviceName;
     }
 
     public RaftGroupStatus status() {
@@ -147,7 +141,6 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
             out.writeObject(entry.getKey());
             out.writeBoolean(entry.getValue());
         }
-        out.writeUTF(serviceName);
         out.writeUTF(status.toString());
     }
 
@@ -162,7 +155,6 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
             members.put(endpoint, in.readBoolean());
         }
         members = Collections.unmodifiableMap(members);
-        serviceName = in.readUTF();
         status = RaftGroupStatus.valueOf(in.readUTF());
     }
 
@@ -179,6 +171,6 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     @Override
     public String toString() {
         return "RaftGroupInfo{" + "id=" + id + ", membersCommitIndex=" + membersCommitIndex + ", members=" + members()
-                + ", serviceName='" + serviceName + '\'' + ", status=" + status + '}';
+                + ", status=" + status + '}';
     }
 }

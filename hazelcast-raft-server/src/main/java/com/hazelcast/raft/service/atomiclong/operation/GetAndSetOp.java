@@ -18,15 +18,15 @@ public class GetAndSetOp extends AbstractAtomicLongOp {
     public GetAndSetOp() {
     }
 
-    public GetAndSetOp(RaftGroupId groupId, long value) {
-        super(groupId);
+    public GetAndSetOp(RaftGroupId groupId, String name, long value) {
+        super(groupId, name);
         this.value = value;
     }
 
     @Override
     public Object doRun(long commitIndex) {
         RaftAtomicLong atomic = getAtomicLong();
-        return atomic.getAndSet(value, commitIndex);
+        return atomic.getAndSet(value);
     }
 
     @Override
