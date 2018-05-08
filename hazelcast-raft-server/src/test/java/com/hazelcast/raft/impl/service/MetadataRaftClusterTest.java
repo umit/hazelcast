@@ -7,6 +7,7 @@ import com.hazelcast.nio.Address;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.config.RaftServiceConfig;
 import com.hazelcast.raft.impl.RaftEndpointImpl;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
@@ -280,8 +281,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         int commitCountToSnapshot = 5;
         Address[] raftAddresses = createAddresses(nodeCount);
         Config config = createConfig(raftAddresses, raftAddresses.length);
-        RaftConfig raftConfig = (RaftConfig) config.getServicesConfig().getServiceConfig(RaftService.SERVICE_NAME).getConfigObject();
-        raftConfig.setCommitIndexAdvanceCountToSnapshot(commitCountToSnapshot);
+        getRaftConfig(config).setCommitIndexAdvanceCountToSnapshot(commitCountToSnapshot);
 
         final HazelcastInstance[] instances = new HazelcastInstance[nodeCount];
         for (int i = 0; i < nodeCount; i++) {
@@ -335,6 +335,12 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
                 }
             }
         });
+    }
+
+    private static RaftConfig getRaftConfig(Config config) {
+        RaftServiceConfig serviceConfig =
+                (RaftServiceConfig) config.getServicesConfig().getServiceConfig(RaftService.SERVICE_NAME).getConfigObject();
+        return serviceConfig.getRaftConfig();
     }
 
     @Test
@@ -455,7 +461,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
     private RaftGroupId createNewRaftGroup(HazelcastInstance instance, String name, int nodeCount) {
         RaftInvocationManager invocationManager = getRaftService(instance).getInvocationManager();
         try {
-            return invocationManager.createRaftGroup(name, nodeCount);
+            return invocationManager.createRaftGroup(name, nodeCount).get();
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
@@ -464,7 +470,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
     private void destroyRaftGroup(HazelcastInstance instance, RaftGroupId groupId) {
         RaftInvocationManager invocationManager = getRaftService(instance).getInvocationManager();
         try {
-            invocationManager.triggerDestroyRaftGroupAsync(groupId).get();
+            invocationManager.triggerDestroyRaftGroup(groupId).get();
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
@@ -480,7 +486,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         RaftGroupInfo group1 = f1.get();
         RaftGroupInfo group2 = f2.get();
 
-        Set<RaftEndpointImpl> members = new HashSet<RaftEndpointImpl>(group1.members());
+        Set<RaftEndpointImpl> members = new HashSet<RaftEndpointImpl>(group1.endpointImpls());
         members.retainAll(group2.members());
 
         return members.isEmpty() ? null : members.iterator().next();
@@ -489,9 +495,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
     @Override
     protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
         Config config = super.createConfig(raftAddresses, metadataGroupSize);
-        RaftConfig raftConfig =
-                (RaftConfig) config.getServicesConfig().getServiceConfig(RaftService.SERVICE_NAME).getConfigObject();
-        raftConfig.setAppendNopEntryOnLeaderElection(true).setLeaderHeartbeatPeriodInMillis(1000);
+        getRaftConfig(config).setAppendNopEntryOnLeaderElection(true).setLeaderHeartbeatPeriodInMillis(1000);
         return config;
     }
 

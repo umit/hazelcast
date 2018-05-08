@@ -31,7 +31,7 @@ public class RaftInvocationManagerTest extends HazelcastRaftTestSupport {
         instances = newInstances(raftAddresses);
 
         RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
-        final RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount);
+        final RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
 
         for (int i = 0; i < 100; i++) {
             invocationService.invoke(groupId, new RaftTestApplyOp("val" + i)).get();
@@ -45,7 +45,7 @@ public class RaftInvocationManagerTest extends HazelcastRaftTestSupport {
         instances = newInstances(raftAddresses, 3, 1);
 
         RaftInvocationManager invocationService = getRaftInvocationService(instances[instances.length - 1]);
-        final RaftGroupId groupId = invocationService.createRaftGroup("test", cpNodeCount);
+        final RaftGroupId groupId = invocationService.createRaftGroup("test", cpNodeCount).get();
 
         for (int i = 0; i < 100; i++) {
             invocationService.invoke(groupId, new RaftTestApplyOp("val" + i)).get();
@@ -59,11 +59,11 @@ public class RaftInvocationManagerTest extends HazelcastRaftTestSupport {
         instances = newInstances(raftAddresses);
 
         final RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
-        final RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount);
+        final RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
 
         invocationService.invoke(groupId, new RaftTestApplyOp("val")).get();
 
-        invocationService.triggerDestroyRaftGroup(groupId);
+        invocationService.triggerDestroyRaftGroup(groupId).get();
 
         assertTrueEventually(new AssertTask() {
             @Override

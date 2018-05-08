@@ -20,7 +20,6 @@ import java.security.Permission;
 public abstract class AbstractAtomicLongMessageTask extends AbstractMessageTask implements ExecutionCallback {
 
     protected RaftGroupId groupId;
-
     protected String name;
 
     protected AbstractAtomicLongMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
@@ -30,7 +29,7 @@ public abstract class AbstractAtomicLongMessageTask extends AbstractMessageTask 
     protected IAtomicLong getProxy() {
         RaftAtomicLongService service = (RaftAtomicLongService) getService(getServiceName());
         // TODO: creates a new proxy on each client request
-        return service.newProxy(groupId, name);
+        return service.newProxy(name, groupId);
     }
 
     @Override

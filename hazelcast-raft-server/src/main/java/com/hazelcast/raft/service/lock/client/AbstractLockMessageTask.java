@@ -30,7 +30,7 @@ public abstract class AbstractLockMessageTask extends AbstractMessageTask implem
     protected RaftLockProxy getProxy() {
         RaftLockService service = (RaftLockService) getService(getServiceName());
         // TODO: creates a new proxy on each client request
-        return service.newProxy(groupId, name, uid);
+        return service.newProxy(name, groupId, uid);
     }
 
     @Override

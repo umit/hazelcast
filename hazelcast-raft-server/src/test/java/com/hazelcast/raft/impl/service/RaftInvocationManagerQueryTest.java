@@ -37,7 +37,7 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         instances = newInstances(raftAddresses);
 
         RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
-        RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount);
+        RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
 
         ICompletableFuture<Object> future = invocationService.query(groupId, new RaftTestQueryOp(), LEADER_LOCAL);
 
@@ -54,7 +54,7 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         instances = newInstances(raftAddresses);
 
         RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
-        RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount);
+        RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
 
         ICompletableFuture<Object> future = invocationService.query(groupId, new RaftTestQueryOp(), ANY_LOCAL);
 
@@ -71,7 +71,7 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         instances = newInstances(raftAddresses);
 
         RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
-        RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount);
+        RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
 
         String value = "value";
         invocationService.invoke(groupId, new RaftTestApplyOp(value)).get();
@@ -88,7 +88,7 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         instances = newInstances(raftAddresses);
 
         RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
-        RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount);
+        RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
 
         String value = "value";
         invocationService.invoke(groupId, new RaftTestApplyOp(value)).get();
@@ -104,7 +104,7 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         instances = newInstances(raftAddresses);
 
         RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
-        RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount);
+        RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
 
         String value = "value";
         invocationService.invoke(groupId, new RaftTestApplyOp(value)).get();
@@ -128,7 +128,7 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         instances = newInstances(raftAddresses);
 
         RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
-        RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount);
+        RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
 
         String value = "value";
         invocationService.invoke(groupId, new RaftTestApplyOp(value)).get();

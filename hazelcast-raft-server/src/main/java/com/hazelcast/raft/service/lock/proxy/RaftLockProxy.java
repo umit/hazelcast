@@ -8,6 +8,7 @@ import com.hazelcast.instance.HazelcastInstanceImpl;
 import com.hazelcast.instance.HazelcastInstanceProxy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
+import com.hazelcast.raft.service.lock.RaftLockConfig;
 import com.hazelcast.raft.service.lock.RaftLockService;
 import com.hazelcast.raft.service.lock.operation.GetLockCountOp;
 import com.hazelcast.raft.service.lock.operation.LockOp;
@@ -26,16 +27,17 @@ import static com.hazelcast.raft.service.lock.RaftLockService.SERVICE_NAME;
 
 public class RaftLockProxy implements ILock {
 
-    private final RaftGroupId groupId;
     private final String name;
+    private final RaftGroupId groupId;
     private final RaftInvocationManager raftInvocationManager;
     private final String uid;
 
-    public static ILock create(HazelcastInstance instance, String name, int nodeCount) {
+    public static ILock create(HazelcastInstance instance, RaftLockConfig config) {
         NodeEngine nodeEngine = getNodeEngine(instance);
         RaftLockService service = nodeEngine.getService(SERVICE_NAME);
+        service.addConfig(config);
         try {
-            return service.createNew(name, nodeCount, nodeEngine.getLocalMember().getUuid());
+            return service.createNew(config.getName(), nodeEngine.getLocalMember().getUuid());
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
@@ -53,9 +55,9 @@ public class RaftLockProxy implements ILock {
         return instanceImpl.node.getNodeEngine();
     }
 
-    public RaftLockProxy(RaftGroupId groupId, String name, RaftInvocationManager invocationManager, String uid) {
-        this.groupId = groupId;
+    public RaftLockProxy(String name, RaftGroupId groupId, RaftInvocationManager invocationManager, String uid) {
         this.name = name;
+        this.groupId = groupId;
         this.raftInvocationManager = invocationManager;
         this.uid = uid;
     }
@@ -184,7 +186,7 @@ public class RaftLockProxy implements ILock {
 
     @Override
     public void destroy() {
-        join(raftInvocationManager.triggerDestroyRaftGroupAsync(groupId));
+        join(raftInvocationManager.triggerDestroyRaftGroup(groupId));
     }
 
     public RaftGroupId getGroupId() {

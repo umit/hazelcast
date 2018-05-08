@@ -39,15 +39,13 @@ public class RaftLockProxy implements ILock {
     private static final ClientMessageDecoder INT_RESPONSE_DECODER = new IntResponseDecoder();
     private static final ClientMessageDecoder BOOLEAN_RESPONSE_DECODER = new BooleanResponseDecoder();
 
-    public static ILock create(HazelcastInstance instance, String name, int nodeCount) {
-        int dataSize = ClientMessage.HEADER_SIZE
-                + calculateDataSize(name) + Bits.INT_SIZE_IN_BYTES;
+    public static ILock create(HazelcastInstance instance, String name) {
+        int dataSize = ClientMessage.HEADER_SIZE + calculateDataSize(name);
         ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
         clientMessage.setMessageType(CREATE_TYPE);
         clientMessage.setRetryable(false);
         clientMessage.setOperationName("");
         clientMessage.set(name);
-        clientMessage.set(nodeCount);
         clientMessage.updateFrameLength();
 
         HazelcastClientInstanceImpl client = getClient(instance);

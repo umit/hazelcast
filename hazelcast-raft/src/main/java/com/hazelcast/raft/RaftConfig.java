@@ -1,10 +1,6 @@
 package com.hazelcast.raft;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import static com.hazelcast.util.Preconditions.checkPositive;
-import static com.hazelcast.util.Preconditions.checkTrue;
 
 /**
  * Configuration for Raft groups.
@@ -78,17 +74,6 @@ public class RaftConfig {
      */
     private boolean appendNopEntryOnLeaderElection;
 
-    /**
-     * Size of the metadata Raft group. If not specified explicitly, then all Raft members will be in metadata group.
-     */
-    private int metadataGroupSize;
-
-    /**
-     * Raft members. Members of a Raft group are selected among these pre-defined members.
-     * First {@link #metadataGroupSize} of these will be members of the metadata Raft group.
-     */
-    private final List<RaftMember> members = new ArrayList<RaftMember>();
-
     public RaftConfig() {
     }
 
@@ -100,10 +85,6 @@ public class RaftConfig {
         this.uncommittedEntryCountToRejectNewAppends = config.uncommittedEntryCountToRejectNewAppends;
         this.failOnIndeterminateOperationState = config.failOnIndeterminateOperationState;
         this.appendNopEntryOnLeaderElection = config.appendNopEntryOnLeaderElection;
-        this.metadataGroupSize = config.metadataGroupSize;
-        for (RaftMember member : config.members) {
-            this.members.add(new RaftMember(member));
-        }
     }
 
     public long getLeaderElectionTimeoutInMillis() {
@@ -177,41 +158,5 @@ public class RaftConfig {
     public RaftConfig setAppendNopEntryOnLeaderElection(boolean appendNopEntryOnLeaderElection) {
         this.appendNopEntryOnLeaderElection = appendNopEntryOnLeaderElection;
         return this;
-    }
-
-    public List<RaftMember> getMembers() {
-        return members;
-    }
-
-    public RaftConfig setMembers(List<RaftMember> m) {
-        checkTrue(m.size() > 1, "Raft groups must have at least 2 members");
-
-        members.clear();
-        for (RaftMember member : m) {
-            if (!members.contains(member)) {
-                members.add(member);
-            }
-        }
-        return this;
-    }
-
-    public int getMetadataGroupSize() {
-        return metadataGroupSize;
-    }
-
-    public RaftConfig setMetadataGroupSize(int metadataGroupSize) {
-        checkTrue(metadataGroupSize >= 2, "The metadata group must have at least 2 members");
-        checkTrue(metadataGroupSize <= members.size(),
-                "The metadata group cannot be bigger than the number of raft members");
-        this.metadataGroupSize = metadataGroupSize;
-
-        return this;
-    }
-
-    public List<RaftMember> getMetadataGroupMembers() {
-        if (metadataGroupSize == 0) {
-            metadataGroupSize = members.size();
-        }
-        return members.subList(0, metadataGroupSize);
     }
 }

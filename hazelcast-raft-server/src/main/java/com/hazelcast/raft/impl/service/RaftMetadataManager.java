@@ -2,9 +2,9 @@ package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
+import com.hazelcast.raft.config.RaftMetadataGroupConfig;
 import com.hazelcast.raft.impl.RaftEndpointImpl;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
@@ -46,7 +46,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     private final NodeEngine nodeEngine;
     private final RaftService raftService;
     private final ILogger logger;
-    private final RaftConfig config;
+    private final RaftMetadataGroupConfig config;
 
     // raftGroups are read outside of Raft
     private final Map<RaftGroupId, RaftGroupInfo> raftGroups = new ConcurrentHashMap<RaftGroupId, RaftGroupInfo>();
@@ -57,7 +57,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     private final Collection<RaftEndpointImpl> removedEndpoints = new HashSet<RaftEndpointImpl>();
     private LeavingRaftEndpointContext leavingEndpointContext;
 
-    RaftMetadataManager(NodeEngine nodeEngine, RaftService raftService, RaftConfig config) {
+    RaftMetadataManager(NodeEngine nodeEngine, RaftService raftService, RaftMetadataGroupConfig config) {
         this.nodeEngine = nodeEngine;
         this.raftService = raftService;
         this.logger = nodeEngine.getLogger(getClass());
