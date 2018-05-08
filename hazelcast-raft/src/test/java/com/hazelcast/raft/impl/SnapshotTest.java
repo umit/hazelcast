@@ -1,6 +1,6 @@
 package com.hazelcast.raft.impl;
 
-import com.hazelcast.raft.RaftConfig;
+import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.raft.exception.StaleAppendRequestException;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.service.ApplyRaftRunnable;

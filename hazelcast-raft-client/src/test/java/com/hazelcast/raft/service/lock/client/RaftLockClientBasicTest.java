@@ -6,9 +6,9 @@ import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ILock;
 import com.hazelcast.nio.Address;
-import com.hazelcast.raft.config.RaftGroupConfig;
+import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
-import com.hazelcast.raft.service.lock.RaftLockConfig;
+import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.raft.service.lock.RaftLockService;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -33,19 +33,14 @@ import static org.junit.Assert.fail;
 public class RaftLockClientBasicTest extends HazelcastRaftTestSupport {
 
     private ILock lock;
+    private String name = "lock";
+    private int groupSize = 3;
 
     @Before
     public void setup() {
         factory = new TestHazelcastFactory();
-        Address[] raftAddresses = createAddresses(3);
-        HazelcastInstance[] instances = newInstances(raftAddresses, 3, 0);
-
-        String name = "lock";
-        RaftLockConfig config = new RaftLockConfig(name, new RaftGroupConfig(name, 3));
-        for (HazelcastInstance instance : instances) {
-            RaftLockService service = getNodeEngineImpl(instance).getService(RaftLockService.SERVICE_NAME);
-            service.addConfig(config);
-        }
+        Address[] raftAddresses = createAddresses(groupSize);
+        HazelcastInstance[] instances = newInstances(raftAddresses, groupSize, 0);
 
         TestHazelcastFactory f = (TestHazelcastFactory) factory;
         HazelcastInstance client = f.newHazelcastClient();
@@ -202,6 +197,9 @@ public class RaftLockClientBasicTest extends HazelcastRaftTestSupport {
 
         Config config = super.createConfig(raftAddresses, metadataGroupSize);
         config.getServicesConfig().addServiceConfig(lockServiceConfig);
+
+        RaftLockConfig lockConfig = new RaftLockConfig(name, new RaftGroupConfig(name, groupSize));
+        config.addRaftLockConfig(lockConfig);
         return config;
     }
 }

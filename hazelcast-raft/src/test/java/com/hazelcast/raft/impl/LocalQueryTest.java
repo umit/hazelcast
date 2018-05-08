@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl;
 
 import com.hazelcast.raft.QueryPolicy;
-import com.hazelcast.raft.RaftConfig;
+import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.raft.exception.CannotRunLocalQueryException;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.impl.dto.AppendRequest;

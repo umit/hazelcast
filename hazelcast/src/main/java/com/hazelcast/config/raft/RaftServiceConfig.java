@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package com.hazelcast.raft.config;
+package com.hazelcast.config.raft;
 
-import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.util.Preconditions;
 
 import java.util.HashMap;

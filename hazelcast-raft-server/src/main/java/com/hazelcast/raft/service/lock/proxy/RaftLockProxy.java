@@ -8,7 +8,6 @@ import com.hazelcast.instance.HazelcastInstanceImpl;
 import com.hazelcast.instance.HazelcastInstanceProxy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
-import com.hazelcast.raft.service.lock.RaftLockConfig;
 import com.hazelcast.raft.service.lock.RaftLockService;
 import com.hazelcast.raft.service.lock.operation.GetLockCountOp;
 import com.hazelcast.raft.service.lock.operation.LockOp;
@@ -32,12 +31,11 @@ public class RaftLockProxy implements ILock {
     private final RaftInvocationManager raftInvocationManager;
     private final String uid;
 
-    public static ILock create(HazelcastInstance instance, RaftLockConfig config) {
+    public static ILock create(HazelcastInstance instance, String name) {
         NodeEngine nodeEngine = getNodeEngine(instance);
-        RaftLockService service = nodeEngine.getService(SERVICE_NAME);
-        service.addConfig(config);
         try {
-            return service.createNew(config.getName(), nodeEngine.getLocalMember().getUuid());
+            RaftLockService service = nodeEngine.getService(SERVICE_NAME);
+            return service.createNew(name, nodeEngine.getLocalMember().getUuid());
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }

@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl;
 
 import com.hazelcast.raft.MembershipChangeType;
-import com.hazelcast.raft.RaftConfig;
+import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.raft.exception.CannotReplicateException;
 import com.hazelcast.raft.exception.MemberAlreadyExistsException;
 import com.hazelcast.raft.exception.MemberDoesNotExistException;

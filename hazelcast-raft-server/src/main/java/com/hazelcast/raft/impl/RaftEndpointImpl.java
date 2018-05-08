@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl;
 
 import com.hazelcast.nio.Address;
-import com.hazelcast.raft.RaftMember;
+import com.hazelcast.config.raft.RaftMember;
 import com.hazelcast.util.AddressUtil;
 
 import java.io.IOException;

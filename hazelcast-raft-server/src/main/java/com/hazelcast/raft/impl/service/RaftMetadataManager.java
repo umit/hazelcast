@@ -4,7 +4,7 @@ import com.hazelcast.core.HazelcastException;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
-import com.hazelcast.raft.config.RaftMetadataGroupConfig;
+import com.hazelcast.config.raft.RaftMetadataGroupConfig;
 import com.hazelcast.raft.impl.RaftEndpointImpl;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
