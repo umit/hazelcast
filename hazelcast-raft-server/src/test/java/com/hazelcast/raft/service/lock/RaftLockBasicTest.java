@@ -5,6 +5,7 @@ import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ILock;
 import com.hazelcast.nio.Address;
+import com.hazelcast.raft.config.RaftGroupConfig;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -32,15 +33,15 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
 
     private HazelcastInstance[] instances;
     private ILock lock;
-    private final int raftGroupSize = 3;
 
     @Before
     public void setup() {
         Address[] raftAddresses = createAddresses(3);
         instances = newInstances(raftAddresses, 3, 0);
 
-        String name = "id";
-        lock = RaftLockProxy.create(instances[RandomPicker.getInt(instances.length)], name, raftGroupSize);
+        String name = "lock";
+        RaftLockConfig config = new RaftLockConfig(name, new RaftGroupConfig(name, 3));
+        lock = RaftLockProxy.create(instances[RandomPicker.getInt(instances.length)], config);
         assertNotNull(lock);
     }
 

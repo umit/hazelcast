@@ -6,7 +6,9 @@ import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ILock;
 import com.hazelcast.nio.Address;
+import com.hazelcast.raft.config.RaftGroupConfig;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
+import com.hazelcast.raft.service.lock.RaftLockConfig;
 import com.hazelcast.raft.service.lock.RaftLockService;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -36,14 +38,19 @@ public class RaftLockClientBasicTest extends HazelcastRaftTestSupport {
     public void setup() {
         factory = new TestHazelcastFactory();
         Address[] raftAddresses = createAddresses(3);
-        newInstances(raftAddresses, 3, 0);
+        HazelcastInstance[] instances = newInstances(raftAddresses, 3, 0);
+
+        String name = "lock";
+        RaftLockConfig config = new RaftLockConfig(name, new RaftGroupConfig(name, 3));
+        for (HazelcastInstance instance : instances) {
+            RaftLockService service = getNodeEngineImpl(instance).getService(RaftLockService.SERVICE_NAME);
+            service.addConfig(config);
+        }
 
         TestHazelcastFactory f = (TestHazelcastFactory) factory;
         HazelcastInstance client = f.newHazelcastClient();
 
-        String name = "id";
-        int raftGroupSize = 3;
-        lock = RaftLockProxy.create(client, name, raftGroupSize);
+        lock = RaftLockProxy.create(client, name);
     }
 
     @After

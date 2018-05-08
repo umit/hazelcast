@@ -4,9 +4,10 @@ import com.hazelcast.config.Config;
 import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
-import com.hazelcast.raft.RaftConfig;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.RaftMember;
+import com.hazelcast.raft.config.RaftMetadataGroupConfig;
+import com.hazelcast.raft.config.RaftServiceConfig;
 import com.hazelcast.raft.impl.RaftEndpointImpl;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.spi.impl.NodeEngineImpl;
@@ -112,7 +113,8 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         Config config = new Config();
         configureSplitBrainDelay(config);
 
-        RaftConfig raftConfig = new RaftConfig().setMembers(asList(raftMembers)).setMetadataGroupSize(metadataGroupSize);
+        RaftServiceConfig raftConfig = new RaftServiceConfig().setMetadataGroupConfig(
+                new RaftMetadataGroupConfig().setMembers(asList(raftMembers)).setMetadataGroupSize(metadataGroupSize));
         ServiceConfig raftServiceConfig = new ServiceConfig().setEnabled(true).setName(RaftService.SERVICE_NAME)
                                                              .setClassName(RaftService.class.getName()).setConfigObject(raftConfig);
         config.getServicesConfig().addServiceConfig(raftServiceConfig);

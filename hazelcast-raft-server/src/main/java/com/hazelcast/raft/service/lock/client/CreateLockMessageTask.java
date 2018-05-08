@@ -8,13 +8,10 @@ import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
-import com.hazelcast.raft.impl.service.RaftInvocationManager;
-import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
+import com.hazelcast.raft.service.lock.RaftLockService;
 
 import java.security.Permission;
-
-
 
 
 /**
@@ -23,8 +20,7 @@ import java.security.Permission;
  */
 public class CreateLockMessageTask extends AbstractMessageTask implements ExecutionCallback {
 
-    private String groupName;
-    private int nodeCount;
+    private String name;
 
     protected CreateLockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
@@ -32,15 +28,13 @@ public class CreateLockMessageTask extends AbstractMessageTask implements Execut
 
     @Override
     protected void processMessage() {
-        RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
-        RaftInvocationManager invocationManager = raftService.getInvocationManager();
-        invocationManager.createRaftGroupAsync(groupName, nodeCount).andThen(this);
+        RaftLockService service = nodeEngine.getService(RaftLockService.SERVICE_NAME);
+        service.createNewAsync(name).andThen(this);
     }
 
     @Override
     protected Object decodeClientMessage(ClientMessage clientMessage) {
-        groupName = clientMessage.getStringUtf8();
-        nodeCount = clientMessage.getInt();
+        name = clientMessage.getStringUtf8();
         return null;
     }
 
@@ -75,7 +69,7 @@ public class CreateLockMessageTask extends AbstractMessageTask implements Execut
 
     @Override
     public String getDistributedObjectName() {
-        return groupName;
+        return name;
     }
 
     @Override

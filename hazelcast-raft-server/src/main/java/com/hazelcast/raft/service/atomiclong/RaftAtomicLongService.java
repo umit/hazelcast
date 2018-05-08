@@ -1,8 +1,10 @@
 package com.hazelcast.raft.service.atomiclong;
 
 import com.hazelcast.core.IAtomicLong;
+import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
+import com.hazelcast.raft.config.RaftGroupConfig;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.util.Tuple2;
@@ -25,6 +27,9 @@ import static com.hazelcast.util.Preconditions.checkNotNull;
 public class RaftAtomicLongService implements ManagedService, SnapshotAwareService<Map<String, Long>> {
 
     public static final String SERVICE_NAME = "hz:raft:atomicLongService";
+
+    // temporary config registry
+    private final Map<String, RaftAtomicLongConfig> configs = new ConcurrentHashMap<String, RaftAtomicLongConfig>();
 
     private final Map<Tuple2<RaftGroupId, String>, RaftAtomicLong> map = new ConcurrentHashMap<Tuple2<RaftGroupId, String>, RaftAtomicLong>();
     private volatile RaftService raftService;
@@ -65,17 +70,32 @@ public class RaftAtomicLongService implements ManagedService, SnapshotAwareServi
         }
     }
 
-    // TODO: in config, nodeCount or failure tolerance ?
-    public IAtomicLong createNew(String longName, int nodeCount) throws ExecutionException, InterruptedException {
-        RaftInvocationManager invocationManager = raftService.getInvocationManager();
-        RaftGroupId groupId = invocationManager.createRaftGroup(SERVICE_NAME, nodeCount);
-        return new RaftAtomicLongProxy(groupId, longName, invocationManager);
+    public void addConfig(RaftAtomicLongConfig config) {
+        configs.put(config.getName(), config);
     }
 
-    public IAtomicLong newProxy(RaftGroupId groupId, String name) {
-        checkNotNull(groupId);
+    public IAtomicLong createNew(String name) throws ExecutionException, InterruptedException {
+        RaftGroupId groupId = createNewAsync(name).get();
+        return new RaftAtomicLongProxy(name, groupId, raftService.getInvocationManager());
+    }
+
+    public ICompletableFuture<RaftGroupId> createNewAsync(String name) {
+        RaftAtomicLongConfig config = configs.get(name);
+        checkNotNull(config);
+
+        RaftInvocationManager invocationManager = raftService.getInvocationManager();
+        RaftGroupConfig groupConfig = config.getRaftGroupConfig();
+        if (groupConfig != null) {
+            return invocationManager.createRaftGroup(groupConfig);
+        } else {
+            return invocationManager.createRaftGroup(config.getRaftGroupRef());
+        }
+    }
+
+    public IAtomicLong newProxy(String name, RaftGroupId groupId) {
         checkNotNull(name);
-        return new RaftAtomicLongProxy(groupId, name, raftService.getInvocationManager());
+        checkNotNull(groupId);
+        return new RaftAtomicLongProxy(name, groupId, raftService.getInvocationManager());
     }
 
     public RaftAtomicLong getAtomicLong(RaftGroupId groupId, String name) {

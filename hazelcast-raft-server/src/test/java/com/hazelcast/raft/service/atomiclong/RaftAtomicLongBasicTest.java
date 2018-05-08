@@ -8,6 +8,7 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.QueryPolicy;
+import com.hazelcast.raft.config.RaftGroupConfig;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.impl.service.RaftServiceUtil;
@@ -46,7 +47,8 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
         instances = newInstances(raftAddresses, 3, 2);
 
         String name = "id";
-        atomicLong = create(instances[RandomPicker.getInt(instances.length)], name, raftGroupSize);
+        RaftAtomicLongConfig config = new RaftAtomicLongConfig(name, new RaftGroupConfig(name, raftGroupSize));
+        atomicLong = create(instances[RandomPicker.getInt(instances.length)], config);
         assertNotNull(atomicLong);
     }
 

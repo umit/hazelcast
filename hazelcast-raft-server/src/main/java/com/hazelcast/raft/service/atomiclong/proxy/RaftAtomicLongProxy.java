@@ -11,6 +11,7 @@ import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
+import com.hazelcast.raft.service.atomiclong.RaftAtomicLongConfig;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.raft.service.atomiclong.operation.AddAndGetOp;
 import com.hazelcast.raft.service.atomiclong.operation.AlterOp;
@@ -29,15 +30,16 @@ import static com.hazelcast.raft.service.atomiclong.operation.AlterOp.AlterResul
 
 public class RaftAtomicLongProxy implements IAtomicLong {
 
-    private final RaftGroupId groupId;
     private final String name;
+    private final RaftGroupId groupId;
     private final RaftInvocationManager raftInvocationManager;
 
-    public static IAtomicLong create(HazelcastInstance instance, String name, int nodeCount) {
+    public static IAtomicLong create(HazelcastInstance instance, RaftAtomicLongConfig config) {
         NodeEngine nodeEngine = getNodeEngine(instance);
         RaftAtomicLongService service = nodeEngine.getService(SERVICE_NAME);
+        service.addConfig(config);
         try {
-            return service.createNew(name, nodeCount);
+            return service.createNew(config.getName());
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
@@ -55,9 +57,9 @@ public class RaftAtomicLongProxy implements IAtomicLong {
         return instanceImpl.node.getNodeEngine();
     }
 
-    public RaftAtomicLongProxy(RaftGroupId groupId, String name, RaftInvocationManager invocationManager) {
-        this.groupId = groupId;
+    public RaftAtomicLongProxy(String name, RaftGroupId groupId, RaftInvocationManager invocationManager) {
         this.name = name;
+        this.groupId = groupId;
         this.raftInvocationManager = invocationManager;
     }
 
@@ -267,7 +269,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public void destroy() {
-        join(raftInvocationManager.triggerDestroyRaftGroupAsync(groupId));
+        join(raftInvocationManager.triggerDestroyRaftGroup(groupId));
     }
 
     public RaftGroupId getGroupId() {

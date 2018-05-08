@@ -7,7 +7,9 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.nio.Address;
+import com.hazelcast.raft.config.RaftGroupConfig;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
+import com.hazelcast.raft.service.atomiclong.RaftAtomicLongConfig;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -32,14 +34,19 @@ public class RaftAtomicLongClientBasicTest extends HazelcastRaftTestSupport {
     public void setup() {
         factory = new TestHazelcastFactory();
         Address[] raftAddresses = createAddresses(5);
-        newInstances(raftAddresses, 3, 2);
+        HazelcastInstance[] instances = newInstances(raftAddresses, 3, 2);
+
+        String name = "id";
+        RaftAtomicLongConfig config = new RaftAtomicLongConfig(name, new RaftGroupConfig(name, 3));
+        for (HazelcastInstance instance : instances) {
+            RaftAtomicLongService service = getNodeEngineImpl(instance).getService(RaftAtomicLongService.SERVICE_NAME);
+            service.addConfig(config);
+        }
 
         TestHazelcastFactory f = (TestHazelcastFactory) factory;
         HazelcastInstance client = f.newHazelcastClient();
 
-        String name = "id";
-        int raftGroupSize = 3;
-        atomicLong = RaftAtomicLongProxy.create(client, name, raftGroupSize);
+        atomicLong = RaftAtomicLongProxy.create(client, name);
     }
 
     @After
