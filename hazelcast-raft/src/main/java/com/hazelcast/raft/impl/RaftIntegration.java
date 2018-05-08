@@ -126,6 +126,14 @@ public interface RaftIntegration {
     Object takeSnapshot(long commitIndex);
 
     /**
+     * Restores the snapshot with the given operation for the given commit index
+     *
+     * @param operation snapshot operation provided by {@link #takeSnapshot(long)}
+     * @param commitIndex commit index of the snapshot
+     */
+    void restoreSnapshot(Object operation, long commitIndex);
+
+    /**
      * Executes the task on underlying task execution mechanism.
      *
      * @param task the task

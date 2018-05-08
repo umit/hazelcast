@@ -62,17 +62,17 @@ public class RaftLockProxy implements ILock {
         });
 
         RaftGroupId groupId = join(future);
-        return new RaftLockProxy(instance, name, groupId);
+        return new RaftLockProxy(instance, groupId, name);
     }
 
     private final HazelcastClientInstanceImpl client;
-    private final String name;
     private final RaftGroupId groupId;
+    private final String name;
 
-    public RaftLockProxy(HazelcastInstance instance, String name, RaftGroupId groupId) {
+    private RaftLockProxy(HazelcastInstance instance, RaftGroupId groupId, String name) {
         client = getClient(instance);
-        this.name = name;
         this.groupId = groupId;
+        this.name = name;
     }
 
     private static HazelcastClientInstanceImpl getClient(HazelcastInstance instance) {
@@ -89,7 +89,7 @@ public class RaftLockProxy implements ILock {
     public void lock() {
         String uuid = client.getLocalEndpoint().getUuid();
         UUID invUid = UuidUtil.newUnsecureUUID();
-        ClientMessage clientMessage = encodeRequest(groupId, uuid, ThreadUtil.getThreadId(), invUid, LOCK);
+        ClientMessage clientMessage = encodeRequest(groupId, name, uuid, ThreadUtil.getThreadId(), invUid, LOCK);
         join(invoke(clientMessage, BOOLEAN_RESPONSE_DECODER));
     }
 
@@ -97,7 +97,7 @@ public class RaftLockProxy implements ILock {
     public void unlock() {
         String uuid = client.getLocalEndpoint().getUuid();
         UUID invUid = UuidUtil.newUnsecureUUID();
-        ClientMessage clientMessage = encodeRequest(groupId, uuid, ThreadUtil.getThreadId(), invUid, UNLOCK);
+        ClientMessage clientMessage = encodeRequest(groupId, name, uuid, ThreadUtil.getThreadId(), invUid, UNLOCK);
         join(invoke(clientMessage, BOOLEAN_RESPONSE_DECODER));
 
     }
@@ -115,7 +115,7 @@ public class RaftLockProxy implements ILock {
     @Override
     public int getLockCount() {
         String uuid = client.getLocalEndpoint().getUuid();
-        ClientMessage clientMessage = encodeRequest(groupId, uuid, LOCK_COUNT);
+        ClientMessage clientMessage = encodeRequest(groupId, name, uuid, LOCK_COUNT);
         ICompletableFuture<Integer> future = invoke(clientMessage, INT_RESPONSE_DECODER);
         return join(future);
     }
@@ -124,7 +124,7 @@ public class RaftLockProxy implements ILock {
     public boolean tryLock() {
         String uuid = client.getLocalEndpoint().getUuid();
         UUID invUid = UuidUtil.newUnsecureUUID();
-        ClientMessage clientMessage = encodeRequest(groupId, uuid, ThreadUtil.getThreadId(), invUid, TRY_LOCK);
+        ClientMessage clientMessage = encodeRequest(groupId, name, uuid, ThreadUtil.getThreadId(), invUid, TRY_LOCK);
         ICompletableFuture<Boolean> future = invoke(clientMessage, BOOLEAN_RESPONSE_DECODER);
         return join(future);
     }
@@ -207,10 +207,10 @@ public class RaftLockProxy implements ILock {
         }
     }
 
-    private static ClientMessage encodeRequest(RaftGroupId groupId, String uuid, long threadId, UUID invUid, int messageTypeId) {
+    private static ClientMessage encodeRequest(RaftGroupId groupId, String name, String uuid, long threadId, UUID invUid, int messageTypeId) {
         int dataSize = ClientMessage.HEADER_SIZE
-                + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(uuid) + Bits.LONG_SIZE_IN_BYTES * 3;
-        ClientMessage clientMessage = prepareClientMessage(groupId, dataSize, messageTypeId);
+                + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(name) + calculateDataSize(uuid) + Bits.LONG_SIZE_IN_BYTES * 3;
+        ClientMessage clientMessage = prepareClientMessage(groupId, name, dataSize, messageTypeId);
         clientMessage.set(uuid);
         clientMessage.set(threadId);
         clientMessage.set(invUid.getLeastSignificantBits());
@@ -219,22 +219,23 @@ public class RaftLockProxy implements ILock {
         return clientMessage;
     }
 
-    private static ClientMessage encodeRequest(RaftGroupId groupId, String uuid, int messageTypeId) {
+    private static ClientMessage encodeRequest(RaftGroupId groupId, String name, String uuid, int messageTypeId) {
         int dataSize = ClientMessage.HEADER_SIZE
-                + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(uuid);
-        ClientMessage clientMessage = prepareClientMessage(groupId, dataSize, messageTypeId);
+                + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(name) + calculateDataSize(uuid);
+        ClientMessage clientMessage = prepareClientMessage(groupId, name, dataSize, messageTypeId);
         clientMessage.set(uuid);
         clientMessage.updateFrameLength();
         return clientMessage;
     }
 
 
-    private static ClientMessage prepareClientMessage(RaftGroupId groupId, int dataSize, int messageTypeId) {
+    private static ClientMessage prepareClientMessage(RaftGroupId groupId, String name, int dataSize, int messageTypeId) {
         ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
         clientMessage.setMessageType(messageTypeId);
         clientMessage.setRetryable(false);
         clientMessage.setOperationName("");
         RaftGroupIdImpl.writeTo(groupId, clientMessage);
+        clientMessage.set(name);
         return clientMessage;
     }
 

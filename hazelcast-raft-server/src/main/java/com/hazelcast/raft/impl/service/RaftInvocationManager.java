@@ -71,20 +71,20 @@ public class RaftInvocationManager {
         knownLeaders.clear();
     }
 
-    public ICompletableFuture<RaftGroupId> createRaftGroupAsync(String serviceName, String raftName, int nodeCount) {
+    public ICompletableFuture<RaftGroupId> createRaftGroupAsync(String groupName, int nodeCount) {
         Executor executor = nodeEngine.getExecutionService().getExecutor(ASYNC_EXECUTOR);
         ILogger logger = nodeEngine.getLogger(getClass());
         SimpleCompletableFuture<RaftGroupId> resultFuture = new SimpleCompletableFuture<RaftGroupId>(executor, logger);
-        invokeGetEndpointsToCreateRaftGroup(serviceName, raftName, nodeCount, resultFuture);
+        invokeGetEndpointsToCreateRaftGroup(groupName, nodeCount, resultFuture);
         return resultFuture;
     }
 
-    public RaftGroupId createRaftGroup(String serviceName, String raftName, int nodeCount)
+    public RaftGroupId createRaftGroup(String groupName, int nodeCount)
             throws ExecutionException, InterruptedException {
-        return createRaftGroupAsync(serviceName, raftName, nodeCount).get();
+        return createRaftGroupAsync(groupName, nodeCount).get();
     }
 
-    private void invokeGetEndpointsToCreateRaftGroup(final String serviceName, final String raftName, final int nodeCount,
+    private void invokeGetEndpointsToCreateRaftGroup(final String groupName, final int nodeCount,
                                                      final SimpleCompletableFuture<RaftGroupId> resultFuture) {
         ICompletableFuture<List<RaftEndpointImpl>> f = query(METADATA_GROUP_ID, new GetActiveEndpointsOp(), QueryPolicy.LEADER_LOCAL);
 
@@ -95,14 +95,14 @@ public class RaftInvocationManager {
 
                 if (endpoints.size() < nodeCount) {
                     Exception result = new IllegalArgumentException("There are not enough active endpoints to create raft group "
-                            + raftName + ". Active endpoints: " + endpoints.size() + ", Requested count: " + nodeCount);
+                            + groupName + ". Active endpoints: " + endpoints.size() + ", Requested count: " + nodeCount);
                     resultFuture.setResult(result);
                     return;
                 }
 
                 Collections.shuffle(endpoints);
                 endpoints = endpoints.subList(0, nodeCount);
-                invokeCreateRaftGroup(serviceName, raftName, nodeCount, endpoints, resultFuture);
+                invokeCreateRaftGroup(groupName, nodeCount, endpoints, resultFuture);
             }
 
             @Override
@@ -112,10 +112,10 @@ public class RaftInvocationManager {
         });
     }
 
-    private void invokeCreateRaftGroup(final String serviceName, final String raftName, final int nodeCount,
+    private void invokeCreateRaftGroup(final String groupName, final int nodeCount,
                                        final List<RaftEndpointImpl> endpoints,
                                        final SimpleCompletableFuture<RaftGroupId> resultFuture) {
-        ICompletableFuture<RaftGroupId> f = invoke(METADATA_GROUP_ID, new CreateRaftGroupOp(serviceName, raftName, endpoints));
+        ICompletableFuture<RaftGroupId> f = invoke(METADATA_GROUP_ID, new CreateRaftGroupOp(groupName, endpoints));
 
         f.andThen(new ExecutionCallback<RaftGroupId>() {
             @Override
@@ -126,9 +126,9 @@ public class RaftInvocationManager {
             @Override
             public void onFailure(Throwable t) {
                 if (t.getCause() instanceof CannotCreateRaftGroupException) {
-                    logger.fine("Could not create raft group: " + raftName + " with endpoints: " + endpoints,
+                    logger.fine("Could not create raft group: " + groupName + " with endpoints: " + endpoints,
                             t.getCause());
-                    invokeGetEndpointsToCreateRaftGroup(serviceName, raftName, nodeCount, resultFuture);
+                    invokeGetEndpointsToCreateRaftGroup(groupName, nodeCount, resultFuture);
                     return;
                 }
 

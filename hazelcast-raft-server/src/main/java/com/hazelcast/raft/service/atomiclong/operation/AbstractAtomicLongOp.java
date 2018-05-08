@@ -17,21 +17,19 @@ import java.io.IOException;
 public abstract class AbstractAtomicLongOp extends RaftOp implements IdentifiedDataSerializable {
 
     private RaftGroupId groupId;
+    private String name;
 
     public AbstractAtomicLongOp() {
     }
 
-    public AbstractAtomicLongOp(RaftGroupId groupId) {
+    public AbstractAtomicLongOp(RaftGroupId groupId, String name) {
         this.groupId = groupId;
+        this.name = name;
     }
 
     protected RaftAtomicLong getAtomicLong() {
         RaftAtomicLongService service = getService();
-        return service.getAtomicLong(groupId);
-    }
-
-    public final RaftGroupId getRaftGroupId() {
-        return groupId;
+        return service.getAtomicLong(groupId, name);
     }
 
     @Override
@@ -43,12 +41,14 @@ public abstract class AbstractAtomicLongOp extends RaftOp implements IdentifiedD
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeObject(groupId);
+        out.writeUTF(name);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         groupId = in.readObject();
+        name = in.readUTF();
     }
 
     @Override

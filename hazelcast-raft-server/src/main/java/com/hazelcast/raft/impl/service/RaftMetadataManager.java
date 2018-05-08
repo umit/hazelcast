@@ -30,7 +30,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static com.hazelcast.raft.impl.RaftEndpointImpl.parseEndpoints;
 import static com.hazelcast.raft.impl.service.LeavingRaftEndpointContext.RaftGroupLeavingEndpointContext;
-import static com.hazelcast.raft.impl.service.RaftService.SERVICE_NAME;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static java.util.Collections.unmodifiableList;
 
@@ -79,7 +78,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         try {
             List<RaftEndpointImpl> metadataEndpoints = parseEndpoints(config.getMetadataGroupMembers());
             if (metadataEndpoints.contains(localEndpoint)) {
-                createRaftGroup(new RaftGroupInfo(METADATA_GROUP_ID, sort(metadataEndpoints), SERVICE_NAME));
+                createRaftGroup(new RaftGroupInfo(METADATA_GROUP_ID, sort(metadataEndpoints)));
             }
         } catch (UnknownHostException e) {
             throw new HazelcastException(e);
@@ -108,7 +107,9 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
 
     @Override
     public MetadataSnapshot takeSnapshot(RaftGroupId raftGroupId, long commitIndex) {
-        ensureMetadataGroupId(raftGroupId);
+        if (!METADATA_GROUP_ID.equals(raftGroupId)) {
+            return null;
+        }
 
         MetadataSnapshot snapshot = new MetadataSnapshot();
         for (RaftGroupInfo groupInfo : raftGroups.values()) {
@@ -187,28 +188,28 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         return raftGroups.get(id);
     }
 
-    public RaftGroupId createRaftGroup(String serviceName, String name, Collection<RaftEndpointImpl> endpoints, long commitIndex) {
+    public RaftGroupId createRaftGroup(String groupName, Collection<RaftEndpointImpl> endpoints, long commitIndex) {
         // keep configuration on every metadata node
-        RaftGroupInfo groupInfo = getRaftGroupInfoByName(name);
+        RaftGroupInfo groupInfo = getRaftGroupInfoByName(groupName);
         if (groupInfo != null) {
             if (groupInfo.memberCount() == endpoints.size()) {
-                logger.warning("Raft group " + name + " already exists. Ignoring add raft node request.");
+                logger.warning("Raft group " + groupName + " already exists. Ignoring add raft node request.");
                 return groupInfo.id();
             }
 
-            throw new IllegalStateException("Raft group " + name
+            throw new IllegalStateException("Raft group " + groupName
                     + " already exists with different group size. Ignoring add raft node request.");
         }
 
         RaftEndpointImpl leavingEndpoint = leavingEndpointContext != null ? leavingEndpointContext.getEndpoint() : null;
         for (RaftEndpointImpl endpoint : endpoints) {
             if (endpoint.equals(leavingEndpoint) || removedEndpoints.contains(endpoint)) {
-                throw new CannotCreateRaftGroupException("Cannot create raft group: " + name + " since " + endpoint
+                throw new CannotCreateRaftGroupException("Cannot create raft group: " + groupName + " since " + endpoint
                         + " is not active");
             }
         }
 
-        return createRaftGroup(new RaftGroupInfo(new RaftGroupIdImpl(name, commitIndex), endpoints, serviceName));
+        return createRaftGroup(new RaftGroupInfo(new RaftGroupIdImpl(groupName, commitIndex), endpoints));
     }
 
     private RaftGroupId createRaftGroup(RaftGroupInfo groupInfo) {
@@ -217,7 +218,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
 
         RaftGroupId groupId = groupInfo.id();
         if (groupInfo.containsMember(localEndpoint)) {
-            raftService.createRaftNode(groupId, groupInfo.serviceName(), (Collection) groupInfo.members());
+            raftService.createRaftNode(groupId, (Collection) groupInfo.members());
         } else {
             // Broadcast group-info to non-metadata group members
             OperationService operationService = nodeEngine.getOperationService();
@@ -360,7 +361,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
                         + newMembersCommitIndex);
                 if (localEndpoint.equals(joining)) {
                     // we are the added member to the group, we can try to create the local raft node if not created already
-                    raftService.createRaftNode(groupId, groupInfo.serviceName(), (Collection) groupInfo.members());
+                    raftService.createRaftNode(groupId, (Collection) groupInfo.members());
                 } else if (joining != null) {
                     // publish group-info to the joining member
                     nodeEngine.getOperationService().send(new CreateRaftNodeOp(groupInfo), joining.getAddress());

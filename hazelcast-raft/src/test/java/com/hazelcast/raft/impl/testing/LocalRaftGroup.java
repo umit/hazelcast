@@ -64,7 +64,7 @@ public class LocalRaftGroup {
         nodes = new RaftNodeImpl[size];
         for (int i = 0; i < size; i++) {
             LocalRaftIntegration integration = integrations[i];
-            nodes[i] = new RaftNodeImpl(serviceName, groupId, endpoints[i], asList(endpoints), raftConfig, integration);
+            nodes[i] = new RaftNodeImpl(groupId, endpoints[i], asList(endpoints), raftConfig, integration);
         }
     }
 
@@ -122,7 +122,7 @@ public class LocalRaftGroup {
         integrations[oldSize] = integration;
         RaftEndpoint endpoint = integration.getLocalEndpoint();
         endpoints[oldSize] = endpoint;
-        RaftNodeImpl node = new RaftNodeImpl(serviceName, groupId, endpoint, singletonList(endpoint), raftConfig, integration);
+        RaftNodeImpl node = new RaftNodeImpl(groupId, endpoint, singletonList(endpoint), raftConfig, integration);
         nodes[oldSize] = node;
         this.endpoints = endpoints;
         this.integrations = integrations;

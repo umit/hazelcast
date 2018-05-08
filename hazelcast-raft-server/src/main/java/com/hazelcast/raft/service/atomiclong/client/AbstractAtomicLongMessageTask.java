@@ -21,6 +21,8 @@ public abstract class AbstractAtomicLongMessageTask extends AbstractMessageTask 
 
     protected RaftGroupId groupId;
 
+    protected String name;
+
     protected AbstractAtomicLongMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
@@ -28,12 +30,13 @@ public abstract class AbstractAtomicLongMessageTask extends AbstractMessageTask 
     protected IAtomicLong getProxy() {
         RaftAtomicLongService service = (RaftAtomicLongService) getService(getServiceName());
         // TODO: creates a new proxy on each client request
-        return service.newProxy(groupId);
+        return service.newProxy(groupId, name);
     }
 
     @Override
     protected Object decodeClientMessage(ClientMessage clientMessage) {
         groupId = RaftGroupIdImpl.readFrom(clientMessage);
+        name = clientMessage.getStringUtf8();
         return null;
     }
 
@@ -83,7 +86,7 @@ public abstract class AbstractAtomicLongMessageTask extends AbstractMessageTask 
 
     @Override
     public String getDistributedObjectName() {
-        return RaftAtomicLongService.nameWithoutPrefix(groupId.name());
+        return name;
     }
 
     @Override

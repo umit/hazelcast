@@ -20,6 +20,7 @@ import java.security.Permission;
 public abstract class AbstractLockMessageTask extends AbstractMessageTask implements ExecutionCallback {
 
     protected RaftGroupId groupId;
+    protected String name;
     protected String uid;
 
     protected AbstractLockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
@@ -29,12 +30,13 @@ public abstract class AbstractLockMessageTask extends AbstractMessageTask implem
     protected RaftLockProxy getProxy() {
         RaftLockService service = (RaftLockService) getService(getServiceName());
         // TODO: creates a new proxy on each client request
-        return service.newProxy(groupId, uid);
+        return service.newProxy(groupId, name, uid);
     }
 
     @Override
     protected Object decodeClientMessage(ClientMessage clientMessage) {
         groupId = RaftGroupIdImpl.readFrom(clientMessage);
+        name = clientMessage.getStringUtf8();
         uid = clientMessage.getStringUtf8();
         return null;
     }
@@ -85,7 +87,7 @@ public abstract class AbstractLockMessageTask extends AbstractMessageTask implem
 
     @Override
     public String getDistributedObjectName() {
-        return RaftLockService.nameWithoutPrefix(groupId.name());
+        return name;
     }
 
     @Override

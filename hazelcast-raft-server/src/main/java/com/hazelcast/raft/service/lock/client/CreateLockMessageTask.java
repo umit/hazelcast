@@ -3,7 +3,6 @@ package com.hazelcast.raft.service.lock.client;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
@@ -15,8 +14,7 @@ import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 
 import java.security.Permission;
 
-import static com.hazelcast.raft.service.lock.RaftLockService.PREFIX;
-import static com.hazelcast.raft.service.lock.RaftLockService.SERVICE_NAME;
+
 
 
 /**
@@ -25,7 +23,7 @@ import static com.hazelcast.raft.service.lock.RaftLockService.SERVICE_NAME;
  */
 public class CreateLockMessageTask extends AbstractMessageTask implements ExecutionCallback {
 
-    private String name;
+    private String groupName;
     private int nodeCount;
 
     protected CreateLockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
@@ -33,18 +31,15 @@ public class CreateLockMessageTask extends AbstractMessageTask implements Execut
     }
 
     @Override
-    protected void processMessage() throws Throwable {
-        String raftName = PREFIX + name;
-
+    protected void processMessage() {
         RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
         RaftInvocationManager invocationManager = raftService.getInvocationManager();
-        ICompletableFuture future = invocationManager.createRaftGroupAsync(SERVICE_NAME, raftName, nodeCount);
-        future.andThen(this);
+        invocationManager.createRaftGroupAsync(groupName, nodeCount).andThen(this);
     }
 
     @Override
     protected Object decodeClientMessage(ClientMessage clientMessage) {
-        name = clientMessage.getStringUtf8();
+        groupName = clientMessage.getStringUtf8();
         nodeCount = clientMessage.getInt();
         return null;
     }
@@ -80,7 +75,7 @@ public class CreateLockMessageTask extends AbstractMessageTask implements Execut
 
     @Override
     public String getDistributedObjectName() {
-        return name;
+        return groupName;
     }
 
     @Override

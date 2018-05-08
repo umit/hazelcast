@@ -1,7 +1,6 @@
 package com.hazelcast.raft.service.lock.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
@@ -17,9 +16,8 @@ public class GetLockCountMessageTask extends AbstractLockMessageTask {
     }
 
     @Override
-    protected void processMessage() throws Throwable {
+    protected void processMessage() {
         RaftLockProxy lockProxy = getProxy();
-        ICompletableFuture<Integer> future = lockProxy.getLockCountAsync();
-        future.andThen(this);
+        lockProxy.getLockCountAsync().andThen(this);
     }
 }

@@ -82,7 +82,7 @@ public class QueryTask implements Runnable {
 
     private boolean verifyOperation() {
         if (operation instanceof RaftGroupCmd) {
-            resultFuture.setResult(new IllegalArgumentException(operation + " cannot query " + raftNode.getServiceName()));
+            resultFuture.setResult(new IllegalArgumentException("cannot run query: " + operation));
             return false;
         }
 

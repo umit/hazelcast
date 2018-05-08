@@ -18,15 +18,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 
+import static com.hazelcast.util.Preconditions.checkNotNull;
+
 /**
  * TODO: Javadoc Pending...
  */
 public class RaftLockService implements ManagedService, SnapshotAwareService {
 
     public static final String SERVICE_NAME = "hz:raft:lockService";
-    public static final String PREFIX = "lock:";
 
-    private final ConcurrentMap<RaftGroupId, RaftLock> locks = new ConcurrentHashMap<RaftGroupId, RaftLock>();
+    private final ConcurrentMap<Tuple2<RaftGroupId, String>, RaftLock> locks = new ConcurrentHashMap<Tuple2<RaftGroupId, String>, RaftLock>();
     private volatile RaftService raftService;
 
     @Override
@@ -46,45 +47,44 @@ public class RaftLockService implements ManagedService, SnapshotAwareService {
 
     @Override
     public Object takeSnapshot(RaftGroupId raftGroupId, long commitIndex) {
+        // TODO fixit
         return null;
     }
 
     @Override
     public void restoreSnapshot(RaftGroupId raftGroupId, long commitIndex, Object snapshot) {
-
-    }
-
-    public static String nameWithoutPrefix(String raftName) {
-        assert raftName.startsWith(PREFIX) : "Raft-Name: " + raftName;
-        return raftName.substring(PREFIX.length());
+        // TODO fixit
     }
 
     public ILock createNew(String name, int replicas, String uid) throws ExecutionException, InterruptedException {
         RaftInvocationManager invocationManager = raftService.getInvocationManager();
-        RaftGroupId groupId = invocationManager.createRaftGroup(SERVICE_NAME, PREFIX + name, replicas);
-        return new RaftLockProxy(groupId, invocationManager, uid);
+        RaftGroupId groupId = invocationManager.createRaftGroup(SERVICE_NAME, replicas);
+        return new RaftLockProxy(groupId, name, invocationManager, uid);
     }
 
-    public RaftLockProxy newProxy(RaftGroupId groupId, String uid) {
-        return new RaftLockProxy(groupId, raftService.getInvocationManager(), uid);
+    public RaftLockProxy newProxy(RaftGroupId groupId, String name, String uid) {
+        return new RaftLockProxy(groupId, name, raftService.getInvocationManager(), uid);
     }
 
-    private RaftLock getRaftLock(RaftGroupId groupId) {
-        RaftLock raftLock = locks.get(groupId);
+    private RaftLock getRaftLock(RaftGroupId groupId, String name) {
+        checkNotNull(groupId);
+        checkNotNull(name);
+        Tuple2<RaftGroupId, String> key = Tuple2.of(groupId, name);
+        RaftLock raftLock = locks.get(key);
         if (raftLock == null) {
-            raftLock = new RaftLock(groupId.name());
-            locks.put(groupId, raftLock);
+            raftLock = new RaftLock(groupId, name);
+            locks.put(key, raftLock);
         }
         return raftLock;
     }
 
-    public boolean acquire(RaftGroupId groupId, LockEndpoint endpoint, long commitIndex, UUID invUid, boolean wait) {
-        RaftLock raftLock = getRaftLock(groupId);
+    public boolean acquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invUid, boolean wait) {
+        RaftLock raftLock = getRaftLock(groupId, name);
         return raftLock.acquire(endpoint, commitIndex, invUid, wait);
     }
 
-    public void release(RaftGroupId groupId, LockEndpoint endpoint, UUID invUid) {
-        RaftLock raftLock = getRaftLock(groupId);
+    public void release(RaftGroupId groupId, String name, LockEndpoint endpoint, UUID invUid) {
+        RaftLock raftLock = getRaftLock(groupId, name);
         Collection<Long> indices = raftLock.release(endpoint, invUid);
         if (!indices.isEmpty()) {
             RaftNodeImpl raftNode = (RaftNodeImpl) raftService.getRaftNode(groupId);
@@ -94,10 +94,12 @@ public class RaftLockService implements ManagedService, SnapshotAwareService {
         }
     }
 
-    public Tuple2<LockEndpoint, Integer> lockCount(RaftGroupId groupId) {
-        RaftLock raftLock = locks.get(groupId);
+    public Tuple2<LockEndpoint, Integer> lockCount(RaftGroupId groupId, String name) {
+        checkNotNull(groupId);
+        checkNotNull(name);
+        RaftLock raftLock = locks.get(Tuple2.of(groupId, name));
         if (raftLock == null) {
-            return new Tuple2<LockEndpoint, Integer>(null, 0);
+            return Tuple2.of(null, 0);
         }
         return raftLock.lockCount();
     }

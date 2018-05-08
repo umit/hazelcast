@@ -289,7 +289,7 @@ public class RaftCleanupHandler {
                 long idx = getMemberRemoveCommitIndex(groupId, leavingEndpoint, ctx, entry.getValue());
                 if (idx != NA_MEMBERS_COMMIT_INDEX) {
                     logger.info(leavingEndpoint + " is removed from " + groupId + " with new members commit index: " + idx);
-                    leftGroups.put(groupId, new Tuple2<Long, Long>(ctx.getMembersCommitIndex(), idx));
+                    leftGroups.put(groupId, Tuple2.of(ctx.getMembersCommitIndex(), idx));
                 }
             }
 

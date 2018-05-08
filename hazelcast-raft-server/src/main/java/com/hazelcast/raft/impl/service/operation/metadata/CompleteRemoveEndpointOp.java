@@ -66,7 +66,7 @@ public class CompleteRemoveEndpointOp extends RaftOp implements IdentifiedDataSe
             RaftGroupId groupId = in.readObject();
             long currMembersCommitIndex = in.readLong();
             long newMembersCommitIndex = in.readLong();
-            leftGroups.put(groupId, new Tuple2<Long, Long>(currMembersCommitIndex, newMembersCommitIndex));
+            leftGroups.put(groupId, Tuple2.of(currMembersCommitIndex, newMembersCommitIndex));
         }
     }
 

@@ -66,7 +66,6 @@ public class RaftNodeImpl implements RaftNode {
     private static final long SNAPSHOT_TASK_PERIOD_IN_SECONDS = 1;
     private static final int LEADER_ELECTION_TIMEOUT_RANGE = 1000;
 
-    private final String serviceName;
     private final RaftGroupId groupId;
     private final ILogger logger;
     private final RaftState state;
@@ -84,9 +83,8 @@ public class RaftNodeImpl implements RaftNode {
     private long lastAppendEntriesTimestamp;
     private volatile RaftNodeStatus status = ACTIVE;
 
-    public RaftNodeImpl(String serviceName, RaftGroupId groupId, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints,
+    public RaftNodeImpl(RaftGroupId groupId, RaftEndpoint localEndpoint, Collection<RaftEndpoint> endpoints,
                         RaftConfig raftConfig, RaftIntegration raftIntegration) {
-        this.serviceName = serviceName;
         this.groupId = groupId;
         this.raftIntegration = raftIntegration;
         this.localEndpoint = localEndpoint;
@@ -228,10 +226,6 @@ public class RaftNodeImpl implements RaftNode {
         SimpleCompletableFuture resultFuture = raftIntegration.newCompletableFuture();
         raftIntegration.execute(new QueryTask(this, operation, queryPolicy, resultFuture));
         return resultFuture;
-    }
-
-    public String getServiceName() {
-        return serviceName;
     }
 
     // It reads the volatile status field
@@ -670,7 +664,7 @@ public class RaftNodeImpl implements RaftNode {
         Object snapshot = raftIntegration.takeSnapshot(commitIndex);
         if (snapshot instanceof Throwable) {
             Throwable t = (Throwable) snapshot;
-            logger.severe("Could not take snapshot from service '" + serviceName + "', commit index: " + commitIndex, t);
+            logger.severe("Could not take snapshot for " + groupId + " commit index: " + commitIndex, t);
             return;
         }
 
@@ -705,7 +699,7 @@ public class RaftNodeImpl implements RaftNode {
             logger.info(truncated.size() + " entries are truncated to install snapshot: " + snapshot);
         }
 
-        raftIntegration.runOperation(snapshot.operation(), snapshot.index());
+        raftIntegration.restoreSnapshot(snapshot.operation(), snapshot.index());
 
         // If I am installing a snapshot, it means I am still present in the last member list so I don't need to update status.
         // Nevertheless, I may not be present in the restored member list, which is ok.

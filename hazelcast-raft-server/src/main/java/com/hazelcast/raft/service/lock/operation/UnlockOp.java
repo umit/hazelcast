@@ -14,15 +14,15 @@ public class UnlockOp extends AbstractLockOp {
     public UnlockOp() {
     }
 
-    public UnlockOp(RaftGroupId groupId, String uid, long threadId, UUID invUid) {
-        super(groupId, uid, threadId, invUid);
+    public UnlockOp(RaftGroupId groupId, String name, String uid, long threadId, UUID invUid) {
+        super(groupId, name, uid, threadId, invUid);
     }
 
     @Override
     protected Object doRun(long commitIndex) {
         RaftLockService service = getService();
         LockEndpoint endpoint = new LockEndpoint(uid, threadId);
-        service.release(groupId, endpoint, invUid);
+        service.release(groupId, name, endpoint, invUid);
         return true;
     }
 }

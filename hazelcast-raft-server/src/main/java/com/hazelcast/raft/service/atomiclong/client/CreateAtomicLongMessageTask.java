@@ -3,7 +3,6 @@ package com.hazelcast.raft.service.atomiclong.client;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
@@ -15,16 +14,13 @@ import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 
 import java.security.Permission;
 
-import static com.hazelcast.raft.service.atomiclong.RaftAtomicLongService.PREFIX;
-import static com.hazelcast.raft.service.atomiclong.RaftAtomicLongService.SERVICE_NAME;
-
 /**
  * TODO: Javadoc Pending...
  *
  */
 public class CreateAtomicLongMessageTask extends AbstractMessageTask implements ExecutionCallback {
 
-    private String name;
+    private String groupName;
     private int nodeCount;
 
     protected CreateAtomicLongMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
@@ -32,18 +28,15 @@ public class CreateAtomicLongMessageTask extends AbstractMessageTask implements 
     }
 
     @Override
-    protected void processMessage() throws Throwable {
-        String raftName = PREFIX + name;
-
+    protected void processMessage() {
         RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
         RaftInvocationManager invocationManager = raftService.getInvocationManager();
-        ICompletableFuture future = invocationManager.createRaftGroupAsync(SERVICE_NAME, raftName, nodeCount);
-        future.andThen(this);
+        invocationManager.createRaftGroupAsync(groupName, nodeCount).andThen(this);
     }
 
     @Override
     protected Object decodeClientMessage(ClientMessage clientMessage) {
-        name = clientMessage.getStringUtf8();
+        groupName = clientMessage.getStringUtf8();
         nodeCount = clientMessage.getInt();
         return null;
     }
@@ -79,7 +72,7 @@ public class CreateAtomicLongMessageTask extends AbstractMessageTask implements 
 
     @Override
     public String getDistributedObjectName() {
-        return name;
+        return groupName;
     }
 
     @Override
