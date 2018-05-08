@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-package com.hazelcast.raft.config;
-
-import com.hazelcast.raft.RaftMember;
+package com.hazelcast.config.raft;
 
 import java.util.ArrayList;
 import java.util.List;

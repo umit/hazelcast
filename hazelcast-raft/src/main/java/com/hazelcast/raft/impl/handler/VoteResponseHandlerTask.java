@@ -1,5 +1,6 @@
 package com.hazelcast.raft.impl.handler;
 
+import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.RaftRole;
@@ -16,7 +17,7 @@ import com.hazelcast.raft.impl.state.RaftState;
  * Changes node to {@link RaftRole#LEADER} if if majority of the nodes grants vote for this term
  * via {@link RaftState#toLeader()}.
  * <p>
- * Appends a no-op entry if {@link com.hazelcast.raft.RaftConfig#appendNopEntryOnLeaderElection} is enabled.
+ * Appends a no-op entry if {@link RaftConfig#appendNopEntryOnLeaderElection} is enabled.
  * <p>
  * See <i>5.2 Leader election</i> section of <i>In Search of an Understandable Consensus Algorithm</i>
  * paper by <i>Diego Ongaro</i> and <i>John Ousterhout</i>.

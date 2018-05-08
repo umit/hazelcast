@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.hazelcast.raft.config;
+package com.hazelcast.config.raft;
 
 /**
  * TODO: Javadoc Pending...

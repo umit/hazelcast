@@ -11,7 +11,6 @@ import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
-import com.hazelcast.raft.service.atomiclong.RaftAtomicLongConfig;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.raft.service.atomiclong.operation.AddAndGetOp;
 import com.hazelcast.raft.service.atomiclong.operation.AlterOp;
@@ -34,12 +33,11 @@ public class RaftAtomicLongProxy implements IAtomicLong {
     private final RaftGroupId groupId;
     private final RaftInvocationManager raftInvocationManager;
 
-    public static IAtomicLong create(HazelcastInstance instance, RaftAtomicLongConfig config) {
+    public static IAtomicLong create(HazelcastInstance instance, String name) {
         NodeEngine nodeEngine = getNodeEngine(instance);
         RaftAtomicLongService service = nodeEngine.getService(SERVICE_NAME);
-        service.addConfig(config);
         try {
-            return service.createNew(config.getName());
+            return service.createNew(name);
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }

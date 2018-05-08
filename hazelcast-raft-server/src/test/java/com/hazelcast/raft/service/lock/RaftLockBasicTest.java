@@ -2,10 +2,11 @@ package com.hazelcast.raft.service.lock;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.config.ServiceConfig;
+import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ILock;
 import com.hazelcast.nio.Address;
-import com.hazelcast.raft.config.RaftGroupConfig;
+import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -33,15 +34,15 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
 
     private HazelcastInstance[] instances;
     private ILock lock;
+    private String name = "lock";
+    private int groupSize = 3;
 
     @Before
     public void setup() {
-        Address[] raftAddresses = createAddresses(3);
-        instances = newInstances(raftAddresses, 3, 0);
+        Address[] raftAddresses = createAddresses(groupSize);
+        instances = newInstances(raftAddresses, groupSize, 0);
 
-        String name = "lock";
-        RaftLockConfig config = new RaftLockConfig(name, new RaftGroupConfig(name, 3));
-        lock = RaftLockProxy.create(instances[RandomPicker.getInt(instances.length)], config);
+        lock = RaftLockProxy.create(instances[RandomPicker.getInt(instances.length)], name);
         assertNotNull(lock);
     }
 
@@ -197,6 +198,9 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
 
         Config config = super.createConfig(raftAddresses, metadataGroupSize);
         config.getServicesConfig().addServiceConfig(lockServiceConfig);
+
+        RaftLockConfig lockConfig = new RaftLockConfig(name, new RaftGroupConfig(name, groupSize));
+        config.addRaftLockConfig(lockConfig);
         return config;
     }
 }

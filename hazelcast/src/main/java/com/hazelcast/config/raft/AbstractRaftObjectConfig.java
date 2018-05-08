@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-package com.hazelcast.raft.service;
-
-import com.hazelcast.raft.config.RaftGroupConfig;
+package com.hazelcast.config.raft;
 
 /**
  * TODO: Javadoc Pending...

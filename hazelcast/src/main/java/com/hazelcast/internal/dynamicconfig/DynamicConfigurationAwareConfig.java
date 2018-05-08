@@ -57,6 +57,9 @@ import com.hazelcast.config.SetConfig;
 import com.hazelcast.config.TopicConfig;
 import com.hazelcast.config.UserCodeDeploymentConfig;
 import com.hazelcast.config.WanReplicationConfig;
+import com.hazelcast.config.raft.RaftAtomicLongConfig;
+import com.hazelcast.config.raft.RaftLockConfig;
+import com.hazelcast.config.raft.RaftServiceConfig;
 import com.hazelcast.core.ManagedContext;
 import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.security.SecurityService;
@@ -1486,5 +1489,35 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     public void onSecurityServiceUpdated(SecurityService securityService) {
         this.dynamicSecurityConfig = new DynamicSecurityConfig(staticConfig.getSecurityConfig(), securityService);
+    }
+
+    @Override
+    public RaftServiceConfig getRaftServiceConfig() {
+        return staticConfig.getRaftServiceConfig();
+    }
+
+    @Override
+    public Config setRaftServiceConfig(RaftServiceConfig raftServiceConfig) {
+        throw new UnsupportedOperationException("Unsupported operation");
+    }
+
+    @Override
+    public RaftAtomicLongConfig findRaftAtomicLongConfig(String name) {
+        return staticConfig.findRaftAtomicLongConfig(name);
+    }
+
+    @Override
+    public Config addRaftAtomicLongConfig(RaftAtomicLongConfig config) {
+        throw new UnsupportedOperationException("Unsupported operation");
+    }
+
+    @Override
+    public RaftLockConfig findRaftLockConfig(String name) {
+        return staticConfig.findRaftLockConfig(name);
+    }
+
+    @Override
+    public Config addRaftLockConfig(RaftLockConfig config) {
+        throw new UnsupportedOperationException("Unsupported operation");
     }
 }

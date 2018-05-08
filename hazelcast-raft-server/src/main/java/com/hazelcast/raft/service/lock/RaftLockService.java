@@ -1,10 +1,11 @@
 package com.hazelcast.raft.service.lock;
 
+import com.hazelcast.config.raft.RaftGroupConfig;
+import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.ILock;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
-import com.hazelcast.raft.config.RaftGroupConfig;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;
@@ -14,7 +15,6 @@ import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
 
 import java.util.Collection;
-import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,14 +30,13 @@ public class RaftLockService implements ManagedService, SnapshotAwareService {
 
     public static final String SERVICE_NAME = "hz:raft:lockService";
 
-    // temporary lock config registry
-    private final Map<String, RaftLockConfig> configs = new ConcurrentHashMap<String, RaftLockConfig>();
-
     private final ConcurrentMap<Tuple2<RaftGroupId, String>, RaftLock> locks = new ConcurrentHashMap<Tuple2<RaftGroupId, String>, RaftLock>();
+    private volatile NodeEngine nodeEngine;
     private volatile RaftService raftService;
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
+        this.nodeEngine = nodeEngine;
         this.raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
     }
 
@@ -62,17 +61,13 @@ public class RaftLockService implements ManagedService, SnapshotAwareService {
         // TODO fixit
     }
 
-    public void addConfig(RaftLockConfig config) {
-        configs.put(config.getName(), config);
-    }
-
     public ILock createNew(String name, String uuid) throws ExecutionException, InterruptedException {
         RaftGroupId groupId = createNewAsync(name).get();
         return new RaftLockProxy(name, groupId, raftService.getInvocationManager(), uuid);
     }
 
     public ICompletableFuture<RaftGroupId> createNewAsync(String name) {
-        RaftLockConfig config = configs.get(name);
+        RaftLockConfig config = getConfig(name);
         checkNotNull(config);
 
         RaftInvocationManager invocationManager = raftService.getInvocationManager();
@@ -82,6 +77,10 @@ public class RaftLockService implements ManagedService, SnapshotAwareService {
         } else {
             return invocationManager.createRaftGroup(config.getRaftGroupRef());
         }
+    }
+
+    private RaftLockConfig getConfig(String name) {
+        return nodeEngine.getConfig().findRaftLockConfig(name);
     }
 
     public RaftLockProxy newProxy(String name, RaftGroupId groupId, String uid) {

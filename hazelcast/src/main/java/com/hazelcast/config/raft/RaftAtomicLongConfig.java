@@ -14,10 +14,7 @@
  * limitations under the License.
  */
 
-package com.hazelcast.raft.service.atomiclong;
-
-import com.hazelcast.raft.config.RaftGroupConfig;
-import com.hazelcast.raft.service.AbstractRaftObjectConfig;
+package com.hazelcast.config.raft;
 
 /**
  * TODO: Javadoc Pending...

@@ -1,12 +1,12 @@
 package com.hazelcast.raft.impl.service;
 
+import com.hazelcast.config.raft.RaftServiceConfig;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
-import com.hazelcast.raft.config.RaftServiceConfig;
 import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftEndpointImpl;
 import com.hazelcast.raft.impl.RaftIntegration;
@@ -25,7 +25,6 @@ import com.hazelcast.raft.impl.service.exception.CannotRemoveEndpointException;
 import com.hazelcast.raft.impl.service.operation.metadata.CheckRemovedEndpointOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveEndpointOp;
-import com.hazelcast.spi.ConfigurableService;
 import com.hazelcast.spi.GracefulShutdownAwareService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
@@ -49,8 +48,8 @@ import static java.util.Collections.singletonList;
 /**
  * TODO: Javadoc Pending...
  */
-public class RaftService implements ManagedService, ConfigurableService<RaftServiceConfig>,
-        SnapshotAwareService<MetadataSnapshot>, GracefulShutdownAwareService {
+public class RaftService implements ManagedService, SnapshotAwareService<MetadataSnapshot>,
+        GracefulShutdownAwareService {
 
     public static final String SERVICE_NAME = "hz:core:raft";
     public static final RaftGroupId METADATA_GROUP_ID = RaftMetadataManager.METADATA_GROUP_ID;
@@ -61,27 +60,22 @@ public class RaftService implements ManagedService, ConfigurableService<RaftServ
 
     private final Set<RaftGroupId> destroyedGroupIds = newSetFromMap(new ConcurrentHashMap<RaftGroupId, Boolean>());
 
-    private volatile RaftInvocationManager invocationManager;
-    private volatile RaftMetadataManager metadataManager;
+    private final RaftServiceConfig config;
+    private final RaftInvocationManager invocationManager;
+    private final RaftMetadataManager metadataManager;
 
-    private volatile RaftServiceConfig config;
 
     public RaftService(NodeEngine nodeEngine) {
         this.nodeEngine = (NodeEngineImpl) nodeEngine;
         this.logger = nodeEngine.getLogger(getClass());
-    }
-
-    @Override
-    public void configure(RaftServiceConfig config) {
-        // cloning given config to avoid further mutations
-        this.config = new RaftServiceConfig(config);
+        this.config = new RaftServiceConfig(nodeEngine.getConfig().getRaftServiceConfig());
+        this.metadataManager = new RaftMetadataManager(nodeEngine, this, config.getMetadataGroupConfig());
+        this.invocationManager = new RaftInvocationManager(nodeEngine, this, config.getRaftConfig());
     }
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
         RaftCleanupHandler cleanupHandler = new RaftCleanupHandler(nodeEngine, this);
-        metadataManager = new RaftMetadataManager(nodeEngine, this, config.getMetadataGroupConfig());
-        invocationManager = new RaftInvocationManager(nodeEngine, this, config.getRaftConfig());
 
         metadataManager.init();
         invocationManager.init();

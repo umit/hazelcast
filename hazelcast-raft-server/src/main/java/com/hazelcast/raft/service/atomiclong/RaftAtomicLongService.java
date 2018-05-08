@@ -1,10 +1,11 @@
 package com.hazelcast.raft.service.atomiclong;
 
+import com.hazelcast.config.raft.RaftAtomicLongConfig;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
-import com.hazelcast.raft.config.RaftGroupConfig;
+import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.util.Tuple2;
@@ -28,14 +29,13 @@ public class RaftAtomicLongService implements ManagedService, SnapshotAwareServi
 
     public static final String SERVICE_NAME = "hz:raft:atomicLongService";
 
-    // temporary config registry
-    private final Map<String, RaftAtomicLongConfig> configs = new ConcurrentHashMap<String, RaftAtomicLongConfig>();
-
     private final Map<Tuple2<RaftGroupId, String>, RaftAtomicLong> map = new ConcurrentHashMap<Tuple2<RaftGroupId, String>, RaftAtomicLong>();
+    private volatile NodeEngine nodeEngine;
     private volatile RaftService raftService;
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
+        this.nodeEngine = nodeEngine;
         this.raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
     }
 
@@ -70,17 +70,13 @@ public class RaftAtomicLongService implements ManagedService, SnapshotAwareServi
         }
     }
 
-    public void addConfig(RaftAtomicLongConfig config) {
-        configs.put(config.getName(), config);
-    }
-
     public IAtomicLong createNew(String name) throws ExecutionException, InterruptedException {
         RaftGroupId groupId = createNewAsync(name).get();
         return new RaftAtomicLongProxy(name, groupId, raftService.getInvocationManager());
     }
 
     public ICompletableFuture<RaftGroupId> createNewAsync(String name) {
-        RaftAtomicLongConfig config = configs.get(name);
+        RaftAtomicLongConfig config = getConfig(name);
         checkNotNull(config);
 
         RaftInvocationManager invocationManager = raftService.getInvocationManager();
@@ -90,6 +86,10 @@ public class RaftAtomicLongService implements ManagedService, SnapshotAwareServi
         } else {
             return invocationManager.createRaftGroup(config.getRaftGroupRef());
         }
+    }
+
+    private RaftAtomicLongConfig getConfig(String name) {
+        return nodeEngine.getConfig().findRaftAtomicLongConfig(name);
     }
 
     public IAtomicLong newProxy(String name, RaftGroupId groupId) {
