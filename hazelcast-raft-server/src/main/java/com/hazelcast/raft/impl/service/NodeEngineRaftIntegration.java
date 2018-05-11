@@ -152,7 +152,7 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
     @Override
     public Object runOperation(Object op, long commitIndex) {
         RaftOp operation = (RaftOp) op;
-        operation.setCommitIndex(commitIndex).setNodeEngine(nodeEngine);
+        operation.setGroupId(raftGroupId).setCommitIndex(commitIndex).setNodeEngine(nodeEngine);
         OperationAccessor.setCallerAddress(operation, nodeEngine.getThisAddress());
         try {
             operation.beforeRun();
@@ -172,7 +172,7 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
                 SnapshotAwareService service = serviceInfo.getService();
                 Object snapshot = service.takeSnapshot(raftGroupId, commitIndex);
                 if (snapshot != null) {
-                    snapshotOps.add(new RestoreSnapshotOp(serviceInfo.getName(), raftGroupId, commitIndex, snapshot));
+                    snapshotOps.add(new RestoreSnapshotOp(serviceInfo.getName(), snapshot));
                 }
             }
 

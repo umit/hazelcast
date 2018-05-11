@@ -68,7 +68,7 @@ public class RaftLockProxy implements ILock {
     }
 
     public ICompletableFuture lockAsync(UUID invUid) {
-        return raftInvocationManager.invoke(groupId, new LockOp(groupId, name, uid, ThreadUtil.getThreadId(), invUid));
+        return raftInvocationManager.invoke(groupId, new LockOp(name, uid, ThreadUtil.getThreadId(), invUid));
     }
 
     @Override
@@ -79,7 +79,7 @@ public class RaftLockProxy implements ILock {
     }
 
     public ICompletableFuture unlockAsync(UUID invUid) {
-        return raftInvocationManager.invoke(groupId, new UnlockOp(groupId, name, uid, ThreadUtil.getThreadId(), invUid));
+        return raftInvocationManager.invoke(groupId, new UnlockOp(name, uid, ThreadUtil.getThreadId(), invUid));
     }
 
     @Override
@@ -94,7 +94,7 @@ public class RaftLockProxy implements ILock {
     }
 
     public ICompletableFuture<Boolean> tryLockAsync(UUID invUid) {
-        return raftInvocationManager.invoke(groupId, new TryLockOp(groupId, name, uid, ThreadUtil.getThreadId(), invUid));
+        return raftInvocationManager.invoke(groupId, new TryLockOp(name, uid, ThreadUtil.getThreadId(), invUid));
     }
 
     @Override
@@ -135,7 +135,7 @@ public class RaftLockProxy implements ILock {
     @Override
     public boolean isLockedByCurrentThread() {
         ICompletableFuture<Integer> future = raftInvocationManager
-                .invoke(groupId, new GetLockCountOp(groupId, name, uid, ThreadUtil.getThreadId()));
+                .invoke(groupId, new GetLockCountOp(name, uid, ThreadUtil.getThreadId()));
         return  join(future) > 0;
     }
 
@@ -146,7 +146,7 @@ public class RaftLockProxy implements ILock {
     }
 
     public ICompletableFuture<Integer> getLockCountAsync() {
-        return raftInvocationManager.invoke(groupId, new GetLockCountOp(groupId, name));
+        return raftInvocationManager.invoke(groupId, new GetLockCountOp(name));
     }
 
     @Override

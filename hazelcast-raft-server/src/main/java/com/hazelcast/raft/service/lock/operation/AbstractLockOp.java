@@ -2,7 +2,6 @@ package com.hazelcast.raft.service.lock.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.service.lock.RaftLockService;
 
@@ -14,7 +13,6 @@ import java.util.UUID;
  */
 abstract class AbstractLockOp extends RaftOp {
 
-    RaftGroupId groupId;
     String name;
     String uid;
     long threadId;
@@ -23,8 +21,7 @@ abstract class AbstractLockOp extends RaftOp {
     public AbstractLockOp() {
     }
 
-    public AbstractLockOp(RaftGroupId groupId, String name, String uid, long threadId, UUID invUid) {
-        this.groupId = groupId;
+    public AbstractLockOp(String name, String uid, long threadId, UUID invUid) {
         this.name = name;
         this.uid = uid;
         this.threadId = threadId;
@@ -39,7 +36,6 @@ abstract class AbstractLockOp extends RaftOp {
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeObject(groupId);
         out.writeUTF(name);
         out.writeUTF(uid);
         out.writeLong(threadId);
@@ -50,7 +46,6 @@ abstract class AbstractLockOp extends RaftOp {
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        groupId = in.readObject();
         name = in.readUTF();
         uid = in.readUTF();
         threadId = in.readLong();

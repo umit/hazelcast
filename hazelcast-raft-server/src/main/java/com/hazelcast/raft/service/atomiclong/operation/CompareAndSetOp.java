@@ -19,14 +19,14 @@ public class CompareAndSetOp extends AbstractAtomicLongOp {
     public CompareAndSetOp() {
     }
 
-    public CompareAndSetOp(RaftGroupId groupId, String name, long currentValue, long newValue) {
-        super(groupId, name);
+    public CompareAndSetOp(String name, long currentValue, long newValue) {
+        super(name);
         this.currentValue = currentValue;
         this.newValue = newValue;
     }
 
     @Override
-    public Object doRun(long commitIndex) {
+    public Object doRun(RaftGroupId groupId, long commitIndex) {
         RaftAtomicLong atomic = getAtomicLong();
         return atomic.compareAndSet(currentValue, newValue);
     }

@@ -13,21 +13,21 @@ import java.io.IOException;
 
 public class TriggerDestroyRaftGroupOp extends RaftOp implements IdentifiedDataSerializable {
 
-    private RaftGroupId groupId;
+    private RaftGroupId targetGroupId;
 
     public TriggerDestroyRaftGroupOp() {
     }
 
-    public TriggerDestroyRaftGroupOp(RaftGroupId groupId) {
-        this.groupId = groupId;
+    public TriggerDestroyRaftGroupOp(RaftGroupId targetGroupId) {
+        this.targetGroupId = targetGroupId;
     }
 
     @Override
-    protected Object doRun(long commitIndex) {
+    protected Object doRun(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
-        metadataManager.triggerDestroy(groupId);
-        return groupId;
+        metadataManager.triggerDestroy(targetGroupId);
+        return targetGroupId;
     }
 
     @Override
@@ -38,13 +38,13 @@ public class TriggerDestroyRaftGroupOp extends RaftOp implements IdentifiedDataS
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeObject(groupId);
+        out.writeObject(targetGroupId);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        groupId = in.readObject();
+        targetGroupId = in.readObject();
     }
 
     @Override

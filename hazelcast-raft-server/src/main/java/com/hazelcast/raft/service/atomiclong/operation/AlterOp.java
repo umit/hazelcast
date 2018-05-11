@@ -26,8 +26,8 @@ public class AlterOp extends AbstractAtomicLongOp {
     public AlterOp() {
     }
 
-    public AlterOp(RaftGroupId groupId, String name, IFunction<Long, Long> function, AlterResultType alterResultType) {
-        super(groupId, name);
+    public AlterOp(String name, IFunction<Long, Long> function, AlterResultType alterResultType) {
+        super(name);
         checkNotNull(alterResultType);
         this.function = function;
         this.alterResultType = alterResultType;
@@ -39,7 +39,7 @@ public class AlterOp extends AbstractAtomicLongOp {
     }
 
     @Override
-    protected Object doRun(long commitIndex) {
+    protected Object doRun(RaftGroupId groupId, long commitIndex) {
         RaftAtomicLong atomic = getAtomicLong();
         long before = atomic.getAndAdd(0);
         long after = function.apply(before);

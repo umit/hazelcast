@@ -5,9 +5,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.QueryPolicy;
-import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.config.raft.RaftServiceConfig;
 import com.hazelcast.raft.impl.RaftEndpointImpl;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
@@ -281,7 +279,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         int commitCountToSnapshot = 5;
         Address[] raftAddresses = createAddresses(nodeCount);
         Config config = createConfig(raftAddresses, raftAddresses.length);
-        getRaftConfig(config).setCommitIndexAdvanceCountToSnapshot(commitCountToSnapshot);
+        config.getRaftServiceConfig().getRaftConfig().setCommitIndexAdvanceCountToSnapshot(commitCountToSnapshot);
 
         final HazelcastInstance[] instances = new HazelcastInstance[nodeCount];
         for (int i = 0; i < nodeCount; i++) {
@@ -335,12 +333,6 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
                 }
             }
         });
-    }
-
-    private static RaftConfig getRaftConfig(Config config) {
-        RaftServiceConfig serviceConfig =
-                (RaftServiceConfig) config.getServicesConfig().getServiceConfig(RaftService.SERVICE_NAME).getConfigObject();
-        return serviceConfig.getRaftConfig();
     }
 
     @Test
@@ -495,7 +487,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
     @Override
     protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
         Config config = super.createConfig(raftAddresses, metadataGroupSize);
-        getRaftConfig(config).setAppendNopEntryOnLeaderElection(true).setLeaderHeartbeatPeriodInMillis(1000);
+        config.getRaftServiceConfig().getRaftConfig().setAppendNopEntryOnLeaderElection(true).setLeaderHeartbeatPeriodInMillis(1000);
         return config;
     }
 

@@ -45,8 +45,8 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
 
     @Before
     public void setup() {
-        Address[] raftAddresses = createAddresses(5);
-        instances = newInstances(raftAddresses, 3, 2);
+        Address[] raftAddresses = createAddresses(raftGroupSize + 2);
+        instances = newInstances(raftAddresses, raftGroupSize, 2);
 
         atomicLong = create(instances[RandomPicker.getInt(instances.length)], name);
         assertNotNull(atomicLong);
