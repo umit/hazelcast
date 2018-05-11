@@ -25,20 +25,34 @@ public class Session {
 
     private long creationTime;
 
-    private long accessTime;
+    private long expirationTime;
 
-    private long ttlMillis;
-
-    public Session() {
+    public Session(long id, long creationTime, long expirationTime) {
+        this.id = id;
+        this.creationTime = creationTime;
+        this.expirationTime = expirationTime;
     }
 
+    public Session(Session session) {
+        this.id = session.id;
+        this.creationTime = session.creationTime;
+        this.expirationTime = session.expirationTime;
+    }
 
     public long id() {
         return id;
     }
 
-    public boolean isExpired(long timestamp) {
-        return false;
+    public long creationTime() {
+        return creationTime;
     }
 
+    public long expirationTime() {
+        return expirationTime;
+    }
+
+    @Override
+    public String toString() {
+        return "Session{" + "id=" + id + ", creationTime=" + creationTime + ", expirationTime=" + expirationTime + '}';
+    }
 }

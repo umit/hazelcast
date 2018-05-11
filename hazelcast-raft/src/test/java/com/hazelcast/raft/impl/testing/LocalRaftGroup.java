@@ -34,6 +34,7 @@ public class LocalRaftGroup {
     private final RaftConfig raftConfig;
     private final String serviceName;
     private final Class<? extends SnapshotAwareService> serviceClazz;
+    private final boolean appendNopEntryOnLeaderElection;
     private RaftEndpoint[] endpoints;
     private LocalRaftIntegration[] integrations;
     private RaftNodeImpl[] nodes;
@@ -44,16 +45,19 @@ public class LocalRaftGroup {
     }
 
     public LocalRaftGroup(int size, RaftConfig raftConfig) {
-        this(size,raftConfig,  null, null);
+        this(size,raftConfig,  null, null, false);
     }
 
-    public LocalRaftGroup(int size, RaftConfig raftConfig, String serviceName, Class<? extends SnapshotAwareService> serviceClazz) {
+    public LocalRaftGroup(int size, RaftConfig raftConfig,
+                          String serviceName, Class<? extends SnapshotAwareService> serviceClazz,
+                          boolean appendNopEntryOnLeaderElection) {
         endpoints = new RaftEndpoint[size];
         integrations = new LocalRaftIntegration[size];
         groupId = new TestRaftGroupId("test");
         this.raftConfig = raftConfig;
         this.serviceName = serviceName;
         this.serviceClazz = serviceClazz;
+        this.appendNopEntryOnLeaderElection = appendNopEntryOnLeaderElection;
 
         for (; createdNodeCount < size; createdNodeCount++) {
             LocalRaftIntegration integration = createNewLocalRaftIntegration();
@@ -69,7 +73,8 @@ public class LocalRaftGroup {
     }
 
     private LocalRaftIntegration createNewLocalRaftIntegration() {
-        return new LocalRaftIntegration(newRaftEndpoint(5000 + createdNodeCount), groupId, createServiceInstance());
+        TestRaftEndpoint endpoint = newRaftEndpoint(5000 + createdNodeCount);
+        return new LocalRaftIntegration(endpoint, groupId, createServiceInstance(), appendNopEntryOnLeaderElection);
     }
 
     private SnapshotAwareService createServiceInstance() {

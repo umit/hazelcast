@@ -17,33 +17,92 @@
 package com.hazelcast.raft.impl.session;
 
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.util.collection.Long2ObjectHashMap;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * TODO: Javadoc Pending...
  */
 public class SessionRegistry {
+
     private final RaftGroupId groupId;
-    private final Long2ObjectHashMap<Session> sessions = new Long2ObjectHashMap<Session>();
+    private final Map<Long, Session> sessions = new ConcurrentHashMap<Long, Session>();
     private long nextSessionId;
 
     public SessionRegistry(RaftGroupId groupId) {
         this.groupId = groupId;
     }
 
-    public long createNewSession() {
+    public SessionRegistry(RaftGroupId groupId, SessionRegistrySnapshot snapshot) {
+        this(groupId);
+        this.nextSessionId = snapshot.getNextSessionId();
+        for (Session session : snapshot.getSessions()) {
+            this.sessions.put(session.id(), session);
+        }
+    }
+
+    public RaftGroupId groupId() {
+        return groupId;
+    }
+
+    public Session getSession(long sessionId) {
+        return sessions.get(sessionId);
+    }
+
+    public long createNewSession(long sessionTTLMs) {
         long id = nextSessionId++;
-        Session session = new Session();
+        long creationTime = System.currentTimeMillis();
+        Session session = new Session(id, creationTime, creationTime + sessionTTLMs);
         sessions.put(id, session);
         return id;
     }
 
-    public boolean invalidateSession(long sessionId) {
+    public boolean closeSession(long sessionId) {
+        return sessions.remove(sessionId) != null;
+    }
+
+    public void heartbeat(long sessionId, long sessionTTLMs) {
+        Session session = getSessionOrFail(sessionId);
+        long currentExpirationTime = session.expirationTime();
+        long newExpirationTime = System.currentTimeMillis() + sessionTTLMs;
+        if (newExpirationTime > currentExpirationTime) {
+            sessions.put(sessionId, new Session(sessionId, session.creationTime(), newExpirationTime));
+        }
+    }
+
+    public void shiftExpirationTimes(long durationMs) {
+        for (Session session : sessions.values()) {
+            long newExpirationTime = session.expirationTime() + durationMs;
+            sessions.put(session.id(), new Session(session.id(), session.creationTime(), newExpirationTime));
+        }
+    }
+
+    public Collection<Long> getExpiredSessions() {
+        List<Long> expired = new ArrayList<Long>();
+        long now = System.currentTimeMillis();
+        for (Session session : sessions.values()) {
+            if (session.expirationTime() <= now) {
+                expired.add(session.id());
+            }
+        }
+
+        return expired;
+    }
+
+    public SessionRegistrySnapshot toSnapshot() {
+        return new SessionRegistrySnapshot(nextSessionId, sessions.values());
+    }
+
+    private Session getSessionOrFail(long sessionId) {
         Session session = sessions.get(sessionId);
         if (session == null) {
-            return false;
+            throw new SessionExpiredException(sessionId);
         }
-        sessions.remove(sessionId);
-        return true;
+        return session;
     }
+
 }

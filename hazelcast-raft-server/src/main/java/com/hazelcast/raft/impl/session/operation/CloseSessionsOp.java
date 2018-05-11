@@ -16,24 +16,44 @@
 
 package com.hazelcast.raft.impl.session.operation;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.session.RaftSessionService;
 import com.hazelcast.raft.impl.session.RaftSessionServiceDataSerializerHook;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+import static java.util.Collections.singletonList;
+
 /**
  * TODO: Javadoc Pending...
  */
-public class CreateSessionOp extends RaftOp implements IdentifiedDataSerializable {
+public class CloseSessionsOp extends RaftOp implements IdentifiedDataSerializable {
 
-    public CreateSessionOp() {
+    private Collection<Long> sessionIds;
+
+    public CloseSessionsOp() {
+    }
+
+    public CloseSessionsOp(long sessionId) {
+        this(singletonList(sessionId));
+    }
+
+    public CloseSessionsOp(Collection<Long> sessionIds) {
+        this.sessionIds = sessionIds;
     }
 
     @Override
     protected Object doRun(RaftGroupId groupId, long commitIndex) {
         RaftSessionService service = getService();
-        return service.createNewSession(groupId);
+        service.closeSessions(groupId, sessionIds);
+        return null;
     }
 
     @Override
@@ -48,6 +68,26 @@ public class CreateSessionOp extends RaftOp implements IdentifiedDataSerializabl
 
     @Override
     public int getId() {
-        return RaftSessionServiceDataSerializerHook.CREATE_SESSION;
+        return RaftSessionServiceDataSerializerHook.CLOSE_SESSIONS;
+    }
+
+    @Override
+    protected void writeInternal(ObjectDataOutput out) throws IOException {
+        super.writeInternal(out);
+        out.writeInt(sessionIds.size());
+        for (long sessionId : sessionIds) {
+            out.writeLong(sessionId);
+        }
+    }
+
+    @Override
+    protected void readInternal(ObjectDataInput in) throws IOException {
+        super.readInternal(in);
+        int size = in.readInt();
+        List<Long> sessionIds = new ArrayList<Long>();
+        for (int i = 0; i < size; i++) {
+            sessionIds.add(in.readLong());
+        }
+        this.sessionIds = sessionIds;
     }
 }

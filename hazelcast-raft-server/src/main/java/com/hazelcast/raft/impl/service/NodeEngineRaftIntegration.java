@@ -15,6 +15,7 @@ import com.hazelcast.raft.impl.dto.PreVoteRequest;
 import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
+import com.hazelcast.raft.impl.service.operation.NotifyTermChangeOp;
 import com.hazelcast.raft.impl.service.operation.integration.AppendFailureResponseOp;
 import com.hazelcast.raft.impl.service.operation.integration.AppendRequestOp;
 import com.hazelcast.raft.impl.service.operation.integration.AppendSuccessResponseOp;
@@ -92,6 +93,11 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
     public SimpleCompletableFuture newCompletableFuture() {
         Executor executor = nodeEngine.getExecutionService().getExecutor(ASYNC_EXECUTOR);
         return new SimpleCompletableFuture(executor, nodeEngine.getLogger(getClass()));
+    }
+
+    @Override
+    public Object getAppendedEntryOnLeaderElection() {
+        return new NotifyTermChangeOp();
     }
 
     @Override

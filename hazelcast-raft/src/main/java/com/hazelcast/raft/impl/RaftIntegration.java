@@ -154,4 +154,12 @@ public interface RaftIntegration {
      * @return a new future
      */
     SimpleCompletableFuture newCompletableFuture();
+
+    /**
+     * Returns the entry to be appended if the no-op entry append on leader election feature is enabled.
+     * <p>
+     * See <a href="https://groups.google.com/forum/#!msg/raft-dev/t4xj6dJTP6E/d2D9LrWRza8J">
+     * <i>Bug in single-server membership changes</i></a> post by Diego Ongaro for more info.
+     */
+    Object getAppendedEntryOnLeaderElection();
 }

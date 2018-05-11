@@ -18,29 +18,48 @@ package com.hazelcast.raft.impl.session.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.session.RaftSessionService;
+import com.hazelcast.raft.impl.session.RaftSessionServiceDataSerializerHook;
 
 import java.io.IOException;
 
 /**
  * TODO: Javadoc Pending...
- *
  */
-public class InvalidateSessionOp extends RaftOp {
+public class HeartbeatSessionOp extends RaftOp implements IdentifiedDataSerializable {
 
     private long sessionId;
 
+    public HeartbeatSessionOp() {
+    }
+
+    public HeartbeatSessionOp(long sessionId) {
+        this.sessionId = sessionId;
+    }
+
     @Override
-    protected Object doRun(RaftGroupId groupId, long commitIndex) throws Exception {
+    protected Object doRun(RaftGroupId groupId, long commitIndex) {
         RaftSessionService service = getService();
-        return service.invalidateSession(groupId, sessionId);
+        service.heartbeat(groupId, sessionId);
+        return null;
     }
 
     @Override
     public String getServiceName() {
         return RaftSessionService.SERVICE_NAME;
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftSessionServiceDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftSessionServiceDataSerializerHook.HEARTBEAT_SESSION;
     }
 
     @Override

@@ -78,7 +78,6 @@ public class RaftNodeImpl implements RaftNode {
     private final int maxUncommittedEntryCount;
     private final int appendRequestMaxEntryCount;
     private final int commitIndexAdvanceCountToSnapshot;
-    private final boolean appendNopEntryOnLeaderElection;
 
     private long lastAppendEntriesTimestamp;
     private volatile RaftNodeStatus status = ACTIVE;
@@ -95,7 +94,6 @@ public class RaftNodeImpl implements RaftNode {
         this.commitIndexAdvanceCountToSnapshot = raftConfig.getCommitIndexAdvanceCountToSnapshot();
         this.leaderElectionTimeout = (int) raftConfig.getLeaderElectionTimeoutInMillis();
         this.heartbeatPeriodInMillis = raftConfig.getLeaderHeartbeatPeriodInMillis();
-        this.appendNopEntryOnLeaderElection = raftConfig.isAppendNopEntryOnLeaderElection();
     }
 
     public ILogger getLogger(Class clazz) {
@@ -257,12 +255,10 @@ public class RaftNodeImpl implements RaftNode {
     }
 
     /**
-     * Returns true if a no-op entry should be appended when a new leader is elected.
-     *
-     * @see RaftConfig#appendNopEntryOnLeaderElection
+     * Returns the entry to be appended if the no-op entry append on leader election feature is enabled.
      */
-    public boolean shouldAppendNopEntryOnLeaderElection() {
-        return appendNopEntryOnLeaderElection;
+    public Object getAppendedEntryOnLeaderElection() {
+        return raftIntegration.getAppendedEntryOnLeaderElection();
     }
 
     /**
@@ -275,7 +271,7 @@ public class RaftNodeImpl implements RaftNode {
      * See {@link RaftConfig#uncommittedEntryCountToRejectNewAppends}.</li>
      * <li>The operation is a {@link RaftGroupCmd} and there's an ongoing membership change in group.</li>
      * <li>The operation is a membership change operation and there's no committed entry in this term yet.
-     * See {@link #shouldAppendNopEntryOnLeaderElection()}.</li>
+     * See {@link RaftIntegration#getAppendedEntryOnLeaderElection()} ()}.</li>
      * </ul>
      */
     public boolean canReplicateNewEntry(Object operation) {

@@ -71,7 +71,6 @@ public class RaftConfig {
 
     /**
      * Max number of allowed uncommitted entries before rejecting new append requests
-     * with {@link com.hazelcast.raft.exception.CannotReplicateException}.
      */
     private int uncommittedEntryCountToRejectNewAppends = DEFAULT_UNCOMMITTED_ENTRY_COUNT_TO_REJECT_NEW_APPENDS;
 
@@ -81,14 +80,6 @@ public class RaftConfig {
      * to some of the followers.
      */
     private boolean failOnIndeterminateOperationState;
-
-    /**
-     * Enabled appending a no-op entry to the log when a new leader is elected.
-     * <p>
-     * See <a href="https://groups.google.com/forum/#!msg/raft-dev/t4xj6dJTP6E/d2D9LrWRza8J">
-     * <i>Bug in single-server membership changes</i></a> post by Diego Ongaro for more info.
-     */
-    private boolean appendNopEntryOnLeaderElection;
 
     public RaftConfig() {
     }
@@ -100,7 +91,6 @@ public class RaftConfig {
         this.commitIndexAdvanceCountToSnapshot = config.commitIndexAdvanceCountToSnapshot;
         this.uncommittedEntryCountToRejectNewAppends = config.uncommittedEntryCountToRejectNewAppends;
         this.failOnIndeterminateOperationState = config.failOnIndeterminateOperationState;
-        this.appendNopEntryOnLeaderElection = config.appendNopEntryOnLeaderElection;
     }
 
     public long getLeaderElectionTimeoutInMillis() {
@@ -164,15 +154,6 @@ public class RaftConfig {
 
     public RaftConfig setFailOnIndeterminateOperationState(boolean failOnIndeterminateOperationState) {
         this.failOnIndeterminateOperationState = failOnIndeterminateOperationState;
-        return this;
-    }
-
-    public boolean isAppendNopEntryOnLeaderElection() {
-        return appendNopEntryOnLeaderElection;
-    }
-
-    public RaftConfig setAppendNopEntryOnLeaderElection(boolean appendNopEntryOnLeaderElection) {
-        this.appendNopEntryOnLeaderElection = appendNopEntryOnLeaderElection;
         return this;
     }
 }

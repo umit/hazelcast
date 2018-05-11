@@ -181,6 +181,10 @@ public class RaftUtil {
     }
 
     public static LocalRaftGroup newGroupWithService(int nodeCount, RaftConfig raftConfig) {
-        return new LocalRaftGroup(nodeCount, raftConfig, SERVICE_NAME, RaftDataService.class);
+        return newGroupWithService(nodeCount, raftConfig, false);
+    }
+
+    public static LocalRaftGroup newGroupWithService(int nodeCount, RaftConfig raftConfig, boolean appendNopEntryOnLeaderElection) {
+        return new LocalRaftGroup(nodeCount, raftConfig, SERVICE_NAME, RaftDataService.class, appendNopEntryOnLeaderElection);
     }
 }
