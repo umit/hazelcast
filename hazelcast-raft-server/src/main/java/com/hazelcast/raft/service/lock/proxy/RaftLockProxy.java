@@ -1,6 +1,5 @@
 package com.hazelcast.raft.service.lock.proxy;
 
-import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.ICondition;
@@ -97,18 +96,11 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
         UUID invUid = UuidUtil.newUnsecureUUID();
         ICompletableFuture future =
                 raftInvocationManager.invoke(groupId, new UnlockOp(name, sessionId, ThreadUtil.getThreadId(), invUid));
-        future.andThen(new ExecutionCallback() {
-            @Override
-            public void onResponse(Object response) {
-                releaseSession(sessionId);
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-                releaseSession(sessionId);
-            }
-        });
-        join(future);
+        try {
+            join(future);
+        } finally {
+            releaseSession(sessionId);
+        }
     }
 
     @Override
