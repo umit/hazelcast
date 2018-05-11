@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * TODO: Javadoc Pending...
@@ -66,14 +67,18 @@ public class SessionManagerService implements ManagedService, SnapshotAwareServi
     public void restoreSnapshot(RaftGroupId raftGroupId, long commitIndex, SessionRegistry registry) {
     }
 
-    public long createNewSession(RaftGroupId groupId) {
+    public SessionResponse createNewSession(RaftGroupId groupId) {
         SessionRegistry registry = registries.get(groupId);
         if (registry == null) {
             registry = new SessionRegistry(groupId);
             registries.put(groupId, registry);
         }
         // TODO: schedule expiration
-        return registry.createNewSession();
+        return new SessionResponse(registry.createNewSession(), getSessionTimeToLiveMillis());
+    }
+
+    private long getSessionTimeToLiveMillis() {
+        return TimeUnit.SECONDS.toMillis(raftService.getConfig().getSessionTimeToLiveSeconds());
     }
 
     public boolean invalidateSession(RaftGroupId groupId, long sessionId) {
