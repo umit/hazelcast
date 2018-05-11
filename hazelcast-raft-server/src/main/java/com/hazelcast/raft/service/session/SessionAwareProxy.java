@@ -44,7 +44,7 @@ public abstract class SessionAwareProxy {
         sessionManager.releaseSession(groupId, sessionId);
     }
 
-    public void invalidateSession(long sessionId) {
+    protected void invalidateSession(long sessionId) {
         sessionManager.invalidateSession(groupId, sessionId);
     }
 }
