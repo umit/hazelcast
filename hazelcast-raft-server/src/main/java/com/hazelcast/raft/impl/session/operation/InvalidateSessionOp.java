@@ -20,7 +20,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.session.SessionManagerService;
+import com.hazelcast.raft.impl.session.RaftSessionService;
 
 import java.io.IOException;
 
@@ -34,13 +34,13 @@ public class InvalidateSessionOp extends RaftOp {
 
     @Override
     protected Object doRun(RaftGroupId groupId, long commitIndex) throws Exception {
-        SessionManagerService service = getService();
+        RaftSessionService service = getService();
         return service.invalidateSession(groupId, sessionId);
     }
 
     @Override
     public String getServiceName() {
-        return SessionManagerService.SERVICE_NAME;
+        return RaftSessionService.SERVICE_NAME;
     }
 
     @Override

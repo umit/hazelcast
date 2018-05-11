@@ -18,7 +18,7 @@ package com.hazelcast.raft.impl.session.operation;
 
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.session.SessionManagerService;
+import com.hazelcast.raft.impl.session.RaftSessionService;
 
 /**
  * TODO: Javadoc Pending...
@@ -27,12 +27,12 @@ public class CreateSessionOp extends RaftOp {
 
     @Override
     protected Object doRun(RaftGroupId groupId, long commitIndex) {
-        SessionManagerService service = getService();
+        RaftSessionService service = getService();
         return service.createNewSession(groupId);
     }
 
     @Override
     public String getServiceName() {
-        return SessionManagerService.SERVICE_NAME;
+        return RaftSessionService.SERVICE_NAME;
     }
 }

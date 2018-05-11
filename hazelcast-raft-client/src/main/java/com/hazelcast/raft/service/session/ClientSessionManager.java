@@ -23,7 +23,7 @@ import com.hazelcast.raft.impl.session.SessionResponse;
  * TODO: Javadoc Pending...
  *
  */
-public class ClientSessionManager extends SessionManager {
+public class ClientSessionManager extends AbstractSessionManager {
     @Override
     protected SessionResponse requestNewSession(RaftGroupId groupId) {
         return null;
