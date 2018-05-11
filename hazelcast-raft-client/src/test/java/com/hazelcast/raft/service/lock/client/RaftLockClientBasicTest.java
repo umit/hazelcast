@@ -40,7 +40,7 @@ public class RaftLockClientBasicTest extends HazelcastRaftTestSupport {
     public void setup() {
         factory = new TestHazelcastFactory();
         Address[] raftAddresses = createAddresses(groupSize);
-        HazelcastInstance[] instances = newInstances(raftAddresses, groupSize, 0);
+        newInstances(raftAddresses, groupSize, 0);
 
         TestHazelcastFactory f = (TestHazelcastFactory) factory;
         HazelcastInstance client = f.newHazelcastClient();

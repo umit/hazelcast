@@ -12,12 +12,12 @@ public class LocalGetOp extends AbstractAtomicLongOp {
         super();
     }
 
-    public LocalGetOp(RaftGroupId groupId, String name) {
-        super(groupId, name);
+    public LocalGetOp(String name) {
+        super(name);
     }
 
     @Override
-    public Object doRun(long commitIndex) {
+    public Object doRun(RaftGroupId groupId, long commitIndex) {
         return getAtomicLong().value();
     }
 

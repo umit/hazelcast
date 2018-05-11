@@ -120,7 +120,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public ICompletableFuture<Long> addAndGetAsync(final long delta) {
-        return raftInvocationManager.invoke(groupId, new AddAndGetOp(groupId, name, delta));
+        return raftInvocationManager.invoke(groupId, new AddAndGetOp(name, delta));
     }
 
     @Override
@@ -135,12 +135,12 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public ICompletableFuture<Boolean> compareAndSetAsync(final long expect, final long update) {
-        return raftInvocationManager.invoke(groupId, new CompareAndSetOp(groupId, name, expect, update));
+        return raftInvocationManager.invoke(groupId, new CompareAndSetOp(name, expect, update));
     }
 
     @Override
     public ICompletableFuture<Long> getAndAddAsync(final long delta) {
-        return raftInvocationManager.invoke(groupId, new GetAndAddOp(groupId, name, delta));
+        return raftInvocationManager.invoke(groupId, new GetAndAddOp(name, delta));
     }
 
     @Override
@@ -155,7 +155,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public ICompletableFuture<Long> getAndSetAsync(final long newValue) {
-        return raftInvocationManager.invoke(groupId, new GetAndSetOp(groupId, name, newValue));
+        return raftInvocationManager.invoke(groupId, new GetAndSetOp(name, newValue));
     }
 
     @Override
@@ -185,7 +185,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
     }
 
     private ICompletableFuture<Long> doAlterAsync(final IFunction<Long, Long> function, final AlterResultType alterResultType) {
-        return raftInvocationManager.invoke(groupId, new AlterOp(groupId, name, function, alterResultType));
+        return raftInvocationManager.invoke(groupId, new AlterOp(name, function, alterResultType));
     }
 
     @Override
@@ -212,7 +212,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public <R> ICompletableFuture<R> applyAsync(final IFunction<Long, R> function) {
-        return raftInvocationManager.invoke(groupId, new ApplyOp<R>(groupId, name, function));
+        return raftInvocationManager.invoke(groupId, new ApplyOp<R>(name, function));
     }
 
     public long localGet(QueryPolicy queryPolicy) {
@@ -222,7 +222,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
     public ICompletableFuture<Long> localGetAsync(final QueryPolicy queryPolicy) {
         final SimpleCompletableFuture<Long> resultFuture = new SimpleCompletableFuture<Long>(null, null);
         ICompletableFuture<Long> localFuture =
-                raftInvocationManager.queryOnLocal(groupId, new LocalGetOp(groupId, name), queryPolicy);
+                raftInvocationManager.queryOnLocal(groupId, new LocalGetOp(name), queryPolicy);
 
         localFuture.andThen(new ExecutionCallback<Long>() {
             @Override
@@ -232,7 +232,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
             @Override
             public void onFailure(Throwable t) {
-                ICompletableFuture<Long> future = raftInvocationManager.query(groupId, new LocalGetOp(groupId, name), queryPolicy);
+                ICompletableFuture<Long> future = raftInvocationManager.query(groupId, new LocalGetOp(name), queryPolicy);
                 future.andThen(new ExecutionCallback<Long>() {
                     @Override
                     public void onResponse(Long response) {

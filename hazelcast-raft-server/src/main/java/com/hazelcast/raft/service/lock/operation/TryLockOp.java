@@ -14,12 +14,12 @@ public class TryLockOp extends AbstractLockOp {
     public TryLockOp() {
     }
 
-    public TryLockOp(RaftGroupId groupId, String name, String uid, long threadId, UUID invUid) {
-        super(groupId, name, uid, threadId, invUid);
+    public TryLockOp(String name, String uid, long threadId, UUID invUid) {
+        super(name, uid, threadId, invUid);
     }
 
     @Override
-    protected Object doRun(long commitIndex) {
+    protected Object doRun(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
         LockEndpoint endpoint = new LockEndpoint(uid, threadId);
         return service.acquire(groupId, name, endpoint, commitIndex, invUid, false);

@@ -31,7 +31,7 @@ public class CompleteRemoveEndpointOp extends RaftOp implements IdentifiedDataSe
     }
 
     @Override
-    protected Object doRun(long commitIndex) {
+    protected Object doRun(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
         metadataManager.completeRemoveEndpoint(endpoint, leftGroups);

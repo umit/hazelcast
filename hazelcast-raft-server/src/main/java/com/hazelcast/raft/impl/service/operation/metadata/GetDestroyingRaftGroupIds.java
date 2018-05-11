@@ -1,6 +1,7 @@
 package com.hazelcast.raft.impl.service.operation.metadata;
 
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.impl.RaftOp;
@@ -11,7 +12,7 @@ public class GetDestroyingRaftGroupIds extends RaftOp implements IdentifiedDataS
     }
 
     @Override
-    protected Object doRun(long commitIndex) {
+    protected Object doRun(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
         return service.getMetadataManager().getDestroyingRaftGroupIds();
     }

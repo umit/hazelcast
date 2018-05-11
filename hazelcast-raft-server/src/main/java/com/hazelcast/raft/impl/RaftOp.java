@@ -1,7 +1,9 @@
 package com.hazelcast.raft.impl;
 
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.spi.Operation;
 
+import static com.hazelcast.util.Preconditions.checkNotNull;
 import static com.hazelcast.util.Preconditions.checkTrue;
 
 /**
@@ -16,13 +18,14 @@ import static com.hazelcast.util.Preconditions.checkTrue;
  * They should perform the same action and produce the same result always,
  * independent of where and when they are executed.
  * <p>
- * {@link #doRun(long)} method must be implemented by subclasses.
+ * {@link #doRun(RaftGroupId, long)} method must be implemented by subclasses.
  */
 public abstract class RaftOp extends Operation {
 
     private static final int NA_COMMIT_INDEX = 0;
 
-    private long commitIndex = NA_COMMIT_INDEX;
+    private transient RaftGroupId groupId;
+    private transient long commitIndex = NA_COMMIT_INDEX;
 
     private Object response;
 
@@ -30,10 +33,24 @@ public abstract class RaftOp extends Operation {
      * Contains actual Raft operation logic. State change represented by this operation should be applied
      * and execution result should be returned to the caller.
      *
+     * @param groupId groupId of the specific Raft group
      * @param commitIndex commitIndex of the log entry containing this operation
      * @return result of the operation execution
      */
-    protected abstract Object doRun(long commitIndex) throws Exception;
+    protected abstract Object doRun(RaftGroupId groupId, long commitIndex) throws Exception;
+
+    public RaftGroupId getGroupId() {
+        return groupId;
+    }
+
+    public RaftOp setGroupId(RaftGroupId groupId) {
+        this.groupId = groupId;
+        return this;
+    }
+
+    public long getCommitIndex() {
+        return commitIndex;
+    }
 
     public final RaftOp setCommitIndex(long commitIndex) {
         checkTrue(commitIndex > NA_COMMIT_INDEX, "Cannot set commit index:" + commitIndex);
@@ -46,7 +63,9 @@ public abstract class RaftOp extends Operation {
 
     @Override
     public final void run() throws Exception {
-        response = doRun(commitIndex);
+        checkNotNull(groupId);
+        checkTrue(commitIndex > NA_COMMIT_INDEX, "Invalid commit index:" + commitIndex);
+        response = doRun(groupId, commitIndex);
     }
 
     @Override

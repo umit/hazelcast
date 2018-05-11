@@ -18,25 +18,18 @@ import java.io.IOException;
  */
 public class RestoreSnapshotOp extends RaftOp implements IdentifiedDataSerializable {
 
-    private RaftGroupId groupId;
-    private long commitIndex;
     private Object snapshot;
 
     public RestoreSnapshotOp() {
     }
 
-    public RestoreSnapshotOp(String serviceName, RaftGroupId groupId, long commitIndex, Object snapshot) {
-        this.groupId = groupId;
+    public RestoreSnapshotOp(String serviceName, Object snapshot) {
         setServiceName(serviceName);
-        this.commitIndex = commitIndex;
         this.snapshot = snapshot;
     }
 
     @Override
-    public Object doRun(long commitIndex) {
-        assert this.commitIndex == commitIndex :
-                " expected restore commit index: " + this.commitIndex + " given commit index: " + commitIndex;
-
+    public Object doRun(RaftGroupId groupId, long commitIndex) {
         SnapshotAwareService service = getService();
         service.restoreSnapshot(groupId, commitIndex, snapshot);
         return null;
@@ -45,16 +38,12 @@ public class RestoreSnapshotOp extends RaftOp implements IdentifiedDataSerializa
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeObject(groupId);
-        out.writeLong(commitIndex);
         out.writeObject(snapshot);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        groupId = in.readObject();
-        commitIndex = in.readLong();
         snapshot = in.readObject();
     }
 
@@ -70,7 +59,7 @@ public class RestoreSnapshotOp extends RaftOp implements IdentifiedDataSerializa
 
     @Override
     public String toString() {
-        return "RestoreSnapshotOp{" + "groupId='" + groupId + '\'' + ", commitIndex=" + commitIndex + ", snapshot="
-                + snapshot + '}';
+        return "RestoreSnapshotOp{" + "groupId='" + getGroupId() + '\'' + ", commitIndex=" + getCommitIndex()
+                + ", snapshot=" + snapshot + '}';
     }
 }

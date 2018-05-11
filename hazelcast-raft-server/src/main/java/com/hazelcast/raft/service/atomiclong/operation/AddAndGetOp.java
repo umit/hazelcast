@@ -18,13 +18,13 @@ public class AddAndGetOp extends AbstractAtomicLongOp {
     public AddAndGetOp() {
     }
 
-    public AddAndGetOp(RaftGroupId groupId, String name, long delta) {
-        super(groupId, name);
+    public AddAndGetOp(String name, long delta) {
+        super(name);
         this.delta = delta;
     }
 
     @Override
-    public Object doRun(long commitIndex) {
+    public Object doRun(RaftGroupId groupId, long commitIndex) {
         RaftAtomicLong atomic = getAtomicLong();
         return atomic.addAndGet(delta);
     }

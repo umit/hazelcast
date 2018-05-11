@@ -35,8 +35,8 @@ public class RaftAtomicLongClientBasicTest extends HazelcastRaftTestSupport {
     @Before
     public void setup() {
         factory = new TestHazelcastFactory();
-        Address[] raftAddresses = createAddresses(5);
-        HazelcastInstance[] instances = newInstances(raftAddresses, groupSize, 2);
+        Address[] raftAddresses = createAddresses(groupSize + 2);
+        newInstances(raftAddresses, groupSize, 2);
 
         TestHazelcastFactory f = (TestHazelcastFactory) factory;
         HazelcastInstance client = f.newHazelcastClient();
