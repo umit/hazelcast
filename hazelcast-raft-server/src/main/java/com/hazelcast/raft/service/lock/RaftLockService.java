@@ -31,12 +31,14 @@ public class RaftLockService implements ManagedService, SnapshotAwareService {
     public static final String SERVICE_NAME = "hz:raft:lockService";
 
     private final ConcurrentMap<Tuple2<RaftGroupId, String>, RaftLock> locks = new ConcurrentHashMap<Tuple2<RaftGroupId, String>, RaftLock>();
-    private volatile NodeEngine nodeEngine;
+    private final NodeEngine nodeEngine;
     private volatile RaftService raftService;
+    public RaftLockService(NodeEngine nodeEngine) {
+        this.nodeEngine = nodeEngine;
+    }
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
-        this.nodeEngine = nodeEngine;
         this.raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
     }
 

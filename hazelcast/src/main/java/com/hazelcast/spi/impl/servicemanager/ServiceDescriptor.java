@@ -16,18 +16,22 @@
 
 package com.hazelcast.spi.impl.servicemanager;
 
-/***
- * Provides information about remote services.
+import com.hazelcast.spi.NodeEngine;
+
+/**
+ * Descriptor of Hazelcast managed service;
  * <p/>
- * All possible providers will be looked for in different sources (like META-INF/services).
- * <p/>
- * examples:
- * <p/>
- * <pre>
- *     JetRemoteServiceProvider
- *     TreeRemoteServiceProvider
- * </pre>
+ * Used to describe a service provided by {@link ServiceDescriptorProvider}.
  */
-public interface RemoteServiceDescriptorProvider {
-    RemoteServiceDescriptor[] createRemoteServiceDescriptors();
+public interface ServiceDescriptor {
+    /**
+     * @return name of the service;
+     */
+    String getServiceName();
+
+    /**
+     * @param nodeEngine - Hazelcast Node Engine;
+     * @return Hazelcast service;
+     */
+    Object getService(NodeEngine nodeEngine);
 }

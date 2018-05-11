@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,13 @@
  * limitations under the License.
  */
 
-package com.hazelcast.raft.impl.session;
+package com.hazelcast.spi.impl.servicemanager;
 
-/**
- * TODO: Javadoc Pending...
+/***
+ * Provides information about services.
+ * <p/>
+ * All possible providers will be looked for in different sources (like META-INF/services).
  */
-public interface SessionAccessor {
-
-    enum SessionStatus {
-        UNKNOWN, EXPIRED, VALID
-    }
-
-    SessionStatus isValid(long sessionId);
-
-    void touch(long sessionId);
+public interface ServiceDescriptorProvider {
+    ServiceDescriptor[] createServiceDescriptors();
 }

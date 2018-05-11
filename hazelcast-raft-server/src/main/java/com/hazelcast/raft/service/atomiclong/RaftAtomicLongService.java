@@ -30,12 +30,15 @@ public class RaftAtomicLongService implements ManagedService, SnapshotAwareServi
     public static final String SERVICE_NAME = "hz:raft:atomicLongService";
 
     private final Map<Tuple2<RaftGroupId, String>, RaftAtomicLong> map = new ConcurrentHashMap<Tuple2<RaftGroupId, String>, RaftAtomicLong>();
-    private volatile NodeEngine nodeEngine;
+    private final NodeEngine nodeEngine;
     private volatile RaftService raftService;
+
+    public RaftAtomicLongService(NodeEngine nodeEngine) {
+        this.nodeEngine = nodeEngine;
+    }
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
-        this.nodeEngine = nodeEngine;
         this.raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
     }
 

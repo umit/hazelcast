@@ -14,31 +14,20 @@
  * limitations under the License.
  */
 
-package com.hazelcast.spi.impl.servicemanager;
+package com.hazelcast.serviceprovider;
+
 
 import com.hazelcast.spi.NodeEngine;
-import com.hazelcast.spi.RemoteService;
+import com.hazelcast.spi.impl.servicemanager.ServiceDescriptor;
 
-/**
- * Descriptor of Hazelcast remote service;
- * <p/>
- * Used to describe remote service and provided by com.hazelcast.spi.impl.servicemanager.RemoteServiceDescriptorProvider;
- * <p/>
- * Examples:
- * <pre>
- *      JetRemoteServiceDescriptor
- *      TreeRemoteServiceDescriptor
- * </pre>
- */
-public interface RemoteServiceDescriptor {
-    /**
-     * @return name of the service;
-     */
-    String getServiceName();
+public class TestServiceDescriptor implements ServiceDescriptor {
+    @Override
+    public String getServiceName() {
+        return TestRemoteService.SERVICE_NAME;
+    }
 
-    /**
-     * @param nodeEngine - Hazelcast Node Engine;
-     * @return Hazelcast RemoteService;
-     */
-    RemoteService getService(NodeEngine nodeEngine);
+    @Override
+    public Object getService(NodeEngine nodeEngine) {
+        return new TestRemoteService();
+    }
 }

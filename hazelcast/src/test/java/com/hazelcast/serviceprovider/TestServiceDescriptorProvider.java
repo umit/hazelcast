@@ -16,15 +16,15 @@
 
 package com.hazelcast.serviceprovider;
 
-import com.hazelcast.spi.impl.servicemanager.RemoteServiceDescriptor;
-import com.hazelcast.spi.impl.servicemanager.RemoteServiceDescriptorProvider;
+import com.hazelcast.spi.impl.servicemanager.ServiceDescriptor;
+import com.hazelcast.spi.impl.servicemanager.ServiceDescriptorProvider;
 
-public class TestRemoteServiceDescriptorProvider implements RemoteServiceDescriptorProvider {
-    private final RemoteServiceDescriptor[] descriptors = new RemoteServiceDescriptor[1];
+public class TestServiceDescriptorProvider implements ServiceDescriptorProvider {
+    private final ServiceDescriptor[] descriptors = new ServiceDescriptor[1];
 
     @Override
-    public RemoteServiceDescriptor[] createRemoteServiceDescriptors() {
-        this.descriptors[0] = new TestRemoteServiceDescriptor();
+    public ServiceDescriptor[] createServiceDescriptors() {
+        this.descriptors[0] = new TestServiceDescriptor();
         return this.descriptors;
     }
 }

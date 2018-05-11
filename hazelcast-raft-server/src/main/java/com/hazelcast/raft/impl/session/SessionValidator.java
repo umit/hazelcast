@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+ *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,16 @@
  * limitations under the License.
  */
 
-package com.hazelcast.serviceprovider;
+package com.hazelcast.raft.impl.session;
 
+/**
+ * TODO: Javadoc Pending...
+ */
+public interface SessionAccessor {
 
-import com.hazelcast.spi.NodeEngine;
-import com.hazelcast.spi.RemoteService;
-import com.hazelcast.spi.impl.servicemanager.RemoteServiceDescriptor;
-
-public class TestRemoteServiceDescriptor implements RemoteServiceDescriptor {
-    @Override
-    public String getServiceName() {
-        return TestRemoteService.SERVICE_NAME;
+    enum SessionStatus {
+        UNKNOWN, EXPIRED, VALID
     }
 
-    @Override
-    public RemoteService getService(NodeEngine nodeEngine) {
-        return new TestRemoteService();
-    }
+    SessionStatus isValid(long sessionId);
 }

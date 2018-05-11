@@ -22,38 +22,30 @@ import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.session.SessionResponse;
 import com.hazelcast.raft.impl.session.operation.CreateSessionOp;
-import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.util.ExceptionUtil;
-
-import java.util.Properties;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class SessionManagerService extends AbstractSessionManager implements ManagedService {
+public class SessionManagerService extends AbstractSessionManager {
 
     public static String SERVICE_NAME = "hz:raft:sessionManager";
 
-    private volatile RaftInvocationManager raftInvocationManager;
+    private final NodeEngine nodeEngine;
 
-    @Override
-    public void init(NodeEngine nodeEngine, Properties properties) {
+    public SessionManagerService(NodeEngine nodeEngine) {
+        this.nodeEngine = nodeEngine;
+    }
+
+    private RaftInvocationManager getInvocationManager() {
         RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
-        this.raftInvocationManager = raftService.getInvocationManager();
-    }
-
-    @Override
-    public void reset() {
-    }
-
-    @Override
-    public void shutdown(boolean terminate) {
+        return raftService.getInvocationManager();
     }
 
     @Override
     protected SessionResponse requestNewSession(RaftGroupId groupId) {
-        ICompletableFuture<SessionResponse> future = raftInvocationManager.invoke(groupId, new CreateSessionOp());
+        ICompletableFuture<SessionResponse> future = getInvocationManager().invoke(groupId, new CreateSessionOp());
         try {
             return future.get();
         } catch (Exception e) {

@@ -2,15 +2,13 @@ package com.hazelcast.raft.service.atomiclong.client;
 
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.config.Config;
-import com.hazelcast.config.ServiceConfig;
+import com.hazelcast.config.raft.RaftAtomicLongConfig;
+import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.nio.Address;
-import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
-import com.hazelcast.config.raft.RaftAtomicLongConfig;
-import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
@@ -183,11 +181,7 @@ public class RaftAtomicLongClientBasicTest extends HazelcastRaftTestSupport {
 
     @Override
     protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
-        ServiceConfig atomicLongServiceConfig = new ServiceConfig().setEnabled(true)
-                .setName(RaftAtomicLongService.SERVICE_NAME).setClassName(RaftAtomicLongService.class.getName());
-
         Config config = super.createConfig(raftAddresses, metadataGroupSize);
-        config.getServicesConfig().addServiceConfig(atomicLongServiceConfig);
 
         RaftAtomicLongConfig atomicLongConfig = new RaftAtomicLongConfig(name, new RaftGroupConfig(name, groupSize));
         config.addRaftAtomicLongConfig(atomicLongConfig);
