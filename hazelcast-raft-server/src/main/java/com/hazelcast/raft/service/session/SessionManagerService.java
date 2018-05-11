@@ -19,19 +19,36 @@ package com.hazelcast.raft.service.session;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
+import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.session.SessionResponse;
 import com.hazelcast.raft.impl.session.operation.CreateSessionOp;
+import com.hazelcast.spi.ManagedService;
+import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.util.ExceptionUtil;
+
+import java.util.Properties;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class MemberSessionManager extends SessionManager {
+public class SessionManagerService extends AbstractSessionManager implements ManagedService {
 
-    private final RaftInvocationManager raftInvocationManager;
+    public static String SERVICE_NAME = "hz:raft:sessionManager";
 
-    public MemberSessionManager(RaftInvocationManager raftInvocationManager) {
-        this.raftInvocationManager = raftInvocationManager;
+    private volatile RaftInvocationManager raftInvocationManager;
+
+    @Override
+    public void init(NodeEngine nodeEngine, Properties properties) {
+        RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
+        this.raftInvocationManager = raftService.getInvocationManager();
+    }
+
+    @Override
+    public void reset() {
+    }
+
+    @Override
+    public void shutdown(boolean terminate) {
     }
 
     @Override

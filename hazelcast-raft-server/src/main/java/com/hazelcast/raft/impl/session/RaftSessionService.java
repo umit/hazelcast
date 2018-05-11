@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * TODO: Javadoc Pending...
  */
-public class SessionManagerService implements ManagedService, SnapshotAwareService<SessionRegistry> {
+public class RaftSessionService implements ManagedService, SnapshotAwareService<SessionRegistry> {
 
     public static String SERVICE_NAME = "hz:core:raftSession";
 
@@ -40,7 +40,7 @@ public class SessionManagerService implements ManagedService, SnapshotAwareServi
 
     private final Map<RaftGroupId, SessionRegistry> registries = new ConcurrentHashMap<RaftGroupId, SessionRegistry>();
 
-    public SessionManagerService(NodeEngine nodeEngine) {
+    public RaftSessionService(NodeEngine nodeEngine) {
         this.nodeEngine = nodeEngine;
     }
 
