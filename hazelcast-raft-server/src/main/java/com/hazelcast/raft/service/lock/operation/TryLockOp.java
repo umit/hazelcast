@@ -1,7 +1,6 @@
 package com.hazelcast.raft.service.lock.operation;
 
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.service.lock.LockEndpoint;
 import com.hazelcast.raft.service.lock.RaftLockService;
 
 import java.util.UUID;
@@ -14,14 +13,13 @@ public class TryLockOp extends AbstractLockOp {
     public TryLockOp() {
     }
 
-    public TryLockOp(String name, String uid, long threadId, UUID invUid) {
-        super(name, uid, threadId, invUid);
+    public TryLockOp(String name, long sessionId, long threadId, UUID invUid) {
+        super(name, sessionId, threadId, invUid);
     }
 
     @Override
     protected Object doRun(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
-        LockEndpoint endpoint = new LockEndpoint(uid, threadId);
-        return service.acquire(groupId, name, endpoint, commitIndex, invUid, false);
+        return service.acquire(groupId, name, getLockEndpoint(), commitIndex, invUid, false);
     }
 }

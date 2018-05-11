@@ -1,14 +1,14 @@
 package com.hazelcast.raft.impl.service;
 
+import com.hazelcast.config.raft.RaftConfig;
+import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.QueryPolicy;
-import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.raft.exception.CannotRunLocalQueryException;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.NotLeaderException;
@@ -226,7 +226,7 @@ public class RaftInvocationManager {
         AbstractRaftInvocationFuture(RaftGroupId groupId) {
             super(nodeEngine, RaftInvocationManager.this.logger);
             this.groupId = groupId;
-            partitionId = nodeEngine.getPartitionService().getPartitionId(groupId);
+            this.partitionId = nodeEngine.getPartitionService().getPartitionId(groupId);
         }
 
         @Override
