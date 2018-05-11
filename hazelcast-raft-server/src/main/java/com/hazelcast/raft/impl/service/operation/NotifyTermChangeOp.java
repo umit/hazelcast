@@ -14,40 +14,43 @@
  * limitations under the License.
  */
 
-package com.hazelcast.raft.impl.session.operation;
+package com.hazelcast.raft.impl.service.operation;
 
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.session.RaftSessionService;
-import com.hazelcast.raft.impl.session.RaftSessionServiceDataSerializerHook;
+import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
+import com.hazelcast.raft.impl.service.TermChangeAwareService;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class CreateSessionOp extends RaftOp implements IdentifiedDataSerializable {
-
-    public CreateSessionOp() {
-    }
+public class NotifyTermChangeOp extends RaftOp implements IdentifiedDataSerializable {
 
     @Override
     protected Object doRun(RaftGroupId groupId, long commitIndex) {
-        RaftSessionService service = getService();
-        return service.createNewSession(groupId);
-    }
+        ILogger logger = getNodeEngine().getLogger(getClass());
+        for (TermChangeAwareService service : getNodeEngine().getServices(TermChangeAwareService.class)) {
+            try {
+                service.onNewTermCommit(groupId);
+            } catch (Exception e) {
+                logger.severe("onNewTermCommit() failed for service: " + service.getClass().getSimpleName()
+                        + " and raft group: " + groupId, e);
+            }
+        }
 
-    @Override
-    public String getServiceName() {
-        return RaftSessionService.SERVICE_NAME;
+        return null;
     }
 
     @Override
     public int getFactoryId() {
-        return RaftSessionServiceDataSerializerHook.F_ID;
+        return RaftServiceDataSerializerHook.F_ID;
     }
 
     @Override
     public int getId() {
-        return RaftSessionServiceDataSerializerHook.CREATE_SESSION;
+        return RaftServiceDataSerializerHook.NOTIFY_TERM_CHANGE_OP;
     }
+
 }

@@ -272,7 +272,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
     public void when_appendNopEntryOnLeaderElection_then_canMakeMemberChangeAfterNopEntryCommitted() {
         // https://groups.google.com/forum/#!msg/raft-dev/t4xj6dJTP6E/d2D9LrWRza8J
 
-        group = newGroupWithService(3, new RaftConfig().setAppendNopEntryOnLeaderElection(true));
+        group = newGroupWithService(3, new RaftConfig(), true);
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();

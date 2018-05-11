@@ -16,11 +16,16 @@
 
 package com.hazelcast.raft.impl.session;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+
+import java.io.IOException;
+
 /**
  * TODO: Javadoc Pending...
- *
  */
-public class SessionResponse {
+public class SessionResponse implements IdentifiedDataSerializable {
 
     private long sessionId;
 
@@ -40,5 +45,32 @@ public class SessionResponse {
 
     public long getSessionTTL() {
         return sessionTTL;
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftSessionServiceDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftSessionServiceDataSerializerHook.SESSION_RESPONSE;
+    }
+
+    @Override
+    public void writeData(ObjectDataOutput out) throws IOException {
+        out.writeLong(sessionId);
+        out.writeLong(sessionTTL);
+    }
+
+    @Override
+    public void readData(ObjectDataInput in) throws IOException {
+        sessionId = in.readLong();
+        sessionTTL = in.readLong();
+    }
+
+    @Override
+    public String toString() {
+        return "SessionResponse{" + "sessionId=" + sessionId + ", sessionTTL=" + sessionTTL + '}';
     }
 }

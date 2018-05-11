@@ -5,6 +5,7 @@ import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
+import com.hazelcast.raft.impl.service.operation.NotifyTermChangeOp;
 import com.hazelcast.raft.impl.service.operation.integration.AppendFailureResponseOp;
 import com.hazelcast.raft.impl.service.operation.integration.AppendRequestOp;
 import com.hazelcast.raft.impl.service.operation.integration.AppendSuccessResponseOp;
@@ -67,6 +68,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int CREATE_RAFT_NODE_OP = 27;
     public static final int TERMINATE_RAFT_GROUP_OP = 28;
     public static final int RESTORE_SNAPSHOT_OP = 29;
+    public static final int NOTIFY_TERM_CHANGE_OP = 30;
 
     @Override
     public int getFactoryId() {
@@ -137,6 +139,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new TerminateRaftGroupOp();
                     case RESTORE_SNAPSHOT_OP:
                         return new RestoreSnapshotOp();
+                    case NOTIFY_TERM_CHANGE_OP:
+                        return new NotifyTermChangeOp();
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
             }

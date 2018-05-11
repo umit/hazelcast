@@ -20,6 +20,7 @@ import com.hazelcast.raft.impl.dto.PreVoteRequest;
 import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
+import com.hazelcast.raft.impl.log.NopEntry;
 import com.hazelcast.raft.impl.service.RestoreSnapshotRaftRunnable;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.version.MemberVersion;
@@ -50,6 +51,7 @@ public class LocalRaftIntegration implements RaftIntegration {
     private final RaftEndpoint localEndpoint;
     private final RaftGroupId raftGroupId;
     private final SnapshotAwareService service;
+    private final boolean appendNopEntryOnLeaderElection;
     private final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ConcurrentMap<RaftEndpoint, RaftNodeImpl> nodes = new ConcurrentHashMap<RaftEndpoint, RaftNodeImpl>();
     private final LoggingServiceImpl loggingService;
@@ -57,10 +59,12 @@ public class LocalRaftIntegration implements RaftIntegration {
     private final Set<EndpointDropEntry> endpointDropRules = Collections.newSetFromMap(new ConcurrentHashMap<EndpointDropEntry, Boolean>());
     private final Set<Class> dropAllRules = Collections.newSetFromMap(new ConcurrentHashMap<Class, Boolean>());
 
-    LocalRaftIntegration(TestRaftEndpoint localEndpoint, RaftGroupId raftGroupId, SnapshotAwareService service) {
+    LocalRaftIntegration(TestRaftEndpoint localEndpoint, RaftGroupId raftGroupId, SnapshotAwareService service,
+                         boolean appendNopEntryOnLeaderElection) {
         this.localEndpoint = localEndpoint;
         this.raftGroupId = raftGroupId;
         this.service = service;
+        this.appendNopEntryOnLeaderElection = appendNopEntryOnLeaderElection;
         this.loggingService = new LoggingServiceImpl("dev", "log4j2", BuildInfoProvider.getBuildInfo());
         loggingService.setThisMember(getThisMember(localEndpoint));
     }
@@ -97,6 +101,11 @@ public class LocalRaftIntegration implements RaftIntegration {
     @Override
     public SimpleCompletableFuture newCompletableFuture() {
         return new SimpleCompletableFuture(scheduledExecutor, loggingService.getLogger(getClass()));
+    }
+
+    @Override
+    public Object getAppendedEntryOnLeaderElection() {
+        return appendNopEntryOnLeaderElection ? new NopEntry() : null;
     }
 
     @Override

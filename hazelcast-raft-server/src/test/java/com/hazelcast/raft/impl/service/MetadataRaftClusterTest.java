@@ -487,7 +487,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
     @Override
     protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
         Config config = super.createConfig(raftAddresses, metadataGroupSize);
-        config.getRaftServiceConfig().getRaftConfig().setAppendNopEntryOnLeaderElection(true).setLeaderHeartbeatPeriodInMillis(1000);
+        config.getRaftServiceConfig().getRaftConfig().setLeaderHeartbeatPeriodInMillis(1000);
         return config;
     }
 
