@@ -20,6 +20,7 @@ import com.hazelcast.util.Preconditions;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * TODO: Javadoc Pending...
@@ -32,6 +33,10 @@ public class RaftServiceConfig {
     private RaftConfig raftConfig = new RaftConfig();
 
     private final Map<String, RaftGroupConfig> groupConfigs = new HashMap<String, RaftGroupConfig>();
+
+    private long sessionTimeToLiveSeconds = 30;
+
+    private long sessionHeartbeatIntervalMillis = 5;
 
     public RaftServiceConfig() {
     }
@@ -74,6 +79,30 @@ public class RaftServiceConfig {
         Preconditions.checkTrue(groupConfigs.containsKey(groupConfig.getName()),
                 "Group config '" + groupConfig.getName() + "' already exists!");
         groupConfigs.put(groupConfig.getName(), groupConfig);
+        return this;
+    }
+
+    public long getSessionTimeToLiveSeconds() {
+        return sessionTimeToLiveSeconds;
+    }
+
+    public RaftServiceConfig setSessionTimeToLiveSeconds(long sessionTimeToLiveSeconds) {
+        Preconditions.checkPositive(sessionTimeToLiveSeconds, "Session TTL should be greater than zero!");
+        Preconditions.checkTrue(TimeUnit.SECONDS.toMillis(sessionTimeToLiveSeconds) > sessionHeartbeatIntervalMillis,
+                "Session timeout should be greater than heartbeat interval!");
+        this.sessionTimeToLiveSeconds = sessionTimeToLiveSeconds;
+        return this;
+    }
+
+    public long getSessionHeartbeatIntervalMillis() {
+        return sessionHeartbeatIntervalMillis;
+    }
+
+    public RaftServiceConfig setSessionHeartbeatIntervalMillis(long sessionHeartbeatIntervalMillis) {
+        Preconditions.checkPositive(sessionTimeToLiveSeconds, "Session heartbeat interval should be greater than zero!");
+        Preconditions.checkTrue(TimeUnit.SECONDS.toMillis(sessionTimeToLiveSeconds) > sessionHeartbeatIntervalMillis,
+                "Session TTL should be greater than heartbeat interval!");
+        this.sessionHeartbeatIntervalMillis = sessionHeartbeatIntervalMillis;
         return this;
     }
 }
