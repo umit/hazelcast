@@ -5,11 +5,11 @@ package com.hazelcast.raft.service.lock;
  *
  */
 public class LockEndpoint {
-    public final String uid;
+    public final long sessionId;
     public final long threadId;
 
-    public LockEndpoint(String uid, long threadId) {
-        this.uid = uid;
+    public LockEndpoint(long sessionId, long threadId) {
+        this.sessionId = sessionId;
         this.threadId = threadId;
     }
 
@@ -21,13 +21,18 @@ public class LockEndpoint {
         if (!(o instanceof LockEndpoint)) {
             return false;
         }
+
         LockEndpoint that = (LockEndpoint) o;
-        return threadId == that.threadId && uid.equals(that.uid);
+
+        if (sessionId != that.sessionId) {
+            return false;
+        }
+        return threadId == that.threadId;
     }
 
     @Override
     public int hashCode() {
-        int result = uid.hashCode();
+        int result = (int) (sessionId ^ (sessionId >>> 32));
         result = 31 * result + (int) (threadId ^ (threadId >>> 32));
         return result;
     }

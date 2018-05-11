@@ -85,6 +85,11 @@ public abstract class AbstractSessionManager {
         }
     }
 
+    public long getSession(RaftGroupId groupId) {
+        ClientSession session = sessions.get(groupId);
+        return session != null ? session.id : -1;
+    }
+
     private static class ClientSession {
         private final long id;
         private final AtomicInteger operationsCount = new AtomicInteger();

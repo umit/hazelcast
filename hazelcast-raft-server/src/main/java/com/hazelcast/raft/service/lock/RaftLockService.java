@@ -9,12 +9,17 @@ import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;
+import com.hazelcast.raft.impl.session.SessionExpiredException;
+import com.hazelcast.raft.impl.session.SessionValidator;
+import com.hazelcast.raft.impl.session.SessionAwareService;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
+import com.hazelcast.raft.service.session.SessionManagerService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,13 +31,15 @@ import static com.hazelcast.util.Preconditions.checkNotNull;
 /**
  * TODO: Javadoc Pending...
  */
-public class RaftLockService implements ManagedService, SnapshotAwareService {
+public class RaftLockService implements ManagedService, SnapshotAwareService, SessionAwareService {
 
     public static final String SERVICE_NAME = "hz:raft:lockService";
 
     private final ConcurrentMap<Tuple2<RaftGroupId, String>, RaftLock> locks = new ConcurrentHashMap<Tuple2<RaftGroupId, String>, RaftLock>();
     private final NodeEngine nodeEngine;
     private volatile RaftService raftService;
+    private volatile SessionValidator validator;
+
     public RaftLockService(NodeEngine nodeEngine) {
         this.nodeEngine = nodeEngine;
     }
@@ -63,9 +70,29 @@ public class RaftLockService implements ManagedService, SnapshotAwareService {
         // TODO fixit
     }
 
-    public ILock createNew(String name, String uuid) throws ExecutionException, InterruptedException {
+    @Override
+    public void setSessionValidator(SessionValidator validator) {
+        this.validator = validator;
+    }
+
+    @Override
+    public void invalidateSession(RaftGroupId groupId, long sessionId) {
+        for (Map.Entry<Tuple2<RaftGroupId, String>, RaftLock> entry : locks.entrySet()) {
+            if (groupId.equals(entry.getKey().element1)) {
+                RaftLock lock = entry.getValue();
+                LockEndpoint owner = lock.owner();
+                if (owner != null && sessionId == owner.sessionId) {
+                    Collection<Long> indices = lock.release(owner, Integer.MAX_VALUE, null);
+                    notifyWaiters(groupId, indices);
+                }
+            }
+        }
+    }
+
+    public ILock createNew(String name) throws ExecutionException, InterruptedException {
         RaftGroupId groupId = createNewAsync(name).get();
-        return new RaftLockProxy(name, groupId, raftService.getInvocationManager(), uuid);
+        SessionManagerService sessionManager = nodeEngine.getService(SessionManagerService.SERVICE_NAME);
+        return new RaftLockProxy(name, groupId, sessionManager, raftService.getInvocationManager());
     }
 
     public ICompletableFuture<RaftGroupId> createNewAsync(String name) {
@@ -85,8 +112,8 @@ public class RaftLockService implements ManagedService, SnapshotAwareService {
         return nodeEngine.getConfig().findRaftLockConfig(name);
     }
 
-    public RaftLockProxy newProxy(String name, RaftGroupId groupId, String uid) {
-        return new RaftLockProxy(name, groupId, raftService.getInvocationManager(), uid);
+    public RaftLockProxy newProxy(String name, RaftGroupId groupId, String sessionId) {
+        throw new UnsupportedOperationException();
     }
 
     private RaftLock getRaftLock(RaftGroupId groupId, String name) {
@@ -102,13 +129,25 @@ public class RaftLockService implements ManagedService, SnapshotAwareService {
     }
 
     public boolean acquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invUid, boolean wait) {
-        RaftLock raftLock = getRaftLock(groupId, name);
-        return raftLock.acquire(endpoint, commitIndex, invUid, wait);
+        SessionValidator.SessionStatus sessionStatus = validator.isValid(groupId, endpoint.sessionId);
+        if (sessionStatus == SessionValidator.SessionStatus.VALID) {
+            RaftLock raftLock = getRaftLock(groupId, name);
+            return raftLock.acquire(endpoint, commitIndex, invUid, wait);
+        }
+        throw new SessionExpiredException(endpoint.sessionId);
     }
 
     public void release(RaftGroupId groupId, String name, LockEndpoint endpoint, UUID invUid) {
-        RaftLock raftLock = getRaftLock(groupId, name);
-        Collection<Long> indices = raftLock.release(endpoint, invUid);
+        SessionValidator.SessionStatus sessionStatus = validator.isValid(groupId, endpoint.sessionId);
+        if (sessionStatus == SessionValidator.SessionStatus.VALID) {
+            RaftLock raftLock = getRaftLock(groupId, name);
+            Collection<Long> indices = raftLock.release(endpoint, invUid);
+            notifyWaiters(groupId, indices);
+        }
+        throw new IllegalMonitorStateException();
+    }
+
+    private void notifyWaiters(RaftGroupId groupId, Collection<Long> indices) {
         if (!indices.isEmpty()) {
             RaftNodeImpl raftNode = (RaftNodeImpl) raftService.getRaftNode(groupId);
             for (Long index : indices) {

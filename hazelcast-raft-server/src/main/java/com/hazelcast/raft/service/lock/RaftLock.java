@@ -16,7 +16,7 @@ import java.util.UUID;
  * TODO: Javadoc Pending...
  *
  */
-public class RaftLock {
+class RaftLock {
 
     private final RaftGroupId groupId;
     private final String name;
@@ -26,12 +26,12 @@ public class RaftLock {
     private UUID refUid;
     private LinkedList<Tuple3<LockEndpoint, Long, UUID>> waiters = new LinkedList<Tuple3<LockEndpoint, Long, UUID>>();
 
-    public RaftLock(RaftGroupId groupId, String name) {
+    RaftLock(RaftGroupId groupId, String name) {
         this.groupId = groupId;
         this.name = name;
     }
 
-    public boolean acquire(LockEndpoint endpoint, long commitIndex, UUID invUid, boolean wait) {
+    boolean acquire(LockEndpoint endpoint, long commitIndex, UUID invUid, boolean wait) {
         if (invUid.equals(refUid)) {
             return true;
         }
@@ -47,14 +47,19 @@ public class RaftLock {
         return false;
     }
 
-    public Collection<Long> release(LockEndpoint endpoint, UUID invUid) {
+    Collection<Long> release(LockEndpoint endpoint, UUID invUid) {
+        return release(endpoint, 1, invUid);
+    }
+
+    Collection<Long> release(LockEndpoint endpoint, int releaseCount, UUID invUid) {
         if (invUid.equals(refUid)) {
             return Collections.emptyList();
         }
         if (endpoint.equals(owner)) {
             refUid = invUid;
 
-            if (--lockCount > 0) {
+            lockCount -= Math.min(releaseCount, lockCount);
+            if (lockCount > 0) {
                 return Collections.emptyList();
             }
 
@@ -84,8 +89,11 @@ public class RaftLock {
         throw new IllegalMonitorStateException("Current thread is not owner of the lock!");
     }
 
-    public Tuple2<LockEndpoint, Integer> lockCount() {
+    Tuple2<LockEndpoint, Integer> lockCount() {
         return Tuple2.of(owner, lockCount);
     }
 
+    LockEndpoint owner() {
+        return owner;
+    }
 }

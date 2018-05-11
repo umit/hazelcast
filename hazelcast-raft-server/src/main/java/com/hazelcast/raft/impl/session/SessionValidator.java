@@ -16,14 +16,16 @@
 
 package com.hazelcast.raft.impl.session;
 
+import com.hazelcast.raft.RaftGroupId;
+
 /**
  * TODO: Javadoc Pending...
  */
-public interface SessionAccessor {
+public interface SessionValidator {
 
     enum SessionStatus {
         UNKNOWN, EXPIRED, VALID
     }
 
-    SessionStatus isValid(long sessionId);
+    SessionStatus isValid(RaftGroupId groupId, long sessionId);
 }

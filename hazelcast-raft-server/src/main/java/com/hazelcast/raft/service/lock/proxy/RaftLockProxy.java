@@ -1,5 +1,6 @@
 package com.hazelcast.raft.service.lock.proxy;
 
+import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.ICondition;
@@ -8,11 +9,14 @@ import com.hazelcast.instance.HazelcastInstanceImpl;
 import com.hazelcast.instance.HazelcastInstanceProxy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
+import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.raft.service.lock.RaftLockService;
 import com.hazelcast.raft.service.lock.operation.GetLockCountOp;
 import com.hazelcast.raft.service.lock.operation.LockOp;
 import com.hazelcast.raft.service.lock.operation.TryLockOp;
 import com.hazelcast.raft.service.lock.operation.UnlockOp;
+import com.hazelcast.raft.service.session.SessionAwareProxy;
+import com.hazelcast.raft.service.session.SessionManagerService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.ThreadUtil;
@@ -24,18 +28,16 @@ import java.util.concurrent.locks.Condition;
 
 import static com.hazelcast.raft.service.lock.RaftLockService.SERVICE_NAME;
 
-public class RaftLockProxy implements ILock {
+public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     private final String name;
-    private final RaftGroupId groupId;
     private final RaftInvocationManager raftInvocationManager;
-    private final String uid;
 
     public static ILock create(HazelcastInstance instance, String name) {
         NodeEngine nodeEngine = getNodeEngine(instance);
         try {
             RaftLockService service = nodeEngine.getService(SERVICE_NAME);
-            return service.createNew(name, nodeEngine.getLocalMember().getUuid());
+            return service.createNew(name);
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
@@ -53,48 +55,60 @@ public class RaftLockProxy implements ILock {
         return instanceImpl.node.getNodeEngine();
     }
 
-    public RaftLockProxy(String name, RaftGroupId groupId, RaftInvocationManager invocationManager, String uid) {
+    public RaftLockProxy(String name, RaftGroupId groupId, SessionManagerService sessionManager,
+            RaftInvocationManager invocationManager) {
+        super(sessionManager, groupId);
         this.name = name;
-        this.groupId = groupId;
         this.raftInvocationManager = invocationManager;
-        this.uid = uid;
     }
 
     @Override
     public void lock() {
         UUID invUid = UuidUtil.newUnsecureUUID();
-        ICompletableFuture future = lockAsync(invUid);
-        join(future);
-    }
-
-    public ICompletableFuture lockAsync(UUID invUid) {
-        return raftInvocationManager.invoke(groupId, new LockOp(name, uid, ThreadUtil.getThreadId(), invUid));
-    }
-
-    @Override
-    public void unlock() {
-        UUID invUid = UuidUtil.newUnsecureUUID();
-        ICompletableFuture future = unlockAsync(invUid);
-        join(future);
-    }
-
-    public ICompletableFuture unlockAsync(UUID invUid) {
-        return raftInvocationManager.invoke(groupId, new UnlockOp(name, uid, ThreadUtil.getThreadId(), invUid));
-    }
-
-    @Override
-    public Object getKey() {
-        throw new UnsupportedOperationException();
+        for (;;) {
+            long sessionId = acquireSession();
+            ICompletableFuture<Object> future =
+                    raftInvocationManager.invoke(groupId, new LockOp(name, sessionId, ThreadUtil.getThreadId(), invUid));
+            try {
+                join(future);
+                break;
+            } catch (SessionExpiredException e) {
+                invalidateSession(e.getSessionId());
+            }
+        }
     }
 
     @Override
     public boolean tryLock() {
+        // TODO: retry when session expired
         UUID invUid = UuidUtil.newUnsecureUUID();
-        return join(tryLockAsync(invUid));
+        long sessionId = acquireSession();
+        ICompletableFuture<Boolean> future =
+                raftInvocationManager.invoke(groupId, new TryLockOp(name, sessionId, ThreadUtil.getThreadId(), invUid));
+        return join(future);
     }
 
-    public ICompletableFuture<Boolean> tryLockAsync(UUID invUid) {
-        return raftInvocationManager.invoke(groupId, new TryLockOp(name, uid, ThreadUtil.getThreadId(), invUid));
+    @Override
+    public void unlock() {
+        final long sessionId = getSession();
+        if (sessionId < 0) {
+            throw new IllegalMonitorStateException();
+        }
+        UUID invUid = UuidUtil.newUnsecureUUID();
+        ICompletableFuture future =
+                raftInvocationManager.invoke(groupId, new UnlockOp(name, sessionId, ThreadUtil.getThreadId(), invUid));
+        future.andThen(new ExecutionCallback() {
+            @Override
+            public void onResponse(Object response) {
+                releaseSession(sessionId);
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                releaseSession(sessionId);
+            }
+        });
+        join(future);
     }
 
     @Override
@@ -134,8 +148,12 @@ public class RaftLockProxy implements ILock {
 
     @Override
     public boolean isLockedByCurrentThread() {
+        long sessionId = getSession();
+        if (sessionId < 0) {
+            return false;
+        }
         ICompletableFuture<Integer> future = raftInvocationManager
-                .invoke(groupId, new GetLockCountOp(name, uid, ThreadUtil.getThreadId()));
+                .invoke(groupId, new GetLockCountOp(name, sessionId, ThreadUtil.getThreadId()));
         return  join(future) > 0;
     }
 
@@ -165,6 +183,11 @@ public class RaftLockProxy implements ILock {
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
+    }
+
+    @Override
+    public Object getKey() {
+        throw new UnsupportedOperationException();
     }
 
     @Override

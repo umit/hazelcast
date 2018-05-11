@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * TODO: Javadoc Pending...
  */
-public class RaftSessionService implements ManagedService, SnapshotAwareService<SessionRegistry> {
+public class RaftSessionService implements ManagedService, SnapshotAwareService<SessionRegistry>, SessionValidator {
 
     public static String SERVICE_NAME = "hz:core:raftSession";
 
@@ -47,6 +47,10 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
         this.raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
+        Collection<SessionAwareService> services = nodeEngine.getServices(SessionAwareService.class);
+        for (SessionAwareService service : services) {
+            service.setSessionValidator(this);
+        }
     }
 
     @Override
@@ -98,5 +102,15 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
         for (SessionAwareService sessionAwareService : services) {
             sessionAwareService.invalidateSession(groupId, sessionId);
         }
+    }
+
+    @Override
+    public SessionStatus isValid(RaftGroupId groupId, long sessionId) {
+        SessionRegistry sessionRegistry = registries.get(groupId);
+        if (sessionRegistry == null) {
+            return SessionStatus.UNKNOWN;
+        }
+        // TODO: validate session
+        return SessionStatus.VALID;
     }
 }
