@@ -26,6 +26,4 @@ public interface SessionAccessor {
     }
 
     SessionStatus isValid(long sessionId);
-
-    void touch(long sessionId);
 }

@@ -1,12 +1,11 @@
 package com.hazelcast.raft.service.lock;
 
 import com.hazelcast.config.Config;
-import com.hazelcast.config.ServiceConfig;
+import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ILock;
 import com.hazelcast.nio.Address;
-import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -193,11 +192,7 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
 
     @Override
     protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
-        ServiceConfig lockServiceConfig = new ServiceConfig().setEnabled(true)
-                .setName(RaftLockService.SERVICE_NAME).setClassName(RaftLockService.class.getName());
-
         Config config = super.createConfig(raftAddresses, metadataGroupSize);
-        config.getServicesConfig().addServiceConfig(lockServiceConfig);
 
         RaftLockConfig lockConfig = new RaftLockConfig(name, new RaftGroupConfig(name, groupSize));
         config.addRaftLockConfig(lockConfig);

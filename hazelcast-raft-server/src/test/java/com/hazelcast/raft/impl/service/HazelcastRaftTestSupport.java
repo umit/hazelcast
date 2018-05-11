@@ -1,7 +1,6 @@
 package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.config.Config;
-import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.config.raft.RaftMember;
 import com.hazelcast.config.raft.RaftMetadataGroupConfig;
 import com.hazelcast.config.raft.RaftServiceConfig;
@@ -116,12 +115,6 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         RaftServiceConfig raftServiceConfig = new RaftServiceConfig().setMetadataGroupConfig(
                 new RaftMetadataGroupConfig().setMembers(asList(raftMembers)).setMetadataGroupSize(metadataGroupSize));
         config.setRaftServiceConfig(raftServiceConfig);
-
-        ServiceConfig serviceConfig = new ServiceConfig().setEnabled(true)
-                .setName(RaftService.SERVICE_NAME)
-                .setClassName(RaftService.class.getName());
-        config.getServicesConfig().addServiceConfig(serviceConfig);
-
         return config;
     }
 

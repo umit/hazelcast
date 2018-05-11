@@ -1,0 +1,2 @@
+com.hazelcast.raft.impl.RaftServiceDescriptorProvider
+com.hazelcast.raft.service.RaftDataServiceDescriptorProvider
