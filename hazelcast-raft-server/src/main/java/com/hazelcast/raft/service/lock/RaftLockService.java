@@ -10,7 +10,7 @@ import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
-import com.hazelcast.raft.impl.session.SessionValidator;
+import com.hazelcast.raft.impl.session.SessionAccessor;
 import com.hazelcast.raft.impl.session.SessionAwareService;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
@@ -38,7 +38,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService, Se
     private final ConcurrentMap<Tuple2<RaftGroupId, String>, RaftLock> locks = new ConcurrentHashMap<Tuple2<RaftGroupId, String>, RaftLock>();
     private final NodeEngine nodeEngine;
     private volatile RaftService raftService;
-    private volatile SessionValidator validator;
+    private volatile SessionAccessor sessionAccessor;
 
     public RaftLockService(NodeEngine nodeEngine) {
         this.nodeEngine = nodeEngine;
@@ -71,8 +71,8 @@ public class RaftLockService implements ManagedService, SnapshotAwareService, Se
     }
 
     @Override
-    public void setSessionValidator(SessionValidator validator) {
-        this.validator = validator;
+    public void setSessionAccessor(SessionAccessor accessor) {
+        this.sessionAccessor = accessor;
     }
 
     @Override
@@ -129,8 +129,8 @@ public class RaftLockService implements ManagedService, SnapshotAwareService, Se
     }
 
     public boolean acquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invUid, boolean wait) {
-        SessionValidator.SessionStatus sessionStatus = validator.isValid(groupId, endpoint.sessionId);
-        if (sessionStatus == SessionValidator.SessionStatus.VALID) {
+        if (sessionAccessor.isValid(groupId, endpoint.sessionId)) {
+            sessionAccessor.heartbeat(groupId, endpoint.sessionId);
             RaftLock raftLock = getRaftLock(groupId, name);
             return raftLock.acquire(endpoint, commitIndex, invUid, wait);
         }
@@ -138,8 +138,8 @@ public class RaftLockService implements ManagedService, SnapshotAwareService, Se
     }
 
     public void release(RaftGroupId groupId, String name, LockEndpoint endpoint, UUID invUid) {
-        SessionValidator.SessionStatus sessionStatus = validator.isValid(groupId, endpoint.sessionId);
-        if (sessionStatus == SessionValidator.SessionStatus.VALID) {
+        if (sessionAccessor.isValid(groupId, endpoint.sessionId)) {
+            sessionAccessor.heartbeat(groupId, endpoint.sessionId);
             RaftLock raftLock = getRaftLock(groupId, name);
             Collection<Long> indices = raftLock.release(endpoint, invUid);
             notifyWaiters(groupId, indices);

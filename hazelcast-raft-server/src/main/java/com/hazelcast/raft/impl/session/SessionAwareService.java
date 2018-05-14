@@ -23,7 +23,7 @@ import com.hazelcast.raft.RaftGroupId;
  */
 public interface SessionAwareService {
 
-    void setSessionValidator(SessionValidator accessor);
+    void setSessionAccessor(SessionAccessor accessor);
 
     void invalidateSession(RaftGroupId groupId, long sessionId);
 

@@ -21,11 +21,9 @@ import com.hazelcast.raft.RaftGroupId;
 /**
  * TODO: Javadoc Pending...
  */
-public interface SessionValidator {
+public interface SessionAccessor {
 
-    enum SessionStatus {
-        UNKNOWN, EXPIRED, VALID
-    }
+    boolean isValid(RaftGroupId groupId, long sessionId);
 
-    SessionStatus isValid(RaftGroupId groupId, long sessionId);
+    void heartbeat(RaftGroupId groupId, long sessionId);
 }
