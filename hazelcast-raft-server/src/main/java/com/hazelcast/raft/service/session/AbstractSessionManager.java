@@ -120,10 +120,11 @@ public abstract class AbstractSessionManager {
         }
 
         boolean isValid() {
-            if (operationsCount.get() > 0) {
-                return true;
-            }
-            return !isExpired(Clock.currentTimeMillis());
+            return isInUse() || !isExpired(Clock.currentTimeMillis());
+        }
+
+        boolean isInUse() {
+            return operationsCount.get() > 0;
         }
 
         private boolean isExpired(long timestamp) {
@@ -176,7 +177,9 @@ public abstract class AbstractSessionManager {
             for (Map.Entry<RaftGroupId, ClientSession> entry : sessions.entrySet()) {
                 RaftGroupId groupId = entry.getKey();
                 ClientSession session = entry.getValue();
-                prevHeartbeats.add(heartbeat(groupId, session.id));
+                if (session.isInUse()) {
+                    prevHeartbeats.add(heartbeat(groupId, session.id));
+                }
             }
         }
     }
