@@ -534,7 +534,7 @@ public class RaftNodeImpl implements RaftNode {
         }
 
         if (response == PostponedResponse.INSTANCE) {
-            // TODO: postpone sending response
+            // postpone sending response
             return;
         }
         completeFuture(entry.index(), response);

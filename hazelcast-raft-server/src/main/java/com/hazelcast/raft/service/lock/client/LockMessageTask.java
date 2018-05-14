@@ -26,7 +26,7 @@ public class LockMessageTask extends AbstractLockMessageTask {
         RaftLockProxy lockProxy = getProxy();
         ThreadUtil.setThreadId(threadId);
         try {
-            lockProxy.lockAsync(invUuid).andThen(this);
+//            lockProxy.lockAsync(invUuid).andThen(this);
         } finally {
             ThreadUtil.removeThreadId();
         }

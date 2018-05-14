@@ -33,12 +33,6 @@ public class Session {
         this.expirationTime = expirationTime;
     }
 
-    public Session(Session session) {
-        this.id = session.id;
-        this.creationTime = session.creationTime;
-        this.expirationTime = session.expirationTime;
-    }
-
     public long id() {
         return id;
     }
@@ -51,8 +45,13 @@ public class Session {
         return expirationTime;
     }
 
+    public boolean isExpired(long timestamp) {
+        return expirationTime() <= timestamp;
+    }
+
     @Override
     public String toString() {
         return "Session{" + "id=" + id + ", creationTime=" + creationTime + ", expirationTime=" + expirationTime + '}';
     }
+
 }

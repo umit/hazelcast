@@ -27,11 +27,11 @@ import com.hazelcast.raft.impl.session.operation.CloseSessionsOp;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.util.Clock;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
@@ -99,7 +99,7 @@ public class RaftSessionService
     public void onNewTermCommit(RaftGroupId groupId) {
         SessionRegistry registry = registries.get(groupId);
         if (registry != null) {
-            registry.shiftExpirationTimes(raftService.getConfig().getSessionHeartbeatIntervalMillis());
+            registry.shiftExpirationTimes(getHeartbeatIntervalMillis());
             logger.info("Session expiration times are shifted in " + groupId);
         }
     }
@@ -112,10 +112,10 @@ public class RaftSessionService
             logger.info("Created new session registry for " + groupId);
         }
 
-        // TODO: schedule expiration
-        long sessionId = registry.createNewSession(getSessionTimeToLiveMillis());
+        long sessionTTLMillis = getSessionTimeToLiveMillis();
+        long sessionId = registry.createNewSession(sessionTTLMillis);
         logger.info("Created new session: " + sessionId + " in " + groupId);
-        return new SessionResponse(sessionId, getSessionTimeToLiveMillis());
+        return new SessionResponse(sessionId, sessionTTLMillis, getHeartbeatIntervalMillis());
     }
 
     public void heartbeat(RaftGroupId groupId, long sessionId) {
@@ -134,18 +134,16 @@ public class RaftSessionService
             return;
         }
 
-        List<Long> closed = new ArrayList<Long>();
-        for (long sessionId : sessionIds) {
-            if (registry.closeSession(sessionId)) {
-                closed.add(sessionId);
+        Iterator<Long> iterator = sessionIds.iterator();
+        while (iterator.hasNext()) {
+            long sessionId = iterator.next();
+            if (!registry.closeSession(sessionId)) {
+                iterator.remove();
             }
         }
 
-        logger.info("Sessions: " + closed + " are closed in " + groupId);
-
-        for (long sessionId : closed) {
-            notifyServices(groupId, sessionId);
-        }
+        logger.info("Sessions: " + sessionIds + " are closed in " + groupId);
+        notifyServices(groupId, sessionIds);
     }
 
     // queried locally in tests
@@ -153,15 +151,22 @@ public class RaftSessionService
         return registries.get(groupId);
     }
 
+
+    private long getHeartbeatIntervalMillis() {
+        return raftService.getConfig().getSessionHeartbeatIntervalMillis();
+    }
+
     // queried locally
     private long getSessionTimeToLiveMillis() {
         return SECONDS.toMillis(raftService.getConfig().getSessionTimeToLiveSeconds());
     }
 
-    private void notifyServices(RaftGroupId groupId, long sessionId) {
+    private void notifyServices(RaftGroupId groupId, Collection<Long> sessionIds) {
         Collection<SessionAwareService> services = nodeEngine.getServices(SessionAwareService.class);
         for (SessionAwareService sessionAwareService : services) {
-            sessionAwareService.invalidateSession(groupId, sessionId);
+            for (long sessionId : sessionIds) {
+                sessionAwareService.invalidateSession(groupId, sessionId);
+            }
         }
     }
 
@@ -171,8 +176,11 @@ public class RaftSessionService
         if (sessionRegistry == null) {
             return SessionStatus.UNKNOWN;
         }
-        // TODO: validate session
-        return SessionStatus.VALID;
+        Session session = sessionRegistry.getSession(sessionId);
+        if (session == null) {
+            return SessionStatus.UNKNOWN;
+        }
+        return session.isExpired(Clock.currentTimeMillis()) ? SessionStatus.EXPIRED : SessionStatus.VALID;
     }
 
     private Map<RaftGroupId, Collection<Long>> getExpiredSessions() {

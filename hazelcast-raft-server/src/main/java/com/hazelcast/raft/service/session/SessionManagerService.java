@@ -22,8 +22,11 @@ import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.session.SessionResponse;
 import com.hazelcast.raft.impl.session.operation.CreateSessionOp;
+import com.hazelcast.raft.impl.session.operation.HeartbeatSessionOp;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.util.ExceptionUtil;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * TODO: Javadoc Pending...
@@ -44,6 +47,11 @@ public class SessionManagerService extends AbstractSessionManager {
     }
 
     @Override
+    protected void scheduleTask(Runnable task, long period, TimeUnit unit) {
+        nodeEngine.getExecutionService().scheduleWithRepetition(task, period, period, unit);
+    }
+
+    @Override
     protected SessionResponse requestNewSession(RaftGroupId groupId) {
         ICompletableFuture<SessionResponse> future = getInvocationManager().invoke(groupId, new CreateSessionOp());
         try {
@@ -51,5 +59,10 @@ public class SessionManagerService extends AbstractSessionManager {
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
+    }
+
+    @Override
+    protected ICompletableFuture<Object> heartbeat(RaftGroupId groupId, long sessionId) {
+        return getInvocationManager().invoke(groupId, new HeartbeatSessionOp(sessionId));
     }
 }

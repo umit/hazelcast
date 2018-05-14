@@ -16,12 +16,18 @@
 
 package com.hazelcast.raft.service.session;
 
+import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.session.SessionResponse;
 import com.hazelcast.util.Clock;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -31,6 +37,7 @@ public abstract class AbstractSessionManager {
 
     private final ConcurrentMap<RaftGroupId, Object> mutexes = new ConcurrentHashMap<RaftGroupId, Object>();
     private final ConcurrentMap<RaftGroupId, ClientSession> sessions = new ConcurrentHashMap<RaftGroupId, ClientSession>();
+    private final AtomicBoolean scheduleHeartbeat = new AtomicBoolean(false);
 
     public long acquireSession(RaftGroupId groupId) {
         return getOrCreateSession(groupId).acquire();
@@ -63,13 +70,22 @@ public abstract class AbstractSessionManager {
     private ClientSession createNewSession(RaftGroupId groupId) {
         synchronized (mutex(groupId)) {
             SessionResponse response = requestNewSession(groupId);
-            ClientSession session = new ClientSession(response.getSessionId(), response.getSessionTTL());
+            ClientSession session = new ClientSession(response.getSessionId(), response.getTtlMillis());
             sessions.put(groupId, session);
+            scheduleHeartbeatTask(response.getHeartbeatMillis());
             return session;
         }
     }
 
+    private void scheduleHeartbeatTask(long heartbeatMillis) {
+        if (scheduleHeartbeat.compareAndSet(false, true)) {
+            scheduleTask(new HeartbeatTask(), heartbeatMillis, TimeUnit.MILLISECONDS);
+        }
+    }
+
     protected abstract SessionResponse requestNewSession(RaftGroupId groupId);
+
+    protected abstract void scheduleTask(Runnable task, long period, TimeUnit unit);
 
     public void releaseSession(RaftGroupId groupId, long id) {
         ClientSession session = sessions.get(groupId);
@@ -145,4 +161,25 @@ public abstract class AbstractSessionManager {
             return (int) (id ^ (id >>> 32));
         }
     }
+
+    private class HeartbeatTask implements Runnable {
+        // HeartbeatTask executions will not overlap.
+        private final Collection<ICompletableFuture<Object>> prevHeartbeats = new ArrayList<ICompletableFuture<Object>>();
+
+        @Override
+        public void run() {
+            for (ICompletableFuture<Object> future : prevHeartbeats) {
+                future.cancel(true);
+            }
+            prevHeartbeats.clear();
+
+            for (Map.Entry<RaftGroupId, ClientSession> entry : sessions.entrySet()) {
+                RaftGroupId groupId = entry.getKey();
+                ClientSession session = entry.getValue();
+                prevHeartbeats.add(heartbeat(groupId, session.id));
+            }
+        }
+    }
+
+    protected abstract ICompletableFuture<Object> heartbeat(RaftGroupId groupId, long sessionId);
 }

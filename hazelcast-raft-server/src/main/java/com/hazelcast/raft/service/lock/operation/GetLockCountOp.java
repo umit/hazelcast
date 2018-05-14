@@ -15,8 +15,10 @@ import java.io.IOException;
  */
 public class GetLockCountOp extends RaftOp {
 
+    private static int NO_SESSION = -1;
+
     private String name;
-    private long sessionId;
+    private long sessionId = NO_SESSION;
     private long threadId;
 
     public GetLockCountOp() {
@@ -37,7 +39,7 @@ public class GetLockCountOp extends RaftOp {
         RaftLockService service = getService();
         Tuple2<LockEndpoint, Integer> result = service.lockCount(groupId, name);
 
-        if (sessionId > -1) {
+        if (sessionId != NO_SESSION) {
             LockEndpoint endpoint = new LockEndpoint(sessionId, threadId);
             return endpoint.equals(result.element1) ? result.element2 : 0;
         }
