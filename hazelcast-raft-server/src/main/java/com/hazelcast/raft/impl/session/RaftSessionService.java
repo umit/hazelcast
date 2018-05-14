@@ -27,7 +27,6 @@ import com.hazelcast.raft.impl.session.operation.CloseSessionsOp;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
-import com.hazelcast.util.Clock;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -44,7 +43,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * TODO: Javadoc Pending...
  */
 public class RaftSessionService
-        implements ManagedService, SnapshotAwareService<SessionRegistrySnapshot>, SessionValidator, TermChangeAwareService {
+        implements ManagedService, SnapshotAwareService<SessionRegistrySnapshot>, SessionAccessor, TermChangeAwareService {
 
     public static String SERVICE_NAME = "hz:core:raftSession";
     private static final long CHECK_EXPIRED_SESSIONS_TASK_PERIOD_IN_MILLIS = SECONDS.toMillis(1);
@@ -65,7 +64,7 @@ public class RaftSessionService
         this.raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
         Collection<SessionAwareService> services = nodeEngine.getServices(SessionAwareService.class);
         for (SessionAwareService service : services) {
-            service.setSessionValidator(this);
+            service.setSessionAccessor(this);
         }
         ExecutionService executionService = nodeEngine.getExecutionService();
         executionService.scheduleWithRepetition(new CheckExpiredSessions(), CHECK_EXPIRED_SESSIONS_TASK_PERIOD_IN_MILLIS,
@@ -171,16 +170,13 @@ public class RaftSessionService
     }
 
     @Override
-    public SessionStatus isValid(RaftGroupId groupId, long sessionId) {
+    public boolean isValid(RaftGroupId groupId, long sessionId) {
         SessionRegistry sessionRegistry = registries.get(groupId);
         if (sessionRegistry == null) {
-            return SessionStatus.UNKNOWN;
+            return false;
         }
         Session session = sessionRegistry.getSession(sessionId);
-        if (session == null) {
-            return SessionStatus.UNKNOWN;
-        }
-        return session.isExpired(Clock.currentTimeMillis()) ? SessionStatus.EXPIRED : SessionStatus.VALID;
+        return session != null;
     }
 
     private Map<RaftGroupId, Collection<Long>> getExpiredSessions() {
