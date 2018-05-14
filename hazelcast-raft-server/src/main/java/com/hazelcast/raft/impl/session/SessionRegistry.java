@@ -17,6 +17,7 @@
 package com.hazelcast.raft.impl.session;
 
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.util.Clock;
 
 import java.util.ArrayList;
@@ -24,6 +25,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static com.hazelcast.raft.impl.session.Session.toExpirationTime;
 
 /**
  * TODO: Javadoc Pending...
@@ -66,28 +69,37 @@ public class SessionRegistry {
         return sessions.remove(sessionId) != null;
     }
 
+    public boolean invalidateSession(long sessionId, long expectedVersion) {
+        Session session = sessions.get(sessionId);
+        if (session == null) {
+            return false;
+        }
+
+        if (session.getVersion() != expectedVersion) {
+            return false;
+        }
+
+        sessions.remove(sessionId);
+        return true;
+    }
+
     public void heartbeat(long sessionId, long sessionTTLMs) {
         Session session = getSessionOrFail(sessionId);
-        long currentExpirationTime = session.expirationTime();
-        long newExpirationTime = toExpirationTime(Clock.currentTimeMillis(), sessionTTLMs);
-        if (newExpirationTime > currentExpirationTime) {
-            sessions.put(sessionId, new Session(sessionId, session.creationTime(), newExpirationTime));
-        }
+        sessions.put(sessionId, session.heartbeat(sessionTTLMs));
     }
 
     public void shiftExpirationTimes(long durationMs) {
         for (Session session : sessions.values()) {
-            long newExpirationTime = toExpirationTime(session.expirationTime(), durationMs);
-            sessions.put(session.id(), new Session(session.id(), session.creationTime(), newExpirationTime));
+            sessions.put(session.id(), session.shiftExpirationTime(durationMs));
         }
     }
 
-    public Collection<Long> getExpiredSessions() {
-        List<Long> expired = new ArrayList<Long>();
+    public Collection<Tuple2<Long, Long>> getExpiredSessions() {
+        List<Tuple2<Long, Long>> expired = new ArrayList<Tuple2<Long, Long>>();
         long now = Clock.currentTimeMillis();
         for (Session session : sessions.values()) {
             if (session.isExpired(now)) {
-                expired.add(session.id());
+                expired.add(Tuple2.of(session.id(), session.getVersion()));
             }
         }
 
@@ -104,11 +116,6 @@ public class SessionRegistry {
             throw new SessionExpiredException(sessionId);
         }
         return session;
-    }
-
-    private static long toExpirationTime(long timestamp, long ttlMillis) {
-        long expirationTime = timestamp + ttlMillis;
-        return expirationTime > 0 ? expirationTime : Long.MAX_VALUE;
     }
 
 }

@@ -23,36 +23,31 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.session.RaftSessionService;
 import com.hazelcast.raft.impl.session.RaftSessionServiceDataSerializerHook;
+import com.hazelcast.raft.impl.util.Tuple2;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import static java.util.Collections.singletonList;
-
 /**
  * TODO: Javadoc Pending...
  */
-public class CloseSessionsOp extends RaftOp implements IdentifiedDataSerializable {
+public class InvalidateSessionsOp extends RaftOp implements IdentifiedDataSerializable {
 
-    private Collection<Long> sessionIds;
+    private Collection<Tuple2<Long, Long>> sessions;
 
-    public CloseSessionsOp() {
+    public InvalidateSessionsOp() {
     }
 
-    public CloseSessionsOp(long sessionId) {
-        this(singletonList(sessionId));
-    }
-
-    public CloseSessionsOp(Collection<Long> sessionIds) {
-        this.sessionIds = sessionIds;
+    public InvalidateSessionsOp(Collection<Tuple2<Long, Long>> sessionIds) {
+        this.sessions = sessionIds;
     }
 
     @Override
     protected Object doRun(RaftGroupId groupId, long commitIndex) {
         RaftSessionService service = getService();
-        service.closeSessions(groupId, sessionIds);
+        service.invalidateSessions(groupId, sessions);
         return null;
     }
 
@@ -68,15 +63,16 @@ public class CloseSessionsOp extends RaftOp implements IdentifiedDataSerializabl
 
     @Override
     public int getId() {
-        return RaftSessionServiceDataSerializerHook.CLOSE_SESSIONS;
+        return RaftSessionServiceDataSerializerHook.INVALIDATE_SESSIONS;
     }
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeInt(sessionIds.size());
-        for (long sessionId : sessionIds) {
-            out.writeLong(sessionId);
+        out.writeInt(sessions.size());
+        for (Tuple2<Long, Long> s : sessions) {
+            out.writeLong(s.element1);
+            out.writeLong(s.element2);
         }
     }
 
@@ -84,10 +80,12 @@ public class CloseSessionsOp extends RaftOp implements IdentifiedDataSerializabl
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         int size = in.readInt();
-        List<Long> sessionIds = new ArrayList<Long>();
+        List<Tuple2<Long, Long>> sessionIds = new ArrayList<Tuple2<Long, Long>>();
         for (int i = 0; i < size; i++) {
-            sessionIds.add(in.readLong());
+            long sessionId = in.readLong();
+            long version = in.readLong();
+            sessionIds.add(Tuple2.of(sessionId, version));
         }
-        this.sessionIds = sessionIds;
+        this.sessions = sessionIds;
     }
 }

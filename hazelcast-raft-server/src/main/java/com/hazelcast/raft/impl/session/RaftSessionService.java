@@ -23,14 +23,16 @@ import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.TermChangeAwareService;
-import com.hazelcast.raft.impl.session.operation.CloseSessionsOp;
+import com.hazelcast.raft.impl.session.operation.InvalidateSessionsOp;
+import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
@@ -127,22 +129,32 @@ public class RaftSessionService
         logger.info("Session: " + sessionId + " heartbeat in " + groupId);
     }
 
-    public void closeSessions(RaftGroupId groupId, Collection<Long> sessionIds) {
+    public boolean closeSession(RaftGroupId groupId, long sessionId) {
+        SessionRegistry registry = registries.get(groupId);
+        if (registry == null) {
+            return false;
+        }
+
+        return registry.closeSession(sessionId);
+    }
+
+    public void invalidateSessions(RaftGroupId groupId, Collection<Tuple2<Long, Long>> sessionsToInvalidate) {
         SessionRegistry registry = registries.get(groupId);
         if (registry == null) {
             return;
         }
 
-        Iterator<Long> iterator = sessionIds.iterator();
-        while (iterator.hasNext()) {
-            long sessionId = iterator.next();
-            if (!registry.closeSession(sessionId)) {
-                iterator.remove();
+        List<Long> invalidated = new ArrayList<Long>();
+        for (Tuple2<Long, Long> s : sessionsToInvalidate) {
+            long sessionId = s.element1;
+            long version = s.element2;
+            if (registry.invalidateSession(sessionId, version)) {
+                invalidated.add(sessionId);
             }
         }
 
-        logger.info("Sessions: " + sessionIds + " are closed in " + groupId);
-        notifyServices(groupId, sessionIds);
+        logger.info("Sessions: " + invalidated + " are invalidated in " + groupId);
+        notifyServices(groupId, invalidated);
     }
 
     // queried locally in tests
@@ -179,10 +191,10 @@ public class RaftSessionService
         return session != null;
     }
 
-    private Map<RaftGroupId, Collection<Long>> getExpiredSessions() {
-        Map<RaftGroupId, Collection<Long>> expired = new HashMap<RaftGroupId, Collection<Long>>();
+    private Map<RaftGroupId, Collection<Tuple2<Long, Long>>> getExpiredSessions() {
+        Map<RaftGroupId, Collection<Tuple2<Long, Long>>> expired = new HashMap<RaftGroupId, Collection<Tuple2<Long, Long>>>();
         for (SessionRegistry registry : registries.values()) {
-            Collection<Long> e = registry.getExpiredSessions();
+            Collection<Tuple2<Long, Long>> e = registry.getExpiredSessions();
             if (!e.isEmpty()) {
                 expired.put(registry.groupId(), e);
             }
@@ -195,17 +207,17 @@ public class RaftSessionService
 
         @Override
         public void run() {
-            Map<RaftGroupId, Collection<Long>> expiredSessions = getExpiredSessions();
-            for (Entry<RaftGroupId, Collection<Long>> entry : expiredSessions.entrySet()) {
+            Map<RaftGroupId, Collection<Tuple2<Long, Long>>> expiredSessions = getExpiredSessions();
+            for (Entry<RaftGroupId, Collection<Tuple2<Long, Long>>> entry : expiredSessions.entrySet()) {
                 RaftGroupId groupId = entry.getKey();
                 RaftNode raftNode = raftService.getRaftNode(groupId);
                 if (raftNode != null) {
-                    Collection<Long> sessionIds = entry.getValue();
+                    Collection<Tuple2<Long, Long>> sessions = entry.getValue();
                     try {
-                        ICompletableFuture f = raftNode.replicate(new CloseSessionsOp(sessionIds));
+                        ICompletableFuture f = raftNode.replicate(new InvalidateSessionsOp(sessions));
                         f.get();
                     } catch (Exception e) {
-                        logger.fine("Could not close sessions: " + sessionIds + " of " + groupId, e);
+                        logger.fine("Could not invalidate sessions: " + sessions + " of " + groupId, e);
                     }
                 }
             }

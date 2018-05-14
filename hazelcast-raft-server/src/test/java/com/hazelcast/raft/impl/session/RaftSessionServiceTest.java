@@ -7,7 +7,7 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftEndpointImpl;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
-import com.hazelcast.raft.impl.session.operation.CloseSessionsOp;
+import com.hazelcast.raft.impl.session.operation.CloseSessionOp;
 import com.hazelcast.raft.impl.session.operation.CreateSessionOp;
 import com.hazelcast.raft.impl.session.operation.HeartbeatSessionOp;
 import com.hazelcast.test.AssertTask;
@@ -69,7 +69,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
     @Test
     public void testSessionHeartbeat() throws ExecutionException, InterruptedException {
         final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, new CreateSessionOp()).get();
-        final long[] expirationTimes = new long[instances.length];
+        final Session[] sessions = new Session[instances.length];
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
@@ -79,7 +79,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
                     assertNotNull(registry);
                     Session session = registry.getSession(response.getSessionId());
                     assertNotNull(session);
-                    expirationTimes[i] = session.expirationTime();
+                    sessions[i] = session;
                 }
             }
         });
@@ -95,7 +95,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
                     assertNotNull(registry);
                     Session session = registry.getSession(response.getSessionId());
                     assertNotNull(session);
-                    assertTrue(session.expirationTime() > expirationTimes[i]);
+                    assertTrue(session.getVersion() > sessions[i].getVersion());
                 }
             }
         });
@@ -116,7 +116,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
             }
         });
 
-        invocationManager.invoke(groupId, new CloseSessionsOp(response.getSessionId())).get();
+        invocationManager.invoke(groupId, new CloseSessionOp(response.getSessionId())).get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -146,7 +146,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
             }
         });
 
-        invocationManager.invoke(groupId, new CloseSessionsOp(response.getSessionId())).get();
+        invocationManager.invoke(groupId, new CloseSessionOp(response.getSessionId())).get();
 
         exception.expect(SessionExpiredException.class);
 
@@ -154,9 +154,9 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testShiftSessionExpirationTimes() throws ExecutionException, InterruptedException {
+    public void testLeaderFailureShiftsSessionExpirationTimes() throws ExecutionException, InterruptedException {
         final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, new CreateSessionOp()).get();
-        final long[] expirationTimes = new long[instances.length];
+        final Session[] sessions = new Session[instances.length];
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
@@ -166,7 +166,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
                     assertNotNull(registry);
                     Session session = registry.getSession(response.getSessionId());
                     assertNotNull(session);
-                    expirationTimes[i] = session.expirationTime();
+                    sessions[i] = session;
                 }
             }
         });
@@ -189,7 +189,37 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
                     assertNotNull(registry);
                     Session session = registry.getSession(response.getSessionId());
                     assertNotNull(session);
-                    assertTrue(session.expirationTime() > expirationTimes[i]);
+                    assertTrue(session.getVersion() > sessions[i].getVersion());
+                }
+            }
+        });
+    }
+
+    @Test
+    public void testSessionHeartbeatTimeout() throws ExecutionException, InterruptedException {
+        final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, new CreateSessionOp()).get();
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (HazelcastInstance instance : instances) {
+                    RaftSessionService service = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
+                    SessionRegistry registry = service.getSessionRegistryOrNull(groupId);
+                    assertNotNull(registry);
+                    Session session = registry.getSession(response.getSessionId());
+                    assertNotNull(session);
+                }
+            }
+        });
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (HazelcastInstance instance : instances) {
+                    RaftSessionService service = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
+                    SessionRegistry registry = service.getSessionRegistryOrNull(groupId);
+                    assertNotNull(registry);
+                    Session session = registry.getSession(response.getSessionId());
+                    assertNull(session);
                 }
             }
         });
