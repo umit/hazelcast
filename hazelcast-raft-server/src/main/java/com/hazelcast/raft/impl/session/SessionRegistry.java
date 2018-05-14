@@ -17,6 +17,7 @@
 package com.hazelcast.raft.impl.session;
 
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.util.Clock;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -55,8 +56,8 @@ public class SessionRegistry {
 
     public long createNewSession(long sessionTTLMs) {
         long id = nextSessionId++;
-        long creationTime = System.currentTimeMillis();
-        Session session = new Session(id, creationTime, creationTime + sessionTTLMs);
+        long creationTime = Clock.currentTimeMillis();
+        Session session = new Session(id, creationTime, toExpirationTime(creationTime, sessionTTLMs));
         sessions.put(id, session);
         return id;
     }
@@ -68,7 +69,7 @@ public class SessionRegistry {
     public void heartbeat(long sessionId, long sessionTTLMs) {
         Session session = getSessionOrFail(sessionId);
         long currentExpirationTime = session.expirationTime();
-        long newExpirationTime = System.currentTimeMillis() + sessionTTLMs;
+        long newExpirationTime = toExpirationTime(Clock.currentTimeMillis(), sessionTTLMs);
         if (newExpirationTime > currentExpirationTime) {
             sessions.put(sessionId, new Session(sessionId, session.creationTime(), newExpirationTime));
         }
@@ -76,16 +77,16 @@ public class SessionRegistry {
 
     public void shiftExpirationTimes(long durationMs) {
         for (Session session : sessions.values()) {
-            long newExpirationTime = session.expirationTime() + durationMs;
+            long newExpirationTime = toExpirationTime(session.expirationTime(), durationMs);
             sessions.put(session.id(), new Session(session.id(), session.creationTime(), newExpirationTime));
         }
     }
 
     public Collection<Long> getExpiredSessions() {
         List<Long> expired = new ArrayList<Long>();
-        long now = System.currentTimeMillis();
+        long now = Clock.currentTimeMillis();
         for (Session session : sessions.values()) {
-            if (session.expirationTime() <= now) {
+            if (session.isExpired(now)) {
                 expired.add(session.id());
             }
         }
@@ -103,6 +104,11 @@ public class SessionRegistry {
             throw new SessionExpiredException(sessionId);
         }
         return session;
+    }
+
+    private static long toExpirationTime(long timestamp, long ttlMillis) {
+        long expirationTime = timestamp + ttlMillis;
+        return expirationTime > 0 ? expirationTime : Long.MAX_VALUE;
     }
 
 }

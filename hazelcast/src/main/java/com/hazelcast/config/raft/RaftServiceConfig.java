@@ -28,15 +28,18 @@ import java.util.concurrent.TimeUnit;
  */
 public class RaftServiceConfig {
 
+    public static final long DEFAULT_SESSION_TTL = 30;
+    public static final long DEFAULT_HEARTBEAT_INTERVAL = TimeUnit.SECONDS.toMillis(5);
+
     private RaftMetadataGroupConfig metadataGroupConfig;
 
     private RaftConfig raftConfig = new RaftConfig();
 
     private final Map<String, RaftGroupConfig> groupConfigs = new HashMap<String, RaftGroupConfig>();
 
-    private long sessionTimeToLiveSeconds = 30;
+    private long sessionTimeToLiveSeconds = DEFAULT_SESSION_TTL;
 
-    private long sessionHeartbeatIntervalMillis = 5;
+    private long sessionHeartbeatIntervalMillis = DEFAULT_HEARTBEAT_INTERVAL;
 
     public RaftServiceConfig() {
     }

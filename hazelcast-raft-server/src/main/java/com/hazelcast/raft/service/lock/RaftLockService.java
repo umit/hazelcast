@@ -143,8 +143,9 @@ public class RaftLockService implements ManagedService, SnapshotAwareService, Se
             RaftLock raftLock = getRaftLock(groupId, name);
             Collection<Long> indices = raftLock.release(endpoint, invUid);
             notifyWaiters(groupId, indices);
+        } else {
+            throw new IllegalMonitorStateException();
         }
-        throw new IllegalMonitorStateException();
     }
 
     private void notifyWaiters(RaftGroupId groupId, Collection<Long> indices) {

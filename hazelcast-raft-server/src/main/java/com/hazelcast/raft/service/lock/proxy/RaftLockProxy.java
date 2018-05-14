@@ -79,12 +79,17 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     @Override
     public boolean tryLock() {
-        // TODO: retry when session expired
         UUID invUid = UuidUtil.newUnsecureUUID();
-        long sessionId = acquireSession();
-        ICompletableFuture<Boolean> future =
-                raftInvocationManager.invoke(groupId, new TryLockOp(name, sessionId, ThreadUtil.getThreadId(), invUid));
-        return join(future);
+        for (;;) {
+            long sessionId = acquireSession();
+            ICompletableFuture<Boolean> future =
+                    raftInvocationManager.invoke(groupId, new TryLockOp(name, sessionId, ThreadUtil.getThreadId(), invUid));
+            try {
+                return join(future);
+            } catch (SessionExpiredException e) {
+                invalidateSession(e.getSessionId());
+            }
+        }
     }
 
     @Override

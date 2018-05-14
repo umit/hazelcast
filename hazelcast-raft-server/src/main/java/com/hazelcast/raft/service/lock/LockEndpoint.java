@@ -36,4 +36,9 @@ public class LockEndpoint {
         result = 31 * result + (int) (threadId ^ (threadId >>> 32));
         return result;
     }
+
+    @Override
+    public String toString() {
+        return "LockEndpoint{" + "sessionId=" + sessionId + ", threadId=" + threadId + '}';
+    }
 }

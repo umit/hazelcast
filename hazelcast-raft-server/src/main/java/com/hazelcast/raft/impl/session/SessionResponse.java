@@ -29,22 +29,29 @@ public class SessionResponse implements IdentifiedDataSerializable {
 
     private long sessionId;
 
-    private long sessionTTL;
+    private long ttlMillis;
+
+    private long heartbeatMillis;
 
     public SessionResponse() {
     }
 
-    public SessionResponse(long sessionId, long sessionTTL) {
+    public SessionResponse(long sessionId, long ttlMillis, long heartbeatMillis) {
         this.sessionId = sessionId;
-        this.sessionTTL = sessionTTL;
+        this.ttlMillis = ttlMillis;
+        this.heartbeatMillis = heartbeatMillis;
     }
 
     public long getSessionId() {
         return sessionId;
     }
 
-    public long getSessionTTL() {
-        return sessionTTL;
+    public long getTtlMillis() {
+        return ttlMillis;
+    }
+
+    public long getHeartbeatMillis() {
+        return heartbeatMillis;
     }
 
     @Override
@@ -60,17 +67,20 @@ public class SessionResponse implements IdentifiedDataSerializable {
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeLong(sessionId);
-        out.writeLong(sessionTTL);
+        out.writeLong(ttlMillis);
+        out.writeLong(heartbeatMillis);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         sessionId = in.readLong();
-        sessionTTL = in.readLong();
+        ttlMillis = in.readLong();
+        heartbeatMillis = in.readLong();
     }
 
     @Override
     public String toString() {
-        return "SessionResponse{" + "sessionId=" + sessionId + ", sessionTTL=" + sessionTTL + '}';
+        return "SessionResponse{" + "sessionId=" + sessionId + ", ttlMillis=" + ttlMillis + ", heartbeatMillis="
+                + heartbeatMillis + '}';
     }
 }

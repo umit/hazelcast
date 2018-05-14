@@ -30,7 +30,7 @@ public class NotifyTermChangeOp extends RaftOp implements IdentifiedDataSerializ
 
     @Override
     protected Object doRun(RaftGroupId groupId, long commitIndex) {
-        ILogger logger = getNodeEngine().getLogger(getClass());
+        ILogger logger = getLogger();
         for (TermChangeAwareService service : getNodeEngine().getServices(TermChangeAwareService.class)) {
             try {
                 service.onNewTermCommit(groupId);

@@ -235,8 +235,8 @@ public class RaftInvocationManager {
         }
 
         @Override
-        public void onFailure(Throwable cause) {
-            if (isRetryable(cause)) {
+        public final void onFailure(Throwable cause) {
+            if (!isCancelled() && isRetryable(cause)) {
                 logger.warning("Failure while invoking " + operationToString() + " -> " + cause);
                 updateKnownLeaderOnFailure(groupId, cause);
                 try {

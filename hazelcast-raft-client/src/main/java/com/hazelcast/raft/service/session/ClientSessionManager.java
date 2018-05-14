@@ -16,8 +16,11 @@
 
 package com.hazelcast.raft.service.session;
 
+import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.session.SessionResponse;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * TODO: Javadoc Pending...
@@ -26,6 +29,15 @@ import com.hazelcast.raft.impl.session.SessionResponse;
 public class ClientSessionManager extends AbstractSessionManager {
     @Override
     protected SessionResponse requestNewSession(RaftGroupId groupId) {
+        return null;
+    }
+
+    @Override
+    protected void scheduleTask(Runnable task, long period, TimeUnit unit) {
+    }
+
+    @Override
+    protected ICompletableFuture<Object> heartbeat(RaftGroupId groupId, long sessionId) {
         return null;
     }
 }
