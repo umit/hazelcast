@@ -72,6 +72,7 @@ public class SessionRegistrySnapshot implements IdentifiedDataSerializable {
             out.writeLong(session.id());
             out.writeLong(session.creationTime());
             out.writeLong(session.expirationTime());
+            out.writeLong(session.getVersion());
         }
     }
 
@@ -84,7 +85,8 @@ public class SessionRegistrySnapshot implements IdentifiedDataSerializable {
             long id = in.readLong();
             long creationTime = in.readLong();
             long expirationTime = in.readLong();
-            sessions.add(new Session(id, creationTime, expirationTime));
+            long version = in.readLong();
+            sessions.add(new Session(id, creationTime, expirationTime, version));
         }
     }
 }

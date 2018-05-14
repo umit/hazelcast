@@ -16,21 +16,34 @@
 
 package com.hazelcast.raft.impl.session;
 
+import com.hazelcast.util.Clock;
+
+import static com.hazelcast.util.Preconditions.checkTrue;
+import static java.lang.Math.max;
+
 /**
  * TODO: Javadoc Pending...
  */
 public class Session {
 
-    private long id;
+    private final long id;
 
-    private long creationTime;
+    private final long creationTime;
 
-    private long expirationTime;
+    private final long expirationTime;
+
+    private final long version;
 
     public Session(long id, long creationTime, long expirationTime) {
+        this(id, creationTime, expirationTime, 0);
+    }
+
+    public Session(long id, long creationTime, long expirationTime, long version) {
+        checkTrue(version >= 0, "Session: " + id + " cannot have a negative version: " + version);
         this.id = id;
         this.creationTime = creationTime;
         this.expirationTime = expirationTime;
+        this.version = version;
     }
 
     public long id() {
@@ -49,9 +62,33 @@ public class Session {
         return expirationTime() <= timestamp;
     }
 
+    public long getVersion() {
+        return version;
+    }
+
+    public Session heartbeat(long ttlMs) {
+        long newExpirationTime = max(expirationTime, toExpirationTime(Clock.currentTimeMillis(), ttlMs));
+        return newSession(newExpirationTime);
+    }
+
+    public Session shiftExpirationTime(long durationMs) {
+        long newExpirationTime = toExpirationTime(expirationTime, durationMs);
+        return newSession(newExpirationTime);
+    }
+
+    private Session newSession(long newExpirationTime) {
+        return new Session(id, creationTime, newExpirationTime, version + 1);
+    }
+
+    public static long toExpirationTime(long timestamp, long ttlMillis) {
+        long expirationTime = timestamp + ttlMillis;
+        return expirationTime > 0 ? expirationTime : Long.MAX_VALUE;
+    }
+
     @Override
     public String toString() {
-        return "Session{" + "id=" + id + ", creationTime=" + creationTime + ", expirationTime=" + expirationTime + '}';
+        return "Session{" + "id=" + id + ", creationTime=" + creationTime + ", expirationTime=" + expirationTime
+                + ", version=" + version + '}';
     }
 
 }
