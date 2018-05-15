@@ -1,9 +1,27 @@
+/*
+ *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.hazelcast.raft.service.lock.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.service.lock.LockEndpoint;
+import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
 import com.hazelcast.raft.service.lock.RaftLockService;
 
 import java.io.IOException;
@@ -12,21 +30,21 @@ import java.util.UUID;
 /**
  * TODO: Javadoc Pending...
  */
-abstract class AbstractLockOp extends RaftOp {
+abstract class AbstractLockOp extends RaftOp implements IdentifiedDataSerializable {
 
     String name;
     long sessionId;
     long threadId;
-    UUID invUid;
+    UUID invocationUid;
 
     AbstractLockOp() {
     }
 
-    AbstractLockOp(String name, long sessionId, long threadId, UUID invUid) {
+    AbstractLockOp(String name, long sessionId, long threadId, UUID invocationUid) {
         this.name = name;
         this.sessionId = sessionId;
         this.threadId = threadId;
-        this.invUid = invUid;
+        this.invocationUid = invocationUid;
     }
 
     LockEndpoint getLockEndpoint() {
@@ -39,13 +57,18 @@ abstract class AbstractLockOp extends RaftOp {
     }
 
     @Override
+    public int getFactoryId() {
+        return RaftLockDataSerializerHook.F_ID;
+    }
+
+    @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeUTF(name);
         out.writeLong(sessionId);
         out.writeLong(threadId);
-        out.writeLong(invUid.getLeastSignificantBits());
-        out.writeLong(invUid.getMostSignificantBits());
+        out.writeLong(invocationUid.getLeastSignificantBits());
+        out.writeLong(invocationUid.getMostSignificantBits());
     }
 
     @Override
@@ -56,6 +79,6 @@ abstract class AbstractLockOp extends RaftOp {
         threadId = in.readLong();
         long least = in.readLong();
         long most = in.readLong();
-        invUid = new UUID(most, least);
+        invocationUid = new UUID(most, least);
     }
 }

@@ -83,7 +83,7 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
         for (;;) {
             long sessionId = acquireSession();
             ICompletableFuture<Boolean> future =
-                    raftInvocationManager.invoke(groupId, new TryLockOp(name, sessionId, ThreadUtil.getThreadId(), invUid));
+                    raftInvocationManager.invoke(groupId, new TryLockOp(name, sessionId, ThreadUtil.getThreadId(), invUid, 0));
             try {
                 return join(future);
             } catch (SessionExpiredException e) {
@@ -110,7 +110,18 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     @Override
     public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
-        throw new UnsupportedOperationException();
+        UUID invUid = UuidUtil.newUnsecureUUID();
+        long waitTimeNanos = Math.max(0, unit.toNanos(time));
+        for (;;) {
+            long sessionId = acquireSession();
+            ICompletableFuture<Boolean> future =
+                    raftInvocationManager.invoke(groupId, new TryLockOp(name, sessionId, ThreadUtil.getThreadId(), invUid, waitTimeNanos));
+            try {
+                return join(future);
+            } catch (SessionExpiredException e) {
+                invalidateSession(e.getSessionId());
+            }
+        }
     }
 
     @Override

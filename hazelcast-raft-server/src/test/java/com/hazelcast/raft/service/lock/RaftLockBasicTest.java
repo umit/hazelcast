@@ -190,6 +190,38 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
         assertEquals(1, lock.getLockCount());
     }
 
+    @Test(timeout = 60000)
+    public void testTryLockTimeout() throws InterruptedException {
+        boolean result = lock.tryLock(1, TimeUnit.SECONDS);
+
+        assertTrue(result);
+        assertTrue(lock.isLockedByCurrentThread());
+        assertEquals(1, lock.getLockCount());
+    }
+
+    @Test(timeout = 60000)
+    public void testTryLockTimeout_whenLockedBySelf() throws InterruptedException {
+        lock.lock();
+
+        boolean result = lock.tryLock(1, TimeUnit.SECONDS);
+
+        assertTrue(result);
+        assertTrue(lock.isLockedByCurrentThread());
+        assertEquals(2, lock.getLockCount());
+    }
+
+    @Test(timeout = 60000)
+    public void testTryLockWithout_whenLockedByOther() throws InterruptedException {
+        lockByOtherThread(lock);
+
+        boolean result = lock.tryLock(1, TimeUnit.SECONDS);
+
+        assertFalse(result);
+        assertFalse(lock.isLockedByCurrentThread());
+        assertTrue(lock.isLocked());
+        assertEquals(1, lock.getLockCount());
+    }
+
     @Override
     protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
         Config config = super.createConfig(raftAddresses, metadataGroupSize);

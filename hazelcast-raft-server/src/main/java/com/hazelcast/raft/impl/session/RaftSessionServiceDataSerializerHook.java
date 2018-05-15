@@ -10,7 +10,6 @@ import com.hazelcast.raft.impl.session.operation.CreateSessionOp;
 import com.hazelcast.raft.impl.session.operation.HeartbeatSessionOp;
 
 public class RaftSessionServiceDataSerializerHook implements DataSerializerHook {
-
     private static final int RAFT_SESSION_DS_FACTORY_ID = -2011;
     private static final String RAFT_SESSION_DS_FACTORY = "hazelcast.serialization.ds.raft.session";
 
