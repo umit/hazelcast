@@ -31,6 +31,7 @@ import com.hazelcast.spi.NodeEngine;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -135,7 +136,12 @@ public class RaftSessionService
             return false;
         }
 
-        return registry.closeSession(sessionId);
+        if (registry.closeSession(sessionId)) {
+            notifyServices(groupId, Collections.singleton(sessionId));
+            return true;
+        }
+
+        return false;
     }
 
     public void invalidateSessions(RaftGroupId groupId, Collection<Tuple2<Long, Long>> sessionsToInvalidate) {

@@ -19,47 +19,53 @@ package com.hazelcast.raft.service.lock.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.service.lock.LockEndpoint;
+import com.hazelcast.raft.service.lock.LockInvocationKey;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
 import com.hazelcast.raft.service.lock.RaftLockService;
 
 import java.io.IOException;
-import java.util.UUID;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class TryLockOp extends AbstractLockOp {
+public class InvalidateWaitOp extends AbstractLockOp {
 
-    private long waitTimeNanos;
+    private long invocationCommitIndex;
 
-    public TryLockOp() {
+    public InvalidateWaitOp() {
     }
 
-    public TryLockOp(String name, long sessionId, long threadId, UUID invUid, long waitTimeNanos) {
-        super(name, sessionId, threadId, invUid);
-        this.waitTimeNanos = waitTimeNanos;
+    public InvalidateWaitOp(LockInvocationKey key) {
+        super(key.name, key.endpoint.sessionId, key.endpoint.threadId, key.invocationUid);
+        this.invocationCommitIndex = key.commitIndex;
     }
 
     @Override
     protected Object doRun(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
-        return service.tryAcquire(groupId, name, getLockEndpoint(), commitIndex, invocationUid, waitTimeNanos);
-    }
-
-    @Override
-    protected void writeInternal(ObjectDataOutput out) throws IOException {
-        super.writeInternal(out);
-        out.writeLong(waitTimeNanos);
-    }
-
-    @Override
-    protected void readInternal(ObjectDataInput in) throws IOException {
-        super.readInternal(in);
-        waitTimeNanos = in.readLong();
+        LockEndpoint endpoint = getLockEndpoint();
+        LockInvocationKey key = new LockInvocationKey(name, getLockEndpoint(), invocationCommitIndex, invocationUid);
+        service.invalidateWait(groupId, key);
+        return null;
     }
 
     @Override
     public int getId() {
-        return RaftLockDataSerializerHook.TRY_LOCK_OP;
+        return RaftLockDataSerializerHook.INVALIDATE_WAIT_OP;
+    }
+
+    @Override
+    protected void writeInternal(ObjectDataOutput out)
+            throws IOException {
+        super.writeInternal(out);
+        out.writeLong(invocationCommitIndex);
+    }
+
+    @Override
+    protected void readInternal(ObjectDataInput in)
+            throws IOException {
+        super.readInternal(in);
+        invocationCommitIndex = in.readLong();
     }
 }
