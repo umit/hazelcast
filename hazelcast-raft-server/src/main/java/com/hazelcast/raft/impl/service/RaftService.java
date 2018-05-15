@@ -94,13 +94,13 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     }
 
     @Override
-    public MetadataSnapshot takeSnapshot(RaftGroupId raftGroupId, long commitIndex) {
-        return metadataManager.takeSnapshot(raftGroupId, commitIndex);
+    public MetadataSnapshot takeSnapshot(RaftGroupId groupId, long commitIndex) {
+        return metadataManager.takeSnapshot(groupId, commitIndex);
     }
 
     @Override
-    public void restoreSnapshot(RaftGroupId raftGroupId, long commitIndex, MetadataSnapshot snapshot) {
-        metadataManager.restoreSnapshot(raftGroupId, commitIndex, snapshot);
+    public void restoreSnapshot(RaftGroupId groupId, long commitIndex, MetadataSnapshot snapshot) {
+        metadataManager.restoreSnapshot(groupId, commitIndex, snapshot);
     }
 
     @Override

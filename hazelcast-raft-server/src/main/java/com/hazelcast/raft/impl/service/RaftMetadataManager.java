@@ -109,8 +109,8 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     @Override
-    public MetadataSnapshot takeSnapshot(RaftGroupId raftGroupId, long commitIndex) {
-        if (!METADATA_GROUP_ID.equals(raftGroupId)) {
+    public MetadataSnapshot takeSnapshot(RaftGroupId groupId, long commitIndex) {
+        if (!METADATA_GROUP_ID.equals(groupId)) {
             return null;
         }
 
@@ -131,8 +131,8 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     @Override
-    public void restoreSnapshot(RaftGroupId raftGroupId, long commitIndex, MetadataSnapshot snapshot) {
-        ensureMetadataGroupId(raftGroupId);
+    public void restoreSnapshot(RaftGroupId groupId, long commitIndex, MetadataSnapshot snapshot) {
+        ensureMetadataGroupId(groupId);
 
         for (RaftGroupInfo groupInfo : snapshot.getRaftGroups()) {
             RaftGroupInfo existingGroupInfo = raftGroups.get(groupInfo.id());
