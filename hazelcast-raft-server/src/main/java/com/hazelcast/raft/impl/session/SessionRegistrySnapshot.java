@@ -36,22 +36,17 @@ public class SessionRegistrySnapshot implements IdentifiedDataSerializable {
     public SessionRegistrySnapshot() {
     }
 
-    public SessionRegistrySnapshot(long nextSessionId, Collection<Session> sessions) {
+    SessionRegistrySnapshot(long nextSessionId, Collection<Session> sessions) {
         this.nextSessionId = nextSessionId;
         this.sessions = new HashSet<Session>(sessions);
     }
 
-    public long getNextSessionId() {
+    long getNextSessionId() {
         return nextSessionId;
     }
 
-    public Collection<Session> getSessions() {
+    Collection<Session> getSessions() {
         return sessions;
-    }
-
-    @Override
-    public String toString() {
-        return "SessionRegistrySnapshot{" + "nextSessionId=" + nextSessionId + ", sessions=" + sessions + '}';
     }
 
     @Override
@@ -88,5 +83,10 @@ public class SessionRegistrySnapshot implements IdentifiedDataSerializable {
             long version = in.readLong();
             sessions.add(new Session(id, creationTime, expirationTime, version));
         }
+    }
+
+    @Override
+    public String toString() {
+        return "SessionRegistrySnapshot{" + "nextSessionId=" + nextSessionId + ", sessions=" + sessions + '}';
     }
 }

@@ -34,11 +34,11 @@ public class Session {
 
     private final long version;
 
-    public Session(long id, long creationTime, long expirationTime) {
+    Session(long id, long creationTime, long expirationTime) {
         this(id, creationTime, expirationTime, 0);
     }
 
-    public Session(long id, long creationTime, long expirationTime, long version) {
+    Session(long id, long creationTime, long expirationTime, long version) {
         checkTrue(version >= 0, "Session: " + id + " cannot have a negative version: " + version);
         this.id = id;
         this.creationTime = creationTime;
@@ -46,32 +46,32 @@ public class Session {
         this.version = version;
     }
 
-    public long id() {
+    long id() {
         return id;
     }
 
-    public long creationTime() {
+    long creationTime() {
         return creationTime;
     }
 
-    public long expirationTime() {
+    long expirationTime() {
         return expirationTime;
     }
 
-    public boolean isExpired(long timestamp) {
+    boolean isExpired(long timestamp) {
         return expirationTime() <= timestamp;
     }
 
-    public long getVersion() {
+    long getVersion() {
         return version;
     }
 
-    public Session heartbeat(long ttlMs) {
+    Session heartbeat(long ttlMs) {
         long newExpirationTime = max(expirationTime, toExpirationTime(Clock.currentTimeMillis(), ttlMs));
         return newSession(newExpirationTime);
     }
 
-    public Session shiftExpirationTime(long durationMs) {
+    Session shiftExpirationTime(long durationMs) {
         long newExpirationTime = toExpirationTime(expirationTime, durationMs);
         return newSession(newExpirationTime);
     }
@@ -80,15 +80,15 @@ public class Session {
         return new Session(id, creationTime, newExpirationTime, version + 1);
     }
 
-    public static long toExpirationTime(long timestamp, long ttlMillis) {
-        long expirationTime = timestamp + ttlMillis;
-        return expirationTime > 0 ? expirationTime : Long.MAX_VALUE;
-    }
-
     @Override
     public String toString() {
         return "Session{" + "id=" + id + ", creationTime=" + creationTime + ", expirationTime=" + expirationTime
                 + ", version=" + version + '}';
+    }
+
+    static long toExpirationTime(long timestamp, long ttlMillis) {
+        long expirationTime = timestamp + ttlMillis;
+        return expirationTime > 0 ? expirationTime : Long.MAX_VALUE;
     }
 
 }
