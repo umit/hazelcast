@@ -16,11 +16,13 @@
 
 package com.hazelcast.config.raft;
 
-import com.hazelcast.util.Preconditions;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
+import static com.hazelcast.util.Preconditions.checkFalse;
+import static com.hazelcast.util.Preconditions.checkPositive;
+import static com.hazelcast.util.Preconditions.checkTrue;
 
 /**
  * TODO: Javadoc Pending...
@@ -79,7 +81,7 @@ public class RaftServiceConfig {
     }
 
     public RaftServiceConfig addGroupConfig(RaftGroupConfig groupConfig) {
-        Preconditions.checkTrue(groupConfigs.containsKey(groupConfig.getName()),
+        checkFalse(groupConfigs.containsKey(groupConfig.getName()),
                 "Group config '" + groupConfig.getName() + "' already exists!");
         groupConfigs.put(groupConfig.getName(), groupConfig);
         return this;
@@ -90,8 +92,8 @@ public class RaftServiceConfig {
     }
 
     public RaftServiceConfig setSessionTimeToLiveSeconds(long sessionTimeToLiveSeconds) {
-        Preconditions.checkPositive(sessionTimeToLiveSeconds, "Session TTL should be greater than zero!");
-        Preconditions.checkTrue(TimeUnit.SECONDS.toMillis(sessionTimeToLiveSeconds) > sessionHeartbeatIntervalMillis,
+        checkPositive(sessionTimeToLiveSeconds, "Session TTL should be greater than zero!");
+        checkTrue(TimeUnit.SECONDS.toMillis(sessionTimeToLiveSeconds) > sessionHeartbeatIntervalMillis,
                 "Session timeout should be greater than heartbeat interval!");
         this.sessionTimeToLiveSeconds = sessionTimeToLiveSeconds;
         return this;
@@ -102,8 +104,8 @@ public class RaftServiceConfig {
     }
 
     public RaftServiceConfig setSessionHeartbeatIntervalMillis(long sessionHeartbeatIntervalMillis) {
-        Preconditions.checkPositive(sessionTimeToLiveSeconds, "Session heartbeat interval should be greater than zero!");
-        Preconditions.checkTrue(TimeUnit.SECONDS.toMillis(sessionTimeToLiveSeconds) > sessionHeartbeatIntervalMillis,
+        checkPositive(sessionTimeToLiveSeconds, "Session heartbeat interval should be greater than zero!");
+        checkTrue(TimeUnit.SECONDS.toMillis(sessionTimeToLiveSeconds) > sessionHeartbeatIntervalMillis,
                 "Session TTL should be greater than heartbeat interval!");
         this.sessionHeartbeatIntervalMillis = sessionHeartbeatIntervalMillis;
         return this;

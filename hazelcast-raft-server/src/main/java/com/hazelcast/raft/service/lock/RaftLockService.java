@@ -115,7 +115,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
     }
 
     @Override
-    public void invalidateSession(RaftGroupId groupId, long sessionId) {
+    public void onSessionInvalidated(RaftGroupId groupId, long sessionId) {
         LockRegistry registry = registries.get(groupId);
         if (registry == null) {
             logger.fine("No lock registry for " + groupId + " and session: " + sessionId);

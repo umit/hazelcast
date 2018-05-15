@@ -37,11 +37,11 @@ public class SessionRegistry {
     private final Map<Long, Session> sessions = new ConcurrentHashMap<Long, Session>();
     private long nextSessionId;
 
-    public SessionRegistry(RaftGroupId groupId) {
+    SessionRegistry(RaftGroupId groupId) {
         this.groupId = groupId;
     }
 
-    public SessionRegistry(RaftGroupId groupId, SessionRegistrySnapshot snapshot) {
+    SessionRegistry(RaftGroupId groupId, SessionRegistrySnapshot snapshot) {
         this(groupId);
         this.nextSessionId = snapshot.getNextSessionId();
         for (Session session : snapshot.getSessions()) {
@@ -49,15 +49,15 @@ public class SessionRegistry {
         }
     }
 
-    public RaftGroupId groupId() {
+    RaftGroupId groupId() {
         return groupId;
     }
 
-    public Session getSession(long sessionId) {
+    Session getSession(long sessionId) {
         return sessions.get(sessionId);
     }
 
-    public long createNewSession(long sessionTTLMs) {
+    long createNewSession(long sessionTTLMs) {
         long id = nextSessionId++;
         long creationTime = Clock.currentTimeMillis();
         Session session = new Session(id, creationTime, toExpirationTime(creationTime, sessionTTLMs));
@@ -65,11 +65,11 @@ public class SessionRegistry {
         return id;
     }
 
-    public boolean closeSession(long sessionId) {
+    boolean closeSession(long sessionId) {
         return sessions.remove(sessionId) != null;
     }
 
-    public boolean invalidateSession(long sessionId, long expectedVersion) {
+    boolean invalidateSession(long sessionId, long expectedVersion) {
         Session session = sessions.get(sessionId);
         if (session == null) {
             return false;
@@ -83,18 +83,18 @@ public class SessionRegistry {
         return true;
     }
 
-    public void heartbeat(long sessionId, long sessionTTLMs) {
+    void heartbeat(long sessionId, long sessionTTLMs) {
         Session session = getSessionOrFail(sessionId);
         sessions.put(sessionId, session.heartbeat(sessionTTLMs));
     }
 
-    public void shiftExpirationTimes(long durationMs) {
+    void shiftExpirationTimes(long durationMs) {
         for (Session session : sessions.values()) {
             sessions.put(session.id(), session.shiftExpirationTime(durationMs));
         }
     }
 
-    public Collection<Tuple2<Long, Long>> getExpiredSessions() {
+    Collection<Tuple2<Long, Long>> getExpiredSessions() {
         List<Tuple2<Long, Long>> expired = new ArrayList<Tuple2<Long, Long>>();
         long now = Clock.currentTimeMillis();
         for (Session session : sessions.values()) {
@@ -106,7 +106,7 @@ public class SessionRegistry {
         return expired;
     }
 
-    public SessionRegistrySnapshot toSnapshot() {
+    SessionRegistrySnapshot toSnapshot() {
         return new SessionRegistrySnapshot(nextSessionId, sessions.values());
     }
 

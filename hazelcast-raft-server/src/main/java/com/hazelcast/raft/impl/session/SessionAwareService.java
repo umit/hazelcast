@@ -25,6 +25,6 @@ public interface SessionAwareService {
 
     void setSessionAccessor(SessionAccessor accessor);
 
-    void invalidateSession(RaftGroupId groupId, long sessionId);
+    void onSessionInvalidated(RaftGroupId groupId, long sessionId);
 
 }

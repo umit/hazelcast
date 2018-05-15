@@ -130,8 +130,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
     protected HazelcastInstance getLeaderInstance(final HazelcastInstance[] instances, final RaftGroupId groupId) {
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run()
-                    throws Exception {
+            public void run() {
                 assertNotNull(getRaftNode(instances[0], groupId));
             }
         });
@@ -142,6 +141,27 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
 
         for (HazelcastInstance instance : instances) {
             if (getAddress(instance).equals(leaderEndpoint.getAddress())) {
+                return instance;
+            }
+        }
+
+        throw new AssertionError();
+    }
+
+    protected HazelcastInstance getRandomFollowerInstance(final HazelcastInstance[] instances, final RaftGroupId groupId) {
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertNotNull(getRaftNode(instances[0], groupId));
+            }
+        });
+
+        RaftNodeImpl raftNode = getRaftNode(instances[0], groupId);
+        waitUntilLeaderElected(raftNode);
+        RaftEndpointImpl leaderEndpoint = getLeaderEndpoint(raftNode);
+
+        for (HazelcastInstance instance : instances) {
+            if (!getAddress(instance).equals(leaderEndpoint.getAddress())) {
                 return instance;
             }
         }
