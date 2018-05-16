@@ -1,10 +1,11 @@
 package com.hazelcast.raft.service.lock.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
-import com.hazelcast.util.ThreadUtil;
+import com.hazelcast.raft.impl.service.RaftInvocationManager;
+import com.hazelcast.raft.service.lock.operation.UnlockOp;
 
 import java.util.UUID;
 
@@ -15,7 +16,7 @@ import java.util.UUID;
 public class UnlockMessageTask extends AbstractLockMessageTask {
 
     private long threadId;
-    private UUID invUuid;
+    private UUID invocationUid;
 
     protected UnlockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
@@ -23,13 +24,10 @@ public class UnlockMessageTask extends AbstractLockMessageTask {
 
     @Override
     protected void processMessage() {
-        RaftLockProxy lockProxy = getProxy();
-        ThreadUtil.setThreadId(threadId);
-        try {
-//            lockProxy.unlockAsync(invUuid).andThen(this);
-        } finally {
-            ThreadUtil.removeThreadId();
-        }
+        RaftInvocationManager raftInvocationManager = getRaftInvocationManager();
+        ICompletableFuture future =
+                raftInvocationManager.invoke(groupId, new UnlockOp(name, sessionId, threadId, invocationUid));
+        future.andThen(this);
     }
 
     @Override
@@ -38,7 +36,7 @@ public class UnlockMessageTask extends AbstractLockMessageTask {
         threadId = clientMessage.getLong();
         long least = clientMessage.getLong();
         long most = clientMessage.getLong();
-        invUuid = new UUID(most, least);
+        invocationUid = new UUID(most, least);
         return null;
     }
 }

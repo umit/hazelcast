@@ -18,8 +18,8 @@ public class LockMessageTaskFactoryProvider implements MessageTaskFactoryProvide
     public static final int CREATE_TYPE = 20000;
     public static final int LOCK = 20001;
     public static final int UNLOCK = 20002;
-    public static final int LOCK_COUNT = 20003;
-    public static final int TRY_LOCK = 20004;
+    public static final int TRY_LOCK = 20003;
+    public static final int LOCK_COUNT = 20004;
 
     private final Node node;
 
@@ -52,17 +52,17 @@ public class LockMessageTaskFactoryProvider implements MessageTaskFactoryProvide
             }
         };
 
-        factories[LOCK_COUNT] = new MessageTaskFactory() {
-            @Override
-            public MessageTask create(ClientMessage clientMessage, Connection connection) {
-                return new GetLockCountMessageTask(clientMessage, node, connection);
-            }
-        };
-
         factories[TRY_LOCK] = new MessageTaskFactory() {
             @Override
             public MessageTask create(ClientMessage clientMessage, Connection connection) {
                 return new TryLockMessageTask(clientMessage, node, connection);
+            }
+        };
+
+        factories[LOCK_COUNT] = new MessageTaskFactory() {
+            @Override
+            public MessageTask create(ClientMessage clientMessage, Connection connection) {
+                return new GetLockCountMessageTask(clientMessage, node, connection);
             }
         };
         return factories;

@@ -79,11 +79,17 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     @Override
     public boolean tryLock() {
+        return tryLock(0, TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public boolean tryLock(long time, TimeUnit unit) {
         UUID invUid = UuidUtil.newUnsecureUUID();
+        long timeoutMs = Math.max(0, unit.toMillis(time));
         for (;;) {
             long sessionId = acquireSession();
-            ICompletableFuture<Boolean> future =
-                    raftInvocationManager.invoke(groupId, new TryLockOp(name, sessionId, ThreadUtil.getThreadId(), invUid, 0));
+            TryLockOp op = new TryLockOp(name, sessionId, ThreadUtil.getThreadId(), invUid, timeoutMs);
+            ICompletableFuture<Boolean> future = raftInvocationManager.invoke(groupId, op);
             try {
                 return join(future);
             } catch (SessionExpiredException e) {
@@ -105,22 +111,6 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
             join(future);
         } finally {
             releaseSession(sessionId);
-        }
-    }
-
-    @Override
-    public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
-        UUID invUid = UuidUtil.newUnsecureUUID();
-        long timeoutMs = Math.max(1, unit.toMillis(time));
-        for (;;) {
-            long sessionId = acquireSession();
-            TryLockOp op = new TryLockOp(name, sessionId, ThreadUtil.getThreadId(), invUid, timeoutMs);
-            ICompletableFuture<Boolean> future = raftInvocationManager.invoke(groupId, op);
-            try {
-                return join(future);
-            } catch (SessionExpiredException e) {
-                invalidateSession(e.getSessionId());
-            }
         }
     }
 
@@ -167,12 +157,8 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     @Override
     public int getLockCount() {
-        ICompletableFuture<Integer> future = getLockCountAsync();
+        ICompletableFuture<Integer> future = raftInvocationManager.invoke(groupId, new GetLockCountOp(name));
         return join(future);
-    }
-
-    public ICompletableFuture<Integer> getLockCountAsync() {
-        return raftInvocationManager.invoke(groupId, new GetLockCountOp(name));
     }
 
     @Override

@@ -1,21 +1,19 @@
 package com.hazelcast.raft.service.lock.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
-import com.hazelcast.util.ThreadUtil;
-
-import java.util.UUID;
+import com.hazelcast.raft.impl.service.RaftInvocationManager;
+import com.hazelcast.raft.service.lock.operation.TryLockOp;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public class TryLockMessageTask extends AbstractLockMessageTask {
+public class TryLockMessageTask extends LockMessageTask {
 
-    private long threadId;
-    private UUID invUuid;
+    private long timeoutMs;
 
     protected TryLockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
@@ -23,22 +21,16 @@ public class TryLockMessageTask extends AbstractLockMessageTask {
 
     @Override
     protected void processMessage() {
-        RaftLockProxy lockProxy = getProxy();
-        ThreadUtil.setThreadId(threadId);
-        try {
-//            lockProxy.tryLockAsync(invUuid).andThen(this);
-        } finally {
-            ThreadUtil.removeThreadId();
-        }
+        RaftInvocationManager raftInvocationManager = getRaftInvocationManager();
+        TryLockOp op = new TryLockOp(name, sessionId, threadId, invocationUid, timeoutMs);
+        ICompletableFuture<Boolean> future = raftInvocationManager.invoke(groupId, op);
+        future.andThen(this);
     }
 
     @Override
     protected Object decodeClientMessage(ClientMessage clientMessage) {
         super.decodeClientMessage(clientMessage);
-        threadId = clientMessage.getLong();
-        long least = clientMessage.getLong();
-        long most = clientMessage.getLong();
-        invUuid = new UUID(most, least);
+        timeoutMs = clientMessage.getLong();
         return null;
     }
 }
