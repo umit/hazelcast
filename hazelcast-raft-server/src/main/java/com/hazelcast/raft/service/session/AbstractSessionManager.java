@@ -82,7 +82,7 @@ public abstract class AbstractSessionManager {
 
     private void scheduleHeartbeatTask(long heartbeatMillis) {
         if (scheduleHeartbeat.compareAndSet(false, true)) {
-            scheduleTask(new HeartbeatTask(), heartbeatMillis, TimeUnit.MILLISECONDS);
+            scheduleWithRepetition(new HeartbeatTask(), heartbeatMillis, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -113,7 +113,7 @@ public abstract class AbstractSessionManager {
 
     protected abstract SessionResponse requestNewSession(RaftGroupId groupId);
 
-    protected abstract ScheduledFuture<?> scheduleTask(Runnable task, long period, TimeUnit unit);
+    protected abstract ScheduledFuture<?> scheduleWithRepetition(Runnable task, long period, TimeUnit unit);
 
     protected abstract ICompletableFuture<Object> heartbeat(RaftGroupId groupId, long sessionId);
 

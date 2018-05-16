@@ -2,7 +2,6 @@ package com.hazelcast.raft.service.lock.client;
 
 import com.hazelcast.client.impl.ClientMessageDecoder;
 import com.hazelcast.client.impl.HazelcastClientInstanceImpl;
-import com.hazelcast.client.impl.HazelcastClientProxy;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
@@ -15,6 +14,8 @@ import com.hazelcast.nio.Bits;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.service.lock.RaftLockService;
+import com.hazelcast.raft.service.session.SessionAwareProxy;
+import com.hazelcast.raft.service.session.SessionManagerProvider;
 import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.ThreadUtil;
 import com.hazelcast.util.UuidUtil;
@@ -29,12 +30,13 @@ import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvi
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.LOCK_COUNT;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.TRY_LOCK;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.UNLOCK;
+import static com.hazelcast.raft.service.util.ClientAccessor.getClient;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public class RaftLockProxy implements ILock {
+public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     private static final ClientMessageDecoder INT_RESPONSE_DECODER = new IntResponseDecoder();
     private static final ClientMessageDecoder BOOLEAN_RESPONSE_DECODER = new BooleanResponseDecoder();
@@ -68,19 +70,10 @@ public class RaftLockProxy implements ILock {
     private final String name;
 
     private RaftLockProxy(HazelcastInstance instance, RaftGroupId groupId, String name) {
+        super(SessionManagerProvider.get(getClient(instance)), groupId);
         client = getClient(instance);
         this.groupId = groupId;
         this.name = name;
-    }
-
-    private static HazelcastClientInstanceImpl getClient(HazelcastInstance instance) {
-        if (instance instanceof HazelcastClientProxy) {
-            return  ((HazelcastClientProxy) instance).client;
-        } else if (instance instanceof HazelcastClientInstanceImpl) {
-            return  (HazelcastClientInstanceImpl) instance;
-        } else {
-            throw new IllegalArgumentException("Unknown client instance! " + instance);
-        }
     }
 
     @Override
