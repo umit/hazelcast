@@ -8,8 +8,9 @@ import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
+import com.hazelcast.raft.impl.service.RaftInvocationManager;
+import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.service.lock.RaftLockService;
-import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
 
 import java.security.Permission;
 
@@ -21,24 +22,23 @@ public abstract class AbstractLockMessageTask extends AbstractMessageTask implem
 
     protected RaftGroupId groupId;
     protected String name;
-    protected String uid;
+    protected long sessionId;
 
     protected AbstractLockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
-    }
-
-    protected RaftLockProxy getProxy() {
-        RaftLockService service = (RaftLockService) getService(getServiceName());
-        // TODO: creates a new proxy on each client request
-        return service.newProxy(name, groupId, uid);
     }
 
     @Override
     protected Object decodeClientMessage(ClientMessage clientMessage) {
         groupId = RaftGroupIdImpl.readFrom(clientMessage);
         name = clientMessage.getStringUtf8();
-        uid = clientMessage.getStringUtf8();
+        sessionId = clientMessage.getLong();
         return null;
+    }
+
+    RaftInvocationManager getRaftInvocationManager() {
+        RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
+        return raftService.getInvocationManager();
     }
 
     @Override

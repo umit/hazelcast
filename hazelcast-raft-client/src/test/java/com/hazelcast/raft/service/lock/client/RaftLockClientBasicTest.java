@@ -1,199 +1,44 @@
 package com.hazelcast.raft.service.lock.client;
 
 import com.hazelcast.client.test.TestHazelcastFactory;
-import com.hazelcast.config.Config;
-import com.hazelcast.config.raft.RaftGroupConfig;
-import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ILock;
 import com.hazelcast.nio.Address;
-import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
+import com.hazelcast.raft.service.lock.RaftLockBasicTest;
 import com.hazelcast.test.HazelcastSerialClassRunner;
+import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
-import static com.hazelcast.concurrent.lock.LockTestUtils.lockByOtherThread;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
-public class RaftLockClientBasicTest extends HazelcastRaftTestSupport {
+public class RaftLockClientBasicTest extends RaftLockBasicTest {
 
-    private ILock lock;
-    private String name = "lock";
-    private int groupSize = 3;
+    private HazelcastInstance client;
 
-    @Before
-    public void setup() {
-        factory = new TestHazelcastFactory();
-        Address[] raftAddresses = createAddresses(groupSize);
-        newInstances(raftAddresses, groupSize, 0);
+    @Override
+    protected TestHazelcastInstanceFactory createTestFactory() {
+        return new TestHazelcastFactory();
+    }
 
+    @Override
+    protected HazelcastInstance[] createInstances(Address[] raftAddresses) {
+        HazelcastInstance[] instances = super.createInstances(raftAddresses);
         TestHazelcastFactory f = (TestHazelcastFactory) factory;
-        HazelcastInstance client = f.newHazelcastClient();
+        client = f.newHazelcastClient();
+        return instances;
+    }
 
-        lock = RaftLockProxy.create(client, name);
+    @Override
+    protected ILock createLock(String name) {
+        return RaftLockProxy.create(client, name);
     }
 
     @After
     public void shutdown() {
         factory.terminateAll();
-    }
-
-    @Test
-    public void testLock_whenNotLocked() {
-        lock.lock();
-        assertEquals(1, lock.getLockCount());
-    }
-
-    @Test
-    public void testLock_whenLockedBySelf() {
-        lock.lock();
-        lock.lock();
-        assertEquals(2, lock.getLockCount());
-    }
-
-    @Test
-    public void testLock_whenLockedByOther() throws InterruptedException {
-        lock.lock();
-        assertTrue(lock.isLocked());
-        assertEquals(1, lock.getLockCount());
-
-        final CountDownLatch latch = new CountDownLatch(1);
-
-        Thread t = new Thread() {
-            public void run() {
-                lock.lock();
-                latch.countDown();
-            }
-        };
-
-        t.start();
-        assertFalse(latch.await(3000, TimeUnit.MILLISECONDS));
-    }
-
-    @Test(expected = IllegalMonitorStateException.class)
-    public void testUnlock_whenFree() {
-        lock.unlock();
-    }
-
-    @Test
-    public void testUnlock_whenLockedBySelf() {
-        lock.lock();
-
-        lock.unlock();
-
-        assertFalse(lock.isLocked());
-        assertEquals(0, lock.getLockCount());
-    }
-
-    @Test
-    public void testUnlock_whenReentrantlyLockedBySelf() {
-        lock.lock();
-        lock.lock();
-
-        lock.unlock();
-
-        assertTrue(lock.isLocked());
-        assertEquals(1, lock.getLockCount());
-    }
-
-    @Test
-    public void testLock_Unlock_thenLock() throws Exception {
-        lock.lock();
-        lock.unlock();
-
-        spawn(new Runnable() {
-            @Override
-            public void run() {
-                lock.lock();
-            }
-        }).get(1, TimeUnit.MINUTES);
-
-        assertEquals(1, lock.getLockCount());
-    }
-
-    @Test
-    public void testUnlock_whenPendingLockOfOtherThread() throws InterruptedException {
-        lock.lock();
-        final CountDownLatch latch = new CountDownLatch(1);
-        Thread thread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                lock.lock();
-                latch.countDown();
-
-            }
-        });
-        thread.start();
-
-        sleepSeconds(1);
-        lock.unlock();
-        latch.await();
-
-        assertTrue(lock.isLocked());
-    }
-
-    @Test
-    public void testUnlock_whenLockedByOther() {
-        lockByOtherThread(lock);
-
-        try {
-            lock.unlock();
-            fail();
-        } catch (IllegalMonitorStateException expected) {
-        }
-
-        assertTrue(lock.isLocked());
-        assertEquals(1, lock.getLockCount());
-    }
-
-    @Test(timeout = 60000)
-    public void testTryLock_whenNotLocked() {
-        boolean result = lock.tryLock();
-
-        assertTrue(result);
-        assertEquals(1, lock.getLockCount());
-    }
-
-    @Test(timeout = 60000)
-    public void testTryLock_whenLockedBySelf() {
-        lock.lock();
-
-        boolean result = lock.tryLock();
-
-        assertTrue(result);
-        assertEquals(2, lock.getLockCount());
-    }
-
-    @Test(timeout = 60000)
-    public void testTryLock_whenLockedByOther() {
-        lockByOtherThread(lock);
-
-        boolean result = lock.tryLock();
-
-        assertFalse(result);
-        assertTrue(lock.isLocked());
-        assertEquals(1, lock.getLockCount());
-    }
-
-    @Override
-    protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
-        Config config = super.createConfig(raftAddresses, metadataGroupSize);
-
-        RaftLockConfig lockConfig = new RaftLockConfig(name, new RaftGroupConfig(name, groupSize));
-        config.addRaftLockConfig(lockConfig);
-        return config;
     }
 }

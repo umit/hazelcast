@@ -9,11 +9,8 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.QueryPolicy;
-import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
-import com.hazelcast.raft.impl.service.RaftServiceUtil;
 import com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy;
-import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
@@ -26,7 +23,6 @@ import org.junit.runner.RunWith;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy.create;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -45,29 +41,18 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
     @Before
     public void setup() {
         Address[] raftAddresses = createAddresses(raftGroupSize + 2);
-        instances = newInstances(raftAddresses, raftGroupSize, 2);
+        instances = createInstances(raftAddresses);
 
-        atomicLong = create(instances[RandomPicker.getInt(instances.length)], name);
+        atomicLong = createAtomicLong(name);
         assertNotNull(atomicLong);
     }
 
-    @Test
-    public void createNewAtomicLong() {
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() {
-                int count = 0;
-                RaftAtomicLongProxy proxy = (RaftAtomicLongProxy) atomicLong;
-                for (HazelcastInstance instance : instances) {
-                    RaftNodeImpl raftNode = (RaftNodeImpl) RaftServiceUtil.getRaftService(instance).getOrInitRaftNode(proxy.getGroupId());
-                    if (raftNode != null) {
-                        count++;
-                        assertNotNull(getLeaderEndpoint(raftNode));
-                    }
-                }
-                assertEquals(raftGroupSize, count);
-            }
-        });
+    protected HazelcastInstance[] createInstances(Address[] raftAddresses) {
+        return newInstances(raftAddresses, raftGroupSize, 2);
+    }
+
+    protected IAtomicLong createAtomicLong(String name) {
+        return create(instances[RandomPicker.getInt(instances.length)], name);
     }
 
     @Test

@@ -40,10 +40,18 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     @Before
     public void setup() {
         Address[] raftAddresses = createAddresses(groupSize);
-        instances = newInstances(raftAddresses, groupSize, 0);
+        instances = createInstances(raftAddresses);
 
-        lock = RaftLockProxy.create(instances[RandomPicker.getInt(instances.length)], name);
+        lock = createLock(name);
         assertNotNull(lock);
+    }
+
+    protected HazelcastInstance[] createInstances(Address[] raftAddresses) {
+        return newInstances(raftAddresses, groupSize, 0);
+    }
+
+    protected ILock createLock(String name) {
+        return RaftLockProxy.create(instances[RandomPicker.getInt(instances.length)], name);
     }
 
     @Test
