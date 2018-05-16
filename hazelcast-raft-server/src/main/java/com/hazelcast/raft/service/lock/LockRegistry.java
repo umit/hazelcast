@@ -18,6 +18,7 @@ package com.hazelcast.raft.service.lock;
 
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.util.Tuple2;
+import com.hazelcast.util.Clock;
 import com.hazelcast.util.UuidUtil;
 
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static com.hazelcast.util.Preconditions.checkNotNull;
 
@@ -38,10 +40,16 @@ class LockRegistry {
 
     private final RaftGroupId groupId;
     private final Map<String, RaftLock> locks = new HashMap<String, RaftLock>();
-    private final Map<LockInvocationKey, Long> tryLockTimeouts = new HashMap<LockInvocationKey, Long>();
+    // value.element1: timeout duration, value.element2: deadline (transient)
+    private final Map<LockInvocationKey, Tuple2<Long, Long>> tryLockTimeouts
+            = new ConcurrentHashMap<LockInvocationKey, Tuple2<Long, Long>>();
 
     LockRegistry(RaftGroupId groupId) {
         this.groupId = groupId;
+    }
+
+    public RaftGroupId groupId() {
+        return groupId;
     }
 
     // element1: invalidated wait entries
@@ -81,11 +89,12 @@ class LockRegistry {
         return getRaftLock(name).acquire(endpoint, commitIndex, invocationUid, true);
     }
 
-    boolean tryAcquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid, long waitInNanos) {
-        boolean wait = (waitInNanos > 0);
+    boolean tryAcquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid, long timeoutMs) {
+        boolean wait = (timeoutMs > 0);
         boolean acquired = getRaftLock(name).acquire(endpoint, commitIndex, invocationUid, wait);
         if (wait && !acquired) {
-            tryLockTimeouts.put(new LockInvocationKey(name, endpoint, commitIndex, invocationUid), waitInNanos);
+            LockInvocationKey key = new LockInvocationKey(name, endpoint, commitIndex, invocationUid);
+            tryLockTimeouts.put(key, Tuple2.of(timeoutMs, Clock.currentTimeMillis() + timeoutMs));
         }
 
         return acquired;
@@ -105,7 +114,7 @@ class LockRegistry {
         return waitKeys;
     }
 
-    boolean invalidateWait(LockInvocationKey key) {
+    boolean invalidateWaitEntry(LockInvocationKey key) {
         RaftLock lock = locks.get(key.name);
         if (lock == null) {
             return false;
@@ -126,6 +135,19 @@ class LockRegistry {
         return raftLock.lockCount();
     }
 
+
+    Collection<LockInvocationKey> getExpiredWaitEntries(long now) {
+        List<LockInvocationKey> expired = new ArrayList<LockInvocationKey>();
+        for (Map.Entry<LockInvocationKey, Tuple2<Long, Long>> e : tryLockTimeouts.entrySet()) {
+            long deadline = e.getValue().element2;
+            if (deadline <= now) {
+                expired.add(e.getKey());
+            }
+        }
+
+        return expired;
+    }
+
     LockRegistrySnapshot toSnapshot() {
         return new LockRegistrySnapshot(locks.values(), tryLockTimeouts);
     }
@@ -135,16 +157,16 @@ class LockRegistry {
             locks.put(lockSnapshot.getName(), new RaftLock(lockSnapshot));
         }
 
+        long now = Clock.currentTimeMillis();
         Map<LockInvocationKey, Long> added = new HashMap<LockInvocationKey, Long>();
         for (Entry<LockInvocationKey, Long> e : snapshot.getTryLockTimeouts().entrySet()) {
             LockInvocationKey key = e.getKey();
             if (!tryLockTimeouts.containsKey(key)) {
-                long time = e.getValue();
-                added.put(key, time);
+                long timeout = e.getValue();
+                tryLockTimeouts.put(key, Tuple2.of(timeout, now + timeout));
+                added.put(key, timeout);
             }
         }
-
-        tryLockTimeouts.putAll(added);
 
         return added;
     }

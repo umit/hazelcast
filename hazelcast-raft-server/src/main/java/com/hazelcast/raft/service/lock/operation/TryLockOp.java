@@ -30,32 +30,32 @@ import java.util.UUID;
  */
 public class TryLockOp extends AbstractLockOp {
 
-    private long waitTimeNanos;
+    private long timeoutMs;
 
     public TryLockOp() {
     }
 
-    public TryLockOp(String name, long sessionId, long threadId, UUID invUid, long waitTimeNanos) {
+    public TryLockOp(String name, long sessionId, long threadId, UUID invUid, long timeoutMs) {
         super(name, sessionId, threadId, invUid);
-        this.waitTimeNanos = waitTimeNanos;
+        this.timeoutMs = timeoutMs;
     }
 
     @Override
     protected Object doRun(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
-        return service.tryAcquire(groupId, name, getLockEndpoint(), commitIndex, invocationUid, waitTimeNanos);
+        return service.tryAcquire(groupId, name, getLockEndpoint(), commitIndex, invocationUid, timeoutMs);
     }
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeLong(waitTimeNanos);
+        out.writeLong(timeoutMs);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        waitTimeNanos = in.readLong();
+        timeoutMs = in.readLong();
     }
 
     @Override

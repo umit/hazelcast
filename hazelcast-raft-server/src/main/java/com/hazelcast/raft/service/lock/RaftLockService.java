@@ -32,16 +32,18 @@ import com.hazelcast.raft.impl.session.SessionAwareService;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.raft.impl.util.PostponedResponse;
 import com.hazelcast.raft.impl.util.Tuple2;
-import com.hazelcast.raft.service.lock.operation.InvalidateWaitOp;
+import com.hazelcast.raft.service.lock.operation.InvalidateWaitEntriesOp;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
 import com.hazelcast.raft.service.session.SessionManagerService;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.util.Clock;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -54,12 +56,15 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.util.Preconditions.checkNotNull;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * TODO: Javadoc Pending...
  */
 public class RaftLockService implements ManagedService, SnapshotAwareService<LockRegistrySnapshot>, SessionAwareService {
 
+    private static final long TRY_LOCK_TIMEOUT_TASK_PERIOD_MILLIS = 500;
+    static final long TRY_LOCK_TIMEOUT_TASK_UPPER_BOUND_MILLIS = 1500;
     public static final String SERVICE_NAME = "hz:raft:lockService";
 
     private final ConcurrentMap<RaftGroupId, LockRegistry> registries = new ConcurrentHashMap<RaftGroupId, LockRegistry>();
@@ -76,6 +81,9 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
         this.raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
+        ExecutionService executionService = nodeEngine.getExecutionService();
+        executionService.scheduleWithRepetition(new InvalidateExpiredWaitEntriesPeriodicTask(),
+                TRY_LOCK_TIMEOUT_TASK_PERIOD_MILLIS, TRY_LOCK_TIMEOUT_TASK_PERIOD_MILLIS, MILLISECONDS);
     }
 
     @Override
@@ -103,7 +111,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
             for (Entry<LockInvocationKey, Long> e : timeouts.entrySet()) {
                 LockInvocationKey key = e.getKey();
                 long waitTimeNanos = e.getValue();
-                Runnable task = new InvalidateWaitTask(groupId, key);
+                Runnable task = new InvalidateExpiredWaitEntriesTask(groupId, key);
                 executionService.schedule(task, waitTimeNanos, TimeUnit.NANOSECONDS);
             }
         }
@@ -182,19 +190,23 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
     }
 
     public Object tryAcquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid,
-                          long waitTimeNanos) {
+                          long timeoutMs) {
         if (sessionAccessor.isValid(groupId, endpoint.sessionId)) {
             sessionAccessor.heartbeat(groupId, endpoint.sessionId);
-            boolean acquired = getLockRegistry(groupId).tryAcquire(name, endpoint, commitIndex, invocationUid, waitTimeNanos);
+            boolean acquired = getLockRegistry(groupId).tryAcquire(name, endpoint, commitIndex, invocationUid, timeoutMs);
             if (logger.isFineEnabled()) {
                 logger.fine("Lock: " + name + " in " + groupId + " acquired: " + acquired + " by <" + endpoint + ", "
                         + invocationUid + ">");
             }
-            if (waitTimeNanos > 0 && !acquired) {
-                LockInvocationKey key = new LockInvocationKey(name, endpoint, commitIndex, invocationUid);
-                Runnable task = new InvalidateWaitTask(groupId, key);
-                ExecutionService executionService = nodeEngine.getExecutionService();
-                executionService.schedule(task, waitTimeNanos, TimeUnit.NANOSECONDS);
+
+            if (timeoutMs > 0 && !acquired) {
+                if (timeoutMs <= TRY_LOCK_TIMEOUT_TASK_UPPER_BOUND_MILLIS) {
+                    LockInvocationKey key = new LockInvocationKey(name, endpoint, commitIndex, invocationUid);
+                    Runnable task = new InvalidateExpiredWaitEntriesTask(groupId, key);
+                    ExecutionService executionService = nodeEngine.getExecutionService();
+                    executionService.schedule(task, timeoutMs, MILLISECONDS);
+                }
+
                 return PostponedResponse.INSTANCE;
             }
 
@@ -234,21 +246,25 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
         }
     }
 
-    public void invalidateWait(RaftGroupId groupId, LockInvocationKey key) {
+    public void invalidateWaitEntries(RaftGroupId groupId, Collection<LockInvocationKey> keys) {
         // no need to validate the session. if the session is invalid, the corresponding wait entry is gone already
         LockRegistry registry = registries.get(groupId);
         if (registry == null) {
-            logger.severe("No LockRegistry is found for " + groupId + " to invalidate wait of lock: " + key);
+            logger.severe("No LockRegistry is found for " + groupId + " to invalidate wait entries: " + keys);
             return;
         }
 
-        if (registry.invalidateWait(key)) {
-            if (logger.isFineEnabled()) {
-                logger.fine("Wait entry of " + key + " is invalidated.");
+        List<Long> invalidated = new ArrayList<Long>();
+        for (LockInvocationKey key : keys) {
+            if (registry.invalidateWaitEntry(key)) {
+                invalidated.add(key.commitIndex);
+                if (logger.isFineEnabled()) {
+                    logger.fine("Wait entry of " + key + " is invalidated.");
+                }
             }
-
-            completeFutures(groupId, Collections.singleton(key.commitIndex), false);
         }
+
+        completeFutures(groupId, invalidated, false);
     }
 
     private void completeFutures(RaftGroupId groupId, Collection<Long> indices, Object result) {
@@ -258,6 +274,19 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
                 raftNode.completeFuture(index, result);
             }
         }
+    }
+
+    // queried locally
+    private Map<RaftGroupId, Collection<LockInvocationKey>> getExpiredWaitEntries() {
+        Map<RaftGroupId, Collection<LockInvocationKey>> timeouts = new HashMap<RaftGroupId, Collection<LockInvocationKey>>();
+        long now = Clock.currentTimeMillis();
+        for (LockRegistry registry : registries.values()) {
+            Collection<LockInvocationKey> t = registry.getExpiredWaitEntries(now);
+            if (t.size() > 0) {
+                timeouts.put(registry.groupId(), t);
+            }
+        }
+        return timeouts;
     }
 
     public Tuple2<LockEndpoint, Integer> lockCount(RaftGroupId groupId, String name) {
@@ -272,28 +301,41 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
         return registry.lockCount(name);
     }
 
-    private class InvalidateWaitTask implements Runnable {
+    private class InvalidateExpiredWaitEntriesTask implements Runnable {
         final RaftGroupId groupId;
-        final LockInvocationKey key;
+        final Collection<LockInvocationKey> keys;
 
-        InvalidateWaitTask(RaftGroupId groupId, LockInvocationKey key) {
+        InvalidateExpiredWaitEntriesTask(RaftGroupId groupId, LockInvocationKey key) {
             this.groupId = groupId;
-            this.key = key;
+            this.keys = Collections.singleton(key);
+        }
+
+        InvalidateExpiredWaitEntriesTask(RaftGroupId groupId, Collection<LockInvocationKey> keys) {
+            this.groupId = groupId;
+            this.keys = keys;
         }
 
         @Override
         public void run() {
-            RaftNode raftNode = raftService.getRaftNode(groupId);
-            if (raftNode != null) {
-                // we should handle CannotReplicateException, LeaderDemotedException, and StaleAppendRequestException
-                Future f = raftNode.replicate(new InvalidateWaitOp(key));
-                try {
+            try {
+                RaftNode raftNode = raftService.getRaftNode(groupId);
+                if (raftNode != null) {
+                    Future f = raftNode.replicate(new InvalidateWaitEntriesOp(keys));
                     f.get();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                } catch (ExecutionException e) {
-                    e.printStackTrace();
                 }
+            } catch (Exception e) {
+                if (logger.isFineEnabled()) {
+                    logger.fine("Could not invalidate wait entries: " + keys + " of " + groupId, e);
+                }
+            }
+        }
+    }
+
+    private class InvalidateExpiredWaitEntriesPeriodicTask implements Runnable {
+        @Override
+        public void run() {
+            for (Entry<RaftGroupId, Collection<LockInvocationKey>> e : getExpiredWaitEntries().entrySet()) {
+                new InvalidateExpiredWaitEntriesTask(e.getKey(), e.getValue()).run();
             }
         }
     }

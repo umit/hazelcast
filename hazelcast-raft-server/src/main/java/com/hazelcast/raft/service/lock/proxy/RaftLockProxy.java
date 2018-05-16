@@ -111,11 +111,11 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
     @Override
     public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
         UUID invUid = UuidUtil.newUnsecureUUID();
-        long waitTimeNanos = Math.max(0, unit.toNanos(time));
+        long timeoutMs = Math.max(1, unit.toMillis(time));
         for (;;) {
             long sessionId = acquireSession();
-            ICompletableFuture<Boolean> future =
-                    raftInvocationManager.invoke(groupId, new TryLockOp(name, sessionId, ThreadUtil.getThreadId(), invUid, waitTimeNanos));
+            TryLockOp op = new TryLockOp(name, sessionId, ThreadUtil.getThreadId(), invUid, timeoutMs);
+            ICompletableFuture<Boolean> future = raftInvocationManager.invoke(groupId, op);
             try {
                 return join(future);
             } catch (SessionExpiredException e) {

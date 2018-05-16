@@ -159,21 +159,21 @@ public class RaftSessionService
             }
         }
 
-        logger.info("Sessions: " + invalidated + " are invalidated in " + groupId);
-        notifyServices(groupId, invalidated);
+        if (invalidated.size() > 0) {
+            logger.info("Sessions: " + invalidated + " are invalidated in " + groupId);
+            notifyServices(groupId, invalidated);
+        }
     }
 
     // queried locally in tests
-    public SessionRegistry getSessionRegistryOrNull(RaftGroupId groupId) {
+    SessionRegistry getSessionRegistryOrNull(RaftGroupId groupId) {
         return registries.get(groupId);
     }
-
 
     private long getHeartbeatIntervalMillis() {
         return raftService.getConfig().getSessionHeartbeatIntervalMillis();
     }
 
-    // queried locally
     private long getSessionTimeToLiveMillis() {
         return SECONDS.toMillis(raftService.getConfig().getSessionTimeToLiveSeconds());
     }
@@ -197,6 +197,7 @@ public class RaftSessionService
         return session != null;
     }
 
+    // queried locally
     private Map<RaftGroupId, Collection<Tuple2<Long, Long>>> getExpiredSessions() {
         Map<RaftGroupId, Collection<Tuple2<Long, Long>>> expired = new HashMap<RaftGroupId, Collection<Tuple2<Long, Long>>>();
         for (SessionRegistry registry : registries.values()) {
@@ -223,7 +224,9 @@ public class RaftSessionService
                         ICompletableFuture f = raftNode.replicate(new InvalidateSessionsOp(sessions));
                         f.get();
                     } catch (Exception e) {
-                        logger.fine("Could not invalidate sessions: " + sessions + " of " + groupId, e);
+                        if (logger.isFineEnabled()) {
+                            logger.fine("Could not invalidate sessions: " + sessions + " of " + groupId, e);
+                        }
                     }
                 }
             }

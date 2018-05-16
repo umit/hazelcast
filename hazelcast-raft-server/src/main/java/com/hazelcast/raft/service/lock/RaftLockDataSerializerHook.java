@@ -21,7 +21,7 @@ import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.service.lock.operation.GetLockCountOp;
-import com.hazelcast.raft.service.lock.operation.InvalidateWaitOp;
+import com.hazelcast.raft.service.lock.operation.InvalidateWaitEntriesOp;
 import com.hazelcast.raft.service.lock.operation.LockOp;
 import com.hazelcast.raft.service.lock.operation.TryLockOp;
 import com.hazelcast.raft.service.lock.operation.UnlockOp;
@@ -38,7 +38,7 @@ public class RaftLockDataSerializerHook implements DataSerializerHook {
     public static final int LOCK_OP = 4;
     public static final int TRY_LOCK_OP = 5;
     public static final int UNLOCK_OP = 6;
-    public static final int INVALIDATE_WAIT_OP = 7;
+    public static final int INVALIDATE_WAI_ENTRIES_OP = 7;
     public static final int GET_LOCK_COUNT_OP = 8;
 
 
@@ -65,8 +65,8 @@ public class RaftLockDataSerializerHook implements DataSerializerHook {
                         return new TryLockOp();
                     case UNLOCK_OP:
                         return new UnlockOp();
-                    case INVALIDATE_WAIT_OP:
-                        return new InvalidateWaitOp();
+                    case INVALIDATE_WAI_ENTRIES_OP:
+                        return new InvalidateWaitEntriesOp();
                     case GET_LOCK_COUNT_OP:
                         return new GetLockCountOp();
 

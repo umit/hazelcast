@@ -21,6 +21,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.concurrent.lock.LockTestUtils.lockByOtherThread;
+import static com.hazelcast.raft.service.lock.RaftLockService.TRY_LOCK_TIMEOUT_TASK_UPPER_BOUND_MILLIS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -211,16 +212,29 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     }
 
     @Test(timeout = 60000)
-    public void testTryLockWithout_whenLockedByOther() throws InterruptedException {
+    public void testTryLockTimeout_whenLockedByOther() throws InterruptedException {
         lockByOtherThread(lock);
 
-        boolean result = lock.tryLock(1, TimeUnit.SECONDS);
+        boolean result = lock.tryLock(100, TimeUnit.MILLISECONDS);
 
         assertFalse(result);
         assertFalse(lock.isLockedByCurrentThread());
         assertTrue(lock.isLocked());
         assertEquals(1, lock.getLockCount());
     }
+
+    @Test(timeout = 60000)
+    public void testTryLockLongTimeout_whenLockedByOther() throws InterruptedException {
+        lockByOtherThread(lock);
+
+        boolean result = lock.tryLock(TRY_LOCK_TIMEOUT_TASK_UPPER_BOUND_MILLIS + 1, TimeUnit.MILLISECONDS);
+
+        assertFalse(result);
+        assertFalse(lock.isLockedByCurrentThread());
+        assertTrue(lock.isLocked());
+        assertEquals(1, lock.getLockCount());
+    }
+
 
     @Override
     protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
