@@ -178,8 +178,8 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
     }
 
     public boolean acquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
-        if (sessionAccessor.isValid(groupId, endpoint.sessionId)) {
-            sessionAccessor.heartbeat(groupId, endpoint.sessionId);
+        if (sessionAccessor.isValid(groupId, endpoint.sessionId())) {
+            sessionAccessor.heartbeat(groupId, endpoint.sessionId());
             boolean acquired = getLockRegistry(groupId).acquire(name, endpoint, commitIndex, invocationUid);
             if (logger.isFineEnabled()) {
                 logger.fine("Lock: " + name + " in " + groupId + " acquired: " + acquired + " by <" + endpoint + ", "
@@ -187,13 +187,13 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
             }
             return acquired;
         }
-        throw new SessionExpiredException(endpoint.sessionId);
+        throw new SessionExpiredException(endpoint.sessionId());
     }
 
     public Object tryAcquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid,
                           long timeoutMs) {
-        if (sessionAccessor.isValid(groupId, endpoint.sessionId)) {
-            sessionAccessor.heartbeat(groupId, endpoint.sessionId);
+        if (sessionAccessor.isValid(groupId, endpoint.sessionId())) {
+            sessionAccessor.heartbeat(groupId, endpoint.sessionId());
             boolean acquired = getLockRegistry(groupId).tryAcquire(name, endpoint, commitIndex, invocationUid, timeoutMs);
             if (logger.isFineEnabled()) {
                 logger.fine("Lock: " + name + " in " + groupId + " acquired: " + acquired + " by <" + endpoint + ", "
@@ -213,12 +213,12 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
 
             return acquired;
         }
-        throw new SessionExpiredException(endpoint.sessionId);
+        throw new SessionExpiredException(endpoint.sessionId());
     }
 
     public void release(RaftGroupId groupId, String name, LockEndpoint endpoint, UUID invocationUid) {
-        if (sessionAccessor.isValid(groupId, endpoint.sessionId)) {
-            sessionAccessor.heartbeat(groupId, endpoint.sessionId);
+        if (sessionAccessor.isValid(groupId, endpoint.sessionId())) {
+            sessionAccessor.heartbeat(groupId, endpoint.sessionId());
 
             LockRegistry registry = registries.get(groupId);
             if (registry == null) {
@@ -233,13 +233,13 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
                 logger.fine("Lock: " + name + " in " + groupId + " is released by " + endpoint);
                 if (waitEntries.size() > 0) {
                     LockInvocationKey newOwner = waitEntries.iterator().next();
-                    logger.fine("Lock: " + name + " in " + groupId + " is acquired by " + newOwner.endpoint);
+                    logger.fine("Lock: " + name + " in " + groupId + " is acquired by " + newOwner.endpoint());
                 }
             }
 
             List<Long> indices = new ArrayList<Long>(waitEntries.size());
             for (LockInvocationKey waitEntry : waitEntries) {
-                indices.add(waitEntry.commitIndex);
+                indices.add(waitEntry.commitIndex());
             }
             completeFutures(groupId, indices, true);
         } else {
@@ -258,7 +258,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
         List<Long> invalidated = new ArrayList<Long>();
         for (LockInvocationKey key : keys) {
             if (registry.invalidateWaitEntry(key)) {
-                invalidated.add(key.commitIndex);
+                invalidated.add(key.commitIndex());
                 if (logger.isFineEnabled()) {
                     logger.fine("Wait entry of " + key + " is invalidated.");
                 }
@@ -300,6 +300,11 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
         }
 
         return registry.lockCount(name);
+    }
+
+    // queried locally in tests
+    LockRegistry getLockRegistryOrNull(RaftGroupId groupId) {
+        return registries.get(groupId);
     }
 
     private class InvalidateExpiredWaitEntriesTask implements Runnable {

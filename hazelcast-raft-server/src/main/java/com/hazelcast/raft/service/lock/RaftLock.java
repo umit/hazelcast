@@ -97,14 +97,14 @@ class RaftLock {
                 Iterator<LockInvocationKey> iter = waiters.iterator();
                 while (iter.hasNext()) {
                     LockInvocationKey n = iter.next();
-                    if (next.invocationUid.equals(n.invocationUid)) {
+                    if (next.invocationUid().equals(n.invocationUid())) {
                         iter.remove();
-                        assert next.endpoint.equals(n.endpoint);
+                        assert next.endpoint().equals(n.endpoint());
                         entries.add(n);
                     }
                 }
 
-                owner = next.endpoint;
+                owner = next.endpoint();
                 lockCount = 1;
                 return entries;
             } else {
@@ -122,8 +122,8 @@ class RaftLock {
         Iterator<LockInvocationKey> iter = waiters.iterator();
         while (iter.hasNext()) {
             LockInvocationKey entry = iter.next();
-            if (sessionId == entry.endpoint.sessionId) {
-                commitIndices.add(entry.commitIndex);
+            if (sessionId == entry.endpoint().sessionId()) {
+                commitIndices.add(entry.commitIndex());
                 iter.remove();
             }
         }

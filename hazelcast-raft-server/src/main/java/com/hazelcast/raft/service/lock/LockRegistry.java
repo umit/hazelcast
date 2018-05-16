@@ -64,10 +64,10 @@ class LockRegistry {
             invalidations.addAll(indices);
 
             LockEndpoint owner = lock.owner();
-            if (owner != null && sessionId == owner.sessionId) {
+            if (owner != null && sessionId == owner.sessionId()) {
                 Collection<LockInvocationKey> w = lock.release(owner, Integer.MAX_VALUE, UuidUtil.newUnsecureUUID());
                 for (LockInvocationKey waitEntry : w) {
-                    acquires.add(waitEntry.commitIndex);
+                    acquires.add(waitEntry.commitIndex());
                 }
             }
         }
@@ -115,7 +115,7 @@ class LockRegistry {
     }
 
     boolean invalidateWaitEntry(LockInvocationKey key) {
-        RaftLock lock = locks.get(key.name);
+        RaftLock lock = locks.get(key.name());
         if (lock == null) {
             return false;
         }
@@ -138,7 +138,7 @@ class LockRegistry {
 
     Collection<LockInvocationKey> getExpiredWaitEntries(long now) {
         List<LockInvocationKey> expired = new ArrayList<LockInvocationKey>();
-        for (Map.Entry<LockInvocationKey, Tuple2<Long, Long>> e : tryLockTimeouts.entrySet()) {
+        for (Entry<LockInvocationKey, Tuple2<Long, Long>> e : tryLockTimeouts.entrySet()) {
             long deadline = e.getValue().element2;
             if (deadline <= now) {
                 expired.add(e.getKey());
@@ -146,6 +146,11 @@ class LockRegistry {
         }
 
         return expired;
+    }
+
+    // queried locally in tests
+    Map<LockInvocationKey, Tuple2<Long, Long>> getTryLockTimeouts() {
+        return tryLockTimeouts;
     }
 
     LockRegistrySnapshot toSnapshot() {
