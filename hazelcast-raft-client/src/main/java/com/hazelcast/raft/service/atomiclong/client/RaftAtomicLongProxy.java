@@ -2,7 +2,6 @@ package com.hazelcast.raft.service.atomiclong.client;
 
 import com.hazelcast.client.impl.ClientMessageDecoder;
 import com.hazelcast.client.impl.HazelcastClientInstanceImpl;
-import com.hazelcast.client.impl.HazelcastClientProxy;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
@@ -23,6 +22,7 @@ import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTask
 import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.CREATE_TYPE;
 import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.GET_AND_ADD_TYPE;
 import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.GET_AND_SET_TYPE;
+import static com.hazelcast.raft.service.util.ClientAccessor.getClient;
 
 /**
  * TODO: Javadoc Pending...
@@ -65,16 +65,6 @@ public class RaftAtomicLongProxy implements IAtomicLong {
         client = getClient(instance);
         this.groupId = groupId;
         this.name = name;
-    }
-
-    private static HazelcastClientInstanceImpl getClient(HazelcastInstance instance) {
-        if (instance instanceof HazelcastClientProxy) {
-            return  ((HazelcastClientProxy) instance).client;
-        } else if (instance instanceof HazelcastClientInstanceImpl) {
-            return  (HazelcastClientInstanceImpl) instance;
-        } else {
-            throw new IllegalArgumentException("Unknown client instance! " + instance);
-        }
     }
 
     @Override

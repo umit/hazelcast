@@ -48,7 +48,7 @@ public class SessionManagerService extends AbstractSessionManager {
     }
 
     @Override
-    protected ScheduledFuture<?> scheduleTask(Runnable task, long period, TimeUnit unit) {
+    protected ScheduledFuture<?> scheduleWithRepetition(Runnable task, long period, TimeUnit unit) {
         return nodeEngine.getExecutionService().scheduleWithRepetition(task, period, period, unit);
     }
 

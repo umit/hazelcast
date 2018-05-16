@@ -16,9 +16,15 @@
 
 package com.hazelcast.raft.service.session;
 
+import com.hazelcast.client.test.TestHazelcastFactory;
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.raft.service.util.ClientAccessor;
 import com.hazelcast.test.HazelcastSerialClassRunner;
+import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
@@ -26,11 +32,28 @@ import static org.mockito.Mockito.spy;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
-public class SessionManagerServiceTest extends AbstractSessionManagerTest {
+public class ClientSessionManagerTest extends AbstractSessionManagerTest {
+
+    private HazelcastInstance client;
 
     @Override
-    protected SessionManagerService getSessionManager() {
-        SessionManagerService service = getNodeEngineImpl(members[0]).getService(SessionManagerService.SERVICE_NAME);
+    protected TestHazelcastInstanceFactory createTestFactory() {
+        return new TestHazelcastFactory();
+    }
+
+    @Before
+    public void setupClient() {
+        TestHazelcastFactory f = (TestHazelcastFactory) factory;
+        client = f.newHazelcastClient();
+    }
+
+    @After
+    public void shutdown() {
+        factory.terminateAll();
+    }
+
+    protected AbstractSessionManager getSessionManager() {
+        ClientSessionManager service = SessionManagerProvider.get(ClientAccessor.getClient(client));
         return spy(service);
     }
 }

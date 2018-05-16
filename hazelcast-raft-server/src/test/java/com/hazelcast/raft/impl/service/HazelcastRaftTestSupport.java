@@ -32,7 +32,11 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
 
     @Before
     public void init() {
-        factory = createHazelcastInstanceFactory();
+        factory = createTestFactory();
+    }
+
+    protected TestHazelcastInstanceFactory createTestFactory() {
+        return createHazelcastInstanceFactory();
     }
 
     protected RaftNodeImpl waitAllForLeaderElection(final HazelcastInstance[] instances, final RaftGroupId groupId) {
