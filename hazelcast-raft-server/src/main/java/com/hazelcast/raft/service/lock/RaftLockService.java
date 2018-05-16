@@ -53,7 +53,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -110,9 +109,11 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
             ExecutionService executionService = nodeEngine.getExecutionService();
             for (Entry<LockInvocationKey, Long> e : timeouts.entrySet()) {
                 LockInvocationKey key = e.getKey();
-                long waitTimeNanos = e.getValue();
-                Runnable task = new InvalidateExpiredWaitEntriesTask(groupId, key);
-                executionService.schedule(task, waitTimeNanos, TimeUnit.NANOSECONDS);
+                long waitTimeMs = e.getValue();
+                if (waitTimeMs < TRY_LOCK_TIMEOUT_TASK_UPPER_BOUND_MILLIS) {
+                    Runnable task = new InvalidateExpiredWaitEntriesTask(groupId, key);
+                    executionService.schedule(task, waitTimeMs, MILLISECONDS);
+                }
             }
         }
     }
