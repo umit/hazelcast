@@ -45,7 +45,7 @@ public class InvalidateWaitOp extends AbstractLockOp {
     protected Object doRun(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
         LockEndpoint endpoint = getLockEndpoint();
-        LockInvocationKey key = new LockInvocationKey(name, getLockEndpoint(), invocationCommitIndex, invocationUid);
+        LockInvocationKey key = new LockInvocationKey(name, endpoint, invocationCommitIndex, invocationUid);
         service.invalidateWait(groupId, key);
         return null;
     }

@@ -26,6 +26,7 @@ import com.hazelcast.raft.impl.session.operation.HeartbeatSessionOp;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.util.ExceptionUtil;
 
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -47,8 +48,8 @@ public class SessionManagerService extends AbstractSessionManager {
     }
 
     @Override
-    protected void scheduleTask(Runnable task, long period, TimeUnit unit) {
-        nodeEngine.getExecutionService().scheduleWithRepetition(task, period, period, unit);
+    protected ScheduledFuture<?> scheduleTask(Runnable task, long period, TimeUnit unit) {
+        return nodeEngine.getExecutionService().scheduleWithRepetition(task, period, period, unit);
     }
 
     @Override

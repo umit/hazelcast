@@ -171,7 +171,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
     public boolean acquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
         if (sessionAccessor.isValid(groupId, endpoint.sessionId)) {
             sessionAccessor.heartbeat(groupId, endpoint.sessionId);
-            boolean acquired = getLockRegistry(groupId).acquire(name, endpoint, commitIndex, invocationUid, true);
+            boolean acquired = getLockRegistry(groupId).acquire(name, endpoint, commitIndex, invocationUid);
             if (logger.isFineEnabled()) {
                 logger.fine("Lock: " + name + " in " + groupId + " acquired: " + acquired + " by <" + endpoint + ", "
                         + invocationUid + ">");

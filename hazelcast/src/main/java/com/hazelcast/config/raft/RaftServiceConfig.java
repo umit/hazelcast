@@ -30,8 +30,8 @@ import static com.hazelcast.util.Preconditions.checkTrue;
  */
 public class RaftServiceConfig {
 
-    public static final long DEFAULT_SESSION_TTL = 30;
-    public static final long DEFAULT_HEARTBEAT_INTERVAL = TimeUnit.SECONDS.toMillis(5);
+    private static final long DEFAULT_SESSION_TTL = 30;
+    private static final long DEFAULT_HEARTBEAT_INTERVAL = TimeUnit.SECONDS.toMillis(5);
 
     private RaftMetadataGroupConfig metadataGroupConfig;
 
@@ -52,6 +52,8 @@ public class RaftServiceConfig {
         for (RaftGroupConfig groupConfig : config.groupConfigs.values()) {
             addGroupConfig(new RaftGroupConfig(groupConfig));
         }
+        this.sessionTimeToLiveSeconds = config.sessionTimeToLiveSeconds;
+        this.sessionHeartbeatIntervalMillis = config.sessionHeartbeatIntervalMillis;
     }
 
     public RaftConfig getRaftConfig() {
