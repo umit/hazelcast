@@ -18,54 +18,72 @@ package com.hazelcast.raft.service.lock.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.service.lock.LockEndpoint;
+import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.service.lock.LockInvocationKey;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
 import com.hazelcast.raft.service.lock.RaftLockService;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class InvalidateWaitOp extends AbstractLockOp {
+public class InvalidateWaitEntriesOp extends RaftOp implements IdentifiedDataSerializable {
 
-    private long invocationCommitIndex;
+    private Collection<LockInvocationKey> keys;
 
-    public InvalidateWaitOp() {
+    public InvalidateWaitEntriesOp() {
     }
 
-    public InvalidateWaitOp(LockInvocationKey key) {
-        super(key.name, key.endpoint.sessionId, key.endpoint.threadId, key.invocationUid);
-        this.invocationCommitIndex = key.commitIndex;
+    public InvalidateWaitEntriesOp(Collection<LockInvocationKey> keys) {
+        this.keys = keys;
     }
 
     @Override
     protected Object doRun(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
-        LockEndpoint endpoint = getLockEndpoint();
-        LockInvocationKey key = new LockInvocationKey(name, endpoint, invocationCommitIndex, invocationUid);
-        service.invalidateWait(groupId, key);
+        service.invalidateWaitEntries(groupId, keys);
         return null;
     }
 
     @Override
+    public final String getServiceName() {
+        return RaftLockService.SERVICE_NAME;
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftLockDataSerializerHook.F_ID;
+    }
+
+    @Override
     public int getId() {
-        return RaftLockDataSerializerHook.INVALIDATE_WAIT_OP;
+        return RaftLockDataSerializerHook.INVALIDATE_WAI_ENTRIES_OP;
     }
 
     @Override
     protected void writeInternal(ObjectDataOutput out)
             throws IOException {
         super.writeInternal(out);
-        out.writeLong(invocationCommitIndex);
+        out.writeInt(keys.size());
+        for (LockInvocationKey key : keys) {
+            out.writeObject(key);
+        }
     }
 
     @Override
     protected void readInternal(ObjectDataInput in)
             throws IOException {
         super.readInternal(in);
-        invocationCommitIndex = in.readLong();
+        int size = in.readInt();
+        keys = new ArrayList<LockInvocationKey>();
+        for (int i = 0; i < size; i++) {
+            LockInvocationKey key = in.readObject();
+            keys.add(key);
+        }
     }
 }

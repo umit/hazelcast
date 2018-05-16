@@ -94,6 +94,7 @@ public class SessionRegistry {
         }
     }
 
+    // queried locally
     Collection<Tuple2<Long, Long>> getExpiredSessions() {
         List<Tuple2<Long, Long>> expired = new ArrayList<Tuple2<Long, Long>>();
         long now = Clock.currentTimeMillis();

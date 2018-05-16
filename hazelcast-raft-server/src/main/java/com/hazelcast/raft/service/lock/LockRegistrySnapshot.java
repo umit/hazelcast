@@ -19,6 +19,7 @@ package com.hazelcast.raft.service.lock;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.raft.impl.util.Tuple2;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -39,12 +40,16 @@ public class LockRegistrySnapshot implements IdentifiedDataSerializable {
     public LockRegistrySnapshot() {
     }
 
-    LockRegistrySnapshot(Collection<RaftLock> locks, Map<LockInvocationKey, Long> tryLockTimeouts) {
-        this.locks = new ArrayList<RaftLockSnapshot>();
+    LockRegistrySnapshot(Collection<RaftLock> locks, Map<LockInvocationKey, Tuple2<Long, Long>> tryLockTimeouts) {
+        this.locks = new ArrayList<RaftLockSnapshot>(locks.size());
         for (RaftLock lock : locks) {
             this.locks.add(lock.toSnapshot());
         }
-        this.tryLockTimeouts = new HashMap<LockInvocationKey, Long>(tryLockTimeouts);
+        this.tryLockTimeouts = new HashMap<LockInvocationKey, Long>(tryLockTimeouts.size());
+        for (Entry<LockInvocationKey, Tuple2<Long, Long>> e : tryLockTimeouts.entrySet()) {
+            long timeout = e.getValue().element1;
+            this.tryLockTimeouts.put(e.getKey(), timeout);
+        }
     }
 
     List<RaftLockSnapshot> getLocks() {

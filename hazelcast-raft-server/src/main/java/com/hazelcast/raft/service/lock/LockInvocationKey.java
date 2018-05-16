@@ -35,7 +35,7 @@ public class LockInvocationKey implements IdentifiedDataSerializable {
     public LockInvocationKey() {
     }
 
-    public LockInvocationKey(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
+    LockInvocationKey(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
         this.name = name;
         this.endpoint = endpoint;
         this.commitIndex = commitIndex;
@@ -56,7 +56,8 @@ public class LockInvocationKey implements IdentifiedDataSerializable {
     public void writeData(ObjectDataOutput out)
             throws IOException {
         out.writeUTF(name);
-        out.writeObject(endpoint);
+        out.writeLong(endpoint.sessionId);
+        out.writeLong(endpoint.threadId);
         out.writeLong(commitIndex);
         out.writeLong(invocationUid.getLeastSignificantBits());
         out.writeLong(invocationUid.getMostSignificantBits());
@@ -66,7 +67,9 @@ public class LockInvocationKey implements IdentifiedDataSerializable {
     public void readData(ObjectDataInput in)
             throws IOException {
         name = in.readUTF();
-        endpoint = in.readObject();
+        long sessionId = in.readLong();
+        long threadId = in.readLong();
+        endpoint = new LockEndpoint(sessionId, threadId);
         commitIndex = in.readLong();
         long least = in.readLong();
         long most = in.readLong();
