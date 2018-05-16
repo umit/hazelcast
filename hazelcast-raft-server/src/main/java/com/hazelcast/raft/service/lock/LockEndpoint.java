@@ -1,16 +1,57 @@
 package com.hazelcast.raft.service.lock;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+
+import java.io.IOException;
+
 /**
  * TODO: Javadoc Pending...
  *
  */
-public class LockEndpoint {
-    public final long sessionId;
-    public final long threadId;
+public class LockEndpoint implements IdentifiedDataSerializable {
+    private long sessionId;
+    private long threadId;
+
+    public LockEndpoint() {
+    }
 
     public LockEndpoint(long sessionId, long threadId) {
         this.sessionId = sessionId;
         this.threadId = threadId;
+    }
+
+    public long sessionId() {
+        return sessionId;
+    }
+
+    public long threadId() {
+        return threadId;
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftLockDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftLockDataSerializerHook.LOCK_ENDPOINT;
+    }
+
+    @Override
+    public void writeData(ObjectDataOutput out)
+            throws IOException {
+        out.writeLong(sessionId);
+        out.writeLong(threadId);
+    }
+
+    @Override
+    public void readData(ObjectDataInput in)
+            throws IOException {
+        sessionId = in.readLong();
+        threadId = in.readLong();
     }
 
     @Override

@@ -27,10 +27,10 @@ import java.util.UUID;
  * TODO: Javadoc Pending...
  */
 public class LockInvocationKey implements IdentifiedDataSerializable {
-    public String name;
-    public LockEndpoint endpoint;
-    public long commitIndex;
-    public UUID invocationUid;
+    private String name;
+    private LockEndpoint endpoint;
+    private long commitIndex;
+    private UUID invocationUid;
 
     public LockInvocationKey() {
     }
@@ -40,6 +40,22 @@ public class LockInvocationKey implements IdentifiedDataSerializable {
         this.endpoint = endpoint;
         this.commitIndex = commitIndex;
         this.invocationUid = invocationUid;
+    }
+
+    public String name() {
+        return name;
+    }
+
+    public LockEndpoint endpoint() {
+        return endpoint;
+    }
+
+    public long commitIndex() {
+        return commitIndex;
+    }
+
+    public UUID invocationUid() {
+        return invocationUid;
     }
 
     @Override
@@ -56,8 +72,7 @@ public class LockInvocationKey implements IdentifiedDataSerializable {
     public void writeData(ObjectDataOutput out)
             throws IOException {
         out.writeUTF(name);
-        out.writeLong(endpoint.sessionId);
-        out.writeLong(endpoint.threadId);
+        out.writeObject(endpoint);
         out.writeLong(commitIndex);
         out.writeLong(invocationUid.getLeastSignificantBits());
         out.writeLong(invocationUid.getMostSignificantBits());
@@ -67,9 +82,7 @@ public class LockInvocationKey implements IdentifiedDataSerializable {
     public void readData(ObjectDataInput in)
             throws IOException {
         name = in.readUTF();
-        long sessionId = in.readLong();
-        long threadId = in.readLong();
-        endpoint = new LockEndpoint(sessionId, threadId);
+        endpoint = in.readObject();
         commitIndex = in.readLong();
         long least = in.readLong();
         long most = in.readLong();
