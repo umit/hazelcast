@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -34,6 +35,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * TODO: Javadoc Pending...
  */
 public abstract class AbstractSessionManager {
+
+    public static final int NO_SESSION_ID = -1;
 
     private final ConcurrentMap<RaftGroupId, Object> mutexes = new ConcurrentHashMap<RaftGroupId, Object>();
     private final ConcurrentMap<RaftGroupId, ClientSession> sessions = new ConcurrentHashMap<RaftGroupId, ClientSession>();
@@ -83,28 +86,37 @@ public abstract class AbstractSessionManager {
         }
     }
 
-    protected abstract SessionResponse requestNewSession(RaftGroupId groupId);
-
-    protected abstract void scheduleTask(Runnable task, long period, TimeUnit unit);
-
     public void releaseSession(RaftGroupId groupId, long id) {
         ClientSession session = sessions.get(groupId);
-        if (session.id == id) {
+        if (session != null && session.id == id) {
             session.release();
         }
     }
 
     public void invalidateSession(RaftGroupId groupId, long id) {
         ClientSession session = sessions.get(groupId);
-        if (session.id == id) {
+        if (session != null && session.id == id) {
             sessions.remove(groupId, session);
         }
     }
 
     public long getSession(RaftGroupId groupId) {
         ClientSession session = sessions.get(groupId);
-        return session != null ? session.id : -1;
+        return session != null ? session.id : NO_SESSION_ID;
     }
+
+    // For testing
+    public long getSessionUsageCount(RaftGroupId groupId, long sessionId) {
+        ClientSession session = sessions.get(groupId);
+        return session != null && session.id == sessionId ? session.operationsCount.get() : 0;
+    }
+
+    protected abstract SessionResponse requestNewSession(RaftGroupId groupId);
+
+    protected abstract ScheduledFuture<?> scheduleTask(Runnable task, long period, TimeUnit unit);
+
+    protected abstract ICompletableFuture<Object> heartbeat(RaftGroupId groupId, long sessionId);
+
 
     private static class ClientSession {
         private final long id;
@@ -183,6 +195,4 @@ public abstract class AbstractSessionManager {
             }
         }
     }
-
-    protected abstract ICompletableFuture<Object> heartbeat(RaftGroupId groupId, long sessionId);
 }

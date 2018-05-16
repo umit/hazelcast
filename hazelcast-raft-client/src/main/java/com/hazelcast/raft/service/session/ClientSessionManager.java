@@ -20,6 +20,7 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.session.SessionResponse;
 
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -33,7 +34,8 @@ public class ClientSessionManager extends AbstractSessionManager {
     }
 
     @Override
-    protected void scheduleTask(Runnable task, long period, TimeUnit unit) {
+    protected ScheduledFuture<?> scheduleTask(Runnable task, long period, TimeUnit unit) {
+        return null;
     }
 
     @Override

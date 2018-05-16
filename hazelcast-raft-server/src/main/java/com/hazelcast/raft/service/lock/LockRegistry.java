@@ -77,8 +77,8 @@ class LockRegistry {
         return raftLock;
     }
 
-    boolean acquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid, boolean wait) {
-        return getRaftLock(name).acquire(endpoint, commitIndex, invocationUid, wait);
+    boolean acquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
+        return getRaftLock(name).acquire(endpoint, commitIndex, invocationUid, true);
     }
 
     boolean tryAcquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid, long waitInNanos) {
