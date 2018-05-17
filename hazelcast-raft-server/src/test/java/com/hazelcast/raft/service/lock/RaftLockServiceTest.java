@@ -123,7 +123,7 @@ public class RaftLockServiceTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                assertTrue(getSnapshotEntry(followerRaftNode).index() > 0);
+                assertEquals(leaderSnapshotIndex[0], getSnapshotEntry(followerRaftNode).index());
             }
         });
 
