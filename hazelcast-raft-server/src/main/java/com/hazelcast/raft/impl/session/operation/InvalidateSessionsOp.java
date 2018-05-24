@@ -88,4 +88,9 @@ public class InvalidateSessionsOp extends RaftOp implements IdentifiedDataSerial
         }
         this.sessions = sessionIds;
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", sessions=").append(sessions);
+    }
 }

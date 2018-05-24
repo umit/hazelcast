@@ -56,4 +56,9 @@ public class TriggerDestroyRaftGroupOp extends RaftOp implements IdentifiedDataS
     public int getId() {
         return RaftServiceDataSerializerHook.TRIGGER_DESTROY_RAFT_GROUP_OP;
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", targetGroupId=").append(targetGroupId);
+    }
 }

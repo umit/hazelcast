@@ -81,4 +81,12 @@ abstract class AbstractLockOp extends RaftOp implements IdentifiedDataSerializab
         long most = in.readLong();
         invocationUid = new UUID(most, least);
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", name=").append(name);
+        sb.append(", sessionId=").append(sessionId);
+        sb.append(", threadId=").append(threadId);
+        sb.append(", invocationUid=").append(invocationUid);
+    }
 }

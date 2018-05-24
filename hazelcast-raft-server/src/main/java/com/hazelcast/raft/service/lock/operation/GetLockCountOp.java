@@ -94,4 +94,11 @@ public class GetLockCountOp extends RaftOp implements IdentifiedDataSerializable
         sessionId = in.readLong();
         threadId = in.readLong();
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", name=").append(name);
+        sb.append(", sessionId=").append(sessionId);
+        sb.append(", threadId=").append(threadId);
+    }
 }

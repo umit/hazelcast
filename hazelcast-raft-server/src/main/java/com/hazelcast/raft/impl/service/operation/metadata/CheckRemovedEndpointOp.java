@@ -55,4 +55,9 @@ public class CheckRemovedEndpointOp extends RaftOp implements IdentifiedDataSeri
         return RaftServiceDataSerializerHook.CHECK_REMOVED_ENDPOINT_OP;
     }
 
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", endpoint=").append(endpoint);
+    }
+
 }

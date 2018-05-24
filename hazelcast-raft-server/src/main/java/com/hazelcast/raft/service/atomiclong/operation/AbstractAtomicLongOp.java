@@ -50,4 +50,9 @@ public abstract class AbstractAtomicLongOp extends RaftOp implements IdentifiedD
     public final int getFactoryId() {
         return AtomicLongDataSerializerHook.F_ID;
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", name=").append(name);
+    }
 }

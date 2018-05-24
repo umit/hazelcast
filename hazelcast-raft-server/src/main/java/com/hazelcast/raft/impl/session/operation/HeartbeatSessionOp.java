@@ -73,4 +73,9 @@ public class HeartbeatSessionOp extends RaftOp implements IdentifiedDataSerializ
         super.readInternal(in);
         sessionId = in.readLong();
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", sessionId=").append(sessionId);
+    }
 }

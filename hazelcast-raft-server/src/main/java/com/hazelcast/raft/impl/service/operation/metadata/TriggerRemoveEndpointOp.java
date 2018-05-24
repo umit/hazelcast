@@ -57,4 +57,9 @@ public class TriggerRemoveEndpointOp extends RaftOp implements IdentifiedDataSer
     public int getId() {
         return RaftServiceDataSerializerHook.TRIGGER_REMOVE_ENDPOINT_OP;
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", endpoint=").append(endpoint);
+    }
 }
