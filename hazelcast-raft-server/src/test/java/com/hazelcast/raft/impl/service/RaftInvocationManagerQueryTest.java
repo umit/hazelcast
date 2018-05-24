@@ -61,7 +61,8 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         assertNull(future.get());
 
         RaftNodeImpl raftNode = getRaftNode(getLeaderInstance(instances, groupId), groupId);
-        assertEquals(1, getCommitIndex(raftNode));
+        // commit-index:1 = term-change, commit-index:2 = linearizable query
+        assertEquals(2, getCommitIndex(raftNode));
     }
 
     @Test
