@@ -42,7 +42,7 @@ public class RaftTestApplyOp extends RaftOp {
     }
 
     @Override
-    public String toString() {
-        return "RaftTestApplyOperation{" + "val=" + val + '}';
+    protected void toString(StringBuilder sb) {
+        sb.append(", val=").append(val);
     }
 }

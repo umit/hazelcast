@@ -75,4 +75,8 @@ public class CloseSessionOp extends RaftOp implements IdentifiedDataSerializable
         sessionId = in.readLong();
     }
 
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", sessionId=").append(sessionId);
+    }
 }

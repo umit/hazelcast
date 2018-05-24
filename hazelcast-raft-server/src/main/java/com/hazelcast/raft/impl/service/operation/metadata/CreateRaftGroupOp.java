@@ -74,4 +74,10 @@ public class CreateRaftGroupOp extends RaftOp implements IdentifiedDataSerializa
     public int getId() {
         return RaftServiceDataSerializerHook.CREATE_RAFT_GROUP_OP;
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", groupName=").append(groupName);
+        sb.append(", endpoints=").append(endpoints);
+    }
 }

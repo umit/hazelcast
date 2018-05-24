@@ -62,4 +62,10 @@ public class TryLockOp extends AbstractLockOp {
     public int getId() {
         return RaftLockDataSerializerHook.TRY_LOCK_OP;
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        super.toString(sb);
+        sb.append(", timeoutMs=").append(timeoutMs);
+    }
 }

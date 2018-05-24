@@ -58,8 +58,7 @@ public class RestoreSnapshotOp extends RaftOp implements IdentifiedDataSerializa
     }
 
     @Override
-    public String toString() {
-        return "RestoreSnapshotOp{" + "groupId='" + getGroupId() + '\'' + ", commitIndex=" + getCommitIndex()
-                + ", snapshot=" + snapshot + '}';
+    protected void toString(StringBuilder sb) {
+        sb.append(", snapshot=").append(snapshot);
     }
 }

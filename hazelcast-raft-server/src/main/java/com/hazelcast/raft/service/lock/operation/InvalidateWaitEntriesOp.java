@@ -86,4 +86,9 @@ public class InvalidateWaitEntriesOp extends RaftOp implements IdentifiedDataSer
             keys.add(key);
         }
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", keys=").append(keys);
+    }
 }

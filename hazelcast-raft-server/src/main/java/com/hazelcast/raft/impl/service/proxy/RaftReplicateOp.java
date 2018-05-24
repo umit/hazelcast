@@ -23,7 +23,8 @@ import java.io.IOException;
 /**
  * The base class that replicates the given {@link RaftOp} to the target raft group
  */
-public abstract class RaftReplicateOp extends Operation implements IdentifiedDataSerializable, AllowedDuringPassiveState {
+public abstract class RaftReplicateOp extends Operation implements IdentifiedDataSerializable,
+        AllowedDuringPassiveState, ExecutionCallback {
 
     private RaftGroupId raftGroupId;
 
@@ -51,17 +52,7 @@ public abstract class RaftReplicateOp extends Operation implements IdentifiedDat
         if (future == null) {
             return;
         }
-        future.andThen(new ExecutionCallback() {
-            @Override
-            public void onResponse(Object response) {
-                sendResponse(response);
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-                sendResponse(t);
-            }
-        });
+        future.andThen(this);
     }
 
     ICompletableFuture replicate(RaftNode raftNode) {
@@ -69,11 +60,17 @@ public abstract class RaftReplicateOp extends Operation implements IdentifiedDat
         return raftNode.replicate(op);
     }
 
-    protected abstract RaftOp getRaftOp();
-
-    public final RaftGroupId getRaftGroupId() {
-        return raftGroupId;
+    @Override
+    public void onResponse(Object response) {
+        sendResponse(response);
     }
+
+    @Override
+    public void onFailure(Throwable t) {
+        sendResponse(t);
+    }
+
+    protected abstract RaftOp getRaftOp();
 
     @Override
     public final boolean returnsResponse() {

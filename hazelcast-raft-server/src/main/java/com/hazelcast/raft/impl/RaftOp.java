@@ -78,4 +78,14 @@ public abstract class RaftOp extends Operation {
         return response;
     }
 
+    @Override
+    public final String toString() {
+        StringBuilder sb = new StringBuilder(getClass().getName()).append('{');
+        sb.append("serviceName='").append(getServiceName()).append('\'');
+        sb.append(", groupId=").append(groupId);
+        sb.append(", commitIndex=").append(commitIndex);
+        toString(sb);
+        sb.append('}');
+        return sb.toString();
+    }
 }

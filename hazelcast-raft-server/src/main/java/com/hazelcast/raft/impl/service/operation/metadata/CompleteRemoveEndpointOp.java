@@ -79,4 +79,10 @@ public class CompleteRemoveEndpointOp extends RaftOp implements IdentifiedDataSe
     public int getId() {
         return RaftServiceDataSerializerHook.COMPLETE_REMOVE_ENDPOINT_OP;
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", endpoint=").append(endpoint);
+        sb.append(", leftGroups=").append(leftGroups);
+    }
 }

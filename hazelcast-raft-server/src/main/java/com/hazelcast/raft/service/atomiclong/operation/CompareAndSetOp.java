@@ -49,4 +49,11 @@ public class CompareAndSetOp extends AbstractAtomicLongOp {
     public int getId() {
         return AtomicLongDataSerializerHook.COMPARE_AND_SET_OP;
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        super.toString(sb);
+        sb.append(", currentValue=").append(currentValue);
+        sb.append(", newValue=").append(newValue);
+    }
 }

@@ -67,4 +67,8 @@ public class CompleteDestroyRaftGroupsOp extends RaftOp implements IdentifiedDat
         return RaftServiceDataSerializerHook.COMPLETE_DESTROY_RAFT_GROUPS_OP;
     }
 
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", groupIds=").append(groupIds);
+    }
 }

@@ -45,4 +45,10 @@ public class GetAndSetOp extends AbstractAtomicLongOp {
     public int getId() {
         return AtomicLongDataSerializerHook.GET_AND_SET_OP;
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        super.toString(sb);
+        sb.append(", value=").append(value);
+    }
 }
