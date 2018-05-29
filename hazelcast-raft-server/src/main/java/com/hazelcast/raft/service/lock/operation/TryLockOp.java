@@ -41,20 +41,20 @@ public class TryLockOp extends AbstractLockOp {
     }
 
     @Override
-    protected Object doRun(RaftGroupId groupId, long commitIndex) {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
         return service.tryAcquire(groupId, name, getLockEndpoint(), commitIndex, invocationUid, timeoutMs);
     }
 
     @Override
-    protected void writeInternal(ObjectDataOutput out) throws IOException {
-        super.writeInternal(out);
+    public void writeData(ObjectDataOutput out) throws IOException {
+        super.writeData(out);
         out.writeLong(timeoutMs);
     }
 
     @Override
-    protected void readInternal(ObjectDataInput in) throws IOException {
-        super.readInternal(in);
+    public void readData(ObjectDataInput in) throws IOException {
+        super.readData(in);
         timeoutMs = in.readLong();
     }
 

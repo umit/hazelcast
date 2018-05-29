@@ -19,7 +19,6 @@ package com.hazelcast.raft.impl.service;
 import com.hazelcast.config.Config;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.Member;
-import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftEndpointImpl;
 import com.hazelcast.test.AssertTask;
@@ -45,8 +44,7 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
 
     @Test
     public void promoteToRaftMember() throws ExecutionException, InterruptedException {
-        Address[] raftAddresses = createAddresses(2);
-        HazelcastInstance[] instances = newInstances(raftAddresses, 2, 1);
+        HazelcastInstance[] instances = newInstances(2, 2, 1);
 
         final RaftService service = getRaftService(instances[instances.length - 1]);
         service.triggerRaftMemberPromotion().get();
@@ -61,8 +59,7 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
 
     @Test
     public void removeRaftMember() throws ExecutionException, InterruptedException {
-        Address[] raftAddresses = createAddresses(3);
-        final HazelcastInstance[] instances = newInstances(raftAddresses);
+        final HazelcastInstance[] instances = newInstances(3);
 
         final RaftGroupId testGroupId = getRaftInvocationManager(instances[0]).createRaftGroup("test", 3).get();
 
@@ -91,8 +88,7 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
 
     @Test
     public void test() {
-        Address[] raftAddresses = createAddresses(3);
-        HazelcastInstance[] instances = newInstances(raftAddresses, 3, 1);
+        HazelcastInstance[] instances = newInstances(3, 3, 1);
 
         waitAllForLeaderElection(Arrays.copyOf(instances, 3), RaftService.METADATA_GROUP_ID);
 

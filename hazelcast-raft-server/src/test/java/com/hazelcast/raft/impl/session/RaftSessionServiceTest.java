@@ -7,7 +7,6 @@ import com.hazelcast.config.raft.RaftServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.instance.Node;
-import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftEndpointImpl;
 import com.hazelcast.raft.impl.RaftNodeImpl;
@@ -59,8 +58,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
     @Before
     public void setup() throws ExecutionException, InterruptedException {
         int raftGroupSize = 3;
-        Address[] raftAddresses = createAddresses(raftGroupSize);
-        instances = newInstances(raftAddresses, raftGroupSize, 0);
+        instances = newInstances(raftGroupSize);
         invocationManager = getRaftInvocationManager(instances[0]);
         groupId = invocationManager.createRaftGroup(RAFT_GROUP_NAME, raftGroupSize).get();
     }

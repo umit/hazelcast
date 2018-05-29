@@ -2,7 +2,6 @@ package com.hazelcast.raft.impl;
 
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.config.raft.RaftConfig;
-import com.hazelcast.raft.exception.CannotRunLocalQueryException;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.service.ApplyRaftRunnable;
@@ -25,6 +24,7 @@ import static com.hazelcast.raft.impl.RaftUtil.newGroupWithService;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
@@ -43,25 +43,27 @@ public class LocalQueryTest extends HazelcastTestSupport {
         }
     }
 
-    @Test(expected = CannotRunLocalQueryException.class)
-    public void when_queryFromLeader_withoutAnyCommit_thenFail() throws Exception {
+    @Test
+    public void when_queryFromLeader_withoutAnyCommit_thenReturnDefaultValue() throws Exception {
         group = newGroupWithService(3, new RaftConfig());
         group.start();
 
         RaftNodeImpl leader = group.waitUntilLeaderElected();
 
-        leader.query(new QueryRaftRunnable(), QueryPolicy.LEADER_LOCAL).get();
+        Object o = leader.query(new QueryRaftRunnable(), QueryPolicy.LEADER_LOCAL).get();
+        assertNull(o);
     }
 
-    @Test(expected = CannotRunLocalQueryException.class)
-    public void when_queryFromFollower_withoutAnyCommit_thenFail() throws Exception {
+    @Test
+    public void when_queryFromFollower_withoutAnyCommit_thenReturnDefaultValue() throws Exception {
         group = newGroupWithService(3, new RaftConfig());
         group.start();
 
         group.waitUntilLeaderElected();
         RaftNodeImpl follower = group.getAnyFollowerNode();
 
-        follower.query(new QueryRaftRunnable(), QueryPolicy.ANY_LOCAL).get();
+        Object o = follower.query(new QueryRaftRunnable(), QueryPolicy.ANY_LOCAL).get();
+        assertNull(o);
     }
 
     @Test

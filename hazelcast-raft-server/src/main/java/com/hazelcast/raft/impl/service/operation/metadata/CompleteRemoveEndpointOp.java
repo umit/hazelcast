@@ -31,7 +31,7 @@ public class CompleteRemoveEndpointOp extends RaftOp implements IdentifiedDataSe
     }
 
     @Override
-    protected Object doRun(RaftGroupId groupId, long commitIndex) {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
         metadataManager.completeRemoveEndpoint(endpoint, leftGroups);
@@ -44,8 +44,7 @@ public class CompleteRemoveEndpointOp extends RaftOp implements IdentifiedDataSe
     }
 
     @Override
-    protected void writeInternal(ObjectDataOutput out) throws IOException {
-        super.writeInternal(out);
+    public void writeData(ObjectDataOutput out) throws IOException {
         out.writeObject(endpoint);
         out.writeInt(leftGroups.size());
         for (Entry<RaftGroupId, Tuple2<Long, Long>> e : leftGroups.entrySet()) {
@@ -57,8 +56,7 @@ public class CompleteRemoveEndpointOp extends RaftOp implements IdentifiedDataSe
     }
 
     @Override
-    protected void readInternal(ObjectDataInput in) throws IOException {
-        super.readInternal(in);
+    public void readData(ObjectDataInput in) throws IOException {
         endpoint = in.readObject();
         int count = in.readInt();
         leftGroups = new HashMap<RaftGroupId, Tuple2<Long, Long>>(count);

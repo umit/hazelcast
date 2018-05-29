@@ -17,8 +17,8 @@ public class LocalGetOp extends AbstractAtomicLongOp {
     }
 
     @Override
-    public Object doRun(RaftGroupId groupId, long commitIndex) {
-        return getAtomicLong().value();
+    public Object run(RaftGroupId groupId, long commitIndex) {
+        return getAtomicLong(groupId).value();
     }
 
     @Override

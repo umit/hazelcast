@@ -44,7 +44,7 @@ public class InvalidateWaitEntriesOp extends RaftOp implements IdentifiedDataSer
     }
 
     @Override
-    protected Object doRun(RaftGroupId groupId, long commitIndex) {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
         service.invalidateWaitEntries(groupId, keys);
         return null;
@@ -66,9 +66,7 @@ public class InvalidateWaitEntriesOp extends RaftOp implements IdentifiedDataSer
     }
 
     @Override
-    protected void writeInternal(ObjectDataOutput out)
-            throws IOException {
-        super.writeInternal(out);
+    public void writeData(ObjectDataOutput out) throws IOException {
         out.writeInt(keys.size());
         for (LockInvocationKey key : keys) {
             out.writeObject(key);
@@ -76,9 +74,7 @@ public class InvalidateWaitEntriesOp extends RaftOp implements IdentifiedDataSer
     }
 
     @Override
-    protected void readInternal(ObjectDataInput in)
-            throws IOException {
-        super.readInternal(in);
+    public void readData(ObjectDataInput in) throws IOException {
         int size = in.readInt();
         keys = new ArrayList<LockInvocationKey>();
         for (int i = 0; i < size; i++) {

@@ -24,7 +24,7 @@ public class TriggerRemoveEndpointOp extends RaftOp implements IdentifiedDataSer
     }
 
     @Override
-    protected Object doRun(RaftGroupId groupId, long commitIndex) {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
         metadataManager.triggerRemoveEndpoint(endpoint);
@@ -37,14 +37,12 @@ public class TriggerRemoveEndpointOp extends RaftOp implements IdentifiedDataSer
     }
 
     @Override
-    protected void writeInternal(ObjectDataOutput out) throws IOException {
-        super.writeInternal(out);
+    public void writeData(ObjectDataOutput out) throws IOException {
         out.writeObject(endpoint);
     }
 
     @Override
-    protected void readInternal(ObjectDataInput in) throws IOException {
-        super.readInternal(in);
+    public void readData(ObjectDataInput in) throws IOException {
         endpoint = in.readObject();
     }
 

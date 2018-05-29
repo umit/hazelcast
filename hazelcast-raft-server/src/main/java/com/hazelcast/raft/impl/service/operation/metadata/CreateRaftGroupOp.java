@@ -32,7 +32,7 @@ public class CreateRaftGroupOp extends RaftOp implements IdentifiedDataSerializa
     }
 
     @Override
-    public Object doRun(RaftGroupId groupId, long commitIndex) {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
         return metadataManager.createRaftGroup(groupName, endpoints, commitIndex);
@@ -44,8 +44,7 @@ public class CreateRaftGroupOp extends RaftOp implements IdentifiedDataSerializa
     }
 
     @Override
-    protected void writeInternal(ObjectDataOutput out) throws IOException {
-        super.writeInternal(out);
+    public void writeData(ObjectDataOutput out) throws IOException {
         out.writeUTF(groupName);
         out.writeInt(endpoints.size());
         for (RaftEndpointImpl endpoint : endpoints) {
@@ -54,8 +53,7 @@ public class CreateRaftGroupOp extends RaftOp implements IdentifiedDataSerializa
     }
 
     @Override
-    protected void readInternal(ObjectDataInput in) throws IOException {
-        super.readInternal(in);
+    public void readData(ObjectDataInput in) throws IOException {
         groupName = in.readUTF();
         int len = in.readInt();
         endpoints = new ArrayList<RaftEndpointImpl>(len);

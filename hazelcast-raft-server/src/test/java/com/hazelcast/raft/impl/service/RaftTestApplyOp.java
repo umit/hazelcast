@@ -19,7 +19,7 @@ public class RaftTestApplyOp extends RaftOp {
     }
 
     @Override
-    public Object doRun(RaftGroupId groupId, long commitIndex) {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         RaftDataService service = getService();
         return service.apply(commitIndex, val);
     }
@@ -30,14 +30,12 @@ public class RaftTestApplyOp extends RaftOp {
     }
 
     @Override
-    protected void writeInternal(ObjectDataOutput out) throws IOException {
-        super.writeInternal(out);
+    public void writeData(ObjectDataOutput out) throws IOException {
         out.writeObject(val);
     }
 
     @Override
-    protected void readInternal(ObjectDataInput in) throws IOException {
-        super.readInternal(in);
+    public void readData(ObjectDataInput in) throws IOException {
         val = in.readObject();
     }
 

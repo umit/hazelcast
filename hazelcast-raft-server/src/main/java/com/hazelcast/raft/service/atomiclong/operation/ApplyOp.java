@@ -27,21 +27,21 @@ public class ApplyOp<R> extends AbstractAtomicLongOp {
     }
 
     @Override
-    protected Object doRun(RaftGroupId groupId, long commitIndex) {
-        RaftAtomicLong atomic = getAtomicLong();
+    public Object run(RaftGroupId groupId, long commitIndex) {
+        RaftAtomicLong atomic = getAtomicLong(groupId);
         long val = atomic.getAndAdd(0);
         return function.apply(val);
     }
 
     @Override
-    protected void writeInternal(ObjectDataOutput out) throws IOException {
-        super.writeInternal(out);
+    public void writeData(ObjectDataOutput out) throws IOException {
+        super.writeData(out);
         out.writeObject(function);
     }
 
     @Override
-    protected void readInternal(ObjectDataInput in) throws IOException {
-        super.readInternal(in);
+    public void readData(ObjectDataInput in) throws IOException {
+        super.readData(in);
         function = in.readObject();
     }
 

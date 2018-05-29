@@ -39,7 +39,7 @@ public class AddEndpointOp extends RaftOp implements IdentifiedDataSerializable 
     }
 
     @Override
-    protected Object doRun(RaftGroupId groupId, long commitIndex) {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         assert RaftService.METADATA_GROUP_ID.equals(groupId);
         RaftService service = getService();
         service.getMetadataManager().addActiveEndpoint(endpoint);
@@ -52,14 +52,12 @@ public class AddEndpointOp extends RaftOp implements IdentifiedDataSerializable 
     }
 
     @Override
-    protected void writeInternal(ObjectDataOutput out) throws IOException {
-        super.writeInternal(out);
+    public void writeData(ObjectDataOutput out) throws IOException {
         out.writeObject(endpoint);
     }
 
     @Override
-    protected void readInternal(ObjectDataInput in) throws IOException {
-        super.readInternal(in);
+    public void readData(ObjectDataInput in) throws IOException {
         endpoint = in.readObject();
     }
 

@@ -28,7 +28,6 @@ import com.hazelcast.raft.impl.service.operation.snapshot.RestoreSnapshotOp;
 import com.hazelcast.raft.impl.util.PartitionSpecificRunnableAdaptor;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.spi.Operation;
-import com.hazelcast.spi.OperationAccessor;
 import com.hazelcast.spi.TaskScheduler;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.spi.impl.operationexecutor.impl.OperationExecutorImpl;
@@ -158,13 +157,9 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
     @Override
     public Object runOperation(Object op, long commitIndex) {
         RaftOp operation = (RaftOp) op;
-        operation.setGroupId(raftGroupId).setCommitIndex(commitIndex).setNodeEngine(nodeEngine);
-        OperationAccessor.setCallerAddress(operation, nodeEngine.getThisAddress());
+        operation.setNodeEngine(nodeEngine);
         try {
-            operation.beforeRun();
-            operation.run();
-            operation.afterRun();
-            return operation.getResponse();
+            return operation.run(raftGroupId, commitIndex);
         } catch (Throwable t) {
             return t;
         }
