@@ -34,7 +34,6 @@ import java.util.concurrent.ExecutionException;
 
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static com.hazelcast.raft.impl.RaftUtil.getSnapshotEntry;
-import static com.hazelcast.raft.impl.service.RaftServiceUtil.getRaftNode;
 import static com.hazelcast.test.PacketFiltersUtil.dropOperationsBetween;
 import static com.hazelcast.test.PacketFiltersUtil.resetPacketFiltersFrom;
 import static java.util.Arrays.asList;
@@ -62,7 +61,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
         int raftGroupSize = 3;
         Address[] raftAddresses = createAddresses(raftGroupSize);
         instances = newInstances(raftAddresses, raftGroupSize, 0);
-        invocationManager = getRaftInvocationService(instances[0]);
+        invocationManager = getRaftInvocationManager(instances[0]);
         groupId = invocationManager.createRaftGroup(RAFT_GROUP_NAME, raftGroupSize).get();
     }
 
@@ -331,8 +330,8 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
     }
 
     @Override
-    protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
-        Config config = super.createConfig(raftAddresses, metadataGroupSize);
+    protected Config createConfig(int groupSize, int metadataGroupSize) {
+        Config config = super.createConfig(groupSize, metadataGroupSize);
         RaftServiceConfig raftServiceConfig = config.getRaftServiceConfig();
         raftServiceConfig.getRaftConfig().setCommitIndexAdvanceCountToSnapshot(LOG_ENTRY_COUNT_TO_SNAPSHOT);
         raftServiceConfig.addGroupConfig(new RaftGroupConfig(RAFT_GROUP_NAME, 3));

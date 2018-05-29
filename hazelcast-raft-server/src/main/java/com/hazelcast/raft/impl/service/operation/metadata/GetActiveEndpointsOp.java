@@ -4,11 +4,13 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.RaftEndpointImpl;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.impl.RaftOp;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 public class GetActiveEndpointsOp extends RaftOp implements IdentifiedDataSerializable {
 
@@ -18,7 +20,8 @@ public class GetActiveEndpointsOp extends RaftOp implements IdentifiedDataSerial
     @Override
     protected Object doRun(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        return service.getMetadataManager().getActiveEndpoints();
+        // returning arraylist to be able to serialize response
+        return new ArrayList<RaftEndpointImpl>(service.getMetadataManager().getActiveEndpoints());
     }
 
     @Override

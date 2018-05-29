@@ -57,7 +57,7 @@ public abstract class AbstractSessionManagerTest extends HazelcastRaftTestSuppor
         Address[] raftAddresses = createAddresses(raftGroupSize);
         members = newInstances(raftAddresses, raftGroupSize, 0);
 
-        RaftInvocationManager invocationManager = getRaftInvocationService(members[0]);
+        RaftInvocationManager invocationManager = getRaftInvocationManager(members[0]);
         groupId = invocationManager.createRaftGroup("group", raftGroupSize).get();
     }
 
@@ -258,8 +258,8 @@ public abstract class AbstractSessionManagerTest extends HazelcastRaftTestSuppor
     }
 
     @Override
-    protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
-        Config config = super.createConfig(raftAddresses, metadataGroupSize);
+    protected Config createConfig(int groupSize, int metadataGroupSize) {
+        Config config = super.createConfig(groupSize, metadataGroupSize);
         RaftServiceConfig raftServiceConfig = config.getRaftServiceConfig();
         raftServiceConfig.setSessionHeartbeatIntervalMillis(500);
         raftServiceConfig.setSessionTimeToLiveSeconds(sessionTTLSeconds);

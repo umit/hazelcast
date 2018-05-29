@@ -245,10 +245,10 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
 
 
     @Override
-    protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
-        Config config = super.createConfig(raftAddresses, metadataGroupSize);
+    protected Config createConfig(int groupSize, int metadataGroupSize) {
+        Config config = super.createConfig(groupSize, metadataGroupSize);
 
-        RaftLockConfig lockConfig = new RaftLockConfig(name, new RaftGroupConfig(name, groupSize));
+        RaftLockConfig lockConfig = new RaftLockConfig(name, new RaftGroupConfig(name, this.groupSize));
         config.addRaftLockConfig(lockConfig);
         return config;
     }

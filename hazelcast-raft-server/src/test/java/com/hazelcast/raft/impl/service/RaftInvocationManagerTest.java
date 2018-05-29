@@ -30,7 +30,7 @@ public class RaftInvocationManagerTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
 
-        RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
+        RaftInvocationManager invocationService = getRaftInvocationManager(instances[0]);
         final RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
 
         for (int i = 0; i < 100; i++) {
@@ -44,7 +44,7 @@ public class RaftInvocationManagerTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(cpNodeCount);
         instances = newInstances(raftAddresses, 3, 1);
 
-        RaftInvocationManager invocationService = getRaftInvocationService(instances[instances.length - 1]);
+        RaftInvocationManager invocationService = getRaftInvocationManager(instances[instances.length - 1]);
         final RaftGroupId groupId = invocationService.createRaftGroup("test", cpNodeCount).get();
 
         for (int i = 0; i < 100; i++) {
@@ -58,7 +58,7 @@ public class RaftInvocationManagerTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
 
-        final RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
+        final RaftInvocationManager invocationService = getRaftInvocationManager(instances[0]);
         final RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
 
         invocationService.invoke(groupId, new RaftTestApplyOp("val")).get();
@@ -78,8 +78,8 @@ public class RaftInvocationManagerTest extends HazelcastRaftTestSupport {
     }
 
     @Override
-    protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
-        Config config = super.createConfig(raftAddresses, metadataGroupSize);
+    protected Config createConfig(int groupSize, int metadataGroupSize) {
+        Config config = super.createConfig(groupSize, metadataGroupSize);
 
         ServiceConfig raftTestServiceConfig = new ServiceConfig().setEnabled(true)
                 .setName(RaftDataService.SERVICE_NAME)

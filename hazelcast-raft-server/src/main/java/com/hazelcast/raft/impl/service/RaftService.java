@@ -3,6 +3,8 @@ package com.hazelcast.raft.impl.service;
 import com.hazelcast.config.raft.RaftServiceConfig;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
+import com.hazelcast.instance.MemberImpl;
+import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
@@ -22,11 +24,15 @@ import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.exception.CannotRemoveEndpointException;
+import com.hazelcast.raft.impl.service.operation.metadata.AddEndpointOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CheckRemovedEndpointOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveEndpointOp;
 import com.hazelcast.spi.GracefulShutdownAwareService;
 import com.hazelcast.spi.ManagedService;
+import com.hazelcast.spi.MemberAttributeServiceEvent;
+import com.hazelcast.spi.MembershipAwareService;
+import com.hazelcast.spi.MembershipServiceEvent;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.util.ExceptionUtil;
@@ -49,7 +55,7 @@ import static java.util.Collections.singletonList;
  * TODO: Javadoc Pending...
  */
 public class RaftService implements ManagedService, SnapshotAwareService<MetadataSnapshot>,
-        GracefulShutdownAwareService {
+        GracefulShutdownAwareService, MembershipAwareService {
 
     public static final String SERVICE_NAME = "hz:core:raft";
     public static final RaftGroupId METADATA_GROUP_ID = RaftMetadataManager.METADATA_GROUP_ID;
@@ -64,7 +70,6 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     private final RaftInvocationManager invocationManager;
     private final RaftMetadataManager metadataManager;
 
-
     public RaftService(NodeEngine nodeEngine) {
         this.nodeEngine = (NodeEngineImpl) nodeEngine;
         this.logger = nodeEngine.getLogger(getClass());
@@ -75,18 +80,11 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
-        RaftCleanupHandler cleanupHandler = new RaftCleanupHandler(nodeEngine, this);
-
-        metadataManager.init();
-        invocationManager.init();
-        cleanupHandler.init();
+        metadataManager.initIfInitialRaftMember();
     }
 
     @Override
     public void reset() {
-        if (invocationManager != null) {
-            invocationManager.reset();
-        }
     }
 
     @Override
@@ -103,10 +101,59 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         metadataManager.restoreSnapshot(groupId, commitIndex, snapshot);
     }
 
+    public void resetAndInitRaftState() {
+        for (RaftNode node : nodes.values()) {
+            node.forceSetTerminatedStatus();
+        }
+        nodes.clear();
+        destroyedGroupIds.clear();
+
+        invocationManager.reset();
+        metadataManager.reset();
+    }
+
+    public ICompletableFuture<Object> triggerRaftMemberPromotion() {
+        if (metadataManager.getLocalEndpoint() != null) {
+            throw new IllegalStateException("We are already a Raft member!");
+        }
+        final MemberImpl localMember = nodeEngine.getLocalMember();
+        RaftEndpointImpl endpoint = new RaftEndpointImpl(localMember.getUuid(), localMember.getAddress());
+        logger.info("Adding new Raft member: " + endpoint);
+        ICompletableFuture<Object> future = invocationManager.invoke(METADATA_GROUP_ID, new AddEndpointOp(endpoint));
+
+        future.andThen(new ExecutionCallback<Object>() {
+            @Override
+            public void onResponse(Object response) {
+                metadataManager.init();
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+            }
+        });
+        return future;
+    }
+
+    public ICompletableFuture<Object> removeRaftMember(RaftEndpointImpl endpoint) {
+        ClusterService clusterService = nodeEngine.getClusterService();
+        if (!clusterService.isMaster()) {
+            throw new IllegalStateException("Only master can remove a Raft member!");
+        }
+        if (clusterService.getMember(endpoint.getAddress()) != null) {
+            throw new IllegalArgumentException("Cannot remove " + endpoint + ", it is a live member!");
+        }
+        return triggerRemoveEndpointAsync(endpoint);
+    }
+
     @Override
     public boolean onShutdown(long timeout, TimeUnit unit) {
         RaftEndpointImpl localEndpoint = getLocalEndpoint();
         if (localEndpoint == null) {
+            return true;
+        }
+
+        if (metadataManager.getActiveEndpoints().size() == 1) {
+            logger.warning("I am the last...");
             return true;
         }
 
@@ -145,7 +192,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             long start = System.nanoTime();
             try {
                 // mark us as shutting-down in metadata
-                Future<RaftGroupId> future = triggerRemoveEndpointAsync(endpoint);
+                Future<Object> future = triggerRemoveEndpointAsync(endpoint);
                 future.get(remainingTimeNanos, TimeUnit.NANOSECONDS);
                 logger.fine(endpoint + " is marked as being removed.");
                 return;
@@ -161,6 +208,19 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
     }
 
+    @Override
+    public void memberAdded(MembershipServiceEvent event) {
+        metadataManager.broadcastActiveEndpoints();
+    }
+
+    @Override
+    public void memberRemoved(MembershipServiceEvent event) {
+    }
+
+    @Override
+    public void memberAttributeChanged(MemberAttributeServiceEvent event) {
+    }
+
     public RaftMetadataManager getMetadataManager() {
         return metadataManager;
     }
@@ -172,7 +232,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public void handlePreVoteRequest(RaftGroupId groupId, PreVoteRequest request) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
-            logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
+            logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
             return;
         }
         node.handlePreVoteRequest(request);
@@ -181,7 +241,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public void handlePreVoteResponse(RaftGroupId groupId, PreVoteResponse response) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
-            logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
+            logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
             return;
         }
         node.handlePreVoteResponse(response);
@@ -190,7 +250,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public void handleVoteRequest(RaftGroupId groupId, VoteRequest request) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
-            logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
+            logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
             return;
         }
         node.handleVoteRequest(request);
@@ -199,7 +259,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public void handleVoteResponse(RaftGroupId groupId, VoteResponse response) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
-            logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
+            logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
             return;
         }
         node.handleVoteResponse(response);
@@ -208,7 +268,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public void handleAppendEntries(RaftGroupId groupId, AppendRequest request) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
-            logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
+            logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
             return;
         }
         node.handleAppendRequest(request);
@@ -217,7 +277,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public void handleAppendResponse(RaftGroupId groupId, AppendSuccessResponse response) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
-            logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
+            logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
             return;
         }
         node.handleAppendResponse(response);
@@ -226,7 +286,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public void handleAppendResponse(RaftGroupId groupId, AppendFailureResponse response) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
-            logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
+            logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
             return;
         }
         node.handleAppendResponse(response);
@@ -235,7 +295,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public void handleSnapshot(RaftGroupId groupId, InstallSnapshot request) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
-            logger.severe("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
+            logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
             return;
         }
         node.handleInstallSnapshot(request);
@@ -270,17 +330,13 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return config;
     }
 
-    public Collection<RaftEndpointImpl> getAllEndpoints() {
-        return metadataManager.getAllEndpoints();
-    }
-
     public RaftEndpointImpl getLocalEndpoint() {
         return metadataManager.getLocalEndpoint();
     }
 
     void createRaftNode(RaftGroupId groupId, Collection<RaftEndpoint> endpoints) {
         if (nodes.containsKey(groupId)) {
-            logger.info("Not creating RaftNode for " + groupId + " since it is already created...");
+            logger.fine("Not creating RaftNode for " + groupId + " since it is already created...");
             return;
         }
 
@@ -322,7 +378,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
     }
 
-    private ICompletableFuture<RaftGroupId> triggerRemoveEndpointAsync(RaftEndpointImpl endpoint) {
+    private ICompletableFuture<Object> triggerRemoveEndpointAsync(RaftEndpointImpl endpoint) {
         return invocationManager.invoke(METADATA_GROUP_ID, new TriggerRemoveEndpointOp(endpoint));
     }
 

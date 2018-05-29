@@ -1,21 +1,29 @@
 package com.hazelcast.raft.impl.service;
 
-import com.hazelcast.core.HazelcastException;
+import com.hazelcast.cluster.MemberAttributeOperationType;
+import com.hazelcast.cluster.memberselector.MemberSelectors;
+import com.hazelcast.config.raft.RaftMetadataGroupConfig;
+import com.hazelcast.core.Member;
+import com.hazelcast.core.MemberSelector;
+import com.hazelcast.internal.cluster.impl.operations.MemberAttributeChangedOp;
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
-import com.hazelcast.config.raft.RaftMetadataGroupConfig;
 import com.hazelcast.raft.impl.RaftEndpointImpl;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
+import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.exception.CannotCreateRaftGroupException;
 import com.hazelcast.raft.impl.service.exception.CannotRemoveEndpointException;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftNodeOp;
+import com.hazelcast.raft.impl.service.operation.metadata.SendActiveEndpointsOp;
 import com.hazelcast.raft.impl.util.Tuple2;
+import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationService;
 
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -28,8 +36,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
-import static com.hazelcast.raft.impl.RaftEndpointImpl.parseEndpoints;
 import static com.hazelcast.raft.impl.service.LeavingRaftEndpointContext.RaftGroupLeavingEndpointContext;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static java.util.Collections.unmodifiableCollection;
@@ -40,21 +49,20 @@ import static java.util.Collections.unmodifiableCollection;
  */
 public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapshot>  {
 
-    private static final String METADATA_RAFT = "METADATA";
-    public static final RaftGroupId METADATA_GROUP_ID = new RaftGroupIdImpl(METADATA_RAFT, 0);
+    static final String METADATA_RAFT = "METADATA";
+    static final RaftGroupId METADATA_GROUP_ID = new RaftGroupIdImpl(METADATA_RAFT, 0);
+    private static final RaftMemberSelector RAFT_MEMBER_SELECTOR = new RaftMemberSelector();
 
     private final NodeEngine nodeEngine;
     private final RaftService raftService;
     private final ILogger logger;
     private final RaftMetadataGroupConfig config;
 
+    private final AtomicReference<RaftEndpointImpl> localEndpoint = new AtomicReference<RaftEndpointImpl>();
     // raftGroups are read outside of Raft
     private final Map<RaftGroupId, RaftGroupInfo> raftGroups = new ConcurrentHashMap<RaftGroupId, RaftGroupInfo>();
-    // allEndpoints must be an ordered collection
-    private final Collection<RaftEndpointImpl> allEndpoints;
-    private final RaftEndpointImpl localEndpoint;
-
-    private final Collection<RaftEndpointImpl> removedEndpoints = new HashSet<RaftEndpointImpl>();
+    // activeEndpoints must be an ordered non-null collection
+    private volatile Collection<RaftEndpointImpl> activeEndpoints = Collections.emptySet();
     private LeavingRaftEndpointContext leavingEndpointContext;
 
     RaftMetadataManager(NodeEngine nodeEngine, RaftService raftService, RaftMetadataGroupConfig config) {
@@ -62,50 +70,45 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         this.raftService = raftService;
         this.logger = nodeEngine.getLogger(getClass());
         this.config = config;
-
-        try {
-            this.allEndpoints = unmodifiableCollection(
-                    new LinkedHashSet<RaftEndpointImpl>(sort(parseEndpoints(config.getMembers()))));
-        } catch (UnknownHostException e) {
-            throw new HazelcastException(e);
-        }
-        this.localEndpoint = findLocalEndpoint(allEndpoints);
     }
 
-    public void init() {
-        logger.info("CP nodes: " + allEndpoints + ", local: " + localEndpoint);
-        if (localEndpoint == null) {
-            logger.warning("We are not in CP nodes group :(");
+    void initIfInitialRaftMember() {
+        boolean initialRaftMember = config.isInitialRaftMember();
+        if (!initialRaftMember) {
+            logger.warning("We are not one of Raft members :(");
             return;
         }
-        try {
-            List<RaftEndpointImpl> metadataEndpoints = parseEndpoints(config.getMetadataGroupMembers());
-            if (metadataEndpoints.contains(localEndpoint)) {
-                createRaftGroup(new RaftGroupInfo(METADATA_GROUP_ID, sort(metadataEndpoints)));
-            }
-        } catch (UnknownHostException e) {
-            throw new HazelcastException(e);
-        }
+
+        init();
+
+        // task for initial Raft members
+        ExecutionService executionService = nodeEngine.getExecutionService();
+        executionService.schedule(new CreateInitialRaftMembersTask(), 500, TimeUnit.MILLISECONDS);
     }
 
-    private static List<RaftEndpointImpl> sort(List<RaftEndpointImpl> endpoints) {
-        Collections.sort(endpoints, new Comparator<RaftEndpointImpl>() {
-            @Override
-            public int compare(RaftEndpointImpl e1, RaftEndpointImpl e2) {
-                return e1.getUid().compareTo(e2.getUid());
-            }
-        });
+    void init() {
+        Member localMember = nodeEngine.getLocalMember();
+        if (!localEndpoint.compareAndSet(null, new RaftEndpointImpl(localMember.getUuid(), localMember.getAddress()))) {
+            // already initialized
+            return;
+        }
 
-        return endpoints;
+        logger.info("Raft members: " + activeEndpoints + ", local: " + localEndpoint);
+        ExecutionService executionService = nodeEngine.getExecutionService();
+        executionService.scheduleWithRepetition(new BroadcastActiveEndpointsTask(), 10, 10, TimeUnit.SECONDS);
+
+        RaftCleanupHandler cleanupHandler = new RaftCleanupHandler(nodeEngine, raftService);
+        cleanupHandler.init();
     }
 
-    private RaftEndpointImpl findLocalEndpoint(Collection<RaftEndpointImpl> endpoints) {
-        for (RaftEndpointImpl endpoint : endpoints) {
-            if (nodeEngine.getThisAddress().equals(endpoint.getAddress())) {
-                return endpoint;
-            }
-        }
-        return null;
+    void reset() {
+        activeEndpoints = Collections.emptySet();
+        raftGroups.clear();
+
+        init();
+
+        ExecutionService executionService = nodeEngine.getExecutionService();
+        executionService.schedule(new CreateInitialRaftMembersTask(), 500, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -120,11 +123,8 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
                     : "Group commit index: " + groupInfo.commitIndex() + ", snapshot commit index: " + commitIndex;
             snapshot.addRaftGroup(groupInfo);
         }
-        for (RaftEndpointImpl endpoint : allEndpoints) {
+        for (RaftEndpointImpl endpoint : activeEndpoints) {
             snapshot.addEndpoint(endpoint);
-        }
-        for (RaftEndpointImpl endpoint : removedEndpoints) {
-            snapshot.addRemovedEndpoint(endpoint);
         }
         snapshot.setLeavingRaftEndpointContext(leavingEndpointContext);
         return snapshot;
@@ -161,15 +161,10 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             }
         }
 
-        for (RaftEndpointImpl endpoint : snapshot.getEndpoints()) {
-            // TODO: restore endpoints
-            // currently we don't modify endpoints
-        }
-
-        removedEndpoints.clear();
-        removedEndpoints.addAll(snapshot.getRemovedEndpoints());
-
+        activeEndpoints = unmodifiableCollection(new LinkedHashSet<RaftEndpointImpl>(snapshot.getEndpoints()));
         leavingEndpointContext = snapshot.getLeavingRaftEndpointContext();
+
+        updateInvocationManagerEndpoints(getActiveEndpoints());
     }
 
     private static void ensureMetadataGroupId(RaftGroupId raftGroupId) {
@@ -179,12 +174,8 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         }
     }
 
-    public Collection<RaftEndpointImpl> getAllEndpoints() {
-        return allEndpoints;
-    }
-
     public RaftEndpointImpl getLocalEndpoint() {
-        return localEndpoint;
+        return localEndpoint.get();
     }
 
     public RaftGroupInfo getRaftGroupInfo(RaftGroupId id) {
@@ -206,7 +197,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
 
         RaftEndpointImpl leavingEndpoint = leavingEndpointContext != null ? leavingEndpointContext.getEndpoint() : null;
         for (RaftEndpointImpl endpoint : endpoints) {
-            if (endpoint.equals(leavingEndpoint) || removedEndpoints.contains(endpoint)) {
+            if (endpoint.equals(leavingEndpoint) || !activeEndpoints.contains(endpoint)) {
                 throw new CannotCreateRaftGroupException("Cannot create raft group: " + groupName + " since " + endpoint
                         + " is not active");
             }
@@ -220,7 +211,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         logger.info("New raft group: " + groupInfo.id() + " is created with members: " + groupInfo.members());
 
         RaftGroupId groupId = groupInfo.id();
-        if (groupInfo.containsMember(localEndpoint)) {
+        if (groupInfo.containsMember(localEndpoint.get())) {
             raftService.createRaftNode(groupId, groupInfo.members());
         } else {
             // Broadcast group-info to non-metadata group members
@@ -286,7 +277,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     public void triggerRemoveEndpoint(RaftEndpointImpl leavingEndpoint) {
-        if (!allEndpoints.contains(leavingEndpoint)) {
+        if (!activeEndpoints.contains(leavingEndpoint)) {
             throw new IllegalArgumentException(leavingEndpoint + " doesn't exist!");
         }
 
@@ -302,9 +293,9 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
 
         logger.info("Removing " + leavingEndpoint);
 
-        if (allEndpoints.size() - removedEndpoints.size() <= 2) {
+        if (activeEndpoints.size() <= 2) {
             logger.warning("Removed member directly for " + leavingEndpoint);
-            removedEndpoints.add(leavingEndpoint);
+            removeActiveEndpoint(leavingEndpoint);
             return;
         }
 
@@ -313,8 +304,8 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             RaftGroupId groupId = groupInfo.id();
             if (groupInfo.containsMember(leavingEndpoint)) {
                 boolean foundSubstitute = false;
-                for (RaftEndpointImpl substitute : allEndpoints) {
-                    if (!removedEndpoints.contains(substitute) && !groupInfo.containsMember(substitute)) {
+                for (RaftEndpointImpl substitute : activeEndpoints) {
+                    if (activeEndpoints.contains(substitute) && !groupInfo.containsMember(substitute)) {
                         leavingGroups.put(groupId, new RaftGroupLeavingEndpointContext(groupInfo.getMembersCommitIndex(),
                                 groupInfo.endpointImpls(), substitute));
                         logger.fine("Substituted " + leavingEndpoint + " with " + substitute + " in " + groupInfo);
@@ -334,7 +325,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     public void completeRemoveEndpoint(RaftEndpointImpl leavingEndpoint, Map<RaftGroupId, Tuple2<Long, Long>> leftGroups) {
-        if (!allEndpoints.contains(leavingEndpoint)) {
+        if (!activeEndpoints.contains(leavingEndpoint)) {
             throw new IllegalArgumentException("Cannot remove " + leavingEndpoint + " from groups: " + leftGroups.keySet()
                     + " since " +  leavingEndpoint + " doesn't exist!");
         }
@@ -362,9 +353,9 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             if (groupInfo.substitute(leavingEndpoint, joining, expectedMembersCommitIndex, newMembersCommitIndex)) {
                 logger.fine("Removed " + leavingEndpoint + " from " + groupInfo + " with new members commit index: "
                         + newMembersCommitIndex);
-                if (localEndpoint.equals(joining)) {
+                if (localEndpoint.get().equals(joining)) {
                     // we are the added member to the group, we can try to create the local raft node if not created already
-                    raftService.createRaftNode(groupId, (Collection) groupInfo.members());
+                    raftService.createRaftNode(groupId, groupInfo.members());
                 } else if (joining != null) {
                     // publish group-info to the joining member
                     nodeEngine.getOperationService().send(new CreateRaftNodeOp(groupInfo), joining.getAddress());
@@ -384,7 +375,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
 
         if (safeToRemove) {
             logger.info("Remove member procedure completed for " + leavingEndpoint);
-            removedEndpoints.add(leavingEndpoint);
+            removeActiveEndpoint(leavingEndpoint);
             leavingEndpointContext = null;
         } else if (!leftGroups.isEmpty()) {
             // no need to re-attempt for successfully left groups
@@ -393,17 +384,29 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     public boolean isRemoved(RaftEndpointImpl endpoint) {
-        return removedEndpoints.contains(endpoint);
+        return !activeEndpoints.contains(endpoint);
     }
 
-    public List<RaftEndpointImpl> getActiveEndpoints() {
-        List<RaftEndpointImpl> active = new ArrayList<RaftEndpointImpl>(allEndpoints);
-        if (leavingEndpointContext != null) {
-            active.remove(leavingEndpointContext.getEndpoint());
+    public Collection<RaftEndpointImpl> getActiveEndpoints() {
+        if (leavingEndpointContext == null) {
+            return activeEndpoints;
         }
-        active.removeAll(removedEndpoints);
-
+        List<RaftEndpointImpl> active = new ArrayList<RaftEndpointImpl>(activeEndpoints);
+        active.remove(leavingEndpointContext.getEndpoint());
         return active;
+    }
+
+    public void setActiveEndpoints(Collection<RaftEndpointImpl> endpoints) {
+        if (localEndpoint.get() != null) {
+            throw new IllegalStateException("This node is already part of Raft members!");
+        }
+        logger.fine("Setting active endpoints to " + endpoints);
+        activeEndpoints = unmodifiableCollection(new LinkedHashSet<RaftEndpointImpl>(endpoints));
+        updateInvocationManagerEndpoints(endpoints);
+    }
+
+    private void updateInvocationManagerEndpoints(Collection<RaftEndpointImpl> endpoints) {
+        raftService.getInvocationManager().setAllEndpoints(endpoints);
     }
 
     public Collection<RaftGroupId> getDestroyingRaftGroupIds() {
@@ -420,4 +423,155 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         return leavingEndpointContext;
     }
 
+    boolean isMetadataLeader() {
+        RaftEndpointImpl endpoint = localEndpoint.get();
+        if (endpoint == null) {
+            return false;
+        }
+        RaftNode raftNode = raftService.getRaftNode(RaftService.METADATA_GROUP_ID);
+        // even if the local leader information is stale, it is fine.
+        return raftNode != null && !raftNode.isTerminatedOrSteppedDown() && endpoint.equals(raftNode.getLeader());
+    }
+
+    public void addActiveEndpoint(RaftEndpointImpl endpoint) {
+        if (activeEndpoints.contains(endpoint)) {
+            logger.fine(endpoint + " already exists. Silently returning from addActiveEndpoint().");
+            return;
+        }
+        if (leavingEndpointContext != null && endpoint.equals(leavingEndpointContext.getEndpoint())) {
+            throw new IllegalArgumentException(endpoint + " is already being removed!");
+        }
+        Collection<RaftEndpointImpl> newEndpoints = new LinkedHashSet<RaftEndpointImpl>(activeEndpoints);
+        newEndpoints.add(endpoint);
+        activeEndpoints = unmodifiableCollection(newEndpoints);
+        updateInvocationManagerEndpoints(newEndpoints);
+        broadcastActiveEndpoints();
+        logger.info("Added " + endpoint + ". Active endpoints are " + newEndpoints);
+    }
+
+    private void removeActiveEndpoint(RaftEndpointImpl endpoint) {
+        Collection<RaftEndpointImpl> newEndpoints = new LinkedHashSet<RaftEndpointImpl>(activeEndpoints);
+        newEndpoints.remove(endpoint);
+        activeEndpoints = unmodifiableCollection(newEndpoints);
+        updateInvocationManagerEndpoints(newEndpoints);
+        broadcastActiveEndpoints();
+    }
+
+    private class BroadcastActiveEndpointsTask implements Runnable {
+        @Override
+        public void run() {
+            if (!isMetadataLeader()) {
+                return;
+            }
+            broadcastActiveEndpoints();
+        }
+    }
+
+    void broadcastActiveEndpoints() {
+        if (localEndpoint.get() == null) {
+            return;
+        }
+        Collection<RaftEndpointImpl> endpoints = activeEndpoints;
+        if (endpoints.isEmpty()) {
+            return;
+        }
+
+        Set<Address> addresses = new HashSet<Address>(endpoints.size());
+        for (RaftEndpointImpl endpoint : endpoints) {
+            addresses.add(endpoint.getAddress());
+        }
+
+        Set<Member> members = nodeEngine.getClusterService().getMembers();
+        OperationService operationService = nodeEngine.getOperationService();
+        Operation op = new SendActiveEndpointsOp(getActiveEndpoints());
+        for (Member member : members) {
+            if (addresses.contains(member.getAddress())) {
+                continue;
+            }
+            operationService.send(op, member.getAddress());
+        }
+    }
+
+    private class CreateInitialRaftMembersTask implements Runnable {
+
+        @Override
+        public void run() {
+            ExecutionService executionService = nodeEngine.getExecutionService();
+            Collection<Member> members = nodeEngine.getClusterService().getMembers(RAFT_MEMBER_SELECTOR);
+
+            setInitialRaftMemberAttribute();
+
+            if (members.size() < config.getGroupSize()) {
+                logger.warning("Waiting for " + config.getGroupSize() + " Raft members to join the cluster. "
+                        + "Current Raft members count: " + members.size());
+                executionService.schedule(this, 500, TimeUnit.MILLISECONDS);
+                return;
+            }
+
+            if (members.size() > config.getGroupSize()) {
+                logger.severe("INVALID RAFT MEMBERS INITIALIZATION !!! "
+                        + "Expected Raft member count: " + config.getGroupSize()
+                        + ", Current member count: " + members.size());
+
+                List<Member> raftMembers = new ArrayList<Member>(members).subList(0, config.getGroupSize());
+                if (!raftMembers.contains(nodeEngine.getLocalMember())) {
+                    logger.warning("We are not a Raft member!");
+                    localEndpoint.set(null);
+                    return;
+                }
+            }
+
+            Collection<RaftEndpointImpl> all = new LinkedHashSet<RaftEndpointImpl>(config.getGroupSize());
+            List<RaftEndpointImpl> metadata = new ArrayList<RaftEndpointImpl>(config.getMetadataGroupSize());
+            int index = 0;
+            for (Member member : members) {
+                RaftEndpointImpl endpoint = new RaftEndpointImpl(member.getUuid(), member.getAddress());
+                all.add(endpoint);
+
+                if (index < config.getMetadataGroupSize()) {
+                    metadata.add(endpoint);
+                }
+
+                if (++index == config.getGroupSize()) {
+                    break;
+                }
+            }
+            activeEndpoints = unmodifiableCollection(all);
+            updateInvocationManagerEndpoints(all);
+
+            if (metadata.contains(localEndpoint.get())) {
+                createRaftGroup(new RaftGroupInfo(METADATA_GROUP_ID, sort(metadata)));
+            }
+
+            broadcastActiveEndpoints();
+        }
+
+        private void setInitialRaftMemberAttribute() {
+            String key = RaftMetadataGroupConfig.RAFT_MEMBER_ATTRIBUTE_NAME;
+            nodeEngine.getLocalMember().setBooleanAttribute(key, true);
+            MemberAttributeChangedOp op = new MemberAttributeChangedOp(MemberAttributeOperationType.PUT, key, true);
+            for (Member member : nodeEngine.getClusterService().getMembers(MemberSelectors.NON_LOCAL_MEMBER_SELECTOR)) {
+                nodeEngine.getOperationService().send(op, member.getAddress());
+            }
+        }
+    }
+
+    private static List<RaftEndpointImpl> sort(List<RaftEndpointImpl> endpoints) {
+        Collections.sort(endpoints, new Comparator<RaftEndpointImpl>() {
+            @Override
+            public int compare(RaftEndpointImpl e1, RaftEndpointImpl e2) {
+                return e1.getUid().compareTo(e2.getUid());
+            }
+        });
+
+        return endpoints;
+    }
+
+    private static class RaftMemberSelector implements MemberSelector {
+        @Override
+        public boolean select(Member member) {
+            Boolean raftMember = member.getBooleanAttribute(RaftMetadataGroupConfig.RAFT_MEMBER_ATTRIBUTE_NAME);
+            return Boolean.TRUE.equals(raftMember);
+        }
+    }
 }

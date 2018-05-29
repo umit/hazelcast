@@ -29,6 +29,7 @@ import com.hazelcast.config.JoinConfig;
 import com.hazelcast.config.ListenerConfig;
 import com.hazelcast.config.MemberAttributeConfig;
 import com.hazelcast.config.UserCodeDeploymentConfig;
+import com.hazelcast.config.raft.RaftMetadataGroupConfig;
 import com.hazelcast.core.ClientListener;
 import com.hazelcast.core.DistributedObjectListener;
 import com.hazelcast.core.HazelcastException;
@@ -880,6 +881,10 @@ public class Node {
                 attributes.put(shortKey, value);
             }
         }
+
+        boolean initialRaftMember = config.getRaftServiceConfig().getMetadataGroupConfig().isInitialRaftMember();
+        attributes.put(RaftMetadataGroupConfig.RAFT_MEMBER_ATTRIBUTE_NAME, initialRaftMember);
+
         return attributes;
     }
 

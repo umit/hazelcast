@@ -403,7 +403,7 @@ public class RaftNodeImpl implements RaftNode {
             prevEntry = (prevEntryIndex == raftLog.snapshotIndex()) ? raftLog.snapshot() : raftLog.getLogEntry(prevEntryIndex);
 
             long matchIndex = leaderState.getMatchIndex(follower);
-            if (matchIndex == 0 && nextIndex > (matchIndex + 1)) {
+            if (matchIndex == 0) {
                 // Until the leader has discovered where it and the follower's logs match,
                 // the leader can send AppendEntries with no entries (like heartbeats) to save bandwidth.
                 entries = new LogEntry[0];

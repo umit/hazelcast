@@ -1,35 +1,23 @@
 package com.hazelcast.raft.impl;
 
 import com.hazelcast.nio.Address;
-import com.hazelcast.config.raft.RaftMember;
-import com.hazelcast.util.AddressUtil;
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * {@code RaftEndpoint} represents a member in Raft group.
  * Each endpoint must have a unique address and id in the group.
  */
-public class RaftEndpointImpl implements RaftEndpoint, Serializable {
+public class RaftEndpointImpl implements RaftEndpoint, Serializable, IdentifiedDataSerializable {
 
     private static final long serialVersionUID = 5628148969327743953L;
-
-    public static List<RaftEndpointImpl> parseEndpoints(List<RaftMember> members) throws UnknownHostException {
-        List<RaftEndpointImpl> endpoints = new ArrayList<RaftEndpointImpl>(members.size());
-        for (RaftMember member : members) {
-            AddressUtil.AddressHolder addressHolder = AddressUtil.getAddressHolder(member.getAddress());
-            Address address = new Address(addressHolder.getAddress(), addressHolder.getPort());
-            address.setScopeId(addressHolder.getScopeId());
-            endpoints.add(new RaftEndpointImpl(member.getUid(), address));
-        }
-        return endpoints;
-    }
 
     private transient String uid;
     private transient Address address;
@@ -63,6 +51,28 @@ public class RaftEndpointImpl implements RaftEndpoint, Serializable {
         String host = in.readUTF();
         int port = in.readInt();
         address = new Address(host, port);
+    }
+
+    @Override
+    public void writeData(ObjectDataOutput out) throws IOException {
+        out.writeUTF(uid);
+        out.writeObject(address);
+    }
+
+    @Override
+    public void readData(ObjectDataInput in) throws IOException {
+        uid = in.readUTF();
+        address = in.readObject();
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftServiceDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftServiceDataSerializerHook.ENDPOINT;
     }
 
     @Override
