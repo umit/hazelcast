@@ -16,11 +16,15 @@
 
 package com.hazelcast.raft.impl.session.operation;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.session.RaftSessionService;
 import com.hazelcast.raft.impl.session.RaftSessionServiceDataSerializerHook;
+
+import java.io.IOException;
 
 /**
  * TODO: Javadoc Pending...
@@ -31,7 +35,7 @@ public class CreateSessionOp extends RaftOp implements IdentifiedDataSerializabl
     }
 
     @Override
-    protected Object doRun(RaftGroupId groupId, long commitIndex) {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         RaftSessionService service = getService();
         return service.createNewSession(groupId);
     }
@@ -49,5 +53,13 @@ public class CreateSessionOp extends RaftOp implements IdentifiedDataSerializabl
     @Override
     public int getId() {
         return RaftSessionServiceDataSerializerHook.CREATE_SESSION;
+    }
+
+    @Override
+    public void writeData(ObjectDataOutput out) throws IOException {
+    }
+
+    @Override
+    public void readData(ObjectDataInput in) throws IOException {
     }
 }

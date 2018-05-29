@@ -45,7 +45,7 @@ public class InvalidateSessionsOp extends RaftOp implements IdentifiedDataSerial
     }
 
     @Override
-    protected Object doRun(RaftGroupId groupId, long commitIndex) {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         RaftSessionService service = getService();
         service.invalidateSessions(groupId, sessions);
         return null;
@@ -67,8 +67,7 @@ public class InvalidateSessionsOp extends RaftOp implements IdentifiedDataSerial
     }
 
     @Override
-    protected void writeInternal(ObjectDataOutput out) throws IOException {
-        super.writeInternal(out);
+    public void writeData(ObjectDataOutput out) throws IOException {
         out.writeInt(sessions.size());
         for (Tuple2<Long, Long> s : sessions) {
             out.writeLong(s.element1);
@@ -77,8 +76,7 @@ public class InvalidateSessionsOp extends RaftOp implements IdentifiedDataSerial
     }
 
     @Override
-    protected void readInternal(ObjectDataInput in) throws IOException {
-        super.readInternal(in);
+    public void readData(ObjectDataInput in) throws IOException {
         int size = in.readInt();
         List<Tuple2<Long, Long>> sessionIds = new ArrayList<Tuple2<Long, Long>>();
         for (int i = 0; i < size; i++) {

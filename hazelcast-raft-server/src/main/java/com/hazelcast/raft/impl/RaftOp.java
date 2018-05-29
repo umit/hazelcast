@@ -1,10 +1,9 @@
 package com.hazelcast.raft.impl;
 
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.nio.serialization.DataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.spi.Operation;
-
-import static com.hazelcast.util.Preconditions.checkNotNull;
-import static com.hazelcast.util.Preconditions.checkTrue;
+import com.hazelcast.spi.NodeEngine;
 
 /**
  * Base operation class for operations to be replicated to and executed on
@@ -18,16 +17,11 @@ import static com.hazelcast.util.Preconditions.checkTrue;
  * They should perform the same action and produce the same result always,
  * independent of where and when they are executed.
  * <p>
- * {@link #doRun(RaftGroupId, long)} method must be implemented by subclasses.
+ * {@link #run(RaftGroupId, long)} method must be implemented by subclasses.
  */
-public abstract class RaftOp extends Operation {
+public abstract class RaftOp implements DataSerializable {
 
-    private static final int NA_COMMIT_INDEX = 0;
-
-    private transient RaftGroupId groupId;
-    private transient long commitIndex = NA_COMMIT_INDEX;
-
-    private Object response;
+    private transient NodeEngine nodeEngine;
 
     /**
      * Contains actual Raft operation logic. State change represented by this operation should be applied
@@ -37,53 +31,34 @@ public abstract class RaftOp extends Operation {
      * @param commitIndex commitIndex of the log entry containing this operation
      * @return result of the operation execution
      */
-    protected abstract Object doRun(RaftGroupId groupId, long commitIndex) throws Exception;
+    public abstract Object run(RaftGroupId groupId, long commitIndex) throws Exception;
 
-    public RaftGroupId getGroupId() {
-        return groupId;
+    public NodeEngine getNodeEngine() {
+        return nodeEngine;
     }
 
-    public RaftOp setGroupId(RaftGroupId groupId) {
-        this.groupId = groupId;
+    public RaftOp setNodeEngine(NodeEngine nodeEngine) {
+        this.nodeEngine = nodeEngine;
         return this;
     }
 
-    public long getCommitIndex() {
-        return commitIndex;
+    public <T> T getService() {
+        return nodeEngine.getService(getServiceName());
     }
 
-    public final RaftOp setCommitIndex(long commitIndex) {
-        checkTrue(commitIndex > NA_COMMIT_INDEX, "Cannot set commit index:" + commitIndex);
-        checkTrue(this.commitIndex == NA_COMMIT_INDEX,
-                "cannot set commit index: " + commitIndex + " because it is already set to: " + this.commitIndex
-                        + " -> " + this);
-        this.commitIndex = commitIndex;
-        return this;
+    protected ILogger getLogger() {
+        return getNodeEngine().getLogger(getClass());
     }
 
-    @Override
-    public final void run() throws Exception {
-        checkNotNull(groupId);
-        checkTrue(commitIndex > NA_COMMIT_INDEX, "Invalid commit index:" + commitIndex);
-        response = doRun(groupId, commitIndex);
-    }
+    protected abstract String getServiceName();
 
-    @Override
-    public final boolean returnsResponse() {
-        return true;
-    }
-
-    @Override
-    public final Object getResponse() {
-        return response;
+    protected void toString(StringBuilder sb) {
     }
 
     @Override
     public final String toString() {
         StringBuilder sb = new StringBuilder(getClass().getName()).append('{');
         sb.append("serviceName='").append(getServiceName()).append('\'');
-        sb.append(", groupId=").append(groupId);
-        sb.append(", commitIndex=").append(commitIndex);
         toString(sb);
         sb.append('}');
         return sb.toString();

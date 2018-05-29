@@ -37,7 +37,7 @@ public class LockOp extends AbstractLockOp {
     }
 
     @Override
-    protected Object doRun(RaftGroupId groupId, long commitIndex) {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
         LockEndpoint endpoint = getLockEndpoint();
         if (service.acquire(groupId, name, endpoint, commitIndex, invocationUid)) {

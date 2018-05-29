@@ -23,7 +23,7 @@ public class CheckRemovedEndpointOp extends RaftOp implements IdentifiedDataSeri
     }
 
     @Override
-    protected Object doRun(RaftGroupId groupId, long commitIndex) {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
         return service.getMetadataManager().isRemoved(endpoint);
     }
@@ -34,14 +34,12 @@ public class CheckRemovedEndpointOp extends RaftOp implements IdentifiedDataSeri
     }
 
     @Override
-    protected void writeInternal(ObjectDataOutput out) throws IOException {
-        super.writeInternal(out);
+    public void writeData(ObjectDataOutput out) throws IOException {
         out.writeObject(endpoint);
     }
 
     @Override
-    protected void readInternal(ObjectDataInput in) throws IOException {
-        super.readInternal(in);
+    public void readData(ObjectDataInput in) throws IOException {
         endpoint = in.readObject();
     }
 

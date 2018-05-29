@@ -63,32 +63,25 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         throw new AssertionError("Cannot find non-leader instance!");
     }
 
-    protected Address[] createAddresses(int count) {
-        Address[] addresses = new Address[count];
-        for (int i = 0; i < count; i++) {
-            Address address = factory.nextAddress();
-            addresses[i] = address;
-        }
-        return addresses;
+    protected HazelcastInstance[] newInstances(int raftGroupSize) {
+        return newInstances(raftGroupSize, raftGroupSize, 0);
     }
 
-    protected HazelcastInstance[] newInstances(Address[] raftAddresses) {
-        return newInstances(raftAddresses, raftAddresses.length, 0);
-    }
-
-    protected HazelcastInstance[] newInstances(Address[] raftAddresses, int metadataGroupSize, int nonCpNodeCount) {
+    protected HazelcastInstance[] newInstances(int raftGroupSize, int metadataGroupSize, int nonCpNodeCount) {
         if (nonCpNodeCount < 0) {
             throw new IllegalArgumentException("non-cp node count: " + nonCpNodeCount + " must be non-negative");
         }
+        if (raftGroupSize < metadataGroupSize) {
+            throw new IllegalArgumentException("Metadata group size cannot be bigger than raft group size");
+        }
 
-
-        int nodeCount = raftAddresses.length + nonCpNodeCount;
+        int nodeCount = raftGroupSize + nonCpNodeCount;
         HazelcastInstance[] instances = new HazelcastInstance[nodeCount];
         for (int i = 0; i < nodeCount; i++) {
-            Config config = createConfig(raftAddresses.length, metadataGroupSize);
-            if (i < raftAddresses.length) {
+            Config config = createConfig(raftGroupSize, metadataGroupSize);
+            if (i < raftGroupSize) {
                 config.getRaftServiceConfig().getMetadataGroupConfig().setInitialRaftMember(true);
-                instances[i] = factory.newHazelcastInstance(raftAddresses[i], config);
+                instances[i] = factory.newHazelcastInstance(config);
             } else {
                 instances[i] = factory.newHazelcastInstance(config);
             }

@@ -18,7 +18,7 @@ public class GetActiveEndpointsOp extends RaftOp implements IdentifiedDataSerial
     }
 
     @Override
-    protected Object doRun(RaftGroupId groupId, long commitIndex) {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
         // returning arraylist to be able to serialize response
         return new ArrayList<RaftEndpointImpl>(service.getMetadataManager().getActiveEndpoints());
@@ -30,13 +30,11 @@ public class GetActiveEndpointsOp extends RaftOp implements IdentifiedDataSerial
     }
 
     @Override
-    protected void writeInternal(ObjectDataOutput out) throws IOException {
-        super.writeInternal(out);
+    public void writeData(ObjectDataOutput out) throws IOException {
     }
 
     @Override
-    protected void readInternal(ObjectDataInput in) throws IOException {
-        super.readInternal(in);
+    public void readData(ObjectDataInput in) throws IOException {
     }
 
     @Override

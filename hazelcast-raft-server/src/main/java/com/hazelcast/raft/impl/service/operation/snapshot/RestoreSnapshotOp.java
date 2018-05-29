@@ -18,32 +18,33 @@ import java.io.IOException;
  */
 public class RestoreSnapshotOp extends RaftOp implements IdentifiedDataSerializable {
 
+    private String serviceName;
     private Object snapshot;
 
     public RestoreSnapshotOp() {
     }
 
     public RestoreSnapshotOp(String serviceName, Object snapshot) {
-        setServiceName(serviceName);
+        this.serviceName = serviceName;
         this.snapshot = snapshot;
     }
 
     @Override
-    public Object doRun(RaftGroupId groupId, long commitIndex) {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         SnapshotAwareService service = getService();
         service.restoreSnapshot(groupId, commitIndex, snapshot);
         return null;
     }
 
     @Override
-    protected void writeInternal(ObjectDataOutput out) throws IOException {
-        super.writeInternal(out);
+    public void writeData(ObjectDataOutput out) throws IOException {
+        out.writeUTF(serviceName);
         out.writeObject(snapshot);
     }
 
     @Override
-    protected void readInternal(ObjectDataInput in) throws IOException {
-        super.readInternal(in);
+    public void readData(ObjectDataInput in) throws IOException {
+        serviceName = in.readUTF();
         snapshot = in.readObject();
     }
 
@@ -55,6 +56,11 @@ public class RestoreSnapshotOp extends RaftOp implements IdentifiedDataSerializa
     @Override
     public int getId() {
         return RaftServiceDataSerializerHook.RESTORE_SNAPSHOT_OP;
+    }
+
+    @Override
+    protected String getServiceName() {
+        return serviceName;
     }
 
     @Override

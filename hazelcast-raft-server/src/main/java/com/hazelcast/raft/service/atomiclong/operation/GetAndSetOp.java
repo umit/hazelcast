@@ -24,20 +24,20 @@ public class GetAndSetOp extends AbstractAtomicLongOp {
     }
 
     @Override
-    public Object doRun(RaftGroupId groupId, long commitIndex) {
-        RaftAtomicLong atomic = getAtomicLong();
+    public Object run(RaftGroupId groupId, long commitIndex) {
+        RaftAtomicLong atomic = getAtomicLong(groupId);
         return atomic.getAndSet(value);
     }
 
     @Override
-    protected void writeInternal(ObjectDataOutput out) throws IOException {
-        super.writeInternal(out);
+    public void writeData(ObjectDataOutput out) throws IOException {
+        super.writeData(out);
         out.writeLong(value);
     }
 
     @Override
-    protected void readInternal(ObjectDataInput in) throws IOException {
-        super.readInternal(in);
+    public void readData(ObjectDataInput in) throws IOException {
+        super.readData(in);
         value = in.readLong();
     }
 

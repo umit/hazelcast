@@ -5,7 +5,6 @@ import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ILock;
-import com.hazelcast.nio.Address;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -39,15 +38,14 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
 
     @Before
     public void setup() {
-        Address[] raftAddresses = createAddresses(groupSize);
-        instances = createInstances(raftAddresses);
+        instances = createInstances();
 
         lock = createLock(name);
         assertNotNull(lock);
     }
 
-    protected HazelcastInstance[] createInstances(Address[] raftAddresses) {
-        return newInstances(raftAddresses, groupSize, 0);
+    protected HazelcastInstance[] createInstances() {
+        return newInstances(groupSize);
     }
 
     protected ILock createLock(String name) {

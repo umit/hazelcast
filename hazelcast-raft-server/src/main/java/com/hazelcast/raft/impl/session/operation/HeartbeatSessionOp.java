@@ -41,7 +41,7 @@ public class HeartbeatSessionOp extends RaftOp implements IdentifiedDataSerializ
     }
 
     @Override
-    protected Object doRun(RaftGroupId groupId, long commitIndex) {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         RaftSessionService service = getService();
         service.heartbeat(groupId, sessionId);
         return null;
@@ -63,14 +63,12 @@ public class HeartbeatSessionOp extends RaftOp implements IdentifiedDataSerializ
     }
 
     @Override
-    protected void writeInternal(ObjectDataOutput out) throws IOException {
-        super.writeInternal(out);
+    public void writeData(ObjectDataOutput out) throws IOException {
         out.writeLong(sessionId);
     }
 
     @Override
-    protected void readInternal(ObjectDataInput in) throws IOException {
-        super.readInternal(in);
+    public void readData(ObjectDataInput in) throws IOException {
         sessionId = in.readLong();
     }
 

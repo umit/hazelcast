@@ -39,8 +39,8 @@ public class AlterOp extends AbstractAtomicLongOp {
     }
 
     @Override
-    protected Object doRun(RaftGroupId groupId, long commitIndex) {
-        RaftAtomicLong atomic = getAtomicLong();
+    public Object run(RaftGroupId groupId, long commitIndex) {
+        RaftAtomicLong atomic = getAtomicLong(groupId);
         long before = atomic.getAndAdd(0);
         long after = function.apply(before);
         atomic.getAndSet(after);
@@ -48,15 +48,15 @@ public class AlterOp extends AbstractAtomicLongOp {
     }
 
     @Override
-    protected void writeInternal(ObjectDataOutput out) throws IOException {
-        super.writeInternal(out);
+    public void writeData(ObjectDataOutput out) throws IOException {
+        super.writeData(out);
         out.writeObject(function);
         out.writeUTF(alterResultType.name());
     }
 
     @Override
-    protected void readInternal(ObjectDataInput in) throws IOException {
-        super.readInternal(in);
+    public void readData(ObjectDataInput in) throws IOException {
+        super.readData(in);
         function = in.readObject();
         alterResultType = AlterResultType.valueOf(in.readUTF());
     }

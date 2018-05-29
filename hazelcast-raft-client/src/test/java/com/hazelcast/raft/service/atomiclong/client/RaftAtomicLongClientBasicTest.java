@@ -3,7 +3,6 @@ package com.hazelcast.raft.service.atomiclong.client;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
-import com.hazelcast.nio.Address;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongBasicTest;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
@@ -27,8 +26,8 @@ public class RaftAtomicLongClientBasicTest extends RaftAtomicLongBasicTest {
     }
 
     @Override
-    protected HazelcastInstance[] createInstances(Address[] raftAddresses) {
-        HazelcastInstance[] instances = super.createInstances(raftAddresses);
+    protected HazelcastInstance[] createInstances() {
+        HazelcastInstance[] instances = super.createInstances();
         TestHazelcastFactory f = (TestHazelcastFactory) factory;
         client = f.newHazelcastClient();
         return instances;

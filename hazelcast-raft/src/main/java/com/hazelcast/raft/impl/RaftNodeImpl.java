@@ -558,8 +558,7 @@ public class RaftNodeImpl implements RaftNode {
      */
     public void runQueryOperation(Object operation, SimpleCompletableFuture resultFuture) {
         long commitIndex = state.commitIndex();
-        Object result = (commitIndex > 0) ? raftIntegration.runOperation(operation, commitIndex)
-                : new CannotRunLocalQueryException(state.leader());
+        Object result = raftIntegration.runOperation(operation, commitIndex);
         resultFuture.setResult(result);
     }
 

@@ -53,7 +53,7 @@ public class GetLockCountOp extends RaftOp implements IdentifiedDataSerializable
     }
 
     @Override
-    protected Object doRun(RaftGroupId groupId, long commitIndex) {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
         Tuple2<LockEndpoint, Integer> result = service.lockCount(groupId, name);
 
@@ -80,16 +80,14 @@ public class GetLockCountOp extends RaftOp implements IdentifiedDataSerializable
     }
 
     @Override
-    protected void writeInternal(ObjectDataOutput out) throws IOException {
-        super.writeInternal(out);
+    public void writeData(ObjectDataOutput out) throws IOException {
         out.writeUTF(name);
         out.writeLong(sessionId);
         out.writeLong(threadId);
     }
 
     @Override
-    protected void readInternal(ObjectDataInput in) throws IOException {
-        super.readInternal(in);
+    public void readData(ObjectDataInput in) throws IOException {
         name = in.readUTF();
         sessionId = in.readLong();
         threadId = in.readLong();

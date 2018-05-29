@@ -19,7 +19,6 @@ package com.hazelcast.raft.service.session;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.raft.RaftServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
@@ -54,8 +53,7 @@ public abstract class AbstractSessionManagerTest extends HazelcastRaftTestSuppor
     @Before
     public void setup() throws ExecutionException, InterruptedException {
         int raftGroupSize = 3;
-        Address[] raftAddresses = createAddresses(raftGroupSize);
-        members = newInstances(raftAddresses, raftGroupSize, 0);
+        members = newInstances(raftGroupSize);
 
         RaftInvocationManager invocationManager = getRaftInvocationManager(members[0]);
         groupId = invocationManager.createRaftGroup("group", raftGroupSize).get();

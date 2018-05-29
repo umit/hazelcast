@@ -17,11 +17,15 @@
 package com.hazelcast.raft.impl.service.operation;
 
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.impl.service.TermChangeAwareService;
+
+import java.io.IOException;
 
 /**
  * TODO: Javadoc Pending...
@@ -29,7 +33,7 @@ import com.hazelcast.raft.impl.service.TermChangeAwareService;
 public class NotifyTermChangeOp extends RaftOp implements IdentifiedDataSerializable {
 
     @Override
-    protected Object doRun(RaftGroupId groupId, long commitIndex) {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         ILogger logger = getLogger();
         for (TermChangeAwareService service : getNodeEngine().getServices(TermChangeAwareService.class)) {
             try {
@@ -53,4 +57,16 @@ public class NotifyTermChangeOp extends RaftOp implements IdentifiedDataSerializ
         return RaftServiceDataSerializerHook.NOTIFY_TERM_CHANGE_OP;
     }
 
+    @Override
+    protected String getServiceName() {
+        return null;
+    }
+
+    @Override
+    public void writeData(ObjectDataOutput out) throws IOException {
+    }
+
+    @Override
+    public void readData(ObjectDataInput in) throws IOException {
+    }
 }
