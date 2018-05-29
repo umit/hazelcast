@@ -6,7 +6,6 @@ import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.exception.CannotRunLocalQueryException;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.StaleAppendRequestException;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
