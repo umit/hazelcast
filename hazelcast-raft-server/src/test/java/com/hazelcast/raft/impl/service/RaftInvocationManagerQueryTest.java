@@ -20,7 +20,6 @@ import java.util.concurrent.ExecutionException;
 import static com.hazelcast.raft.QueryPolicy.ANY_LOCAL;
 import static com.hazelcast.raft.QueryPolicy.LEADER_LOCAL;
 import static com.hazelcast.raft.impl.RaftUtil.getCommitIndex;
-import static com.hazelcast.raft.impl.service.RaftServiceUtil.getRaftNode;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -36,7 +35,7 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
 
-        RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
+        RaftInvocationManager invocationService = getRaftInvocationManager(instances[0]);
         RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
 
         ICompletableFuture<Object> future = invocationService.query(groupId, new RaftTestQueryOp(), LEADER_LOCAL);
@@ -53,7 +52,7 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
 
-        RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
+        RaftInvocationManager invocationService = getRaftInvocationManager(instances[0]);
         RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
 
         ICompletableFuture<Object> future = invocationService.query(groupId, new RaftTestQueryOp(), ANY_LOCAL);
@@ -71,7 +70,7 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
 
-        RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
+        RaftInvocationManager invocationService = getRaftInvocationManager(instances[0]);
         RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
 
         String value = "value";
@@ -88,7 +87,7 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
 
-        RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
+        RaftInvocationManager invocationService = getRaftInvocationManager(instances[0]);
         RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
 
         String value = "value";
@@ -104,7 +103,7 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
 
-        RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
+        RaftInvocationManager invocationService = getRaftInvocationManager(instances[0]);
         RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
 
         String value = "value";
@@ -112,7 +111,7 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
 
         RaftNodeImpl leader = getLeaderNode(instances, groupId);
         HazelcastInstance followerInstance = getRandomFollowerInstance(instances, leader);
-        RaftInvocationManager followerInvManager = getRaftInvocationService(followerInstance);
+        RaftInvocationManager followerInvManager = getRaftInvocationManager(followerInstance);
 
         ICompletableFuture<Object> future = followerInvManager.queryOnLocal(groupId, new RaftTestQueryOp(), LEADER_LOCAL);
         try {
@@ -128,22 +127,22 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         Address[] raftAddresses = createAddresses(nodeCount);
         instances = newInstances(raftAddresses);
 
-        RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
+        RaftInvocationManager invocationService = getRaftInvocationManager(instances[0]);
         RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
 
         String value = "value";
         invocationService.invoke(groupId, new RaftTestApplyOp(value)).get();
 
         HazelcastInstance leaderInstance = getLeaderInstance(instances, groupId);
-        RaftInvocationManager leaderInvManager = getRaftInvocationService(leaderInstance);
+        RaftInvocationManager leaderInvManager = getRaftInvocationManager(leaderInstance);
 
         ICompletableFuture<Object> future = leaderInvManager.queryOnLocal(groupId, new RaftTestQueryOp(), LEADER_LOCAL);
         assertEquals(value, future.get());
     }
 
     @Override
-    protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
-        Config config = super.createConfig(raftAddresses, metadataGroupSize);
+    protected Config createConfig(int groupSize, int metadataGroupSize) {
+        Config config = super.createConfig(groupSize, metadataGroupSize);
 
         ServiceConfig raftTestServiceConfig = new ServiceConfig().setEnabled(true)
                 .setName(RaftDataService.SERVICE_NAME)

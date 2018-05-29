@@ -33,6 +33,7 @@ import com.hazelcast.spi.exception.TargetNotMemberException;
 import com.hazelcast.spi.impl.AbstractCompletableFuture;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,21 +54,18 @@ public class RaftInvocationManager {
     private final RaftService raftService;
     private final ILogger logger;
     private final ConcurrentMap<RaftGroupId, RaftEndpointImpl> knownLeaders = new ConcurrentHashMap<RaftGroupId, RaftEndpointImpl>();
-    private final RaftEndpointImpl[] allEndpoints;
     private final boolean failOnIndeterminateOperationState;
+    private volatile RaftEndpointImpl[] allEndpoints = {};
 
     RaftInvocationManager(NodeEngine nodeEngine, RaftService raftService, RaftConfig config) {
         this.nodeEngine = nodeEngine;
         this.logger = nodeEngine.getLogger(getClass());
         this.raftService = raftService;
-        this.allEndpoints = raftService.getMetadataManager().getAllEndpoints().toArray(new RaftEndpointImpl[0]);
         this.failOnIndeterminateOperationState = config.isFailOnIndeterminateOperationState();
     }
 
-    public void init() {
-    }
-
     public void reset() {
+        allEndpoints = new RaftEndpointImpl[0];
         knownLeaders.clear();
     }
 
@@ -216,6 +214,10 @@ public class RaftInvocationManager {
         }
     }
 
+    void setAllEndpoints(Collection<RaftEndpointImpl> endpoints) {
+        allEndpoints = endpoints.toArray(new RaftEndpointImpl[0]);
+    }
+
     private abstract class AbstractRaftInvocationFuture<T, O extends Operation>
             extends AbstractCompletableFuture<T> implements ExecutionCallback<T> {
 
@@ -304,7 +306,9 @@ public class RaftInvocationManager {
             EndpointCursor cursor = endpointCursor;
             if (cursor == null || !cursor.advance()) {
                 cursor = newEndpointCursor();
-                cursor.advance();
+                if (!cursor.advance()) {
+                    return null;
+                }
                 endpointCursor = cursor;
             }
             return cursor.get();

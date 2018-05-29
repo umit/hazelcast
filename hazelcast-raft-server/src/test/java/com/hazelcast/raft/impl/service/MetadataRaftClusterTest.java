@@ -34,8 +34,6 @@ import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
 import static com.hazelcast.raft.impl.RaftUtil.getSnapshotEntry;
 import static com.hazelcast.raft.impl.RaftUtil.waitUntilLeaderElected;
 import static com.hazelcast.raft.impl.service.RaftService.METADATA_GROUP_ID;
-import static com.hazelcast.raft.impl.service.RaftServiceUtil.getRaftNode;
-import static com.hazelcast.raft.impl.service.RaftServiceUtil.getRaftService;
 import static com.hazelcast.test.SplitBrainTestSupport.blockCommunicationBetween;
 import static com.hazelcast.test.SplitBrainTestSupport.unblockCommunicationBetween;
 import static org.hamcrest.Matchers.hasItem;
@@ -225,7 +223,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
             }
         });
 
-        final RaftInvocationManager invocationService = getRaftInvocationService(instances[0]);
+        final RaftInvocationManager invocationService = getRaftInvocationManager(instances[0]);
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -278,7 +276,8 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         int nodeCount = 3;
         int commitCountToSnapshot = 5;
         Address[] raftAddresses = createAddresses(nodeCount);
-        Config config = createConfig(raftAddresses, raftAddresses.length);
+        Config config = createConfig(raftAddresses.length, raftAddresses.length);
+        config.getRaftServiceConfig().getMetadataGroupConfig().setInitialRaftMember(true);
         config.getRaftServiceConfig().getRaftConfig().setCommitIndexAdvanceCountToSnapshot(commitCountToSnapshot);
 
         final HazelcastInstance[] instances = new HazelcastInstance[nodeCount];
@@ -345,7 +344,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
 
         HazelcastInstance leaderInstance = getLeaderInstance(instances, METADATA_GROUP_ID);
         RaftService raftService = getRaftService(leaderInstance);
-        Collection<RaftEndpointImpl> allEndpoints = raftService.getAllEndpoints();
+        Collection<RaftEndpointImpl> allEndpoints = raftService.getMetadataManager().getActiveEndpoints();
         RaftGroupInfo metadataGroup = raftService.getRaftGroupInfo(METADATA_GROUP_ID);
 
         final Collection<RaftEndpointImpl> endpoints = new HashSet<RaftEndpointImpl>(otherRaftGroupSize);
@@ -416,7 +415,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         RaftInvocationManager invocationService = null;
         for (HazelcastInstance instance : instances) {
             if (!getAddress(instance).equals(endpoint.getAddress())) {
-                invocationService = getRaftInvocationService(instance);
+                invocationService = getRaftInvocationManager(instance);
                 break;
             }
         }
@@ -470,7 +469,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
 
     private RaftEndpointImpl findCommonEndpoint(HazelcastInstance instance, final RaftGroupId groupId1, final RaftGroupId groupId2)
             throws ExecutionException, InterruptedException {
-        RaftInvocationManager invocationService = getRaftInvocationService(instance);
+        RaftInvocationManager invocationService = getRaftInvocationManager(instance);
         ICompletableFuture<RaftGroupInfo> f1 = invocationService.query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId1),
                 QueryPolicy.LEADER_LOCAL);
         ICompletableFuture<RaftGroupInfo> f2 = invocationService.query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId2),
@@ -485,8 +484,8 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
     }
 
     @Override
-    protected Config createConfig(Address[] raftAddresses, int metadataGroupSize) {
-        Config config = super.createConfig(raftAddresses, metadataGroupSize);
+    protected Config createConfig(int groupSize, int metadataGroupSize) {
+        Config config = super.createConfig(groupSize, metadataGroupSize);
         config.getRaftServiceConfig().getRaftConfig().setLeaderHeartbeatPeriodInMillis(1000);
         return config;
     }

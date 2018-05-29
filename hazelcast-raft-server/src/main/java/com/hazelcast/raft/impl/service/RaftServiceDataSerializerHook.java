@@ -4,6 +4,7 @@ import com.hazelcast.internal.serialization.DataSerializerHook;
 import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.raft.impl.RaftEndpointImpl;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.impl.service.operation.NotifyTermChangeOp;
 import com.hazelcast.raft.impl.service.operation.integration.AppendFailureResponseOp;
@@ -14,6 +15,7 @@ import com.hazelcast.raft.impl.service.operation.integration.PreVoteRequestOp;
 import com.hazelcast.raft.impl.service.operation.integration.PreVoteResponseOp;
 import com.hazelcast.raft.impl.service.operation.integration.VoteRequestOp;
 import com.hazelcast.raft.impl.service.operation.integration.VoteResponseOp;
+import com.hazelcast.raft.impl.service.operation.metadata.AddEndpointOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CheckRemovedEndpointOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteRemoveEndpointOp;
@@ -24,6 +26,7 @@ import com.hazelcast.raft.impl.service.operation.metadata.GetActiveEndpointsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetDestroyingRaftGroupIds;
 import com.hazelcast.raft.impl.service.operation.metadata.GetLeavingEndpointContextOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
+import com.hazelcast.raft.impl.service.operation.metadata.SendActiveEndpointsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveEndpointOp;
 import com.hazelcast.raft.impl.service.operation.snapshot.RestoreSnapshotOp;
@@ -69,6 +72,9 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int TERMINATE_RAFT_GROUP_OP = 28;
     public static final int RESTORE_SNAPSHOT_OP = 29;
     public static final int NOTIFY_TERM_CHANGE_OP = 30;
+    public static final int ENDPOINT = 31;
+    public static final int SEND_ACTIVE_ENDPOINTS_OP = 32;
+    public static final int ADD_ENDPOINT_OP = 33;
 
     @Override
     public int getFactoryId() {
@@ -141,6 +147,12 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new RestoreSnapshotOp();
                     case NOTIFY_TERM_CHANGE_OP:
                         return new NotifyTermChangeOp();
+                    case ENDPOINT:
+                        return new RaftEndpointImpl();
+                    case SEND_ACTIVE_ENDPOINTS_OP:
+                        return new SendActiveEndpointsOp();
+                    case ADD_ENDPOINT_OP:
+                        return new AddEndpointOp();
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
             }
