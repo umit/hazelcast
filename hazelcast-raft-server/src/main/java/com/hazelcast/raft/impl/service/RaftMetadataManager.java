@@ -1,7 +1,6 @@
 package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.cluster.MemberAttributeOperationType;
-import com.hazelcast.cluster.memberselector.MemberSelectors;
 import com.hazelcast.config.raft.RaftMetadataGroupConfig;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MemberSelector;
@@ -39,6 +38,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static com.hazelcast.cluster.memberselector.MemberSelectors.NON_LOCAL_MEMBER_SELECTOR;
+import static com.hazelcast.config.raft.RaftMetadataGroupConfig.RAFT_MEMBER_ATTRIBUTE_NAME;
 import static com.hazelcast.raft.impl.service.LeavingRaftEndpointContext.RaftGroupLeavingEndpointContext;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static java.util.Collections.unmodifiableCollection;
@@ -83,7 +84,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
 
         // task for initial Raft members
         ExecutionService executionService = nodeEngine.getExecutionService();
-        executionService.schedule(new CreateInitialRaftMembersTask(), 500, TimeUnit.MILLISECONDS);
+        executionService.schedule(new DiscoverInitialRaftEndpointsTask(), 500, TimeUnit.MILLISECONDS);
     }
 
     void init() {
@@ -108,7 +109,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         init();
 
         ExecutionService executionService = nodeEngine.getExecutionService();
-        executionService.schedule(new CreateInitialRaftMembersTask(), 500, TimeUnit.MILLISECONDS);
+        executionService.schedule(new DiscoverInitialRaftEndpointsTask(), 500, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -276,9 +277,13 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         }
     }
 
+    /**
+     * this method is idempotent
+     */
     public void triggerRemoveEndpoint(RaftEndpointImpl leavingEndpoint) {
         if (!activeEndpoints.contains(leavingEndpoint)) {
-            throw new IllegalArgumentException(leavingEndpoint + " doesn't exist!");
+            logger.warning("Not removing " + leavingEndpoint + " since it is not present in the active endpoints");
+            return;
         }
 
         if (leavingEndpointContext != null) {
@@ -291,10 +296,10 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
                     + " is currently leaving, cannot process remove request of " + leavingEndpoint);
         }
 
-        logger.info("Removing " + leavingEndpoint);
+        logger.info("Removing " + leavingEndpoint + " from raft groups");
 
         if (activeEndpoints.size() <= 2) {
-            logger.warning("Removed member directly for " + leavingEndpoint);
+            logger.warning(leavingEndpoint + " is directly removed as there are only " + activeEndpoints.size() + " endpoints");
             removeActiveEndpoint(leavingEndpoint);
             return;
         }
@@ -433,6 +438,9 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         return raftNode != null && !raftNode.isTerminatedOrSteppedDown() && endpoint.equals(raftNode.getLeader());
     }
 
+    /**
+     * this method is idempotent
+     */
     public void addActiveEndpoint(RaftEndpointImpl endpoint) {
         if (activeEndpoints.contains(endpoint)) {
             logger.fine(endpoint + " already exists. Silently returning from addActiveEndpoint().");
@@ -492,7 +500,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         }
     }
 
-    private class CreateInitialRaftMembersTask implements Runnable {
+    private class DiscoverInitialRaftEndpointsTask implements Runnable {
 
         @Override
         public void run() {
@@ -547,10 +555,9 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         }
 
         private void setInitialRaftMemberAttribute() {
-            String key = RaftMetadataGroupConfig.RAFT_MEMBER_ATTRIBUTE_NAME;
-            nodeEngine.getLocalMember().setBooleanAttribute(key, true);
-            MemberAttributeChangedOp op = new MemberAttributeChangedOp(MemberAttributeOperationType.PUT, key, true);
-            for (Member member : nodeEngine.getClusterService().getMembers(MemberSelectors.NON_LOCAL_MEMBER_SELECTOR)) {
+            nodeEngine.getLocalMember().setBooleanAttribute(RAFT_MEMBER_ATTRIBUTE_NAME, true);
+            Operation op = new MemberAttributeChangedOp(MemberAttributeOperationType.PUT, RAFT_MEMBER_ATTRIBUTE_NAME, true);
+            for (Member member : nodeEngine.getClusterService().getMembers(NON_LOCAL_MEMBER_SELECTOR)) {
                 nodeEngine.getOperationService().send(op, member.getAddress());
             }
         }
@@ -570,7 +577,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     private static class RaftMemberSelector implements MemberSelector {
         @Override
         public boolean select(Member member) {
-            Boolean raftMember = member.getBooleanAttribute(RaftMetadataGroupConfig.RAFT_MEMBER_ATTRIBUTE_NAME);
+            Boolean raftMember = member.getBooleanAttribute(RAFT_MEMBER_ATTRIBUTE_NAME);
             return Boolean.TRUE.equals(raftMember);
         }
     }
