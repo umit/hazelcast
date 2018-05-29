@@ -102,6 +102,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     }
 
     public void resetAndInitRaftState() {
+        // we should clear the current raft state before resetting the metadata manager
         for (RaftNode node : nodes.values()) {
             node.forceSetTerminatedStatus();
         }
@@ -374,10 +375,13 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         RaftNode node = nodes.remove(groupId);
         if (node != null) {
             node.forceSetTerminatedStatus();
-            logger.info("Local raft node of " + groupId + " is destroyed.");
+            logger.fine("Local raft node of " + groupId + " is destroyed.");
         }
     }
 
+    /**
+     * this method is idempotent
+     */
     private ICompletableFuture<Object> triggerRemoveEndpointAsync(RaftEndpointImpl endpoint) {
         return invocationManager.invoke(METADATA_GROUP_ID, new TriggerRemoveEndpointOp(endpoint));
     }

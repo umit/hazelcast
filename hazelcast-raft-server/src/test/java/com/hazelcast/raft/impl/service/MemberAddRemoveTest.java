@@ -43,7 +43,7 @@ import static org.junit.Assert.assertTrue;
 public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
 
     @Test
-    public void promoteToRaftMember() throws ExecutionException, InterruptedException {
+    public void testPromoteToRaftMember() throws ExecutionException, InterruptedException {
         HazelcastInstance[] instances = newInstances(2, 2, 1);
 
         final RaftService service = getRaftService(instances[instances.length - 1]);
@@ -58,7 +58,7 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void removeRaftMember() throws ExecutionException, InterruptedException {
+    public void testRemoveRaftMember() throws ExecutionException, InterruptedException {
         final HazelcastInstance[] instances = newInstances(3);
 
         final RaftGroupId testGroupId = getRaftInvocationManager(instances[0]).createRaftGroup("test", 3).get();
@@ -87,7 +87,7 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void test() {
+    public void testMetadataGroupReinitializationAfterLostMajority() {
         HazelcastInstance[] instances = newInstances(3, 3, 1);
 
         waitAllForLeaderElection(Arrays.copyOf(instances, 3), RaftService.METADATA_GROUP_ID);
