@@ -169,7 +169,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         return (RaftNodeImpl) getRaftService(instance).getRaftNode(groupId);
     }
 
-    public static RaftGroupInfo getRaftGroupInfo(HazelcastInstance instance, RaftGroupId groupId) {
-        return getRaftService(instance).getRaftGroupInfo(groupId);
+    public static RaftGroupInfo getRaftGroup(HazelcastInstance instance, RaftGroupId groupId) {
+        return getRaftService(instance).getMetadataManager().getRaftGroup(groupId);
     }
 }

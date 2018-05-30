@@ -28,7 +28,7 @@ public class CompleteDestroyRaftGroupsOp extends RaftOp implements IdentifiedDat
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
-        metadataManager.completeDestroy(groupIds);
+        metadataManager.completeDestroyRaftGroups(groupIds);
         return null;
     }
 

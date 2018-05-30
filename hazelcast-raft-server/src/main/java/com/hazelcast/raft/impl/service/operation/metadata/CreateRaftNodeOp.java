@@ -13,19 +13,19 @@ import java.io.IOException;
 
 public class CreateRaftNodeOp extends Operation implements IdentifiedDataSerializable, AllowedDuringPassiveState {
 
-    private RaftGroupInfo groupInfo;
+    private RaftGroupInfo group;
 
     public CreateRaftNodeOp() {
     }
 
-    public CreateRaftNodeOp(RaftGroupInfo groupInfo) {
-        this.groupInfo = groupInfo;
+    public CreateRaftNodeOp(RaftGroupInfo group) {
+        this.group = group;
     }
 
     @Override
     public void run() {
         RaftService service = getService();
-        service.createRaftNode(groupInfo);
+        service.createRaftNode(group);
     }
 
     @Override
@@ -41,13 +41,13 @@ public class CreateRaftNodeOp extends Operation implements IdentifiedDataSeriali
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeObject(groupInfo);
+        out.writeObject(group);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        groupInfo = in.readObject();
+        group = in.readObject();
     }
 
     @Override
@@ -62,6 +62,6 @@ public class CreateRaftNodeOp extends Operation implements IdentifiedDataSeriali
 
     @Override
     protected void toString(StringBuilder sb) {
-        sb.append(", groupInfo=").append(groupInfo);
+        sb.append(", group=").append(group);
     }
 }

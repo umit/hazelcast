@@ -24,7 +24,7 @@ import java.io.IOException;
 
 public class RaftQueryOp extends Operation implements IdentifiedDataSerializable, AllowedDuringPassiveState, ExecutionCallback {
 
-    private RaftGroupId raftGroupId;
+    private RaftGroupId groupId;
     private QueryPolicy queryPolicy;
     private RaftOp raftOp;
 
@@ -32,19 +32,19 @@ public class RaftQueryOp extends Operation implements IdentifiedDataSerializable
     }
 
     public RaftQueryOp(RaftGroupId groupId, RaftOp raftOp) {
-        this.raftGroupId = groupId;
+        this.groupId = groupId;
         this.raftOp = raftOp;
     }
 
     @Override
     public final void run() {
         RaftService service = getService();
-        RaftNode raftNode = service.getRaftNode(raftGroupId);
+        RaftNode raftNode = service.getRaftNode(groupId);
         if (raftNode == null) {
-            if (service.isDestroyed(raftGroupId)) {
+            if (service.isRaftGroupDestroyed(groupId)) {
                 sendResponse(new RaftGroupTerminatedException());
             } else {
-                sendResponse(new NotLeaderException(raftGroupId, service.getLocalEndpoint(), null));
+                sendResponse(new NotLeaderException(groupId, service.getLocalEndpoint(), null));
             }
             return;
         }
@@ -96,7 +96,7 @@ public class RaftQueryOp extends Operation implements IdentifiedDataSerializable
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeObject(raftGroupId);
+        out.writeObject(groupId);
         out.writeObject(raftOp);
         out.writeUTF(queryPolicy.toString());
     }
@@ -104,7 +104,7 @@ public class RaftQueryOp extends Operation implements IdentifiedDataSerializable
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        raftGroupId = in.readObject();
+        groupId = in.readObject();
         raftOp = in.readObject();
         queryPolicy = QueryPolicy.valueOf(in.readUTF());
     }
@@ -122,7 +122,7 @@ public class RaftQueryOp extends Operation implements IdentifiedDataSerializable
     @Override
     protected void toString(StringBuilder sb) {
         super.toString(sb);
-        sb.append(", groupId=").append(raftGroupId)
+        sb.append(", groupId=").append(groupId)
           .append(", policy=").append(queryPolicy);
     }
 }

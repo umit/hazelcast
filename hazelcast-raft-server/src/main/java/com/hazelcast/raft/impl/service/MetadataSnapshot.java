@@ -19,8 +19,8 @@ public final class MetadataSnapshot implements IdentifiedDataSerializable {
     private final Collection<RaftGroupInfo> raftGroups = new ArrayList<RaftGroupInfo>();
     private LeavingRaftEndpointContext leavingRaftEndpointContext;
 
-    public void addRaftGroup(RaftGroupInfo groupInfo) {
-        raftGroups.add(groupInfo);
+    public void addRaftGroup(RaftGroupInfo group) {
+        raftGroups.add(group);
     }
 
     public void addEndpoint(RaftEndpointImpl endpoint) {

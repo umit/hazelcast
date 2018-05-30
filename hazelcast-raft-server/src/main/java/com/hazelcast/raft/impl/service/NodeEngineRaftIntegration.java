@@ -50,7 +50,7 @@ import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 final class NodeEngineRaftIntegration implements RaftIntegration {
 
     private final NodeEngineImpl nodeEngine;
-    private final RaftGroupId raftGroupId;
+    private final RaftGroupId groupId;
     private final InternalOperationService operationService;
     private final TaskScheduler taskScheduler;
     private final int partitionId;
@@ -58,7 +58,7 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
 
     NodeEngineRaftIntegration(NodeEngineImpl nodeEngine, RaftGroupId groupId) {
         this.nodeEngine = nodeEngine;
-        this.raftGroupId = groupId;
+        this.groupId = groupId;
         OperationServiceImpl operationService = (OperationServiceImpl) nodeEngine.getOperationService();
         this.operationService = operationService;
         this.partitionId = nodeEngine.getPartitionService().getPartitionId(groupId);
@@ -116,42 +116,42 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
 
     @Override
     public boolean send(PreVoteRequest request, RaftEndpoint target) {
-        return send(new PreVoteRequestOp(raftGroupId, request), target);
+        return send(new PreVoteRequestOp(groupId, request), target);
     }
 
     @Override
     public boolean send(PreVoteResponse response, RaftEndpoint target) {
-        return send(new PreVoteResponseOp(raftGroupId, response), target);
+        return send(new PreVoteResponseOp(groupId, response), target);
     }
 
     @Override
     public boolean send(VoteRequest request, RaftEndpoint target) {
-        return send(new VoteRequestOp(raftGroupId, request), target);
+        return send(new VoteRequestOp(groupId, request), target);
     }
 
     @Override
     public boolean send(VoteResponse response, RaftEndpoint target) {
-        return send(new VoteResponseOp(raftGroupId, response), target);
+        return send(new VoteResponseOp(groupId, response), target);
     }
 
     @Override
     public boolean send(AppendRequest request, RaftEndpoint target) {
-        return send(new AppendRequestOp(raftGroupId, request), target);
+        return send(new AppendRequestOp(groupId, request), target);
     }
 
     @Override
     public boolean send(AppendSuccessResponse response, RaftEndpoint target) {
-        return send(new AppendSuccessResponseOp(raftGroupId, response), target);
+        return send(new AppendSuccessResponseOp(groupId, response), target);
     }
 
     @Override
     public boolean send(AppendFailureResponse response, RaftEndpoint target) {
-        return send(new AppendFailureResponseOp(raftGroupId, response), target);
+        return send(new AppendFailureResponseOp(groupId, response), target);
     }
 
     @Override
     public boolean send(InstallSnapshot request, RaftEndpoint target) {
-        return send(new InstallSnapshotOp(raftGroupId, request), target);
+        return send(new InstallSnapshotOp(groupId, request), target);
     }
 
     @Override
@@ -159,7 +159,7 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
         RaftOp operation = (RaftOp) op;
         operation.setNodeEngine(nodeEngine);
         try {
-            return operation.run(raftGroupId, commitIndex);
+            return operation.run(groupId, commitIndex);
         } catch (Throwable t) {
             return t;
         }
@@ -171,7 +171,7 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
             List<RestoreSnapshotOp> snapshotOps = new ArrayList<RestoreSnapshotOp>();
             for (ServiceInfo serviceInfo : nodeEngine.getServiceInfos(SnapshotAwareService.class)) {
                 SnapshotAwareService service = serviceInfo.getService();
-                Object snapshot = service.takeSnapshot(raftGroupId, commitIndex);
+                Object snapshot = service.takeSnapshot(groupId, commitIndex);
                 if (snapshot != null) {
                     snapshotOps.add(new RestoreSnapshotOp(serviceInfo.getName(), snapshot));
                 }

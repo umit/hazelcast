@@ -62,7 +62,7 @@ public class RaftCleanupHandler {
         this.raftService = raftService;
     }
 
-    public void init() {
+    void init() {
         if (getLocalEndpoint() == null) {
             return;
         }
@@ -71,7 +71,7 @@ public class RaftCleanupHandler {
 
         ExecutionService executionService = nodeEngine.getExecutionService();
         // scheduleWithRepetition skips subsequent execution if one is already running.
-        executionService.scheduleWithRepetition(new GroupDestroyHandlerTask(), CLEANUP_TASK_PERIOD_IN_MILLIS,
+        executionService.scheduleWithRepetition(new RaftGroupDestroyHandlerTask(), CLEANUP_TASK_PERIOD_IN_MILLIS,
                 CLEANUP_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
         executionService.scheduleWithRepetition(new RemoveEndpointHandlerTask(), CLEANUP_TASK_PERIOD_IN_MILLIS,
                 CLEANUP_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
@@ -105,10 +105,10 @@ public class RaftCleanupHandler {
 
                 f.andThen(new ExecutionCallback<RaftGroupInfo>() {
                     @Override
-                    public void onResponse(RaftGroupInfo groupInfo) {
-                        if (groupInfo == null) {
+                    public void onResponse(RaftGroupInfo group) {
+                        if (group == null) {
                             logger.severe("Could not find raft group for local raft node of " + groupId);
-                        } else if (groupInfo.status() == RaftGroupStatus.DESTROYED) {
+                        } else if (group.status() == RaftGroupStatus.DESTROYED) {
                             raftService.destroyRaftNode(groupId);
                         }
                     }
@@ -123,7 +123,7 @@ public class RaftCleanupHandler {
 
     }
 
-    private class GroupDestroyHandlerTask implements Runnable {
+    private class RaftGroupDestroyHandlerTask implements Runnable {
 
         @Override
         public void run() {
@@ -137,14 +137,14 @@ public class RaftCleanupHandler {
             }
 
             Map<RaftGroupId, Future<Object>> futures = new HashMap<RaftGroupId, Future<Object>>();
-            for (final RaftGroupId groupId : destroyingRaftGroupIds) {
+            for (RaftGroupId groupId : destroyingRaftGroupIds) {
                 Future<Object> future = invocationManager.terminate(groupId);
                 futures.put(groupId, future);
             }
 
-            final Set<RaftGroupId> terminatedGroupIds = new HashSet<RaftGroupId>();
+            Set<RaftGroupId> terminatedGroupIds = new HashSet<RaftGroupId>();
             for (Entry<RaftGroupId, Future<Object>> e : futures.entrySet()) {
-                if (isTerminated(e.getKey(), e.getValue())) {
+                if (isRaftGroupTerminated(e.getKey(), e.getValue())) {
                     terminatedGroupIds.add(e.getKey());
                 }
             }
@@ -178,7 +178,7 @@ public class RaftCleanupHandler {
             }
         }
 
-        private boolean isTerminated(RaftGroupId groupId, Future<Object> future) {
+        private boolean isRaftGroupTerminated(RaftGroupId groupId, Future<Object> future) {
             try {
                 future.get();
                 return true;
@@ -197,8 +197,8 @@ public class RaftCleanupHandler {
         }
 
         private void commitDestroyedRaftGroups(Set<RaftGroupId> destroyedGroupIds) {
-            Future<Collection<RaftGroupId>> f = invocationManager.invoke(METADATA_GROUP_ID,
-                    new CompleteDestroyRaftGroupsOp(destroyedGroupIds));
+            RaftOp op = new CompleteDestroyRaftGroupsOp(destroyedGroupIds);
+            Future<Collection<RaftGroupId>> f = invocationManager.invoke(METADATA_GROUP_ID, op);
 
             try {
                 f.get();

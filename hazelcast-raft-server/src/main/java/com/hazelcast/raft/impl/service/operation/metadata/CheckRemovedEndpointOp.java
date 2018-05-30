@@ -25,7 +25,7 @@ public class CheckRemovedEndpointOp extends RaftOp implements IdentifiedDataSeri
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        return service.getMetadataManager().isRemoved(endpoint);
+        return service.getMetadataManager().isEndpointRemoved(endpoint);
     }
 
     @Override

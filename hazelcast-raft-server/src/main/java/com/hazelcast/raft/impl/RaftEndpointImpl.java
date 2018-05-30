@@ -1,5 +1,6 @@
 package com.hazelcast.raft.impl;
 
+import com.hazelcast.core.Member;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
@@ -28,6 +29,11 @@ public class RaftEndpointImpl implements RaftEndpoint, Serializable, IdentifiedD
     public RaftEndpointImpl(String id, Address address) {
         this.uid = id;
         this.address = address;
+    }
+
+    public RaftEndpointImpl(Member member) {
+        this.uid = member.getUuid();
+        this.address = member.getAddress();
     }
 
     public String getUid() {

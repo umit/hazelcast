@@ -24,7 +24,7 @@ public class GetRaftGroupOp extends RaftOp implements IdentifiedDataSerializable
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        return service.getMetadataManager().getRaftGroupInfo(targetGroupId);
+        return service.getMetadataManager().getRaftGroup(targetGroupId);
     }
 
     @Override

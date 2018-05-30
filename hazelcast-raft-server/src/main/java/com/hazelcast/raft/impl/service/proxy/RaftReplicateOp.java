@@ -26,24 +26,24 @@ import java.io.IOException;
 public abstract class RaftReplicateOp extends Operation implements IdentifiedDataSerializable,
         AllowedDuringPassiveState, ExecutionCallback {
 
-    private RaftGroupId raftGroupId;
+    private RaftGroupId groupId;
 
     public RaftReplicateOp() {
     }
 
-    public RaftReplicateOp(RaftGroupId raftGroupId) {
-        this.raftGroupId = raftGroupId;
+    public RaftReplicateOp(RaftGroupId groupId) {
+        this.groupId = groupId;
     }
 
     @Override
     public final void run() {
         RaftService service = getService();
-        RaftNode raftNode = service.getOrInitRaftNode(raftGroupId);
+        RaftNode raftNode = service.getOrInitRaftNode(groupId);
         if (raftNode == null) {
-            if (service.isDestroyed(raftGroupId)) {
+            if (service.isRaftGroupDestroyed(groupId)) {
                 sendResponse(new RaftGroupTerminatedException());
             } else {
-                sendResponse(new NotLeaderException(raftGroupId, service.getLocalEndpoint(), null));
+                sendResponse(new NotLeaderException(groupId, service.getLocalEndpoint(), null));
             }
             return;
         }
@@ -90,13 +90,13 @@ public abstract class RaftReplicateOp extends Operation implements IdentifiedDat
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeObject(raftGroupId);
+        out.writeObject(groupId);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        raftGroupId = in.readObject();
+        groupId = in.readObject();
     }
 
     @Override
@@ -112,6 +112,6 @@ public abstract class RaftReplicateOp extends Operation implements IdentifiedDat
     @Override
     protected void toString(StringBuilder sb) {
         super.toString(sb);
-        sb.append(", groupId=").append(raftGroupId);
+        sb.append(", groupId=").append(groupId);
     }
 }

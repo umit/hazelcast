@@ -314,8 +314,8 @@ public class RaftInvocationManager {
         }
 
         private EndpointCursor newEndpointCursor() {
-            RaftGroupInfo raftGroupInfo = raftService.getRaftGroupInfo(groupId);
-            RaftEndpointImpl[] endpoints = raftGroupInfo != null ? raftGroupInfo.membersArray() : allEndpoints;
+            RaftGroupInfo group = raftService.getRaftGroup(groupId);
+            RaftEndpointImpl[] endpoints = group != null ? group.membersArray() : allEndpoints;
             return new EndpointCursor(endpoints);
         }
     }
