@@ -160,6 +160,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
             RaftEndpointImpl endpoint = in.readObject();
             members.put(endpoint, in.readBoolean());
         }
+        membersArray = members.keySet().toArray(new RaftEndpointImpl[0]);
         members = Collections.unmodifiableMap(members);
         status = RaftGroupStatus.valueOf(in.readUTF());
     }
