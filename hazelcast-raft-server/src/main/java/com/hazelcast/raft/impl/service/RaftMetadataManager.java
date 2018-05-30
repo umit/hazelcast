@@ -552,10 +552,16 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         }
 
         private void setInitialRaftMemberAttribute() {
-            nodeEngine.getLocalMember().setBooleanAttribute(RAFT_MEMBER_ATTRIBUTE_NAME, true);
-            Operation op = new MemberAttributeChangedOp(MemberAttributeOperationType.PUT, RAFT_MEMBER_ATTRIBUTE_NAME, true);
-            for (Member member : nodeEngine.getClusterService().getMembers(NON_LOCAL_MEMBER_SELECTOR)) {
-                nodeEngine.getOperationService().send(op, member.getAddress());
+            Member localMember = nodeEngine.getLocalMember();
+            if (Boolean.TRUE.equals(localMember.getBooleanAttribute(RAFT_MEMBER_ATTRIBUTE_NAME))) {
+                // Member attributes have a weak replication guarantee.
+                // Broadcast member attribute to the cluster again to make sure everyone learns it eventually.
+                Operation op = new MemberAttributeChangedOp(MemberAttributeOperationType.PUT, RAFT_MEMBER_ATTRIBUTE_NAME, true);
+                for (Member member : nodeEngine.getClusterService().getMembers(NON_LOCAL_MEMBER_SELECTOR)) {
+                    nodeEngine.getOperationService().send(op, member.getAddress());
+                }
+            } else {
+                localMember.setBooleanAttribute(RAFT_MEMBER_ATTRIBUTE_NAME, true);
             }
         }
     }

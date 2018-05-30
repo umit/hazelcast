@@ -434,6 +434,32 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         assertEquals(cpNodeCount - 1, atomicLongGroup2.memberCount());
     }
 
+    @Test
+    public void when_nonReachableEndpointsExist_createRaftGroupPrefersReachableEndpoints()
+            throws ExecutionException, InterruptedException {
+        HazelcastInstance[] instances = newInstances(5);
+        waitAllForLeaderElection(instances, RaftMetadataManager.METADATA_GROUP_ID);
+
+        RaftEndpointImpl endpoint3 = getRaftService(instances[3]).getLocalEndpoint();
+        RaftEndpointImpl endpoint4 = getRaftService(instances[4]).getLocalEndpoint();
+        instances[3].getLifecycleService().terminate();
+        instances[4].getLifecycleService().terminate();
+
+        RaftInvocationManager invocationManager = getRaftInvocationManager(instances[0]);
+        RaftGroupId g3 = invocationManager.createRaftGroup("g3", 3).get();
+        RaftGroupId g4 = invocationManager.createRaftGroup("g4", 4).get();
+
+        RaftGroupInfo g3Group = getRaftGroup(instances[0], g3);
+        assertThat(g3Group.endpointImpls(), not(hasItem(endpoint3)));
+        assertThat(g3Group.endpointImpls(), not(hasItem(endpoint4)));
+
+        RaftGroupInfo g4Group = getRaftGroup(instances[0], g4);
+        boolean b3 = g4Group.containsMember(endpoint3);
+        boolean b4 = g4Group.containsMember(endpoint4);
+        assertTrue(b3 ^ b4);
+
+    }
+
     private RaftGroupId createNewRaftGroup(HazelcastInstance instance, String name, int nodeCount) {
         RaftInvocationManager invocationManager = getRaftService(instance).getInvocationManager();
         try {
