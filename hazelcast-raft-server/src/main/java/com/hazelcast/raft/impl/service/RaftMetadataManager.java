@@ -118,6 +118,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             return null;
         }
 
+        logger.info("Taking snapshot for commit-index: " + commitIndex);
         MetadataSnapshot snapshot = new MetadataSnapshot();
         for (RaftGroupInfo group : groups.values()) {
             assert group.commitIndex() <= commitIndex
@@ -135,6 +136,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     public void restoreSnapshot(RaftGroupId groupId, long commitIndex, MetadataSnapshot snapshot) {
         ensureMetadataGroupId(groupId);
 
+        logger.info("Restoring snapshot for commit-index: " + commitIndex);
         for (RaftGroupInfo group : snapshot.getRaftGroups()) {
             RaftGroupInfo existingGroup = groups.get(group.id());
 
