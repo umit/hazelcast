@@ -5,6 +5,7 @@ import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.MemberLeftException;
+import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.QueryPolicy;
@@ -34,6 +35,7 @@ import com.hazelcast.spi.impl.AbstractCompletableFuture;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -105,6 +107,7 @@ public class RaftInvocationManager {
                 }
 
                 Collections.shuffle(endpoints);
+                Collections.sort(endpoints, new RaftEndpointReachabilityComparator());
                 endpoints = endpoints.subList(0, groupSize);
                 invokeCreateRaftGroup(groupName, groupSize, endpoints, resultFuture);
             }
@@ -490,6 +493,17 @@ public class RaftInvocationManager {
         @Override
         public void execute(Runnable command) {
             command.run();
+        }
+    }
+
+    private class RaftEndpointReachabilityComparator implements Comparator<RaftEndpointImpl> {
+        final ClusterService clusterService = nodeEngine.getClusterService();
+
+        @Override
+        public int compare(RaftEndpointImpl o1, RaftEndpointImpl o2) {
+            boolean b1 = clusterService.getMember(o1.getAddress()) != null;
+            boolean b2 = clusterService.getMember(o2.getAddress()) != null;
+            return b1 == b2 ? 0 : (b1 ? -1 : 1);
         }
     }
 }
