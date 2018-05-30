@@ -67,7 +67,8 @@ public class RaftInvocationManagerTest extends HazelcastRaftTestSupport {
                 try {
                     invocationService.invoke(groupId, new RaftTestApplyOp("val")).get();
                     fail();
-                } catch (RaftGroupTerminatedException ignored) {
+                } catch (ExecutionException e) {
+                    assertInstanceOf(RaftGroupTerminatedException.class, e.getCause());
                 }
             }
         });
