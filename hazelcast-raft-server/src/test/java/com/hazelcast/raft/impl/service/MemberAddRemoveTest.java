@@ -20,7 +20,9 @@ import com.hazelcast.config.Config;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.Member;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.RaftEndpoint;
 import com.hazelcast.raft.impl.RaftEndpointImpl;
+import com.hazelcast.raft.impl.service.operation.metadata.GetActiveEndpointsOp;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -31,8 +33,10 @@ import org.junit.runner.RunWith;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import static com.hazelcast.raft.impl.service.RaftService.METADATA_GROUP_ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -58,6 +62,22 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
     }
 
     @Test
+    public void testPromoteToRaftMemberIdempotency() throws ExecutionException, InterruptedException {
+        HazelcastInstance[] instances = newInstances(2, 2, 1);
+
+        final RaftService service = getRaftService(instances[instances.length - 1]);
+        service.triggerRaftMemberPromotion().get();
+        service.triggerRaftMemberPromotion().get();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertNotNull(service.getMetadataManager().getLocalEndpoint());
+            }
+        });
+    }
+
+    @Test
     public void testRemoveRaftMember() throws ExecutionException, InterruptedException {
         final HazelcastInstance[] instances = newInstances(3);
 
@@ -69,19 +89,49 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         assertClusterSizeEventually(2, instances[1]);
 
-        final RaftEndpointImpl removedEndpoint = new RaftEndpointImpl(member.getUuid(), member.getAddress());
+        final RaftEndpointImpl removedEndpoint = new RaftEndpointImpl(member);
         service.removeRaftMember(removedEndpoint).get();
 
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                RaftGroupInfo metadataGroupInfo = getRaftGroupInfo(instances[1], RaftService.METADATA_GROUP_ID);
+                RaftGroupInfo metadataGroupInfo = getRaftGroup(instances[1], METADATA_GROUP_ID);
                 assertEquals(2, metadataGroupInfo.memberCount());
                 assertFalse(metadataGroupInfo.containsMember(removedEndpoint));
 
-                RaftGroupInfo testGroupInfo = getRaftGroupInfo(instances[1], testGroupId);
+                RaftGroupInfo testGroupInfo = getRaftGroup(instances[1], testGroupId);
                 assertEquals(2, testGroupInfo.memberCount());
                 assertFalse(testGroupInfo.containsMember(removedEndpoint));
+            }
+        });
+    }
+
+    @Test
+    public void testRemoveRaftMemberIdempotency() throws ExecutionException, InterruptedException {
+        final HazelcastInstance[] instances = newInstances(3);
+
+        final RaftGroupId testGroupId = getRaftInvocationManager(instances[0]).createRaftGroup("test", 3).get();
+
+        final RaftService service = getRaftService(instances[1]);
+        Member member = instances[0].getCluster().getLocalMember();
+        instances[0].getLifecycleService().terminate();
+
+        assertClusterSizeEventually(2, instances[1]);
+
+        final RaftEndpointImpl removedEndpoint = new RaftEndpointImpl(member);
+        service.removeRaftMember(removedEndpoint).get();
+        service.removeRaftMember(removedEndpoint).get();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                RaftGroupInfo metadataGroup = getRaftGroup(instances[1], METADATA_GROUP_ID);
+                assertEquals(2, metadataGroup.memberCount());
+                assertFalse(metadataGroup.containsMember(removedEndpoint));
+
+                RaftGroupInfo testGroup = getRaftGroup(instances[1], testGroupId);
+                assertEquals(2, testGroup.memberCount());
+                assertFalse(testGroup.containsMember(removedEndpoint));
             }
         });
     }
@@ -90,7 +140,7 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
     public void testMetadataGroupReinitializationAfterLostMajority() {
         HazelcastInstance[] instances = newInstances(3, 3, 1);
 
-        waitAllForLeaderElection(Arrays.copyOf(instances, 3), RaftService.METADATA_GROUP_ID);
+        waitAllForLeaderElection(Arrays.copyOf(instances, 3), METADATA_GROUP_ID);
 
         instances[1].getLifecycleService().terminate();
         instances[2].getLifecycleService().terminate();
@@ -107,16 +157,64 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         config.getRaftServiceConfig().getMetadataGroupConfig().setInitialRaftMember(true);
         newInstances[2] = factory.newHazelcastInstance(config);
 
-        waitAllForLeaderElection(newInstances, RaftService.METADATA_GROUP_ID);
+        waitAllForLeaderElection(newInstances, METADATA_GROUP_ID);
 
-        RaftGroupInfo groupInfo = getRaftGroupInfo(newInstances[2], RaftService.METADATA_GROUP_ID);
-        Collection<RaftEndpointImpl> endpoints = groupInfo.endpointImpls();
+        RaftGroupInfo group = getRaftGroup(newInstances[2], METADATA_GROUP_ID);
+        Collection<RaftEndpointImpl> endpoints = group.endpointImpls();
 
         for (HazelcastInstance instance : newInstances) {
             Member localMember = instance.getCluster().getLocalMember();
-            RaftEndpointImpl endpoint = new RaftEndpointImpl(localMember.getUuid(), localMember.getAddress());
+            RaftEndpointImpl endpoint = new RaftEndpointImpl(localMember);
             assertTrue(endpoints.contains(endpoint));
         }
+    }
+
+    @Test
+    public void testRaftInvocationsAfterMetadataGroupReinitialization() throws ExecutionException, InterruptedException {
+        HazelcastInstance[] instances = newInstances(3, 3, 1);
+
+        RaftInvocationManager invocationManager = getRaftInvocationManager(instances[3]);
+        invocationManager.invoke(METADATA_GROUP_ID, new GetActiveEndpointsOp()).get();
+
+        instances[0].getLifecycleService().terminate();
+        instances[1].getLifecycleService().terminate();
+        instances[2].getLifecycleService().terminate();
+        assertClusterSizeEventually(1, instances[3]);
+
+        Config config = createConfig(3, 3);
+        config.getRaftServiceConfig().getMetadataGroupConfig().setInitialRaftMember(true);
+        factory.newHazelcastInstance(config);
+        factory.newHazelcastInstance(config);
+        factory.newHazelcastInstance(config);
+
+        invocationManager.invoke(METADATA_GROUP_ID, new GetActiveEndpointsOp()).get();
+    }
+
+    @Test
+    public void testResetRaftStateWhileMajorityIsReachable() throws ExecutionException, InterruptedException {
+        HazelcastInstance[] instances = newInstances(3, 3, 1);
+
+        waitAllForLeaderElection(Arrays.copyOf(instances, 3), METADATA_GROUP_ID);
+
+        RaftInvocationManager invocationManager = getRaftInvocationManager(instances[3]);
+
+        instances[0].getLifecycleService().terminate();
+        assertClusterSizeEventually(3, instances[1], instances[2], instances[3]);
+
+        getRaftService(instances[1]).resetAndInitRaftState();
+        getRaftService(instances[2]).resetAndInitRaftState();
+
+        Config config = createConfig(3, 3);
+        config.getRaftServiceConfig().getMetadataGroupConfig().setInitialRaftMember(true);
+        HazelcastInstance newInstance = factory.newHazelcastInstance(config);
+
+        List<RaftEndpoint> newEndpoints = invocationManager.<List<RaftEndpoint>>invoke(METADATA_GROUP_ID, new GetActiveEndpointsOp()).get();
+
+        assertTrue(newEndpoints.contains(new RaftEndpointImpl(instances[1].getCluster().getLocalMember())));
+        assertTrue(newEndpoints.contains(new RaftEndpointImpl(instances[2].getCluster().getLocalMember())));
+        assertTrue(newEndpoints.contains(new RaftEndpointImpl(newInstance.getCluster().getLocalMember())));
+
+        invocationManager.invoke(METADATA_GROUP_ID, new GetActiveEndpointsOp()).get();
     }
 
 }

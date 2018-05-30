@@ -230,8 +230,8 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
                 Future<RaftGroupInfo> f = invocationService.query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId),
                         QueryPolicy.LEADER_LOCAL);
 
-                RaftGroupInfo groupInfo = f.get();
-                assertEquals(RaftGroupStatus.DESTROYED, groupInfo.status());
+                RaftGroupInfo group = f.get();
+                assertEquals(RaftGroupStatus.DESTROYED, group.status());
             }
         });
     }
@@ -281,17 +281,9 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
             instances[i] = factory.newHazelcastInstance(config);
         }
 
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() throws Exception {
-                for (HazelcastInstance instance : instances) {
-                    RaftNodeImpl raftNode = getRaftNode(instance, METADATA_GROUP_ID);
-                    assertNotNull(raftNode);
-                }
-            }
-        });
-
+        waitAllForLeaderElection(instances, METADATA_GROUP_ID);
         RaftEndpointImpl leaderEndpoint = getLeaderEndpoint(getRaftNode(instances[0], METADATA_GROUP_ID));
+
         final HazelcastInstance leader = factory.getInstance(leaderEndpoint.getAddress());
         HazelcastInstance follower = null;
         for (HazelcastInstance instance : instances) {
@@ -340,7 +332,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         HazelcastInstance leaderInstance = getLeaderInstance(instances, METADATA_GROUP_ID);
         RaftService raftService = getRaftService(leaderInstance);
         Collection<RaftEndpointImpl> allEndpoints = raftService.getMetadataManager().getActiveEndpoints();
-        RaftGroupInfo metadataGroup = raftService.getRaftGroupInfo(METADATA_GROUP_ID);
+        RaftGroupInfo metadataGroup = raftService.getRaftGroup(METADATA_GROUP_ID);
 
         final Collection<RaftEndpointImpl> endpoints = new HashSet<RaftEndpointImpl>(otherRaftGroupSize);
         for (RaftEndpointImpl endpoint : allEndpoints) {

@@ -12,8 +12,8 @@ public class TerminateRaftGroupOp extends RaftReplicateOp {
     public TerminateRaftGroupOp() {
     }
 
-    public TerminateRaftGroupOp(RaftGroupId raftGroupId) {
-        super(raftGroupId);
+    public TerminateRaftGroupOp(RaftGroupId groupId) {
+        super(groupId);
     }
 
     @Override

@@ -26,7 +26,7 @@ public class TriggerDestroyRaftGroupOp extends RaftOp implements IdentifiedDataS
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
-        metadataManager.triggerDestroy(targetGroupId);
+        metadataManager.triggerDestroyRaftGroup(targetGroupId);
         return targetGroupId;
     }
 

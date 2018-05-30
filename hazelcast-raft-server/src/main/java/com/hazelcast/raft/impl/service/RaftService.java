@@ -101,6 +101,9 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         metadataManager.restoreSnapshot(groupId, commitIndex, snapshot);
     }
 
+    /**
+     * this method is NOT idempotent and multiple invocations on the same member can break the whole system !!!
+     */
     public void resetAndInitRaftState() {
         // we should clear the current raft state before resetting the metadata manager
         for (RaftNode node : nodes.values()) {
@@ -113,12 +116,15 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         metadataManager.reset();
     }
 
+    /**
+     * this method is idempotent
+     */
     public ICompletableFuture<Object> triggerRaftMemberPromotion() {
         if (metadataManager.getLocalEndpoint() != null) {
             throw new IllegalStateException("We are already a Raft member!");
         }
-        final MemberImpl localMember = nodeEngine.getLocalMember();
-        RaftEndpointImpl endpoint = new RaftEndpointImpl(localMember.getUuid(), localMember.getAddress());
+        MemberImpl localMember = nodeEngine.getLocalMember();
+        RaftEndpointImpl endpoint = new RaftEndpointImpl(localMember);
         logger.info("Adding new Raft member: " + endpoint);
         ICompletableFuture<Object> future = invocationManager.invoke(METADATA_GROUP_ID, new AddEndpointOp(endpoint));
 
@@ -135,6 +141,9 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return future;
     }
 
+    /**
+     * this method is idempotent
+     */
     public ICompletableFuture<Object> removeRaftMember(RaftEndpointImpl endpoint) {
         ClusterService clusterService = nodeEngine.getClusterService();
         if (!clusterService.isMaster()) {
@@ -319,11 +328,11 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return node;
     }
 
-    public RaftGroupInfo getRaftGroupInfo(RaftGroupId id) {
-        return metadataManager.getRaftGroupInfo(id);
+    public RaftGroupInfo getRaftGroup(RaftGroupId id) {
+        return metadataManager.getRaftGroup(id);
     }
 
-    public boolean isDestroyed(RaftGroupId groupId) {
+    public boolean isRaftGroupDestroyed(RaftGroupId groupId) {
         return destroyedGroupIds.contains(groupId);
     }
 
@@ -361,12 +370,12 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
     }
 
-    public void createRaftNode(RaftGroupInfo groupInfo) {
+    public void createRaftNode(RaftGroupInfo group) {
         RaftEndpointImpl localEndpoint = getLocalEndpoint();
-        if (groupInfo.containsMember(localEndpoint)) {
-            Collection<RaftEndpoint> members = groupInfo.isInitialMember(localEndpoint)
-                    ? groupInfo.members() : singletonList((RaftEndpoint) localEndpoint);
-            createRaftNode(groupInfo.id(), members);
+        if (group.containsMember(localEndpoint)) {
+            Collection<RaftEndpoint> members = group.isInitialMember(localEndpoint)
+                    ? group.members() : singletonList((RaftEndpoint) localEndpoint);
+            createRaftNode(group.id(), members);
         }
     }
 
@@ -409,17 +418,17 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
                     QueryPolicy.LEADER_LOCAL);
             f.andThen(new ExecutionCallback<RaftGroupInfo>() {
                 @Override
-                public void onResponse(RaftGroupInfo groupInfo) {
-                    if (groupInfo == null) {
+                public void onResponse(RaftGroupInfo group) {
+                    if (group == null) {
                         return;
                     }
 
-                    if (groupInfo.status() == RaftGroupStatus.DESTROYED) {
+                    if (group.status() == RaftGroupStatus.DESTROYED) {
                         destroyRaftNode(groupId);
                         return;
                     }
 
-                    createRaftNode(groupInfo);
+                    createRaftNode(group);
                 }
 
                 @Override
