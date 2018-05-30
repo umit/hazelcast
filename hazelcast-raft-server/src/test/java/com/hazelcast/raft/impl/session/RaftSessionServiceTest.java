@@ -36,6 +36,7 @@ import static com.hazelcast.raft.impl.RaftUtil.getSnapshotEntry;
 import static com.hazelcast.test.PacketFiltersUtil.dropOperationsBetween;
 import static com.hazelcast.test.PacketFiltersUtil.resetPacketFiltersFrom;
 import static java.util.Arrays.asList;
+import static org.hamcrest.core.Is.isA;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -162,7 +163,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
 
         invocationManager.invoke(groupId, new CloseSessionOp(response.getSessionId())).get();
 
-        exception.expect(SessionExpiredException.class);
+        exception.expectCause(isA(SessionExpiredException.class));
 
         invocationManager.invoke(groupId, new HeartbeatSessionOp(response.getSessionId())).get();
     }
