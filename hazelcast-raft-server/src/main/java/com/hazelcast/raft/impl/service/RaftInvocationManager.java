@@ -13,7 +13,7 @@ import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.exception.CannotCreateRaftGroupException;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
-import com.hazelcast.raft.impl.service.operation.metadata.GetActiveMembersOp;
+import com.hazelcast.raft.impl.service.operation.metadata.GetActiveRaftMembersOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOp;
 import com.hazelcast.raft.impl.service.proxy.ChangeRaftGroupMembershipOp;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOp;
@@ -75,30 +75,30 @@ public class RaftInvocationManager {
         Executor executor = nodeEngine.getExecutionService().getExecutor(ASYNC_EXECUTOR);
         ILogger logger = nodeEngine.getLogger(getClass());
         SimpleCompletableFuture<RaftGroupId> resultFuture = new SimpleCompletableFuture<RaftGroupId>(executor, logger);
-        invokeGetEndpointsToCreateRaftGroup(groupName, groupSize, resultFuture);
+        invokeGetMembersToCreateRaftGroup(groupName, groupSize, resultFuture);
         return resultFuture;
     }
 
-    private void invokeGetEndpointsToCreateRaftGroup(final String groupName, final int groupSize,
-                                                     final SimpleCompletableFuture<RaftGroupId> resultFuture) {
-        ICompletableFuture<List<RaftMemberImpl>> f = query(METADATA_GROUP_ID, new GetActiveMembersOp(), QueryPolicy.LEADER_LOCAL);
+    private void invokeGetMembersToCreateRaftGroup(final String groupName, final int groupSize,
+                                                   final SimpleCompletableFuture<RaftGroupId> resultFuture) {
+        ICompletableFuture<List<RaftMemberImpl>> f = query(METADATA_GROUP_ID, new GetActiveRaftMembersOp(), QueryPolicy.LEADER_LOCAL);
 
         f.andThen(new ExecutionCallback<List<RaftMemberImpl>>() {
             @Override
-            public void onResponse(List<RaftMemberImpl> endpoints) {
-                endpoints = new ArrayList<RaftMemberImpl>(endpoints);
+            public void onResponse(List<RaftMemberImpl> members) {
+                members = new ArrayList<RaftMemberImpl>(members);
 
-                if (endpoints.size() < groupSize) {
-                    Exception result = new IllegalArgumentException("There are not enough active endpoints to create raft group "
-                            + groupName + ". Active endpoints: " + endpoints.size() + ", Requested count: " + groupSize);
+                if (members.size() < groupSize) {
+                    Exception result = new IllegalArgumentException("There are not enough active members to create raft group "
+                            + groupName + ". Active members: " + members.size() + ", Requested count: " + groupSize);
                     resultFuture.setResult(result);
                     return;
                 }
 
-                Collections.shuffle(endpoints);
-                Collections.sort(endpoints, new RaftEndpointReachabilityComparator());
-                endpoints = endpoints.subList(0, groupSize);
-                invokeCreateRaftGroup(groupName, groupSize, endpoints, resultFuture);
+                Collections.shuffle(members);
+                Collections.sort(members, new RaftMemberReachabilityComparator());
+                members = members.subList(0, groupSize);
+                invokeCreateRaftGroup(groupName, groupSize, members, resultFuture);
             }
 
             @Override
@@ -109,9 +109,9 @@ public class RaftInvocationManager {
     }
 
     private void invokeCreateRaftGroup(final String groupName, final int groupSize,
-                                       final List<RaftMemberImpl> endpoints,
+                                       final List<RaftMemberImpl> members,
                                        final SimpleCompletableFuture<RaftGroupId> resultFuture) {
-        ICompletableFuture<RaftGroupId> f = invoke(METADATA_GROUP_ID, new CreateRaftGroupOp(groupName, endpoints));
+        ICompletableFuture<RaftGroupId> f = invoke(METADATA_GROUP_ID, new CreateRaftGroupOp(groupName, members));
 
         f.andThen(new ExecutionCallback<RaftGroupId>() {
             @Override
@@ -122,9 +122,9 @@ public class RaftInvocationManager {
             @Override
             public void onFailure(Throwable t) {
                 if (t.getCause() instanceof CannotCreateRaftGroupException) {
-                    logger.fine("Could not create raft group: " + groupName + " with endpoints: " + endpoints,
+                    logger.fine("Could not create raft group: " + groupName + " with members: " + members,
                             t.getCause());
-                    invokeGetEndpointsToCreateRaftGroup(groupName, groupSize, resultFuture);
+                    invokeGetMembersToCreateRaftGroup(groupName, groupSize, resultFuture);
                     return;
                 }
 
@@ -137,9 +137,9 @@ public class RaftInvocationManager {
         return invoke(METADATA_GROUP_ID, new TriggerDestroyRaftGroupOp(groupId));
     }
 
-    <T> ICompletableFuture<T> changeRaftGroupMembership(RaftGroupId groupId, long membersCommitIndex, RaftMemberImpl endpoint,
+    <T> ICompletableFuture<T> changeRaftGroupMembership(RaftGroupId groupId, long membersCommitIndex, RaftMemberImpl member,
                                                         MembershipChangeType changeType) {
-        Operation operation = new ChangeRaftGroupMembershipOp(groupId, membersCommitIndex, endpoint, changeType);
+        Operation operation = new ChangeRaftGroupMembershipOp(groupId, membersCommitIndex, member, changeType);
         Invocation invocation = new RaftInvocation(operationService.getInvocationContext(), raftInvocationContext,
                 groupId, operation, true);
         return invocation.invoke();
@@ -173,11 +173,11 @@ public class RaftInvocationManager {
         return invocation.invoke();
     }
 
-    void setAllEndpoints(Collection<RaftMemberImpl> endpoints) {
-        raftInvocationContext.setAllEndpoints(endpoints);
+    void setAllMembers(Collection<RaftMemberImpl> members) {
+        raftInvocationContext.setAllMembers(members);
     }
 
-    private class RaftEndpointReachabilityComparator implements Comparator<RaftMemberImpl> {
+    private class RaftMemberReachabilityComparator implements Comparator<RaftMemberImpl> {
         final ClusterService clusterService = nodeEngine.getClusterService();
 
         @Override

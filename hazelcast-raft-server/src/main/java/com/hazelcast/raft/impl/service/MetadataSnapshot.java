@@ -17,14 +17,14 @@ public final class MetadataSnapshot implements IdentifiedDataSerializable {
 
     private final Collection<RaftMemberImpl> members = new ArrayList<RaftMemberImpl>();
     private final Collection<RaftGroupInfo> raftGroups = new ArrayList<RaftGroupInfo>();
-    private LeavingRaftEndpointContext leavingRaftEndpointContext;
+    private MembershipChangeContext membershipChangeContext;
 
     public void addRaftGroup(RaftGroupInfo group) {
         raftGroups.add(group);
     }
 
-    public void addEndpoint(RaftMemberImpl endpoint) {
-        members.add(endpoint);
+    public void addMember(RaftMemberImpl member) {
+        members.add(member);
     }
 
     public Collection<RaftMemberImpl> getMembers() {
@@ -35,12 +35,12 @@ public final class MetadataSnapshot implements IdentifiedDataSerializable {
         return raftGroups;
     }
 
-    public LeavingRaftEndpointContext getLeavingRaftEndpointContext() {
-        return leavingRaftEndpointContext;
+    public MembershipChangeContext getMembershipChangeContext() {
+        return membershipChangeContext;
     }
 
-    public void setLeavingRaftEndpointContext(LeavingRaftEndpointContext leavingRaftEndpointContext) {
-        this.leavingRaftEndpointContext = leavingRaftEndpointContext;
+    public void setMembershipChangeContext(MembershipChangeContext membershipChangeContext) {
+        this.membershipChangeContext = membershipChangeContext;
     }
 
     @Override
@@ -56,29 +56,29 @@ public final class MetadataSnapshot implements IdentifiedDataSerializable {
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeInt(members.size());
-        for (RaftMemberImpl endpoint : members) {
-            out.writeObject(endpoint);
+        for (RaftMemberImpl member : members) {
+            out.writeObject(member);
         }
         out.writeInt(raftGroups.size());
         for (RaftGroupInfo group : raftGroups) {
             out.writeObject(group);
         }
-        out.writeObject(leavingRaftEndpointContext);
+        out.writeObject(membershipChangeContext);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         int len = in.readInt();
         for (int i = 0; i < len; i++) {
-            RaftMemberImpl endpoint = in.readObject();
-            members.add(endpoint);
+            RaftMemberImpl member = in.readObject();
+            members.add(member);
         }
 
         len = in.readInt();
         for (int i = 0; i < len; i++) {
-            RaftGroupInfo groupInfo = in.readObject();
-            raftGroups.add(groupInfo);
+            RaftGroupInfo group = in.readObject();
+            raftGroups.add(group);
         }
-        leavingRaftEndpointContext = in.readObject();
+        membershipChangeContext = in.readObject();
     }
 }

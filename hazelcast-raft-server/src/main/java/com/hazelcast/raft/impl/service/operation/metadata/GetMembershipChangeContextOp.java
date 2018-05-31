@@ -4,42 +4,23 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
+import com.hazelcast.raft.impl.RaftOp;
 
 import java.io.IOException;
 
-public class GetRaftGroupOp extends RaftOp implements IdentifiedDataSerializable {
-
-    private RaftGroupId groupId;
-
-    public GetRaftGroupOp() {
-    }
-
-    public GetRaftGroupOp(RaftGroupId groupId) {
-        this.groupId = groupId;
-    }
+public class GetMembershipChangeContextOp extends RaftOp implements IdentifiedDataSerializable {
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        return service.getMetadataManager().getRaftGroup(groupId);
+        return service.getMetadataManager().getMembershipChangeContext();
     }
 
     @Override
     public String getServiceName() {
         return RaftService.SERVICE_NAME;
-    }
-
-    @Override
-    public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeObject(groupId);
-    }
-
-    @Override
-    public void readData(ObjectDataInput in) throws IOException {
-        groupId = in.readObject();
     }
 
     @Override
@@ -49,11 +30,14 @@ public class GetRaftGroupOp extends RaftOp implements IdentifiedDataSerializable
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.GET_RAFT_GROUP_OP;
+        return RaftServiceDataSerializerHook.GET_MEMBERSHIP_CHANGE_CONTEXT_OP;
     }
 
     @Override
-    protected void toString(StringBuilder sb) {
-        sb.append(", groupId=").append(groupId);
+    public void writeData(ObjectDataOutput out) throws IOException {
+    }
+
+    @Override
+    public void readData(ObjectDataInput in) throws IOException {
     }
 }

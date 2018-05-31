@@ -10,12 +10,15 @@ import com.hazelcast.raft.impl.RaftOp;
 
 import java.io.IOException;
 
-public class GetLeavingEndpointContextOp extends RaftOp implements IdentifiedDataSerializable {
+public class GetDestroyingRaftGroupIdsOp extends RaftOp implements IdentifiedDataSerializable {
+
+    public GetDestroyingRaftGroupIdsOp() {
+    }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        return service.getMetadataManager().getLeavingEndpointContext();
+        return service.getMetadataManager().getDestroyingRaftGroupIds();
     }
 
     @Override
@@ -30,7 +33,7 @@ public class GetLeavingEndpointContextOp extends RaftOp implements IdentifiedDat
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.GET_LEAVING_ENDPOINT_CONTEXT_OP;
+        return RaftServiceDataSerializerHook.GET_DESTROYING_RAFT_GROUP_IDS_OP;
     }
 
     @Override

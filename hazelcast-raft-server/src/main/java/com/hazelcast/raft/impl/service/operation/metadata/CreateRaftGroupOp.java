@@ -21,21 +21,21 @@ import java.util.Collection;
 public class CreateRaftGroupOp extends RaftOp implements IdentifiedDataSerializable {
 
     private String groupName;
-    private Collection<RaftMemberImpl> endpoints;
+    private Collection<RaftMemberImpl> members;
 
     public CreateRaftGroupOp() {
     }
 
-    public CreateRaftGroupOp(String groupName, Collection<RaftMemberImpl> endpoints) {
+    public CreateRaftGroupOp(String groupName, Collection<RaftMemberImpl> members) {
         this.groupName = groupName;
-        this.endpoints = endpoints;
+        this.members = members;
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
-        return metadataManager.createRaftGroup(groupName, endpoints, commitIndex);
+        return metadataManager.createRaftGroup(groupName, members, commitIndex);
     }
 
     @Override
@@ -46,9 +46,9 @@ public class CreateRaftGroupOp extends RaftOp implements IdentifiedDataSerializa
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeUTF(groupName);
-        out.writeInt(endpoints.size());
-        for (RaftMemberImpl endpoint : endpoints) {
-            out.writeObject(endpoint);
+        out.writeInt(members.size());
+        for (RaftMemberImpl member : members) {
+            out.writeObject(member);
         }
     }
 
@@ -56,10 +56,10 @@ public class CreateRaftGroupOp extends RaftOp implements IdentifiedDataSerializa
     public void readData(ObjectDataInput in) throws IOException {
         groupName = in.readUTF();
         int len = in.readInt();
-        endpoints = new ArrayList<RaftMemberImpl>(len);
+        members = new ArrayList<RaftMemberImpl>(len);
         for (int i = 0; i < len; i++) {
-            RaftMemberImpl endpoint = in.readObject();
-            endpoints.add(endpoint);
+            RaftMemberImpl member = in.readObject();
+            members.add(member);
         }
     }
 
@@ -76,6 +76,6 @@ public class CreateRaftGroupOp extends RaftOp implements IdentifiedDataSerializa
     @Override
     protected void toString(StringBuilder sb) {
         sb.append(", groupName=").append(groupName);
-        sb.append(", endpoints=").append(endpoints);
+        sb.append(", members=").append(members);
     }
 }

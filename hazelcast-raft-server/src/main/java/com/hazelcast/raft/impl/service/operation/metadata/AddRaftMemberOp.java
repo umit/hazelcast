@@ -27,14 +27,14 @@ import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
 import java.io.IOException;
 
-public class AddMemberOp extends RaftOp implements IdentifiedDataSerializable {
+public class AddRaftMemberOp extends RaftOp implements IdentifiedDataSerializable {
 
     private RaftMemberImpl member;
 
-    public AddMemberOp() {
+    public AddRaftMemberOp() {
     }
 
-    public AddMemberOp(RaftMemberImpl member) {
+    public AddRaftMemberOp(RaftMemberImpl member) {
         this.member = member;
     }
 
@@ -68,7 +68,7 @@ public class AddMemberOp extends RaftOp implements IdentifiedDataSerializable {
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.ADD_MEMBER_OP;
+        return RaftServiceDataSerializerHook.ADD_RAFT_MEMBER_OP;
     }
 
 }

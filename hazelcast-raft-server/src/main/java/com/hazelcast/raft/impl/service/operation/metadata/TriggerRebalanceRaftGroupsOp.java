@@ -4,21 +4,24 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.RaftOp;
+import com.hazelcast.raft.impl.service.RaftMetadataManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.RaftOp;
 
 import java.io.IOException;
 
-public class GetDestroyingRaftGroupIds extends RaftOp implements IdentifiedDataSerializable {
+public class TriggerRebalanceRaftGroupsOp extends RaftOp implements IdentifiedDataSerializable {
 
-    public GetDestroyingRaftGroupIds() {
+    public TriggerRebalanceRaftGroupsOp() {
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        return service.getMetadataManager().getDestroyingRaftGroupIds();
+        RaftMetadataManager metadataManager = service.getMetadataManager();
+        metadataManager.triggerRebalanceRaftGroups();
+        return null;
     }
 
     @Override
@@ -33,7 +36,7 @@ public class GetDestroyingRaftGroupIds extends RaftOp implements IdentifiedDataS
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.GET_DESTROYING_RAFT_GROUP_IDS_OP;
+        return RaftServiceDataSerializerHook.TRIGGER_REBALANCE_RAFT_GROUPS_OP;
     }
 
     @Override
@@ -43,4 +46,5 @@ public class GetDestroyingRaftGroupIds extends RaftOp implements IdentifiedDataS
     @Override
     public void readData(ObjectDataInput in) throws IOException {
     }
+
 }

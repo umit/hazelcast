@@ -28,21 +28,21 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 
-public class SendActiveMembersOp extends Operation implements IdentifiedDataSerializable {
+public class SendActiveRaftMembersOp extends Operation implements IdentifiedDataSerializable {
 
-    private Collection<RaftMemberImpl> endpoints;
+    private Collection<RaftMemberImpl> members;
 
-    public SendActiveMembersOp() {
+    public SendActiveRaftMembersOp() {
     }
 
-    public SendActiveMembersOp(Collection<RaftMemberImpl> endpoints) {
-        this.endpoints = endpoints;
+    public SendActiveRaftMembersOp(Collection<RaftMemberImpl> members) {
+        this.members = members;
     }
 
     @Override
     public void run() {
         RaftService service = getService();
-        service.getMetadataManager().setActiveMembers(endpoints);
+        service.getMetadataManager().setActiveMembers(members);
     }
 
     @Override
@@ -58,9 +58,9 @@ public class SendActiveMembersOp extends Operation implements IdentifiedDataSeri
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeInt(endpoints.size());
-        for (RaftMemberImpl endpoint : endpoints) {
-            out.writeObject(endpoint);
+        out.writeInt(members.size());
+        for (RaftMemberImpl member : members) {
+            out.writeObject(member);
         }
     }
 
@@ -68,10 +68,10 @@ public class SendActiveMembersOp extends Operation implements IdentifiedDataSeri
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         int len = in.readInt();
-        endpoints = new ArrayList<RaftMemberImpl>(len);
+        members = new ArrayList<RaftMemberImpl>(len);
         for (int i = 0; i < len; i++) {
-            RaftMemberImpl endpoint = in.readObject();
-            endpoints.add(endpoint);
+            RaftMemberImpl member = in.readObject();
+            members.add(member);
         }
     }
 
@@ -82,11 +82,11 @@ public class SendActiveMembersOp extends Operation implements IdentifiedDataSeri
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.SEND_ACTIVE_MEMBERS_OP;
+        return RaftServiceDataSerializerHook.SEND_ACTIVE_RAFT_MEMBERS_OP;
     }
 
     @Override
     protected void toString(StringBuilder sb) {
-        sb.append(", endpoints=").append(endpoints);
+        sb.append(", members=").append(members);
     }
 }

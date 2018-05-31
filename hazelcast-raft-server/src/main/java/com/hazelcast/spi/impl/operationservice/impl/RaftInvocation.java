@@ -26,7 +26,7 @@ import com.hazelcast.spi.ExceptionAction;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.exception.CallerNotMemberException;
 import com.hazelcast.spi.exception.TargetNotMemberException;
-import com.hazelcast.spi.impl.operationservice.impl.RaftInvocationContext.EndpointCursor;
+import com.hazelcast.spi.impl.operationservice.impl.RaftInvocationContext.MemberCursor;
 
 import static com.hazelcast.spi.ExceptionAction.RETRY_INVOCATION;
 import static com.hazelcast.spi.ExceptionAction.THROW_EXCEPTION;
@@ -43,7 +43,7 @@ public class RaftInvocation extends Invocation {
     private final RaftInvocationContext raftInvocationContext;
     private final RaftGroupId groupId;
     private final boolean canFailOnIndeterminateOperationState;
-    private volatile EndpointCursor endpointCursor;
+    private volatile MemberCursor memberCursor;
     private volatile RaftMemberImpl lastInvocationEndpoint;
 
     public RaftInvocation(Context context, RaftInvocationContext raftInvocationContext, RaftGroupId groupId,
@@ -94,13 +94,13 @@ public class RaftInvocation extends Invocation {
             return target;
         }
 
-        EndpointCursor cursor = endpointCursor;
+        MemberCursor cursor = memberCursor;
         if (cursor == null || !cursor.advance()) {
-            cursor = raftInvocationContext.newEndpointCursor(groupId);
+            cursor = raftInvocationContext.newMemberCursor(groupId);
             if (!cursor.advance()) {
                 return null;
             }
-            endpointCursor = cursor;
+            memberCursor = cursor;
         }
         return cursor.get();
     }

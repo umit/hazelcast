@@ -3,15 +3,13 @@ package com.hazelcast.raft.impl.service;
 import com.hazelcast.config.raft.RaftServiceConfig;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
-import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
+import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.raft.impl.RaftMember;
 import com.hazelcast.raft.impl.RaftMemberImpl;
-import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
@@ -24,10 +22,11 @@ import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.exception.CannotRemoveMemberException;
-import com.hazelcast.raft.impl.service.operation.metadata.AddMemberOp;
-import com.hazelcast.raft.impl.service.operation.metadata.CheckRemovedMemberOp;
+import com.hazelcast.raft.impl.service.operation.metadata.AddRaftMemberOp;
+import com.hazelcast.raft.impl.service.operation.metadata.CheckRemovedRaftMemberOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
-import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveMemberOp;
+import com.hazelcast.raft.impl.service.operation.metadata.TriggerRebalanceRaftGroupsOp;
+import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveRaftMemberOp;
 import com.hazelcast.spi.GracefulShutdownAwareService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.MemberAttributeServiceEvent;
@@ -46,6 +45,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import static com.hazelcast.raft.QueryPolicy.LEADER_LOCAL;
 import static com.hazelcast.raft.impl.service.RaftCleanupHandler.CLEANUP_TASK_PERIOD_IN_MILLIS;
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 import static java.util.Collections.newSetFromMap;
@@ -121,14 +121,21 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     /**
      * this method is idempotent
      */
+    public ICompletableFuture<Object> triggerRebalanceRaftGroups() {
+        return invocationManager.invoke(METADATA_GROUP_ID, new TriggerRebalanceRaftGroupsOp());
+    }
+
+    /**
+     * this method is idempotent
+     */
     public ICompletableFuture<Object> triggerRaftMemberPromotion() {
         if (metadataManager.getLocalMember() != null) {
             throw new IllegalStateException("We are already a Raft member!");
         }
-        MemberImpl localMember = nodeEngine.getLocalMember();
-        RaftMemberImpl endpoint = new RaftMemberImpl(localMember);
-        logger.info("Adding new Raft member: " + endpoint);
-        ICompletableFuture<Object> future = invocationManager.invoke(METADATA_GROUP_ID, new AddMemberOp(endpoint));
+
+        RaftMemberImpl member = new RaftMemberImpl(nodeEngine.getLocalMember());
+        logger.info("Adding new Raft member: " + member);
+        ICompletableFuture<Object> future = invocationManager.invoke(METADATA_GROUP_ID, new AddRaftMemberOp(member));
 
         future.andThen(new ExecutionCallback<Object>() {
             @Override
@@ -146,22 +153,22 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     /**
      * this method is idempotent
      */
-    public ICompletableFuture<Object> removeRaftMember(RaftMemberImpl endpoint) {
+    public ICompletableFuture<Object> triggerRemoveRaftMember(RaftMemberImpl member) {
         ClusterService clusterService = nodeEngine.getClusterService();
         if (!clusterService.isMaster()) {
             throw new IllegalStateException("Only master can remove a Raft member!");
         }
-        if (clusterService.getMember(endpoint.getAddress()) != null) {
-            throw new IllegalArgumentException("Cannot remove " + endpoint + ", it is a live member!");
+        if (clusterService.getMember(member.getAddress()) != null) {
+            throw new IllegalArgumentException("Cannot remove " + member + ", it is a live member!");
         }
-        return triggerRemoveEndpointAsync(endpoint);
+        return invokeTriggerRemoveMember(member);
     }
 
     @Override
     // TODO: close sessions & release resources/locks
     public boolean onShutdown(long timeout, TimeUnit unit) {
-        RaftMemberImpl localEndpoint = getLocalMember();
-        if (localEndpoint == null) {
+        RaftMemberImpl localMember = getLocalMember();
+        if (localMember == null) {
             return true;
         }
 
@@ -170,21 +177,21 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             return true;
         }
 
-        logger.fine("Triggering remove member procedure for " + localEndpoint);
+        logger.fine("Triggering remove member procedure for " + localMember);
 
         long remainingTimeNanos = unit.toNanos(timeout);
         long start = System.nanoTime();
 
-        ensureTriggerShutdown(localEndpoint, remainingTimeNanos);
+        ensureTriggerShutdown(localMember, remainingTimeNanos);
         remainingTimeNanos -= (System.nanoTime() - start);
 
         // wait for us being replaced in all raft groups we are participating
         // and removed from all raft groups
-        logger.fine("Waiting remove member procedure to be completed for " + localEndpoint
+        logger.fine("Waiting remove member procedure to be completed for " + localMember
                 + ", remaining time: " + TimeUnit.NANOSECONDS.toMillis(remainingTimeNanos) + " ms.");
         while (remainingTimeNanos > 0) {
-            if (isRemoved(localEndpoint)) {
-                logger.fine("Remove member procedure completed for " + localEndpoint);
+            if (isRemoved(localMember)) {
+                logger.fine("Remove member procedure completed for " + localMember);
                 return true;
             }
             try {
@@ -195,19 +202,19 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             }
             remainingTimeNanos -= CLEANUP_TASK_PERIOD_IN_MILLIS;
         }
-        logger.fine("Remove member procedure NOT completed for " + localEndpoint + " in "
+        logger.fine("Remove member procedure NOT completed for " + localMember + " in "
                 + unit.toMillis(timeout) + " ms.");
         return false;
     }
 
-    private void ensureTriggerShutdown(RaftMemberImpl endpoint, long remainingTimeNanos) {
+    private void ensureTriggerShutdown(RaftMemberImpl member, long remainingTimeNanos) {
         while (remainingTimeNanos > 0) {
             long start = System.nanoTime();
             try {
                 // mark us as shutting-down in metadata
-                Future<Object> future = triggerRemoveEndpointAsync(endpoint);
+                Future<Object> future = invokeTriggerRemoveMember(member);
                 future.get(remainingTimeNanos, TimeUnit.NANOSECONDS);
-                logger.fine(endpoint + " is marked as being removed.");
+                logger.fine(member + " is marked as being removed.");
                 return;
             } catch (CannotRemoveMemberException e) {
                 remainingTimeNanos -= (System.nanoTime() - start);
@@ -223,7 +230,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
     @Override
     public void memberAdded(MembershipServiceEvent event) {
-        metadataManager.broadcastActiveEndpoints();
+        metadataManager.broadcastActiveMembers();
     }
 
     @Override
@@ -326,7 +333,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         RaftNode node = nodes.get(groupId);
         if (node == null && !destroyedGroupIds.contains(groupId)) {
             logger.fine("There is no RaftNode for " + groupId + ". Asking to the metadata group...");
-            nodeEngine.getExecutionService().execute(ASYNC_EXECUTOR, new QueryRaftGroupInfoTask(groupId));
+            nodeEngine.getExecutionService().execute(ASYNC_EXECUTOR, new QueryRaftGroupTask(groupId));
         }
         return node;
     }
@@ -347,7 +354,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return metadataManager.getLocalMember();
     }
 
-    void createRaftNode(RaftGroupId groupId, Collection<RaftMember> endpoints) {
+    void createRaftNode(RaftGroupId groupId, Collection<RaftMember> members) {
         if (nodes.containsKey(groupId)) {
             logger.fine("Not creating RaftNode for " + groupId + " since it is already created...");
             return;
@@ -359,7 +366,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
 
         RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, groupId);
-        RaftNodeImpl node = new RaftNodeImpl(groupId, getLocalMember(), endpoints, config.getRaftConfig(), raftIntegration);
+        RaftNodeImpl node = new RaftNodeImpl(groupId, getLocalMember(), members, config.getRaftConfig(), raftIntegration);
 
         if (nodes.putIfAbsent(groupId, node) == null) {
             if (destroyedGroupIds.contains(groupId)) {
@@ -369,15 +376,15 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             }
 
             node.start();
-            logger.info("RaftNode created for: " + groupId + " with members: " + endpoints);
+            logger.info("RaftNode created for: " + groupId + " with members: " + members);
         }
     }
 
     public void createRaftNode(RaftGroupInfo group) {
-        RaftMemberImpl localEndpoint = getLocalMember();
-        if (group.containsMember(localEndpoint)) {
-            Collection<RaftMember> members = group.isInitialMember(localEndpoint)
-                    ? group.members() : singletonList((RaftMember) localEndpoint);
+        RaftMemberImpl localMember = getLocalMember();
+        if (group.containsMember(localMember)) {
+            Collection<RaftMember> members = group.isInitialMember(localMember)
+                    ? group.members() : singletonList((RaftMember) localMember);
             createRaftNode(group.id(), members);
         }
     }
@@ -391,16 +398,12 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
     }
 
-    /**
-     * this method is idempotent
-     */
-    private ICompletableFuture<Object> triggerRemoveEndpointAsync(RaftMemberImpl endpoint) {
-        return invocationManager.invoke(METADATA_GROUP_ID, new TriggerRemoveMemberOp(endpoint));
+    private ICompletableFuture<Object> invokeTriggerRemoveMember(RaftMemberImpl member) {
+        return invocationManager.invoke(METADATA_GROUP_ID, new TriggerRemoveRaftMemberOp(member));
     }
 
-    private boolean isRemoved(RaftMemberImpl endpoint) {
-        ICompletableFuture<Boolean> f = invocationManager.query(METADATA_GROUP_ID, new CheckRemovedMemberOp(endpoint),
-                QueryPolicy.LEADER_LOCAL);
+    private boolean isRemoved(RaftMemberImpl member) {
+        Future<Boolean> f = invocationManager.query(METADATA_GROUP_ID, new CheckRemovedRaftMemberOp(member), LEADER_LOCAL);
         try {
             return f.get();
         } catch (Exception e) {
@@ -408,17 +411,17 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
     }
 
-    private class QueryRaftGroupInfoTask implements Runnable {
+    private class QueryRaftGroupTask implements Runnable {
         private final RaftGroupId groupId;
 
-        QueryRaftGroupInfoTask(RaftGroupId groupId) {
+        QueryRaftGroupTask(RaftGroupId groupId) {
             this.groupId = groupId;
         }
 
         @Override
         public void run() {
             ICompletableFuture<RaftGroupInfo> f = invocationManager.query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId),
-                    QueryPolicy.LEADER_LOCAL);
+                    LEADER_LOCAL);
             f.andThen(new ExecutionCallback<RaftGroupInfo>() {
                 @Override
                 public void onResponse(RaftGroupInfo group) {
