@@ -10,7 +10,7 @@ import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
-import com.hazelcast.raft.impl.service.operation.metadata.GetActiveMembersOp;
+import com.hazelcast.raft.impl.service.operation.metadata.GetActiveRaftMembersOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -408,7 +408,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
 
         factory.getInstance(endpoint.getAddress()).shutdown();
 
-        ICompletableFuture<List<RaftMemberImpl>> f1 = invocationService.query(METADATA_GROUP_ID, new GetActiveMembersOp(),
+        ICompletableFuture<List<RaftMemberImpl>> f1 = invocationService.query(METADATA_GROUP_ID, new GetActiveRaftMembersOp(),
                 QueryPolicy.LEADER_LOCAL);
 
         List<RaftMemberImpl> activeEndpoints = f1.get();
@@ -449,11 +449,11 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         RaftGroupId g3 = invocationManager.createRaftGroup("g3", 3).get();
         RaftGroupId g4 = invocationManager.createRaftGroup("g4", 4).get();
 
-        RaftGroupInfo g3Group = getRaftGroup(instances[0], g3);
-        assertThat(g3Group.endpointImpls(), not(hasItem(endpoint3)));
-        assertThat(g3Group.endpointImpls(), not(hasItem(endpoint4)));
+        RaftGroupInfo g3Group = getRaftGroupLocally(instances[0], g3);
+        assertThat(g3Group.memberImpls(), not(hasItem(endpoint3)));
+        assertThat(g3Group.memberImpls(), not(hasItem(endpoint4)));
 
-        RaftGroupInfo g4Group = getRaftGroup(instances[0], g4);
+        RaftGroupInfo g4Group = getRaftGroupLocally(instances[0], g4);
         boolean b3 = g4Group.containsMember(endpoint3);
         boolean b4 = g4Group.containsMember(endpoint4);
         assertTrue(b3 ^ b4);
@@ -488,7 +488,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         RaftGroupInfo group1 = f1.get();
         RaftGroupInfo group2 = f2.get();
 
-        Set<RaftMemberImpl> members = new HashSet<RaftMemberImpl>(group1.endpointImpls());
+        Set<RaftMemberImpl> members = new HashSet<RaftMemberImpl>(group1.memberImpls());
         members.retainAll(group2.members());
 
         return members.isEmpty() ? null : members.iterator().next();

@@ -108,6 +108,6 @@ public class RaftMemberImpl implements RaftMember, Serializable, IdentifiedDataS
 
     @Override
     public String toString() {
-        return "RaftEndpoint{" + "uid=" + uid + ", address=" + address + '}';
+        return "RaftMember{" + "uid=" + uid + ", address=" + address + '}';
     }
 }

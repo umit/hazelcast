@@ -40,7 +40,7 @@ public class RaftInvocationContext {
             new ConcurrentHashMap<RaftGroupId, RaftMemberImpl>();
     final boolean failOnIndeterminateOperationState;
 
-    private volatile RaftMemberImpl[] allEndpoints = {};
+    private volatile RaftMemberImpl[] allMembers = {};
 
     public RaftInvocationContext(ILogger logger, RaftService raftService) {
         this.logger = logger;
@@ -50,12 +50,12 @@ public class RaftInvocationContext {
     }
 
     public void reset() {
-        allEndpoints = new RaftMemberImpl[0];
+        allMembers = new RaftMemberImpl[0];
         knownLeaders.clear();
     }
 
-    public void setAllEndpoints(Collection<RaftMemberImpl> endpoints) {
-        allEndpoints = endpoints.toArray(new RaftMemberImpl[0]);
+    public void setAllMembers(Collection<RaftMemberImpl> endpoints) {
+        allMembers = endpoints.toArray(new RaftMemberImpl[0]);
     }
 
     public RaftMemberImpl getKnownLeader(RaftGroupId groupId) {
@@ -86,26 +86,26 @@ public class RaftInvocationContext {
         knownLeaders.remove(groupId);
     }
 
-    EndpointCursor newEndpointCursor(RaftGroupId groupId) {
+    MemberCursor newMemberCursor(RaftGroupId groupId) {
         RaftGroupInfo group = raftService.getRaftGroup(groupId);
-        RaftMemberImpl[] endpoints = group != null ? group.membersArray() : allEndpoints;
-        return new EndpointCursor(endpoints);
+        RaftMemberImpl[] endpoints = group != null ? group.membersArray() : allMembers;
+        return new MemberCursor(endpoints);
     }
 
-    static class EndpointCursor {
-        private final RaftMemberImpl[] endpoints;
+    static class MemberCursor {
+        private final RaftMemberImpl[] members;
         private int index = -1;
 
-        private EndpointCursor(RaftMemberImpl[] endpoints) {
-            this.endpoints = endpoints;
+        private MemberCursor(RaftMemberImpl[] members) {
+            this.members = members;
         }
 
         boolean advance() {
-            return ++index < endpoints.length;
+            return ++index < members.length;
         }
 
         RaftMemberImpl get() {
-            return endpoints[index];
+            return members[index];
         }
     }
 }

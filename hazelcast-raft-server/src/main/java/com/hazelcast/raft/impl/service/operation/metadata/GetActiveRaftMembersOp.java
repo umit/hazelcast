@@ -12,15 +12,15 @@ import com.hazelcast.raft.impl.RaftOp;
 import java.io.IOException;
 import java.util.ArrayList;
 
-public class GetActiveMembersOp extends RaftOp implements IdentifiedDataSerializable {
+public class GetActiveRaftMembersOp extends RaftOp implements IdentifiedDataSerializable {
 
-    public GetActiveMembersOp() {
+    public GetActiveRaftMembersOp() {
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        // returning arraylist to be able to serialize response
+        // returning array list to be able to serialize response
         return new ArrayList<RaftMemberImpl>(service.getMetadataManager().getActiveMembers());
     }
 
@@ -44,7 +44,7 @@ public class GetActiveMembersOp extends RaftOp implements IdentifiedDataSerializ
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.GET_ACTIVE_MEMBERS_OP;
+        return RaftServiceDataSerializerHook.GET_ACTIVE_RAFT_MEMBERS_OP;
     }
 
 }

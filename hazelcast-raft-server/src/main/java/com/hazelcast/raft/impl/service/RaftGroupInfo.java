@@ -29,9 +29,10 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     }
 
     private RaftGroupId id;
-    private long membersCommitIndex;
-    // endpoint -> TRUE: initial-member | FALSE: substitute-member
+    private int initialGroupSize;
+    // member -> TRUE: initial-member | FALSE: substitute-member
     private Map<RaftMemberImpl, Boolean> members;
+    private long membersCommitIndex;
 
     // read outside of Raft
     private volatile RaftGroupStatus status;
@@ -41,15 +42,16 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     public RaftGroupInfo() {
     }
 
-    public RaftGroupInfo(RaftGroupId id, Collection<RaftMemberImpl> endpoints) {
+    public RaftGroupInfo(RaftGroupId id, Collection<RaftMemberImpl> members) {
         this.id = id;
         this.status = ACTIVE;
-        LinkedHashMap<RaftMemberImpl, Boolean> map = new LinkedHashMap<RaftMemberImpl, Boolean>(endpoints.size());
-        for (RaftMemberImpl endpoint : endpoints) {
-            map.put(endpoint, Boolean.TRUE);
+        this.initialGroupSize = members.size();
+        LinkedHashMap<RaftMemberImpl, Boolean> map = new LinkedHashMap<RaftMemberImpl, Boolean>(members.size());
+        for (RaftMemberImpl member : members) {
+            map.put(member, Boolean.TRUE);
         }
         this.members = Collections.unmodifiableMap(map);
-        this.membersArray = endpoints.toArray(new RaftMemberImpl[0]);
+        this.membersArray = members.toArray(new RaftMemberImpl[0]);
     }
 
     public RaftGroupId id() {
@@ -64,26 +66,30 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
         return id.commitIndex();
     }
 
+    public int initialGroupSize() {
+        return initialGroupSize;
+    }
+
     @SuppressWarnings("unchecked")
     public Collection<RaftMember> members() {
         return (Collection) members.keySet();
     }
 
-    public Collection<RaftMemberImpl> endpointImpls() {
+    public Collection<RaftMemberImpl> memberImpls() {
         return members.keySet();
     }
 
-    public boolean containsMember(RaftMemberImpl endpoint) {
-        return members.containsKey(endpoint);
+    public boolean containsMember(RaftMemberImpl member) {
+        return members.containsKey(member);
     }
 
     public int memberCount() {
         return members.size();
     }
 
-    public boolean isInitialMember(RaftMemberImpl endpoint) {
-        assert members.containsKey(endpoint);
-        return members.get(endpoint);
+    public boolean isInitialMember(RaftMemberImpl member) {
+        assert members.containsKey(member);
+        return members.get(member);
     }
 
     public RaftGroupStatus status() {
@@ -114,15 +120,18 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
         return membersCommitIndex;
     }
 
-    public boolean substitute(RaftMemberImpl leaving, RaftMemberImpl joining,
+    public boolean applyMembershipChange(RaftMemberImpl leaving, RaftMemberImpl joining,
                               long expectedMembersCommitIndex, long newMembersCommitIndex) {
         if (membersCommitIndex != expectedMembersCommitIndex) {
             return false;
         }
 
         Map<RaftMemberImpl, Boolean> map = new LinkedHashMap<RaftMemberImpl, Boolean>(members);
-        Object removed = map.remove(leaving);
-        assert removed != null : leaving + " is not member of " + toString();
+        if (leaving != null) {
+            Object removed = map.remove(leaving);
+            assert removed != null : leaving + " is not member of " + toString();
+        }
+
         if (joining != null) {
             Object added = map.put(joining, Boolean.FALSE);
             assert added == null : joining + " is already member of " + toString();
@@ -141,6 +150,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeObject(id);
+        out.writeInt(initialGroupSize);
         out.writeLong(membersCommitIndex);
         out.writeInt(members.size());
         for (Map.Entry<RaftMemberImpl, Boolean> entry : members.entrySet()) {
@@ -153,12 +163,13 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         id = in.readObject();
+        initialGroupSize = in.readInt();
         membersCommitIndex = in.readLong();
         int len = in.readInt();
         members = new LinkedHashMap<RaftMemberImpl, Boolean>(len);
         for (int i = 0; i < len; i++) {
-            RaftMemberImpl endpoint = in.readObject();
-            members.put(endpoint, in.readBoolean());
+            RaftMemberImpl member = in.readObject();
+            members.put(member, in.readBoolean());
         }
         membersArray = members.keySet().toArray(new RaftMemberImpl[0]);
         members = Collections.unmodifiableMap(members);
@@ -177,7 +188,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
 
     @Override
     public String toString() {
-        return "RaftGroupInfo{" + "id=" + id + ", membersCommitIndex=" + membersCommitIndex + ", members=" + members()
-                + ", status=" + status + '}';
+        return "RaftGroupInfo{" + "id=" + id + ", initialGroupSize=" + initialGroupSize
+                + ", membersCommitIndex=" + membersCommitIndex + ", members=" + members() + ", status=" + status + '}';
     }
 }

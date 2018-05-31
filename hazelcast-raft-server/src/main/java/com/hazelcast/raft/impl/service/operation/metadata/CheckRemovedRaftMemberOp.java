@@ -5,30 +5,27 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftMemberImpl;
-import com.hazelcast.raft.impl.service.RaftMetadataManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.impl.RaftOp;
 
 import java.io.IOException;
 
-public class TriggerRemoveMemberOp extends RaftOp implements IdentifiedDataSerializable {
+public class CheckRemovedRaftMemberOp extends RaftOp implements IdentifiedDataSerializable {
 
-    private RaftMemberImpl endpoint;
+    private RaftMemberImpl member;
 
-    public TriggerRemoveMemberOp() {
+    public CheckRemovedRaftMemberOp() {
     }
 
-    public TriggerRemoveMemberOp(RaftMemberImpl endpoint) {
-        this.endpoint = endpoint;
+    public CheckRemovedRaftMemberOp(RaftMemberImpl member) {
+        this.member = member;
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        RaftMetadataManager metadataManager = service.getMetadataManager();
-        metadataManager.triggerRemoveMember(endpoint);
-        return null;
+        return service.getMetadataManager().isMemberRemoved(member);
     }
 
     @Override
@@ -38,12 +35,12 @@ public class TriggerRemoveMemberOp extends RaftOp implements IdentifiedDataSeria
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeObject(endpoint);
+        out.writeObject(member);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
-        endpoint = in.readObject();
+        member = in.readObject();
     }
 
     @Override
@@ -53,11 +50,12 @@ public class TriggerRemoveMemberOp extends RaftOp implements IdentifiedDataSeria
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.TRIGGER_REMOVE_MEMBER_OP;
+        return RaftServiceDataSerializerHook.CHECK_REMOVED_MEMBER_OP;
     }
 
     @Override
     protected void toString(StringBuilder sb) {
-        sb.append(", endpoint=").append(endpoint);
+        sb.append(", member=").append(member);
     }
+
 }

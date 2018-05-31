@@ -5,27 +5,30 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftMemberImpl;
+import com.hazelcast.raft.impl.service.RaftMetadataManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.impl.RaftOp;
 
 import java.io.IOException;
 
-public class CheckRemovedMemberOp extends RaftOp implements IdentifiedDataSerializable {
+public class TriggerRemoveRaftMemberOp extends RaftOp implements IdentifiedDataSerializable {
 
     private RaftMemberImpl member;
 
-    public CheckRemovedMemberOp() {
+    public TriggerRemoveRaftMemberOp() {
     }
 
-    public CheckRemovedMemberOp(RaftMemberImpl member) {
+    public TriggerRemoveRaftMemberOp(RaftMemberImpl member) {
         this.member = member;
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        return service.getMetadataManager().isMemberRemoved(member);
+        RaftMetadataManager metadataManager = service.getMetadataManager();
+        metadataManager.triggerRemoveMember(member);
+        return null;
     }
 
     @Override
@@ -50,12 +53,11 @@ public class CheckRemovedMemberOp extends RaftOp implements IdentifiedDataSerial
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.CHECK_REMOVED_MEMBER_OP;
+        return RaftServiceDataSerializerHook.TRIGGER_REMOVE_RAFT_MEMBER_OP;
     }
 
     @Override
     protected void toString(StringBuilder sb) {
         sb.append(", member=").append(member);
     }
-
 }
