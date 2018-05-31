@@ -4,24 +4,28 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.RaftEndpointImpl;
+import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.impl.RaftOp;
 
 import java.io.IOException;
-import java.util.ArrayList;
 
-public class GetActiveEndpointsOp extends RaftOp implements IdentifiedDataSerializable {
+public class CheckRemovedMemberOp extends RaftOp implements IdentifiedDataSerializable {
 
-    public GetActiveEndpointsOp() {
+    private RaftMemberImpl member;
+
+    public CheckRemovedMemberOp() {
+    }
+
+    public CheckRemovedMemberOp(RaftMemberImpl member) {
+        this.member = member;
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        // returning arraylist to be able to serialize response
-        return new ArrayList<RaftEndpointImpl>(service.getMetadataManager().getActiveEndpoints());
+        return service.getMetadataManager().isMemberRemoved(member);
     }
 
     @Override
@@ -31,10 +35,12 @@ public class GetActiveEndpointsOp extends RaftOp implements IdentifiedDataSerial
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
+        out.writeObject(member);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
+        member = in.readObject();
     }
 
     @Override
@@ -44,7 +50,12 @@ public class GetActiveEndpointsOp extends RaftOp implements IdentifiedDataSerial
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.GET_ACTIVE_ENDPOINTS_OP;
+        return RaftServiceDataSerializerHook.CHECK_REMOVED_MEMBER_OP;
+    }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", member=").append(member);
     }
 
 }

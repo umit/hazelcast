@@ -4,7 +4,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.DataSerializable;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.impl.RaftEndpointImpl;
+import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.RaftGroupId;
 
 import java.io.IOException;
@@ -15,19 +15,19 @@ import java.util.Map;
 
 public class LeavingRaftEndpointContext implements IdentifiedDataSerializable {
 
-    private RaftEndpointImpl endpoint;
+    private RaftMemberImpl endpoint;
 
     private Map<RaftGroupId, RaftGroupLeavingEndpointContext> groups;
 
     public LeavingRaftEndpointContext() {
     }
 
-    public LeavingRaftEndpointContext(RaftEndpointImpl endpoint, Map<RaftGroupId, RaftGroupLeavingEndpointContext> groups) {
+    public LeavingRaftEndpointContext(RaftMemberImpl endpoint, Map<RaftGroupId, RaftGroupLeavingEndpointContext> groups) {
         this.endpoint = endpoint;
         this.groups = groups;
     }
 
-    public RaftEndpointImpl getEndpoint() {
+    public RaftMemberImpl getEndpoint() {
         return endpoint;
     }
 
@@ -48,14 +48,14 @@ public class LeavingRaftEndpointContext implements IdentifiedDataSerializable {
 
         private long membersCommitIndex;
 
-        private Collection<RaftEndpointImpl> members;
+        private Collection<RaftMemberImpl> members;
 
-        private RaftEndpointImpl substitute;
+        private RaftMemberImpl substitute;
 
         public RaftGroupLeavingEndpointContext() {
         }
 
-        public RaftGroupLeavingEndpointContext(long membersCommitIndex, Collection<RaftEndpointImpl> members, RaftEndpointImpl substitute) {
+        public RaftGroupLeavingEndpointContext(long membersCommitIndex, Collection<RaftMemberImpl> members, RaftMemberImpl substitute) {
             this.membersCommitIndex = membersCommitIndex;
             this.members = members;
             this.substitute = substitute;
@@ -65,11 +65,11 @@ public class LeavingRaftEndpointContext implements IdentifiedDataSerializable {
             return membersCommitIndex;
         }
 
-        public Collection<RaftEndpointImpl> getMembers() {
+        public Collection<RaftMemberImpl> getMembers() {
             return members;
         }
 
-        public RaftEndpointImpl getSubstitute() {
+        public RaftMemberImpl getSubstitute() {
             return substitute;
         }
 
@@ -77,7 +77,7 @@ public class LeavingRaftEndpointContext implements IdentifiedDataSerializable {
         public void writeData(ObjectDataOutput out) throws IOException {
             out.writeLong(membersCommitIndex);
             out.writeInt(members.size());
-            for (RaftEndpointImpl member : members) {
+            for (RaftMemberImpl member : members) {
                 out.writeObject(member);
             }
             out.writeObject(substitute);
@@ -87,9 +87,9 @@ public class LeavingRaftEndpointContext implements IdentifiedDataSerializable {
         public void readData(ObjectDataInput in) throws IOException {
             membersCommitIndex = in.readLong();
             int len = in.readInt();
-            members = new HashSet<RaftEndpointImpl>(len);
+            members = new HashSet<RaftMemberImpl>(len);
             for (int i = 0; i < len; i++) {
-                RaftEndpointImpl member = in.readObject();
+                RaftMemberImpl member = in.readObject();
                 members.add(member);
             }
             substitute = in.readObject();

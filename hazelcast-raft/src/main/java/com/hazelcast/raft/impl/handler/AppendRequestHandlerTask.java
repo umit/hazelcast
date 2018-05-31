@@ -156,7 +156,7 @@ public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runna
         }
 
         raftNode.updateLastAppendEntriesTimestamp();
-        AppendSuccessResponse resp = new AppendSuccessResponse(raftNode.getLocalEndpoint(), state.term(), lastLogIndex);
+        AppendSuccessResponse resp = new AppendSuccessResponse(raftNode.getLocalMember(), state.term(), lastLogIndex);
         raftNode.send(resp, req.leader());
     }
 
@@ -181,6 +181,6 @@ public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runna
     }
 
     private AppendFailureResponse createFailureResponse(int term) {
-        return new AppendFailureResponse(raftNode.getLocalEndpoint(), term, req.prevLogIndex() + 1);
+        return new AppendFailureResponse(raftNode.getLocalMember(), term, req.prevLogIndex() + 1);
     }
 }

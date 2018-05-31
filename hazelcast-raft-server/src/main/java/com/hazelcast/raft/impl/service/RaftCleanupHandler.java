@@ -8,14 +8,14 @@ import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.MismatchingGroupMembersCommitIndexException;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
-import com.hazelcast.raft.impl.RaftEndpointImpl;
+import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftNodeStatus;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.LeavingRaftEndpointContext.RaftGroupLeavingEndpointContext;
 import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOp;
-import com.hazelcast.raft.impl.service.operation.metadata.CompleteRemoveEndpointOp;
+import com.hazelcast.raft.impl.service.operation.metadata.CompleteRemoveMemberOp;
 import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetDestroyingRaftGroupIds;
 import com.hazelcast.raft.impl.service.operation.metadata.GetLeavingEndpointContextOp;
@@ -63,7 +63,7 @@ public class RaftCleanupHandler {
     }
 
     void init() {
-        if (getLocalEndpoint() == null) {
+        if (getLocalMember() == null) {
             return;
         }
 
@@ -79,8 +79,8 @@ public class RaftCleanupHandler {
                 CHECK_LOCAL_RAFT_NODES_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
     }
 
-    private RaftEndpointImpl getLocalEndpoint() {
-        return raftService.getMetadataManager().getLocalEndpoint();
+    private RaftMemberImpl getLocalMember() {
+        return raftService.getMetadataManager().getLocalMember();
     }
 
     private boolean skipRunningCleanupTask() {
@@ -160,8 +160,8 @@ public class RaftCleanupHandler {
             }
 
             OperationService operationService = nodeEngine.getOperationService();
-            for (RaftEndpointImpl endpoint : raftService.getMetadataManager().getActiveEndpoints()) {
-                if (!endpoint.equals(raftService.getLocalEndpoint())) {
+            for (RaftMemberImpl endpoint : raftService.getMetadataManager().getActiveMembers()) {
+                if (!endpoint.equals(raftService.getLocalMember())) {
                     operationService.send(new DestroyRaftNodesOp(terminatedGroupIds), endpoint.getAddress());
                 }
             }
@@ -239,7 +239,7 @@ public class RaftCleanupHandler {
         }
 
         private void handle(LeavingRaftEndpointContext leavingRaftEndpointContext) {
-            final RaftEndpointImpl leavingEndpoint = leavingRaftEndpointContext.getEndpoint();
+            final RaftMemberImpl leavingEndpoint = leavingRaftEndpointContext.getEndpoint();
             logger.fine("Handling remove of " + leavingEndpoint + " => " + leavingRaftEndpointContext);
 
             Map<RaftGroupId, Future<Long>> joinFutures = new HashMap<RaftGroupId, Future<Long>>();
@@ -295,7 +295,7 @@ public class RaftCleanupHandler {
             completeRemoveOnMetadata(leavingEndpoint, leftGroups);
         }
 
-        private long getMemberAddCommitIndex(RaftGroupId groupId, RaftEndpointImpl leavingEndpoint,
+        private long getMemberAddCommitIndex(RaftGroupId groupId, RaftMemberImpl leavingEndpoint,
                                              RaftGroupLeavingEndpointContext ctx, Future<Long> future) {
             try {
                 return future.get();
@@ -323,7 +323,7 @@ public class RaftCleanupHandler {
                         return NA_MEMBERS_COMMIT_INDEX;
                     }
 
-                    for (RaftEndpointImpl endpoint : ctx.getMembers()) {
+                    for (RaftMemberImpl endpoint : ctx.getMembers()) {
                         if (!m.getMembers().contains(endpoint)) {
                             logger.severe(msg);
                             return NA_MEMBERS_COMMIT_INDEX;
@@ -339,7 +339,7 @@ public class RaftCleanupHandler {
             }
         }
 
-        private long getMemberRemoveCommitIndex(RaftGroupId groupId, RaftEndpointImpl leavingEndpoint,
+        private long getMemberRemoveCommitIndex(RaftGroupId groupId, RaftMemberImpl leavingEndpoint,
                                                 RaftGroupLeavingEndpointContext ctx, Future<Long> future) {
             try {
                 return future.get();
@@ -379,7 +379,7 @@ public class RaftCleanupHandler {
                         return NA_MEMBERS_COMMIT_INDEX;
                     }
 
-                    for (RaftEndpointImpl endpoint : ctx.getMembers()) {
+                    for (RaftMemberImpl endpoint : ctx.getMembers()) {
                         // Other group members expect the leaving one and substitute must be still present...
                         if (!endpoint.equals(leavingEndpoint) && !m.getMembers().contains(endpoint)) {
                             logger.severe(msg);
@@ -395,9 +395,9 @@ public class RaftCleanupHandler {
             }
         }
 
-        private void completeRemoveOnMetadata(RaftEndpointImpl endpoint, Map<RaftGroupId, Tuple2<Long, Long>> leftGroups) {
+        private void completeRemoveOnMetadata(RaftMemberImpl endpoint, Map<RaftGroupId, Tuple2<Long, Long>> leftGroups) {
             ICompletableFuture<Object> future = invocationManager.invoke(METADATA_GROUP_ID,
-                    new CompleteRemoveEndpointOp(endpoint, leftGroups));
+                    new CompleteRemoveMemberOp(endpoint, leftGroups));
 
             try {
                 future.get();

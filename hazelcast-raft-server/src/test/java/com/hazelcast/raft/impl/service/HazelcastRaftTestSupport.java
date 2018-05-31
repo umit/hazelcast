@@ -6,7 +6,7 @@ import com.hazelcast.config.raft.RaftServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.RaftEndpointImpl;
+import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.test.AssertTask;
@@ -14,7 +14,7 @@ import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import org.junit.Before;
 
-import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
+import static com.hazelcast.raft.impl.RaftUtil.getLeaderMember;
 import static com.hazelcast.raft.impl.RaftUtil.getTerm;
 import static com.hazelcast.raft.impl.RaftUtil.waitUntilLeaderElected;
 import static com.hazelcast.spi.properties.GroupProperty.MERGE_FIRST_RUN_DELAY_SECONDS;
@@ -44,7 +44,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
 
                 for (HazelcastInstance instance : instances) {
                     RaftNodeImpl raftNode = getRaftNode(instance, groupId);
-                    assertEquals(leaderNode.getLocalEndpoint(), getLeaderEndpoint(raftNode));
+                    assertEquals(leaderNode.getLocalMember(), getLeaderMember(raftNode));
                     assertEquals(leaderTerm, getTerm(raftNode));
                 }
             }
@@ -54,7 +54,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
     }
 
     protected HazelcastInstance getRandomFollowerInstance(HazelcastInstance[] instances, RaftNodeImpl leader) {
-        Address address = ((RaftEndpointImpl) leader.getLocalEndpoint()).getAddress();
+        Address address = ((RaftMemberImpl) leader.getLocalMember()).getAddress();
         for (HazelcastInstance instance : instances) {
             if (!getAddress(instance).equals(address)) {
                 return instance;
@@ -123,7 +123,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
 
         RaftNodeImpl raftNode = getRaftNode(instances[0], groupId);
         waitUntilLeaderElected(raftNode);
-        RaftEndpointImpl leaderEndpoint = getLeaderEndpoint(raftNode);
+        RaftMemberImpl leaderEndpoint = getLeaderMember(raftNode);
 
         for (HazelcastInstance instance : instances) {
             if (getAddress(instance).equals(leaderEndpoint.getAddress())) {
@@ -144,7 +144,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
 
         RaftNodeImpl raftNode = getRaftNode(instances[0], groupId);
         waitUntilLeaderElected(raftNode);
-        RaftEndpointImpl leaderEndpoint = getLeaderEndpoint(raftNode);
+        RaftMemberImpl leaderEndpoint = getLeaderMember(raftNode);
 
         for (HazelcastInstance instance : instances) {
             if (!getAddress(instance).equals(leaderEndpoint.getAddress())) {

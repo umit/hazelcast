@@ -9,11 +9,11 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.RaftEndpointImpl;
+import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.exception.CannotCreateRaftGroupException;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
-import com.hazelcast.raft.impl.service.operation.metadata.GetActiveEndpointsOp;
+import com.hazelcast.raft.impl.service.operation.metadata.GetActiveMembersOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOp;
 import com.hazelcast.raft.impl.service.proxy.ChangeRaftGroupMembershipOp;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOp;
@@ -81,12 +81,12 @@ public class RaftInvocationManager {
 
     private void invokeGetEndpointsToCreateRaftGroup(final String groupName, final int groupSize,
                                                      final SimpleCompletableFuture<RaftGroupId> resultFuture) {
-        ICompletableFuture<List<RaftEndpointImpl>> f = query(METADATA_GROUP_ID, new GetActiveEndpointsOp(), QueryPolicy.LEADER_LOCAL);
+        ICompletableFuture<List<RaftMemberImpl>> f = query(METADATA_GROUP_ID, new GetActiveMembersOp(), QueryPolicy.LEADER_LOCAL);
 
-        f.andThen(new ExecutionCallback<List<RaftEndpointImpl>>() {
+        f.andThen(new ExecutionCallback<List<RaftMemberImpl>>() {
             @Override
-            public void onResponse(List<RaftEndpointImpl> endpoints) {
-                endpoints = new ArrayList<RaftEndpointImpl>(endpoints);
+            public void onResponse(List<RaftMemberImpl> endpoints) {
+                endpoints = new ArrayList<RaftMemberImpl>(endpoints);
 
                 if (endpoints.size() < groupSize) {
                     Exception result = new IllegalArgumentException("There are not enough active endpoints to create raft group "
@@ -109,7 +109,7 @@ public class RaftInvocationManager {
     }
 
     private void invokeCreateRaftGroup(final String groupName, final int groupSize,
-                                       final List<RaftEndpointImpl> endpoints,
+                                       final List<RaftMemberImpl> endpoints,
                                        final SimpleCompletableFuture<RaftGroupId> resultFuture) {
         ICompletableFuture<RaftGroupId> f = invoke(METADATA_GROUP_ID, new CreateRaftGroupOp(groupName, endpoints));
 
@@ -137,7 +137,7 @@ public class RaftInvocationManager {
         return invoke(METADATA_GROUP_ID, new TriggerDestroyRaftGroupOp(groupId));
     }
 
-    <T> ICompletableFuture<T> changeRaftGroupMembership(RaftGroupId groupId, long membersCommitIndex, RaftEndpointImpl endpoint,
+    <T> ICompletableFuture<T> changeRaftGroupMembership(RaftGroupId groupId, long membersCommitIndex, RaftMemberImpl endpoint,
                                                         MembershipChangeType changeType) {
         Operation operation = new ChangeRaftGroupMembershipOp(groupId, membersCommitIndex, endpoint, changeType);
         Invocation invocation = new RaftInvocation(operationService.getInvocationContext(), raftInvocationContext,
@@ -173,15 +173,15 @@ public class RaftInvocationManager {
         return invocation.invoke();
     }
 
-    void setAllEndpoints(Collection<RaftEndpointImpl> endpoints) {
+    void setAllEndpoints(Collection<RaftMemberImpl> endpoints) {
         raftInvocationContext.setAllEndpoints(endpoints);
     }
 
-    private class RaftEndpointReachabilityComparator implements Comparator<RaftEndpointImpl> {
+    private class RaftEndpointReachabilityComparator implements Comparator<RaftMemberImpl> {
         final ClusterService clusterService = nodeEngine.getClusterService();
 
         @Override
-        public int compare(RaftEndpointImpl o1, RaftEndpointImpl o2) {
+        public int compare(RaftMemberImpl o1, RaftMemberImpl o2) {
             boolean b1 = clusterService.getMember(o1.getAddress()) != null;
             boolean b2 = clusterService.getMember(o2.getAddress()) != null;
             return b1 == b2 ? 0 : (b1 ? -1 : 1);

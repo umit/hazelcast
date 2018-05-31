@@ -8,7 +8,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.instance.Node;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.RaftEndpointImpl;
+import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
@@ -31,7 +31,7 @@ import org.junit.runner.RunWith;
 
 import java.util.concurrent.ExecutionException;
 
-import static com.hazelcast.raft.impl.RaftUtil.getLeaderEndpoint;
+import static com.hazelcast.raft.impl.RaftUtil.getLeaderMember;
 import static com.hazelcast.raft.impl.RaftUtil.getSnapshotEntry;
 import static com.hazelcast.test.PacketFiltersUtil.dropOperationsBetween;
 import static com.hazelcast.test.PacketFiltersUtil.resetPacketFiltersFrom;
@@ -186,7 +186,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
             }
         });
 
-        RaftEndpointImpl leaderEndpoint = getLeaderEndpoint(getRaftNode(instances[0], groupId));
+        RaftMemberImpl leaderEndpoint = getLeaderMember(getRaftNode(instances[0], groupId));
         final HazelcastInstance leader = factory.getInstance(leaderEndpoint.getAddress());
         leader.getLifecycleService().terminate();
 

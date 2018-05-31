@@ -4,7 +4,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.RaftEndpointImpl;
+import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftMetadataManager;
 import com.hazelcast.raft.impl.service.RaftService;
@@ -16,17 +16,17 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-public class CompleteRemoveEndpointOp extends RaftOp implements IdentifiedDataSerializable {
+public class CompleteRemoveMemberOp extends RaftOp implements IdentifiedDataSerializable {
 
-    private RaftEndpointImpl endpoint;
+    private RaftMemberImpl member;
 
     private Map<RaftGroupId, Tuple2<Long, Long>> leftGroups;
 
-    public CompleteRemoveEndpointOp() {
+    public CompleteRemoveMemberOp() {
     }
 
-    public CompleteRemoveEndpointOp(RaftEndpointImpl endpoint, Map<RaftGroupId, Tuple2<Long, Long>> leftGroups) {
-        this.endpoint = endpoint;
+    public CompleteRemoveMemberOp(RaftMemberImpl member, Map<RaftGroupId, Tuple2<Long, Long>> leftGroups) {
+        this.member = member;
         this.leftGroups = leftGroups;
     }
 
@@ -34,8 +34,8 @@ public class CompleteRemoveEndpointOp extends RaftOp implements IdentifiedDataSe
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
-        metadataManager.completeRemoveEndpoint(endpoint, leftGroups);
-        return endpoint;
+        metadataManager.completeRemoveMember(member, leftGroups);
+        return member;
     }
 
     @Override
@@ -45,7 +45,7 @@ public class CompleteRemoveEndpointOp extends RaftOp implements IdentifiedDataSe
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeObject(endpoint);
+        out.writeObject(member);
         out.writeInt(leftGroups.size());
         for (Entry<RaftGroupId, Tuple2<Long, Long>> e : leftGroups.entrySet()) {
             out.writeObject(e.getKey());
@@ -57,7 +57,7 @@ public class CompleteRemoveEndpointOp extends RaftOp implements IdentifiedDataSe
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
-        endpoint = in.readObject();
+        member = in.readObject();
         int count = in.readInt();
         leftGroups = new HashMap<RaftGroupId, Tuple2<Long, Long>>(count);
         for (int i = 0; i < count; i++) {
@@ -75,12 +75,12 @@ public class CompleteRemoveEndpointOp extends RaftOp implements IdentifiedDataSe
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.COMPLETE_REMOVE_ENDPOINT_OP;
+        return RaftServiceDataSerializerHook.COMPLETE_REMOVE_MEMBER_OP;
     }
 
     @Override
     protected void toString(StringBuilder sb) {
-        sb.append(", endpoint=").append(endpoint);
+        sb.append(", member=").append(member);
         sb.append(", leftGroups=").append(leftGroups);
     }
 }

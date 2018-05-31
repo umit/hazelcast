@@ -19,7 +19,7 @@ package com.hazelcast.raft.impl.service.operation.metadata;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.impl.RaftEndpointImpl;
+import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.spi.Operation;
@@ -28,21 +28,21 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 
-public class SendActiveEndpointsOp extends Operation implements IdentifiedDataSerializable {
+public class SendActiveMembersOp extends Operation implements IdentifiedDataSerializable {
 
-    private Collection<RaftEndpointImpl> endpoints;
+    private Collection<RaftMemberImpl> endpoints;
 
-    public SendActiveEndpointsOp() {
+    public SendActiveMembersOp() {
     }
 
-    public SendActiveEndpointsOp(Collection<RaftEndpointImpl> endpoints) {
+    public SendActiveMembersOp(Collection<RaftMemberImpl> endpoints) {
         this.endpoints = endpoints;
     }
 
     @Override
     public void run() {
         RaftService service = getService();
-        service.getMetadataManager().setActiveEndpoints(endpoints);
+        service.getMetadataManager().setActiveMembers(endpoints);
     }
 
     @Override
@@ -59,7 +59,7 @@ public class SendActiveEndpointsOp extends Operation implements IdentifiedDataSe
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeInt(endpoints.size());
-        for (RaftEndpointImpl endpoint : endpoints) {
+        for (RaftMemberImpl endpoint : endpoints) {
             out.writeObject(endpoint);
         }
     }
@@ -68,9 +68,9 @@ public class SendActiveEndpointsOp extends Operation implements IdentifiedDataSe
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         int len = in.readInt();
-        endpoints = new ArrayList<RaftEndpointImpl>(len);
+        endpoints = new ArrayList<RaftMemberImpl>(len);
         for (int i = 0; i < len; i++) {
-            RaftEndpointImpl endpoint = in.readObject();
+            RaftMemberImpl endpoint = in.readObject();
             endpoints.add(endpoint);
         }
     }
@@ -82,7 +82,7 @@ public class SendActiveEndpointsOp extends Operation implements IdentifiedDataSe
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.SEND_ACTIVE_ENDPOINTS_OP;
+        return RaftServiceDataSerializerHook.SEND_ACTIVE_MEMBERS_OP;
     }
 
     @Override

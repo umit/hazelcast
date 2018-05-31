@@ -6,9 +6,9 @@ import com.hazelcast.core.HazelcastException;
  * TODO: Javadoc Pending...
  *
  */
-public class CannotRemoveEndpointException extends HazelcastException {
+public class CannotRemoveMemberException extends HazelcastException {
 
-    public CannotRemoveEndpointException(String message) {
+    public CannotRemoveMemberException(String message) {
         super(message, null);
     }
 

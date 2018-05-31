@@ -1,7 +1,7 @@
 package com.hazelcast.raft.exception;
 
 import com.hazelcast.config.raft.RaftConfig;
-import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.impl.RaftMember;
 import com.hazelcast.spi.exception.RetryableException;
 
 /**
@@ -16,7 +16,7 @@ import com.hazelcast.spi.exception.RetryableException;
  */
 public class CannotReplicateException extends RaftException implements RetryableException {
 
-    public CannotReplicateException(RaftEndpoint leader) {
+    public CannotReplicateException(RaftMember leader) {
         super("Cannot replicate new operations for now", leader);
     }
 }

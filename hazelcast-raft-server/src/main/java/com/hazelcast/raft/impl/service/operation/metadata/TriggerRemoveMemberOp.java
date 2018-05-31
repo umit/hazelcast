@@ -4,7 +4,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.RaftEndpointImpl;
+import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.service.RaftMetadataManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
@@ -12,14 +12,14 @@ import com.hazelcast.raft.impl.RaftOp;
 
 import java.io.IOException;
 
-public class TriggerRemoveEndpointOp extends RaftOp implements IdentifiedDataSerializable {
+public class TriggerRemoveMemberOp extends RaftOp implements IdentifiedDataSerializable {
 
-    private RaftEndpointImpl endpoint;
+    private RaftMemberImpl endpoint;
 
-    public TriggerRemoveEndpointOp() {
+    public TriggerRemoveMemberOp() {
     }
 
-    public TriggerRemoveEndpointOp(RaftEndpointImpl endpoint) {
+    public TriggerRemoveMemberOp(RaftMemberImpl endpoint) {
         this.endpoint = endpoint;
     }
 
@@ -27,7 +27,7 @@ public class TriggerRemoveEndpointOp extends RaftOp implements IdentifiedDataSer
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
-        metadataManager.triggerRemoveEndpoint(endpoint);
+        metadataManager.triggerRemoveMember(endpoint);
         return null;
     }
 
@@ -53,7 +53,7 @@ public class TriggerRemoveEndpointOp extends RaftOp implements IdentifiedDataSer
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.TRIGGER_REMOVE_ENDPOINT_OP;
+        return RaftServiceDataSerializerHook.TRIGGER_REMOVE_MEMBER_OP;
     }
 
     @Override

@@ -41,7 +41,7 @@ public interface RaftIntegration {
      * @param endpoint endpoint
      * @return true if endpoint is reachable, false otherwise
      */
-    boolean isReachable(RaftEndpoint endpoint);
+    boolean isReachable(RaftMember endpoint);
 
     /**
      * Sends the {@link PreVoteRequest} to target endpoint to be handled by
@@ -49,7 +49,7 @@ public interface RaftIntegration {
      *
      * @return true if request is sent or scheduled to be sent to target, false otherwise
      */
-    boolean send(PreVoteRequest request, RaftEndpoint target);
+    boolean send(PreVoteRequest request, RaftMember target);
 
     /**
      * Sends the {@link PreVoteResponse} to target endpoint to be handled by
@@ -57,7 +57,7 @@ public interface RaftIntegration {
      *
      * @return true if response is sent or scheduled to be sent to target, false otherwise
      */
-    boolean send(PreVoteResponse response, RaftEndpoint target);
+    boolean send(PreVoteResponse response, RaftMember target);
 
     /**
      * Sends the {@link VoteRequest} to target endpoint to be handled by
@@ -65,7 +65,7 @@ public interface RaftIntegration {
      *
      * @return true if request is sent or scheduled to be sent to target, false otherwise
      */
-    boolean send(VoteRequest request, RaftEndpoint target);
+    boolean send(VoteRequest request, RaftMember target);
 
     /**
      * Sends the {@link VoteResponse} to target endpoint to be handled by
@@ -73,7 +73,7 @@ public interface RaftIntegration {
      *
      * @return true if response is sent or scheduled to be sent to target, false otherwise
      */
-    boolean send(VoteResponse response, RaftEndpoint target);
+    boolean send(VoteResponse response, RaftMember target);
 
     /**
      * Sends the {@link AppendRequest} to target endpoint to be handled by
@@ -81,7 +81,7 @@ public interface RaftIntegration {
      *
      * @return true if request is sent or scheduled to be sent to target, false otherwise
      */
-    boolean send(AppendRequest request, RaftEndpoint target);
+    boolean send(AppendRequest request, RaftMember target);
 
     /**
      * Sends the {@link AppendSuccessResponse} to target endpoint to be handled by
@@ -89,7 +89,7 @@ public interface RaftIntegration {
      *
      * @return true if response is sent or scheduled to be sent to target, false otherwise
      */
-    boolean send(AppendSuccessResponse response, RaftEndpoint target);
+    boolean send(AppendSuccessResponse response, RaftMember target);
 
     /**
      * Sends the {@link AppendFailureResponse} to target endpoint to be handled by
@@ -97,7 +97,7 @@ public interface RaftIntegration {
      *
      * @return true if response is sent or scheduled to be sent to target, false otherwise
      */
-    boolean send(AppendFailureResponse response, RaftEndpoint target);
+    boolean send(AppendFailureResponse response, RaftMember target);
 
     /**
      * Sends the {@link InstallSnapshot} to target endpoint to be handled by
@@ -105,7 +105,7 @@ public interface RaftIntegration {
      *
      * @return true if request is sent or scheduled to be sent to target, false otherwise
      */
-    boolean send(InstallSnapshot request, RaftEndpoint target);
+    boolean send(InstallSnapshot request, RaftMember target);
 
     /**
      * Executes the operation on underlying operation execution mechanism

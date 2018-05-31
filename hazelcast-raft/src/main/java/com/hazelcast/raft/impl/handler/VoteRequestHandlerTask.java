@@ -1,6 +1,6 @@
 package com.hazelcast.raft.impl.handler;
 
-import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.impl.RaftMember;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.VoteRequest;
@@ -32,7 +32,7 @@ public class VoteRequestHandlerTask extends RaftNodeAwareTask implements Runnabl
     @Override
     protected void innerRun() {
         RaftState state = raftNode.state();
-        RaftEndpoint localEndpoint = raftNode.getLocalEndpoint();
+        RaftMember localEndpoint = raftNode.getLocalMember();
 
         // Reply false if last AppendEntries call was received less than election timeout ago (leader stickiness)
         if (raftNode.lastAppendEntriesTimestamp() > Clock.currentTimeMillis() - raftNode.getLeaderElectionTimeoutInMillis()) {

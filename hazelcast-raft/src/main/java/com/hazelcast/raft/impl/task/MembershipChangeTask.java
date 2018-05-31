@@ -5,7 +5,7 @@ import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.exception.MemberAlreadyExistsException;
 import com.hazelcast.raft.exception.MemberDoesNotExistException;
 import com.hazelcast.raft.exception.MismatchingGroupMembersCommitIndexException;
-import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.impl.RaftMember;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.command.ApplyRaftGroupMembersCmd;
 import com.hazelcast.raft.impl.state.RaftGroupMembers;
@@ -32,17 +32,17 @@ import java.util.LinkedHashSet;
 public class MembershipChangeTask implements Runnable {
     private final RaftNodeImpl raftNode;
     private final Long groupMembersCommitIndex;
-    private final RaftEndpoint member;
+    private final RaftMember member;
     private final MembershipChangeType changeType;
     private final SimpleCompletableFuture resultFuture;
     private final ILogger logger;
 
-    public MembershipChangeTask(RaftNodeImpl raftNode, SimpleCompletableFuture resultFuture, RaftEndpoint member,
+    public MembershipChangeTask(RaftNodeImpl raftNode, SimpleCompletableFuture resultFuture, RaftMember member,
                                 MembershipChangeType changeType) {
         this(raftNode, resultFuture, member, changeType, null);
     }
 
-    public MembershipChangeTask(RaftNodeImpl raftNode, SimpleCompletableFuture resultFuture, RaftEndpoint member,
+    public MembershipChangeTask(RaftNodeImpl raftNode, SimpleCompletableFuture resultFuture, RaftMember member,
                                 MembershipChangeType changeType, Long groupMembersCommitIndex) {
         if (changeType == null) {
             throw new IllegalArgumentException("Null membership change type");
@@ -64,7 +64,7 @@ public class MembershipChangeTask implements Runnable {
         logger.info("Changing membership -> " + changeType + ": " + member);
 
         RaftState state = raftNode.state();
-        Collection<RaftEndpoint> members = new LinkedHashSet<RaftEndpoint>(state.members());
+        Collection<RaftMember> members = new LinkedHashSet<RaftMember>(state.members());
         boolean memberExists = members.contains(member);
 
         switch (changeType) {

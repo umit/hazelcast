@@ -4,28 +4,24 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.RaftEndpointImpl;
+import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.impl.RaftOp;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
-public class CheckRemovedEndpointOp extends RaftOp implements IdentifiedDataSerializable {
+public class GetActiveMembersOp extends RaftOp implements IdentifiedDataSerializable {
 
-    private RaftEndpointImpl endpoint;
-
-    public CheckRemovedEndpointOp() {
-    }
-
-    public CheckRemovedEndpointOp(RaftEndpointImpl endpoint) {
-        this.endpoint = endpoint;
+    public GetActiveMembersOp() {
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        return service.getMetadataManager().isEndpointRemoved(endpoint);
+        // returning arraylist to be able to serialize response
+        return new ArrayList<RaftMemberImpl>(service.getMetadataManager().getActiveMembers());
     }
 
     @Override
@@ -35,12 +31,10 @@ public class CheckRemovedEndpointOp extends RaftOp implements IdentifiedDataSeri
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeObject(endpoint);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
-        endpoint = in.readObject();
     }
 
     @Override
@@ -50,12 +44,7 @@ public class CheckRemovedEndpointOp extends RaftOp implements IdentifiedDataSeri
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.CHECK_REMOVED_ENDPOINT_OP;
-    }
-
-    @Override
-    protected void toString(StringBuilder sb) {
-        sb.append(", endpoint=").append(endpoint);
+        return RaftServiceDataSerializerHook.GET_ACTIVE_MEMBERS_OP;
     }
 
 }

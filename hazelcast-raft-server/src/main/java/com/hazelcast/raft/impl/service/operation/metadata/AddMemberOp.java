@@ -20,29 +20,29 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.RaftEndpointImpl;
+import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
 import java.io.IOException;
 
-public class AddEndpointOp extends RaftOp implements IdentifiedDataSerializable {
+public class AddMemberOp extends RaftOp implements IdentifiedDataSerializable {
 
-    private RaftEndpointImpl endpoint;
+    private RaftMemberImpl member;
 
-    public AddEndpointOp() {
+    public AddMemberOp() {
     }
 
-    public AddEndpointOp(RaftEndpointImpl endpoint) {
-        this.endpoint = endpoint;
+    public AddMemberOp(RaftMemberImpl member) {
+        this.member = member;
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         assert RaftService.METADATA_GROUP_ID.equals(groupId);
         RaftService service = getService();
-        service.getMetadataManager().addActiveEndpoint(endpoint);
+        service.getMetadataManager().addActiveMember(member);
         return null;
     }
 
@@ -53,12 +53,12 @@ public class AddEndpointOp extends RaftOp implements IdentifiedDataSerializable 
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeObject(endpoint);
+        out.writeObject(member);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
-        endpoint = in.readObject();
+        member = in.readObject();
     }
 
     @Override
@@ -68,7 +68,7 @@ public class AddEndpointOp extends RaftOp implements IdentifiedDataSerializable 
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.ADD_ENDPOINT_OP;
+        return RaftServiceDataSerializerHook.ADD_MEMBER_OP;
     }
 
 }

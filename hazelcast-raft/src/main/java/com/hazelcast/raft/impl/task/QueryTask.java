@@ -60,7 +60,7 @@ public class QueryTask implements Runnable {
     private void handleLeaderLocalRead() {
         RaftState state = raftNode.state();
         if (state.role() != RaftRole.LEADER) {
-            resultFuture.setResult(new NotLeaderException(raftNode.getGroupId(), raftNode.getLocalEndpoint(), state.leader()));
+            resultFuture.setResult(new NotLeaderException(raftNode.getGroupId(), raftNode.getLocalMember(), state.leader()));
             return;
         }
 
@@ -94,7 +94,7 @@ public class QueryTask implements Runnable {
             resultFuture.setResult(new RaftGroupTerminatedException());
             return false;
         } else if (raftNode.getStatus() == RaftNodeStatus.STEPPED_DOWN) {
-            resultFuture.setResult(new NotLeaderException(raftNode.getGroupId(), raftNode.getLocalEndpoint(), null));
+            resultFuture.setResult(new NotLeaderException(raftNode.getGroupId(), raftNode.getLocalMember(), null));
             return false;
         }
 

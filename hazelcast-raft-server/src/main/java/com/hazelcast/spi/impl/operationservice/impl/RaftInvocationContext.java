@@ -19,7 +19,7 @@ package com.hazelcast.spi.impl.operationservice.impl;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.RaftException;
-import com.hazelcast.raft.impl.RaftEndpointImpl;
+import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.service.RaftGroupInfo;
 import com.hazelcast.raft.impl.service.RaftService;
 
@@ -36,11 +36,11 @@ public class RaftInvocationContext {
     private final ILogger logger;
 
     private final RaftService raftService;
-    private final ConcurrentMap<RaftGroupId, RaftEndpointImpl> knownLeaders =
-            new ConcurrentHashMap<RaftGroupId, RaftEndpointImpl>();
+    private final ConcurrentMap<RaftGroupId, RaftMemberImpl> knownLeaders =
+            new ConcurrentHashMap<RaftGroupId, RaftMemberImpl>();
     final boolean failOnIndeterminateOperationState;
 
-    private volatile RaftEndpointImpl[] allEndpoints = {};
+    private volatile RaftMemberImpl[] allEndpoints = {};
 
     public RaftInvocationContext(ILogger logger, RaftService raftService) {
         this.logger = logger;
@@ -50,19 +50,19 @@ public class RaftInvocationContext {
     }
 
     public void reset() {
-        allEndpoints = new RaftEndpointImpl[0];
+        allEndpoints = new RaftMemberImpl[0];
         knownLeaders.clear();
     }
 
-    public void setAllEndpoints(Collection<RaftEndpointImpl> endpoints) {
-        allEndpoints = endpoints.toArray(new RaftEndpointImpl[0]);
+    public void setAllEndpoints(Collection<RaftMemberImpl> endpoints) {
+        allEndpoints = endpoints.toArray(new RaftMemberImpl[0]);
     }
 
-    public RaftEndpointImpl getKnownLeader(RaftGroupId groupId) {
+    public RaftMemberImpl getKnownLeader(RaftGroupId groupId) {
         return knownLeaders.get(groupId);
     }
 
-    void setKnownLeader(RaftGroupId groupId, RaftEndpointImpl leader) {
+    void setKnownLeader(RaftGroupId groupId, RaftMemberImpl leader) {
         logger.fine("Setting known leader for raft: " + groupId + " to " + leader);
         knownLeaders.put(groupId, leader);
     }
@@ -70,7 +70,7 @@ public class RaftInvocationContext {
     void updateKnownLeaderOnFailure(RaftGroupId groupId, Throwable cause) {
         if (cause instanceof RaftException) {
             RaftException e = (RaftException) cause;
-            RaftEndpointImpl leader = (RaftEndpointImpl) e.getLeader();
+            RaftMemberImpl leader = (RaftMemberImpl) e.getLeader();
             if (leader != null) {
                 setKnownLeader(groupId, leader);
             } else {
@@ -88,15 +88,15 @@ public class RaftInvocationContext {
 
     EndpointCursor newEndpointCursor(RaftGroupId groupId) {
         RaftGroupInfo group = raftService.getRaftGroup(groupId);
-        RaftEndpointImpl[] endpoints = group != null ? group.membersArray() : allEndpoints;
+        RaftMemberImpl[] endpoints = group != null ? group.membersArray() : allEndpoints;
         return new EndpointCursor(endpoints);
     }
 
     static class EndpointCursor {
-        private final RaftEndpointImpl[] endpoints;
+        private final RaftMemberImpl[] endpoints;
         private int index = -1;
 
-        private EndpointCursor(RaftEndpointImpl[] endpoints) {
+        private EndpointCursor(RaftMemberImpl[] endpoints) {
             this.endpoints = endpoints;
         }
 
@@ -104,7 +104,7 @@ public class RaftInvocationContext {
             return ++index < endpoints.length;
         }
 
-        RaftEndpointImpl get() {
+        RaftMemberImpl get() {
             return endpoints[index];
         }
     }

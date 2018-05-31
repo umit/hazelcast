@@ -28,12 +28,12 @@ public interface RaftNode {
     /**
      * Returns the Raft endpoint for this node.
      */
-    RaftEndpoint getLocalEndpoint();
+    RaftMember getLocalMember();
 
     /**
      * Returns the known leader endpoint. Leader endpoint might be already changed when this method returns.
      */
-    RaftEndpoint getLeader();
+    RaftMember getLeader();
 
     /**
      * Returns the current status of this node.
@@ -120,7 +120,7 @@ public interface RaftNode {
      * @param change type of membership change
      * @return future to get notified about result of the membership change
      */
-    ICompletableFuture replicateMembershipChange(RaftEndpoint member, MembershipChangeType change);
+    ICompletableFuture replicateMembershipChange(RaftMember member, MembershipChangeType change);
 
     /**
      * Replicates the membership change to the Raft group, if expected members commit index is equal to the actual
@@ -133,7 +133,7 @@ public interface RaftNode {
      * @param groupMembersCommitIndex expected members commit index
      * @return future to get notified about result of the membership change
      */
-    ICompletableFuture replicateMembershipChange(RaftEndpoint member, MembershipChangeType change, long groupMembersCommitIndex);
+    ICompletableFuture replicateMembershipChange(RaftMember member, MembershipChangeType change, long groupMembersCommitIndex);
 
     /**
      * Executes the given operation on Raft group depending on the {@link QueryPolicy}

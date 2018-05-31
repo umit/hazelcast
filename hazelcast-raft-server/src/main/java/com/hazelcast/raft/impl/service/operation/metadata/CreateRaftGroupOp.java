@@ -6,7 +6,7 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftMetadataManager;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.RaftEndpointImpl;
+import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
@@ -21,12 +21,12 @@ import java.util.Collection;
 public class CreateRaftGroupOp extends RaftOp implements IdentifiedDataSerializable {
 
     private String groupName;
-    private Collection<RaftEndpointImpl> endpoints;
+    private Collection<RaftMemberImpl> endpoints;
 
     public CreateRaftGroupOp() {
     }
 
-    public CreateRaftGroupOp(String groupName, Collection<RaftEndpointImpl> endpoints) {
+    public CreateRaftGroupOp(String groupName, Collection<RaftMemberImpl> endpoints) {
         this.groupName = groupName;
         this.endpoints = endpoints;
     }
@@ -47,7 +47,7 @@ public class CreateRaftGroupOp extends RaftOp implements IdentifiedDataSerializa
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeUTF(groupName);
         out.writeInt(endpoints.size());
-        for (RaftEndpointImpl endpoint : endpoints) {
+        for (RaftMemberImpl endpoint : endpoints) {
             out.writeObject(endpoint);
         }
     }
@@ -56,9 +56,9 @@ public class CreateRaftGroupOp extends RaftOp implements IdentifiedDataSerializa
     public void readData(ObjectDataInput in) throws IOException {
         groupName = in.readUTF();
         int len = in.readInt();
-        endpoints = new ArrayList<RaftEndpointImpl>(len);
+        endpoints = new ArrayList<RaftMemberImpl>(len);
         for (int i = 0; i < len; i++) {
-            RaftEndpointImpl endpoint = in.readObject();
+            RaftMemberImpl endpoint = in.readObject();
             endpoints.add(endpoint);
         }
     }
