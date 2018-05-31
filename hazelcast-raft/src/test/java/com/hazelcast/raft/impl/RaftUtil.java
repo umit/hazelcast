@@ -7,7 +7,7 @@ import com.hazelcast.raft.impl.service.RaftDataService;
 import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.raft.impl.state.RaftGroupMembers;
 import com.hazelcast.raft.impl.testing.LocalRaftGroup;
-import com.hazelcast.raft.impl.testing.TestRaftEndpoint;
+import com.hazelcast.raft.impl.testing.TestRaftMember;
 import com.hazelcast.util.ExceptionUtil;
 
 import java.net.InetAddress;
@@ -32,10 +32,10 @@ public class RaftUtil {
         return readRaftState(node, task);
     }
 
-    public static <T extends RaftEndpoint> T getLeaderEndpoint(final RaftNodeImpl node) {
-        Callable<RaftEndpoint> task = new Callable<RaftEndpoint>() {
+    public static <T extends RaftMember> T getLeaderMember(final RaftNodeImpl node) {
+        Callable<RaftMember> task = new Callable<RaftMember>() {
             @Override
-            public RaftEndpoint call() {
+            public RaftMember call() {
                 return node.state().leader();
             }
         };
@@ -86,7 +86,7 @@ public class RaftUtil {
         return readRaftState(node, task);
     }
 
-    public static long getNextIndex(final RaftNodeImpl leader, final RaftEndpoint follower) {
+    public static long getNextIndex(final RaftNodeImpl leader, final RaftMember follower) {
         Callable<Long> task = new Callable<Long>() {
             @Override
             public Long call() {
@@ -98,7 +98,7 @@ public class RaftUtil {
         return readRaftState(leader, task);
     }
 
-    public static long getMatchIndex(final RaftNodeImpl leader, final RaftEndpoint follower) {
+    public static long getMatchIndex(final RaftNodeImpl leader, final RaftMember follower) {
         Callable<Long> task = new Callable<Long>() {
             @Override
             public Long call() {
@@ -144,7 +144,7 @@ public class RaftUtil {
     }
 
     public static void waitUntilLeaderElected(RaftNodeImpl node) {
-        while (getLeaderEndpoint(node) == null) {
+        while (getLeaderMember(node) == null) {
             sleepSeconds(1);
         }
     }
@@ -159,8 +159,8 @@ public class RaftUtil {
         }
     }
 
-    public static TestRaftEndpoint newRaftEndpoint(int port) {
-        return new TestRaftEndpoint(randomString(), port);
+    public static TestRaftMember newRaftMember(int port) {
+        return new TestRaftMember(randomString(), port);
     }
 
     public static Address newAddress(int port) {

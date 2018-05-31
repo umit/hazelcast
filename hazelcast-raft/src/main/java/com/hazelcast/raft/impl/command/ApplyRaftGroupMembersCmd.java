@@ -5,7 +5,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.command.RaftGroupCmd;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
-import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.impl.RaftMember;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -17,16 +17,16 @@ import java.util.LinkedHashSet;
  */
 public class ApplyRaftGroupMembersCmd extends RaftGroupCmd implements IdentifiedDataSerializable {
 
-    private Collection<RaftEndpoint> members;
+    private Collection<RaftMember> members;
 
     public ApplyRaftGroupMembersCmd() {
     }
 
-    public ApplyRaftGroupMembersCmd(Collection<RaftEndpoint> members) {
+    public ApplyRaftGroupMembersCmd(Collection<RaftMember> members) {
         this.members = members;
     }
 
-    public Collection<RaftEndpoint> getMembers() {
+    public Collection<RaftMember> getMembers() {
         return members;
     }
 
@@ -48,18 +48,18 @@ public class ApplyRaftGroupMembersCmd extends RaftGroupCmd implements Identified
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeInt(members.size());
-        for (RaftEndpoint endpoint : members) {
-            out.writeObject(endpoint);
+        for (RaftMember member : members) {
+            out.writeObject(member);
         }
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         int count = in.readInt();
-        Collection<RaftEndpoint> members = new LinkedHashSet<RaftEndpoint>();
+        Collection<RaftMember> members = new LinkedHashSet<RaftMember>();
         for (int i = 0; i < count; i++) {
-            RaftEndpoint endpoint = in.readObject();
-            members.add(endpoint);
+            RaftMember member = in.readObject();
+            members.add(member);
         }
         this.members = members;
     }

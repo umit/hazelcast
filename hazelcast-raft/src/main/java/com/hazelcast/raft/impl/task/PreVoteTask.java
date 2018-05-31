@@ -1,6 +1,6 @@
 package com.hazelcast.raft.impl.task;
 
-import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.impl.RaftMember;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.dto.PreVoteRequest;
 import com.hazelcast.raft.impl.log.RaftLog;
@@ -31,7 +31,7 @@ public class PreVoteTask extends RaftNodeAwareTask implements Runnable {
             return;
         }
 
-        Collection<RaftEndpoint> remoteMembers = state.remoteMembers();
+        Collection<RaftMember> remoteMembers = state.remoteMembers();
         if (remoteMembers.isEmpty()) {
             logger.fine("Remote members is empty. No need for pre-voting.");
             return;
@@ -41,14 +41,14 @@ public class PreVoteTask extends RaftNodeAwareTask implements Runnable {
         state.initPreCandidateState();
         int nextTerm = state.term() + 1;
         RaftLog log = state.log();
-        PreVoteRequest request = new PreVoteRequest(raftNode.getLocalEndpoint(), nextTerm,
+        PreVoteRequest request = new PreVoteRequest(raftNode.getLocalMember(), nextTerm,
                 log.lastLogOrSnapshotTerm(), log.lastLogOrSnapshotIndex());
 
         logger.info("Pre-vote started for next term: " + request.nextTerm() + ", last log index: " + request.lastLogIndex()
                 + ", last log term: " + request.lastLogTerm());
         raftNode.printMemberState();
 
-        for (RaftEndpoint endpoint : remoteMembers) {
+        for (RaftMember endpoint : remoteMembers) {
             raftNode.send(request, endpoint);
         }
 

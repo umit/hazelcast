@@ -20,9 +20,9 @@ import com.hazelcast.config.Config;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.Member;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.RaftEndpoint;
-import com.hazelcast.raft.impl.RaftEndpointImpl;
-import com.hazelcast.raft.impl.service.operation.metadata.GetActiveEndpointsOp;
+import com.hazelcast.raft.impl.RaftMember;
+import com.hazelcast.raft.impl.RaftMemberImpl;
+import com.hazelcast.raft.impl.service.operation.metadata.GetActiveMembersOp;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -56,7 +56,7 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                assertNotNull(service.getMetadataManager().getLocalEndpoint());
+                assertNotNull(service.getMetadataManager().getLocalMember());
             }
         });
     }
@@ -72,7 +72,7 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                assertNotNull(service.getMetadataManager().getLocalEndpoint());
+                assertNotNull(service.getMetadataManager().getLocalMember());
             }
         });
     }
@@ -89,7 +89,7 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         assertClusterSizeEventually(2, instances[1]);
 
-        final RaftEndpointImpl removedEndpoint = new RaftEndpointImpl(member);
+        final RaftMemberImpl removedEndpoint = new RaftMemberImpl(member);
         service.removeRaftMember(removedEndpoint).get();
 
         assertTrueEventually(new AssertTask() {
@@ -118,7 +118,7 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         assertClusterSizeEventually(2, instances[1]);
 
-        final RaftEndpointImpl removedEndpoint = new RaftEndpointImpl(member);
+        final RaftMemberImpl removedEndpoint = new RaftMemberImpl(member);
         service.removeRaftMember(removedEndpoint).get();
         service.removeRaftMember(removedEndpoint).get();
 
@@ -160,11 +160,11 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         waitAllForLeaderElection(newInstances, METADATA_GROUP_ID);
 
         RaftGroupInfo group = getRaftGroup(newInstances[2], METADATA_GROUP_ID);
-        Collection<RaftEndpointImpl> endpoints = group.endpointImpls();
+        Collection<RaftMemberImpl> endpoints = group.endpointImpls();
 
         for (HazelcastInstance instance : newInstances) {
             Member localMember = instance.getCluster().getLocalMember();
-            RaftEndpointImpl endpoint = new RaftEndpointImpl(localMember);
+            RaftMemberImpl endpoint = new RaftMemberImpl(localMember);
             assertTrue(endpoints.contains(endpoint));
         }
     }
@@ -174,7 +174,7 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         HazelcastInstance[] instances = newInstances(3, 3, 1);
 
         RaftInvocationManager invocationManager = getRaftInvocationManager(instances[3]);
-        invocationManager.invoke(METADATA_GROUP_ID, new GetActiveEndpointsOp()).get();
+        invocationManager.invoke(METADATA_GROUP_ID, new GetActiveMembersOp()).get();
 
         instances[0].getLifecycleService().terminate();
         instances[1].getLifecycleService().terminate();
@@ -187,7 +187,7 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         factory.newHazelcastInstance(config);
         factory.newHazelcastInstance(config);
 
-        invocationManager.invoke(METADATA_GROUP_ID, new GetActiveEndpointsOp()).get();
+        invocationManager.invoke(METADATA_GROUP_ID, new GetActiveMembersOp()).get();
     }
 
     @Test
@@ -208,13 +208,13 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         config.getRaftServiceConfig().getMetadataGroupConfig().setInitialRaftMember(true);
         HazelcastInstance newInstance = factory.newHazelcastInstance(config);
 
-        List<RaftEndpoint> newEndpoints = invocationManager.<List<RaftEndpoint>>invoke(METADATA_GROUP_ID, new GetActiveEndpointsOp()).get();
+        List<RaftMember> newEndpoints = invocationManager.<List<RaftMember>>invoke(METADATA_GROUP_ID, new GetActiveMembersOp()).get();
 
-        assertTrue(newEndpoints.contains(new RaftEndpointImpl(instances[1].getCluster().getLocalMember())));
-        assertTrue(newEndpoints.contains(new RaftEndpointImpl(instances[2].getCluster().getLocalMember())));
-        assertTrue(newEndpoints.contains(new RaftEndpointImpl(newInstance.getCluster().getLocalMember())));
+        assertTrue(newEndpoints.contains(new RaftMemberImpl(instances[1].getCluster().getLocalMember())));
+        assertTrue(newEndpoints.contains(new RaftMemberImpl(instances[2].getCluster().getLocalMember())));
+        assertTrue(newEndpoints.contains(new RaftMemberImpl(newInstance.getCluster().getLocalMember())));
 
-        invocationManager.invoke(METADATA_GROUP_ID, new GetActiveEndpointsOp()).get();
+        invocationManager.invoke(METADATA_GROUP_ID, new GetActiveMembersOp()).get();
     }
 
 }

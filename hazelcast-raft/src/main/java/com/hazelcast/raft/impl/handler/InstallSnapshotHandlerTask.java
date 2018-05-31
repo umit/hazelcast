@@ -42,7 +42,7 @@ public class InstallSnapshotHandlerTask extends RaftNodeAwareTask implements Run
         // Reply false if term < currentTerm (§5.1)
         if (req.term() < state.term()) {
             logger.warning("Stale snapshot: " + req + " received in current term: " + state.term());
-            AppendFailureResponse resp = new AppendFailureResponse(raftNode.getLocalEndpoint(), state.term(), snapshot.index() + 1);
+            AppendFailureResponse resp = new AppendFailureResponse(raftNode.getLocalMember(), state.term(), snapshot.index() + 1);
             raftNode.send(resp, req.leader());
             return;
         }
@@ -63,7 +63,7 @@ public class InstallSnapshotHandlerTask extends RaftNodeAwareTask implements Run
         }
 
         if (raftNode.installSnapshot(snapshot)) {
-            raftNode.send(new AppendSuccessResponse(raftNode.getLocalEndpoint(), req.term(), snapshot.index()), req.leader());
+            raftNode.send(new AppendSuccessResponse(raftNode.getLocalMember(), req.term(), snapshot.index()), req.leader());
         }
     }
 }

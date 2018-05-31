@@ -1,6 +1,6 @@
 package com.hazelcast.raft.impl.handler;
 
-import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.impl.RaftMember;
 import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.RaftRole;
@@ -79,7 +79,7 @@ public class VoteResponseHandlerTask extends AbstractResponseHandlerTask {
     }
 
     @Override
-    protected RaftEndpoint senderEndpoint() {
+    protected RaftMember sender() {
         return resp.voter();
     }
 }

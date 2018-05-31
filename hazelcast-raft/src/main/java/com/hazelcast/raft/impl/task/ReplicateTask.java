@@ -45,12 +45,12 @@ public class ReplicateTask implements Runnable {
 
         RaftState state = raftNode.state();
         if (state.role() != RaftRole.LEADER) {
-            resultFuture.setResult(new NotLeaderException(raftNode.getGroupId(), raftNode.getLocalEndpoint(), state.leader()));
+            resultFuture.setResult(new NotLeaderException(raftNode.getGroupId(), raftNode.getLocalMember(), state.leader()));
             return;
         }
 
         if (!raftNode.canReplicateNewEntry(operation)) {
-            resultFuture.setResult(new CannotReplicateException(raftNode.getLocalEndpoint()));
+            resultFuture.setResult(new CannotReplicateException(raftNode.getLocalMember()));
             return;
         }
 
@@ -74,7 +74,7 @@ public class ReplicateTask implements Runnable {
             return false;
         } else if (raftNode.getStatus() == RaftNodeStatus.STEPPED_DOWN) {
             logger.fine("Won't run " + operation + ", since raft node is stepped down");
-            resultFuture.setResult(new NotLeaderException(raftNode.getGroupId(), raftNode.getLocalEndpoint(), null));
+            resultFuture.setResult(new NotLeaderException(raftNode.getGroupId(), raftNode.getLocalMember(), null));
             return false;
         }
 

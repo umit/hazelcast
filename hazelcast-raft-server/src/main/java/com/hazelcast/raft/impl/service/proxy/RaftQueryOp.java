@@ -44,7 +44,7 @@ public class RaftQueryOp extends Operation implements IdentifiedDataSerializable
             if (service.isRaftGroupDestroyed(groupId)) {
                 sendResponse(new RaftGroupTerminatedException());
             } else {
-                sendResponse(new NotLeaderException(groupId, service.getLocalEndpoint(), null));
+                sendResponse(new NotLeaderException(groupId, service.getLocalMember(), null));
             }
             return;
         }

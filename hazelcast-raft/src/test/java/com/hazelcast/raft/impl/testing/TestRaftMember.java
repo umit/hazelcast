@@ -1,14 +1,14 @@
 package com.hazelcast.raft.impl.testing;
 
-import com.hazelcast.raft.impl.RaftEndpoint;
+import com.hazelcast.raft.impl.RaftMember;
 
-public class TestRaftEndpoint implements RaftEndpoint {
+public class TestRaftMember implements RaftMember {
 
     private String uuid;
 
     private int port;
 
-    public TestRaftEndpoint(String uuid, int port) {
+    public TestRaftMember(String uuid, int port) {
         this.uuid = uuid;
         this.port = port;
     }
@@ -31,7 +31,7 @@ public class TestRaftEndpoint implements RaftEndpoint {
             return false;
         }
 
-        TestRaftEndpoint that = (TestRaftEndpoint) o;
+        TestRaftMember that = (TestRaftMember) o;
 
         if (port != that.port) {
             return false;
@@ -48,7 +48,7 @@ public class TestRaftEndpoint implements RaftEndpoint {
 
     @Override
     public String toString() {
-        return "TestRaftEndpoint{" + "uuid='" + uuid + '\'' + ", port=" + port + '}';
+        return "TestRaftMember{" + "uuid='" + uuid + '\'' + ", port=" + port + '}';
     }
 
 }

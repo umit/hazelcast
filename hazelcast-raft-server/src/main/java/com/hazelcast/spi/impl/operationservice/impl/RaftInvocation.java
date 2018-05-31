@@ -21,7 +21,7 @@ import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.NotLeaderException;
-import com.hazelcast.raft.impl.RaftEndpointImpl;
+import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.spi.ExceptionAction;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.exception.CallerNotMemberException;
@@ -44,7 +44,7 @@ public class RaftInvocation extends Invocation {
     private final RaftGroupId groupId;
     private final boolean canFailOnIndeterminateOperationState;
     private volatile EndpointCursor endpointCursor;
-    private volatile RaftEndpointImpl lastInvocationEndpoint;
+    private volatile RaftMemberImpl lastInvocationEndpoint;
 
     public RaftInvocation(Context context, RaftInvocationContext raftInvocationContext, RaftGroupId groupId,
             Operation op, boolean canFailOnIndeterminateOperationState) {
@@ -59,7 +59,7 @@ public class RaftInvocation extends Invocation {
 
     @Override
     protected Address getTarget() {
-        RaftEndpointImpl targetEndpoint = getTargetEndpoint();
+        RaftMemberImpl targetEndpoint = getTargetEndpoint();
         lastInvocationEndpoint = targetEndpoint;
         return targetEndpoint != null ? targetEndpoint.getAddress() : null;
     }
@@ -88,8 +88,8 @@ public class RaftInvocation extends Invocation {
                 || cause instanceof TargetNotMemberException;
     }
 
-    private RaftEndpointImpl getTargetEndpoint() {
-        RaftEndpointImpl target = raftInvocationContext.getKnownLeader(groupId);
+    private RaftMemberImpl getTargetEndpoint() {
+        RaftMemberImpl target = raftInvocationContext.getKnownLeader(groupId);
         if (target != null) {
             return target;
         }

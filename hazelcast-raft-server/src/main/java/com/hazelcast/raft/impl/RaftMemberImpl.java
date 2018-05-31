@@ -13,25 +13,25 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
 /**
- * {@code RaftEndpoint} represents a member in Raft group.
- * Each endpoint must have a unique address and id in the group.
+ * {@code RaftMember} represents a member in Raft group.
+ * Each member must have a unique address and id in the group.
  */
-public class RaftEndpointImpl implements RaftEndpoint, Serializable, IdentifiedDataSerializable {
+public class RaftMemberImpl implements RaftMember, Serializable, IdentifiedDataSerializable {
 
     private static final long serialVersionUID = 5628148969327743953L;
 
     private transient String uid;
     private transient Address address;
 
-    public RaftEndpointImpl() {
+    public RaftMemberImpl() {
     }
 
-    public RaftEndpointImpl(String id, Address address) {
+    public RaftMemberImpl(String id, Address address) {
         this.uid = id;
         this.address = address;
     }
 
-    public RaftEndpointImpl(Member member) {
+    public RaftMemberImpl(Member member) {
         this.uid = member.getUuid();
         this.address = member.getAddress();
     }
@@ -78,7 +78,7 @@ public class RaftEndpointImpl implements RaftEndpoint, Serializable, IdentifiedD
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.ENDPOINT;
+        return RaftServiceDataSerializerHook.MEMBER;
     }
 
     @Override
@@ -86,11 +86,11 @@ public class RaftEndpointImpl implements RaftEndpoint, Serializable, IdentifiedD
         if (this == o) {
             return true;
         }
-        if (!(o instanceof RaftEndpointImpl)) {
+        if (!(o instanceof RaftMemberImpl)) {
             return false;
         }
 
-        RaftEndpointImpl that = (RaftEndpointImpl) o;
+        RaftMemberImpl that = (RaftMemberImpl) o;
 
         if (uid != null ? !uid.equals(that.uid) : that.uid != null) {
             return false;
