@@ -140,7 +140,7 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
 
         @Override
         public String toString() {
-            return "RaftGroupMembershipChangeContext{" + "membersCommitIndex=" + membersCommitIndex
+            return "RaftGroupMembershipChangeContext{" + "membersCommitIndex=" + membersCommitIndex + ", members=" + members
                     + ", memberToAdd=" + memberToAdd + ", memberToRemove=" + memberToRemove + '}';
         }
     }

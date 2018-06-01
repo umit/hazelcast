@@ -12,19 +12,19 @@ import java.io.IOException;
 
 public class GetRaftGroupOp extends RaftOp implements IdentifiedDataSerializable {
 
-    private RaftGroupId groupId;
+    private RaftGroupId targetGroupId;
 
     public GetRaftGroupOp() {
     }
 
-    public GetRaftGroupOp(RaftGroupId groupId) {
-        this.groupId = groupId;
+    public GetRaftGroupOp(RaftGroupId targetGroupId) {
+        this.targetGroupId = targetGroupId;
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        return service.getMetadataManager().getRaftGroup(groupId);
+        return service.getMetadataManager().getRaftGroup(targetGroupId);
     }
 
     @Override
@@ -34,12 +34,12 @@ public class GetRaftGroupOp extends RaftOp implements IdentifiedDataSerializable
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeObject(groupId);
+        out.writeObject(targetGroupId);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
-        groupId = in.readObject();
+        targetGroupId = in.readObject();
     }
 
     @Override
@@ -54,6 +54,6 @@ public class GetRaftGroupOp extends RaftOp implements IdentifiedDataSerializable
 
     @Override
     protected void toString(StringBuilder sb) {
-        sb.append(", groupId=").append(groupId);
+        sb.append(", targetGroupId=").append(targetGroupId);
     }
 }
