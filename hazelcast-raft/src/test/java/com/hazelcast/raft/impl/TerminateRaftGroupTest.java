@@ -1,6 +1,6 @@
 package com.hazelcast.raft.impl;
 
-import com.hazelcast.config.raft.RaftConfig;
+import com.hazelcast.config.raft.RaftAlgorithmConfig;
 import com.hazelcast.raft.exception.CannotReplicateException;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
 import com.hazelcast.raft.impl.dto.AppendRequest;
@@ -48,7 +48,7 @@ public class TerminateRaftGroupTest extends HazelcastTestSupport {
 
     @Test
     public void when_terminateOpIsAppendedButNotCommitted_then_cannotAppendNewEntry() throws ExecutionException, InterruptedException {
-        group = newGroupWithService(2, new RaftConfig());
+        group = newGroupWithService(2, new RaftAlgorithmConfig());
         group.start();
 
         RaftNodeImpl leader = group.waitUntilLeaderElected();
@@ -67,7 +67,7 @@ public class TerminateRaftGroupTest extends HazelcastTestSupport {
 
     @Test
     public void when_terminateOpIsAppended_then_statusIsTerminating() {
-        group = newGroupWithService(2, new RaftConfig());
+        group = newGroupWithService(2, new RaftAlgorithmConfig());
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();
@@ -88,7 +88,7 @@ public class TerminateRaftGroupTest extends HazelcastTestSupport {
 
     @Test
     public void when_terminateOpIsCommitted_then_raftNodeIsTerminated() throws ExecutionException, InterruptedException {
-        group = newGroupWithService(2, new RaftConfig());
+        group = newGroupWithService(2, new RaftAlgorithmConfig());
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();
@@ -122,7 +122,7 @@ public class TerminateRaftGroupTest extends HazelcastTestSupport {
 
     @Test
     public void when_terminateOpIsTruncated_then_statusIsActive() throws ExecutionException, InterruptedException {
-        group = newGroupWithService(3, new RaftConfig());
+        group = newGroupWithService(3, new RaftAlgorithmConfig());
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();

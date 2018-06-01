@@ -3,7 +3,7 @@ package com.hazelcast.raft.impl.session;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.raft.RaftAtomicLongConfig;
 import com.hazelcast.config.raft.RaftGroupConfig;
-import com.hazelcast.config.raft.RaftServiceConfig;
+import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.instance.Node;
@@ -331,9 +331,9 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
     @Override
     protected Config createConfig(int groupSize, int metadataGroupSize) {
         Config config = super.createConfig(groupSize, metadataGroupSize);
-        RaftServiceConfig raftServiceConfig = config.getRaftServiceConfig();
-        raftServiceConfig.getRaftConfig().setCommitIndexAdvanceCountToSnapshot(LOG_ENTRY_COUNT_TO_SNAPSHOT);
-        raftServiceConfig.addGroupConfig(new RaftGroupConfig(RAFT_GROUP_NAME, 3));
+        RaftConfig raftConfig = config.getRaftConfig();
+        raftConfig.getRaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(LOG_ENTRY_COUNT_TO_SNAPSHOT);
+        raftConfig.addGroupConfig(new RaftGroupConfig(RAFT_GROUP_NAME, 3));
         config.addRaftAtomicLongConfig(new RaftAtomicLongConfig(RAFT_GROUP_NAME, RAFT_GROUP_NAME));
 
         return config;

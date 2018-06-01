@@ -17,7 +17,7 @@
 package com.hazelcast.raft.service.session;
 
 import com.hazelcast.config.Config;
-import com.hazelcast.config.raft.RaftServiceConfig;
+import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
@@ -258,9 +258,9 @@ public abstract class AbstractSessionManagerTest extends HazelcastRaftTestSuppor
     @Override
     protected Config createConfig(int groupSize, int metadataGroupSize) {
         Config config = super.createConfig(groupSize, metadataGroupSize);
-        RaftServiceConfig raftServiceConfig = config.getRaftServiceConfig();
-        raftServiceConfig.setSessionHeartbeatIntervalMillis(500);
-        raftServiceConfig.setSessionTimeToLiveSeconds(sessionTTLSeconds);
+        RaftConfig raftConfig = config.getRaftConfig();
+        raftConfig.setSessionHeartbeatIntervalMillis(500);
+        raftConfig.setSessionTimeToLiveSeconds(sessionTTLSeconds);
         return config;
     }
 }

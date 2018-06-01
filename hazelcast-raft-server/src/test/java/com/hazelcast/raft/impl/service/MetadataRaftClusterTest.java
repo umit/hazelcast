@@ -273,8 +273,8 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         int nodeCount = 3;
         int commitCountToSnapshot = 5;
         Config config = createConfig(nodeCount, nodeCount);
-        config.getRaftServiceConfig().getMetadataGroupConfig().setInitialRaftMember(true);
-        config.getRaftServiceConfig().getRaftConfig().setCommitIndexAdvanceCountToSnapshot(commitCountToSnapshot);
+        config.getRaftConfig().getMetadataGroupConfig().setInitialRaftMember(true);
+        config.getRaftConfig().getRaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(commitCountToSnapshot);
 
         final HazelcastInstance[] instances = new HazelcastInstance[nodeCount];
         for (int i = 0; i < nodeCount; i++) {
@@ -497,7 +497,7 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
     @Override
     protected Config createConfig(int groupSize, int metadataGroupSize) {
         Config config = super.createConfig(groupSize, metadataGroupSize);
-        config.getRaftServiceConfig().getRaftConfig().setLeaderHeartbeatPeriodInMillis(1000);
+        config.getRaftConfig().getRaftAlgorithmConfig().setLeaderHeartbeatPeriodInMillis(1000);
         return config;
     }
 

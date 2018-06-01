@@ -1,6 +1,6 @@
 package com.hazelcast.raft.impl.testing;
 
-import com.hazelcast.config.raft.RaftConfig;
+import com.hazelcast.config.raft.RaftAlgorithmConfig;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftMember;
@@ -31,7 +31,7 @@ import static org.junit.Assert.assertThat;
 public class LocalRaftGroup {
 
     private final RaftGroupId groupId;
-    private final RaftConfig raftConfig;
+    private final RaftAlgorithmConfig raftAlgorithmConfig;
     private final String serviceName;
     private final Class<? extends SnapshotAwareService> serviceClazz;
     private final boolean appendNopEntryOnLeaderElection;
@@ -41,20 +41,20 @@ public class LocalRaftGroup {
     private int createdNodeCount;
 
     public LocalRaftGroup(int size) {
-        this(size, new RaftConfig());
+        this(size, new RaftAlgorithmConfig());
     }
 
-    public LocalRaftGroup(int size, RaftConfig raftConfig) {
-        this(size,raftConfig,  null, null, false);
+    public LocalRaftGroup(int size, RaftAlgorithmConfig raftAlgorithmConfig) {
+        this(size, raftAlgorithmConfig,  null, null, false);
     }
 
-    public LocalRaftGroup(int size, RaftConfig raftConfig,
+    public LocalRaftGroup(int size, RaftAlgorithmConfig raftAlgorithmConfig,
                           String serviceName, Class<? extends SnapshotAwareService> serviceClazz,
                           boolean appendNopEntryOnLeaderElection) {
         members = new RaftMember[size];
         integrations = new LocalRaftIntegration[size];
         groupId = new TestRaftGroupId("test");
-        this.raftConfig = raftConfig;
+        this.raftAlgorithmConfig = raftAlgorithmConfig;
         this.serviceName = serviceName;
         this.serviceClazz = serviceClazz;
         this.appendNopEntryOnLeaderElection = appendNopEntryOnLeaderElection;
@@ -68,7 +68,7 @@ public class LocalRaftGroup {
         nodes = new RaftNodeImpl[size];
         for (int i = 0; i < size; i++) {
             LocalRaftIntegration integration = integrations[i];
-            nodes[i] = new RaftNodeImpl(groupId, members[i], asList(members), raftConfig, integration);
+            nodes[i] = new RaftNodeImpl(groupId, members[i], asList(members), raftAlgorithmConfig, integration);
         }
     }
 
@@ -127,7 +127,7 @@ public class LocalRaftGroup {
         integrations[oldSize] = integration;
         RaftMember endpoint = integration.getLocalEndpoint();
         endpoints[oldSize] = endpoint;
-        RaftNodeImpl node = new RaftNodeImpl(groupId, endpoint, singletonList(endpoint), raftConfig, integration);
+        RaftNodeImpl node = new RaftNodeImpl(groupId, endpoint, singletonList(endpoint), raftAlgorithmConfig, integration);
         nodes[oldSize] = node;
         this.members = endpoints;
         this.integrations = integrations;

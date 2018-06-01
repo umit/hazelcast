@@ -1,6 +1,6 @@
 package com.hazelcast.raft.impl.service;
 
-import com.hazelcast.config.raft.RaftServiceConfig;
+import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.internal.cluster.ClusterService;
@@ -66,16 +66,17 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
     private final Set<RaftGroupId> destroyedGroupIds = newSetFromMap(new ConcurrentHashMap<RaftGroupId, Boolean>());
 
-    private final RaftServiceConfig config;
+    private final RaftConfig config;
     private final RaftInvocationManager invocationManager;
     private final RaftMetadataManager metadataManager;
 
     public RaftService(NodeEngine nodeEngine) {
         this.nodeEngine = (NodeEngineImpl) nodeEngine;
         this.logger = nodeEngine.getLogger(getClass());
-        this.config = new RaftServiceConfig(nodeEngine.getConfig().getRaftServiceConfig());
+        RaftConfig raftConfig = nodeEngine.getConfig().getRaftConfig();
+        this.config = raftConfig != null ? new RaftConfig(raftConfig) : new RaftConfig();
         this.metadataManager = new RaftMetadataManager(nodeEngine, this, config.getMetadataGroupConfig());
-        this.invocationManager = new RaftInvocationManager(nodeEngine, this, config.getRaftConfig());
+        this.invocationManager = new RaftInvocationManager(nodeEngine, this);
     }
 
     @Override
@@ -346,7 +347,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return destroyedGroupIds.contains(groupId);
     }
 
-    public RaftServiceConfig getConfig() {
+    public RaftConfig getConfig() {
         return config;
     }
 
@@ -366,7 +367,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
 
         RaftIntegration raftIntegration = new NodeEngineRaftIntegration(nodeEngine, groupId);
-        RaftNodeImpl node = new RaftNodeImpl(groupId, getLocalMember(), members, config.getRaftConfig(), raftIntegration);
+        RaftNodeImpl node = new RaftNodeImpl(groupId, getLocalMember(), members, config.getRaftAlgorithmConfig(), raftIntegration);
 
         if (nodes.putIfAbsent(groupId, node) == null) {
             if (destroyedGroupIds.contains(groupId)) {
