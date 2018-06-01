@@ -183,7 +183,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.GROUP_INFO;
+        return RaftServiceDataSerializerHook.RAFT_GROUP_INFO;
     }
 
     @Override

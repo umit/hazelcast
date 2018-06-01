@@ -19,6 +19,7 @@ import com.hazelcast.raft.impl.service.operation.metadata.AddRaftMemberOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CheckRemovedRaftMemberOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteRaftGroupMembershipChangesOp;
+import com.hazelcast.raft.impl.service.operation.metadata.CreateMetadataRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftNodeOp;
 import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOp;
@@ -45,7 +46,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int F_ID = FactoryIdHelper.getFactoryId(RAFT_DS_FACTORY, RAFT_DS_FACTORY_ID);
 
     public static final int GROUP_ID = 1;
-    public static final int GROUP_INFO = 2;
+    public static final int RAFT_GROUP_INFO = 2;
     public static final int PRE_VOTE_REQUEST_OP = 3;
     public static final int PRE_VOTE_RESPONSE_OP = 4;
     public static final int VOTE_REQUEST_OP = 5;
@@ -79,6 +80,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int ADD_RAFT_MEMBER_OP = 33;
     public static final int TRIGGER_EXPAND_RAFT_GROUPS_OP = 34;
     public static final int TRIGGER_REBALANCE_RAFT_GROUPS_OP = 35;
+    public static final int CREATE_METADATA_RAFT_GROUP_OP = 36;
 
     @Override
     public int getFactoryId() {
@@ -93,7 +95,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                 switch (typeId) {
                     case GROUP_ID:
                         return new RaftGroupIdImpl();
-                    case GROUP_INFO:
+                    case RAFT_GROUP_INFO:
                         return new RaftGroupInfo();
                     case PRE_VOTE_REQUEST_OP:
                         return new PreVoteRequestOp();
@@ -161,6 +163,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new TriggerExpandRaftGroupsOp();
                     case TRIGGER_REBALANCE_RAFT_GROUPS_OP:
                         return new TriggerRebalanceRaftGroupsOp();
+                    case CREATE_METADATA_RAFT_GROUP_OP:
+                        return new CreateMetadataRaftGroupOp();
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
             }
