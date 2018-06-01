@@ -5,8 +5,12 @@ import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.exception.MemberAlreadyExistsException;
 import com.hazelcast.raft.exception.MemberDoesNotExistException;
 import com.hazelcast.raft.exception.MismatchingGroupMembersCommitIndexException;
+import com.hazelcast.raft.exception.NotLeaderException;
+import com.hazelcast.raft.exception.RaftGroupTerminatedException;
 import com.hazelcast.raft.impl.RaftMember;
 import com.hazelcast.raft.impl.RaftNodeImpl;
+import com.hazelcast.raft.impl.RaftNodeStatus;
+import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.command.ApplyRaftGroupMembersCmd;
 import com.hazelcast.raft.impl.state.RaftGroupMembers;
 import com.hazelcast.raft.impl.state.RaftState;
@@ -57,13 +61,22 @@ public class MembershipChangeTask implements Runnable {
 
     @Override
     public void run() {
+        if (!verifyRaftNodeStatus()) {
+            return;
+        }
+
+        RaftState state = raftNode.state();
+        if (state.role() != RaftRole.LEADER) {
+            resultFuture.setResult(new NotLeaderException(raftNode.getGroupId(), raftNode.getLocalMember(), state.leader()));
+            return;
+        }
+
         if (!isValidGroupMemberCommitIndex()) {
             return;
         }
 
         logger.info("Changing membership -> " + changeType + ": " + member);
 
-        RaftState state = raftNode.state();
         Collection<RaftMember> members = new LinkedHashSet<RaftMember>(state.members());
         boolean memberExists = members.contains(member);
 
@@ -90,6 +103,22 @@ public class MembershipChangeTask implements Runnable {
         }
         logger.info("New members after " + changeType + " -> " + members);
         new ReplicateTask(raftNode, new ApplyRaftGroupMembersCmd(members), resultFuture).run();
+    }
+
+    private boolean verifyRaftNodeStatus() {
+        if (raftNode.getStatus() == RaftNodeStatus.TERMINATED) {
+            resultFuture.setResult(new RaftGroupTerminatedException());
+            logger.severe("Cannot " + changeType + " " + member + " with expected members commit index: "
+                    + groupMembersCommitIndex + " since raft node is terminated.");
+            return false;
+        } else if (raftNode.getStatus() == RaftNodeStatus.STEPPED_DOWN) {
+            logger.severe("Cannot " + changeType + " " + member + " with expected members commit index: "
+                    + groupMembersCommitIndex + " since raft node is stepped down.");
+            resultFuture.setResult(new NotLeaderException(raftNode.getGroupId(), raftNode.getLocalMember(), null));
+            return false;
+        }
+
+        return true;
     }
 
     private boolean isValidGroupMemberCommitIndex() {

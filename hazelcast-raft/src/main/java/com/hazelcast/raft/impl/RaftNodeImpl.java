@@ -774,6 +774,11 @@ public class RaftNodeImpl implements RaftNode {
         @Override
         public void run() {
             try {
+                if (isTerminatedOrSteppedDown()) {
+                    logger.fine("Won't run, since raft node is terminated");
+                    return;
+                }
+
                 RaftMember leader = state.leader();
                 if (leader == null) {
                     if (state.role() == RaftRole.FOLLOWER) {
