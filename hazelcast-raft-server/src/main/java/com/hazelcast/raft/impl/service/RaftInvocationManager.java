@@ -1,6 +1,5 @@
 package com.hazelcast.raft.impl.service;
 
-import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
@@ -47,7 +46,7 @@ public class RaftInvocationManager {
     private final ILogger logger;
     private final RaftInvocationContext raftInvocationContext;
 
-    RaftInvocationManager(NodeEngine nodeEngine, RaftService raftService, RaftConfig config) {
+    RaftInvocationManager(NodeEngine nodeEngine, RaftService raftService) {
         this.nodeEngine = (NodeEngineImpl) nodeEngine;
         this.operationService = (OperationServiceImpl) nodeEngine.getOperationService();
         this.logger = nodeEngine.getLogger(getClass());

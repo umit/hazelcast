@@ -46,7 +46,7 @@ public class RaftInvocationContext {
         this.logger = logger;
         this.raftService = raftService;
         this.failOnIndeterminateOperationState = raftService.getConfig()
-                .getRaftConfig().isFailOnIndeterminateOperationState();
+                .getRaftAlgorithmConfig().isFailOnIndeterminateOperationState();
     }
 
     public void reset() {

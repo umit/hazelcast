@@ -1,13 +1,16 @@
 package com.hazelcast.raft.impl;
 
+import com.hazelcast.config.raft.RaftAlgorithmConfig;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.QueryPolicy;
-import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.command.RaftGroupCmd;
+import com.hazelcast.raft.command.TerminateRaftGroupCmd;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.StaleAppendRequestException;
+import com.hazelcast.raft.impl.command.ApplyRaftGroupMembersCmd;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
@@ -27,8 +30,6 @@ import com.hazelcast.raft.impl.handler.VoteResponseHandlerTask;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.log.RaftLog;
 import com.hazelcast.raft.impl.log.SnapshotEntry;
-import com.hazelcast.raft.impl.command.ApplyRaftGroupMembersCmd;
-import com.hazelcast.raft.impl.log.NopEntry;
 import com.hazelcast.raft.impl.state.LeaderState;
 import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.task.MembershipChangeTask;
@@ -37,8 +38,6 @@ import com.hazelcast.raft.impl.task.QueryTask;
 import com.hazelcast.raft.impl.task.ReplicateTask;
 import com.hazelcast.raft.impl.util.PostponedResponse;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
-import com.hazelcast.raft.command.RaftGroupCmd;
-import com.hazelcast.raft.command.TerminateRaftGroupCmd;
 import com.hazelcast.util.Clock;
 import com.hazelcast.util.RandomPicker;
 import com.hazelcast.util.collection.Long2ObjectHashMap;
@@ -82,17 +81,17 @@ public class RaftNodeImpl implements RaftNode {
     private volatile RaftNodeStatus status = ACTIVE;
 
     public RaftNodeImpl(RaftGroupId groupId, RaftMember localMember, Collection<RaftMember> members,
-                        RaftConfig raftConfig, RaftIntegration raftIntegration) {
+                        RaftAlgorithmConfig raftAlgorithmConfig, RaftIntegration raftIntegration) {
         this.groupId = groupId;
         this.raftIntegration = raftIntegration;
         this.localMember = localMember;
         this.state = new RaftState(groupId, localMember, members);
         this.logger = getLogger(RaftNode.class);
-        this.maxUncommittedEntryCount = raftConfig.getUncommittedEntryCountToRejectNewAppends();
-        this.appendRequestMaxEntryCount = raftConfig.getAppendRequestMaxEntryCount();
-        this.commitIndexAdvanceCountToSnapshot = raftConfig.getCommitIndexAdvanceCountToSnapshot();
-        this.leaderElectionTimeout = (int) raftConfig.getLeaderElectionTimeoutInMillis();
-        this.heartbeatPeriodInMillis = raftConfig.getLeaderHeartbeatPeriodInMillis();
+        this.maxUncommittedEntryCount = raftAlgorithmConfig.getUncommittedEntryCountToRejectNewAppends();
+        this.appendRequestMaxEntryCount = raftAlgorithmConfig.getAppendRequestMaxEntryCount();
+        this.commitIndexAdvanceCountToSnapshot = raftAlgorithmConfig.getCommitIndexAdvanceCountToSnapshot();
+        this.leaderElectionTimeout = (int) raftAlgorithmConfig.getLeaderElectionTimeoutInMillis();
+        this.heartbeatPeriodInMillis = raftAlgorithmConfig.getLeaderHeartbeatPeriodInMillis();
     }
 
     public ILogger getLogger(Class clazz) {
@@ -247,7 +246,7 @@ public class RaftNodeImpl implements RaftNode {
     /**
      * Returns a randomized leader election timeout in milliseconds based on configured timeout.
      *
-     * @see RaftConfig#leaderHeartbeatPeriodInMillis
+     * @see RaftAlgorithmConfig#leaderHeartbeatPeriodInMillis
      */
     public long getLeaderElectionTimeoutInMillis() {
         return RandomPicker.getInt(leaderElectionTimeout, leaderElectionTimeout + LEADER_ELECTION_TIMEOUT_RANGE);
@@ -267,7 +266,7 @@ public class RaftNodeImpl implements RaftNode {
      * <ul>
      * <li>Node is terminating, terminated or stepped down. See {@link RaftNodeStatus}.</li>
      * <li>Raft log contains max allowed uncommitted entry count.
-     * See {@link RaftConfig#uncommittedEntryCountToRejectNewAppends}.</li>
+     * See {@link RaftAlgorithmConfig#uncommittedEntryCountToRejectNewAppends}.</li>
      * <li>The operation is a {@link RaftGroupCmd} and there's an ongoing membership change in group.</li>
      * <li>The operation is a membership change operation and there's no committed entry in this term yet.
      * See {@link RaftIntegration#getAppendedEntryOnLeaderElection()} ()}.</li>
@@ -369,7 +368,7 @@ public class RaftNodeImpl implements RaftNode {
      * Sends an append-entries request to the follower member.
      * <p>
      * Log entries between follower's known nextIndex and latest appended entry index are sent in a batch.
-     * Batch size can be {@link RaftConfig#appendRequestMaxEntryCount} at most.
+     * Batch size can be {@link RaftAlgorithmConfig#appendRequestMaxEntryCount} at most.
      * <p>
      * If follower's nextIndex is behind the latest snapshot index, then {@link InstallSnapshot} request is sent.
      * <p>
@@ -528,7 +527,7 @@ public class RaftNodeImpl implements RaftNode {
                 setStatus(STEPPED_DOWN);
             }
             response = entry.index();
-        } else if (!(operation instanceof NopEntry)) {
+        } else {
             response = raftIntegration.runOperation(operation, entry.index());
         }
 
@@ -552,8 +551,7 @@ public class RaftNodeImpl implements RaftNode {
     }
 
     /**
-     * Executes query operation sets execution result to the future. If there's no commit in Raft log yet,
-     * then {@link CannotRunLocalQueryException} is set as result.
+     * Executes query operation sets execution result to the future.
      */
     public void runQueryOperation(Object operation, SimpleCompletableFuture resultFuture) {
         long commitIndex = state.commitIndex();
@@ -639,7 +637,7 @@ public class RaftNodeImpl implements RaftNode {
 
     /**
      * Takes a snapshot if {@code commitIndex} advanced equal to or more than
-     * {@link RaftConfig#commitIndexAdvanceCountToSnapshot}.
+     * {@link RaftAlgorithmConfig#commitIndexAdvanceCountToSnapshot}.
      * <p>
      * Snapshot is not created if there's an ongoing membership change or raft group is being destroyed.
      */

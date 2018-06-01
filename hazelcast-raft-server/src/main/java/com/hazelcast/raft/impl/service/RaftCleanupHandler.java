@@ -76,7 +76,7 @@ public class RaftCleanupHandler {
         // scheduleWithRepetition skips subsequent execution if one is already running.
         executionService.scheduleWithRepetition(new RaftGroupDestroyHandlerTask(), CLEANUP_TASK_PERIOD_IN_MILLIS,
                 CLEANUP_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
-        executionService.scheduleWithRepetition(new RemoveRaftMemberHandlerTask(), CLEANUP_TASK_PERIOD_IN_MILLIS,
+        executionService.scheduleWithRepetition(new RaftMembershipChangeHandlerTask(), CLEANUP_TASK_PERIOD_IN_MILLIS,
                 CLEANUP_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
         executionService.scheduleWithRepetition(new CheckLocalRaftNodesTask(), CHECK_LOCAL_RAFT_NODES_TASK_PERIOD_IN_MILLIS,
                 CHECK_LOCAL_RAFT_NODES_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
@@ -211,7 +211,7 @@ public class RaftCleanupHandler {
         }
     }
 
-    private class RemoveRaftMemberHandlerTask implements Runnable {
+    private class RaftMembershipChangeHandlerTask implements Runnable {
 
         private static final int NA_MEMBERS_COMMIT_INDEX = -1;
 

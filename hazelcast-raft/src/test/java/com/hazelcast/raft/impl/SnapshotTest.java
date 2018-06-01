@@ -1,6 +1,6 @@
 package com.hazelcast.raft.impl;
 
-import com.hazelcast.config.raft.RaftConfig;
+import com.hazelcast.config.raft.RaftAlgorithmConfig;
 import com.hazelcast.raft.exception.StaleAppendRequestException;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.service.ApplyRaftRunnable;
@@ -53,8 +53,8 @@ public class SnapshotTest extends HazelcastTestSupport {
     @Test
     public void when_commitLogAdvances_then_snapshotIsTaken() throws ExecutionException, InterruptedException {
         final int entryCount = 50;
-        RaftConfig raftConfig = new RaftConfig().setCommitIndexAdvanceCountToSnapshot(entryCount);
-        group = newGroupWithService(3, raftConfig);
+        RaftAlgorithmConfig raftAlgorithmConfig = new RaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(entryCount);
+        group = newGroupWithService(3, raftAlgorithmConfig);
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();
@@ -82,8 +82,8 @@ public class SnapshotTest extends HazelcastTestSupport {
     @Test
     public void when_snapshotIsTaken_then_nextEntryIsCommitted() throws ExecutionException, InterruptedException {
         final int entryCount = 50;
-        RaftConfig raftConfig = new RaftConfig().setCommitIndexAdvanceCountToSnapshot(entryCount);
-        group = newGroupWithService(3, raftConfig);
+        RaftAlgorithmConfig raftAlgorithmConfig = new RaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(entryCount);
+        group = newGroupWithService(3, raftAlgorithmConfig);
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();
@@ -123,8 +123,8 @@ public class SnapshotTest extends HazelcastTestSupport {
     @Test
     public void when_followerFallsTooFarBehind_then_itInstallsSnapshot() throws ExecutionException, InterruptedException {
         final int entryCount = 50;
-        RaftConfig raftConfig = new RaftConfig().setCommitIndexAdvanceCountToSnapshot(entryCount);
-        group = newGroupWithService(3, raftConfig);
+        RaftAlgorithmConfig raftAlgorithmConfig = new RaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(entryCount);
+        group = newGroupWithService(3, raftAlgorithmConfig);
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();
@@ -168,8 +168,8 @@ public class SnapshotTest extends HazelcastTestSupport {
     @Test
     public void when_followerMissesTheLastEntryThatGoesIntoTheSnapshot_then_itInstallsSnapshot() throws ExecutionException, InterruptedException {
         final int entryCount = 50;
-        RaftConfig raftConfig = new RaftConfig().setCommitIndexAdvanceCountToSnapshot(entryCount);
-        group = newGroupWithService(3, raftConfig);
+        RaftAlgorithmConfig raftAlgorithmConfig = new RaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(entryCount);
+        group = newGroupWithService(3, raftAlgorithmConfig);
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();
@@ -224,8 +224,8 @@ public class SnapshotTest extends HazelcastTestSupport {
     @Test
     public void when_isolatedLeaderAppendsEntries_then_itInvalidatesTheirFeaturesUponInstallSnapshot() throws ExecutionException, InterruptedException {
         final int entryCount = 50;
-        RaftConfig raftConfig = new RaftConfig().setCommitIndexAdvanceCountToSnapshot(entryCount);
-        group = newGroupWithService(3, raftConfig);
+        RaftAlgorithmConfig raftAlgorithmConfig = new RaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(entryCount);
+        group = newGroupWithService(3, raftAlgorithmConfig);
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();

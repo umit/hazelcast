@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl;
 
 import com.hazelcast.nio.Address;
-import com.hazelcast.config.raft.RaftConfig;
+import com.hazelcast.config.raft.RaftAlgorithmConfig;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.service.RaftDataService;
 import com.hazelcast.raft.impl.state.LeaderState;
@@ -180,11 +180,11 @@ public class RaftUtil {
         return count - majority(count);
     }
 
-    public static LocalRaftGroup newGroupWithService(int nodeCount, RaftConfig raftConfig) {
-        return newGroupWithService(nodeCount, raftConfig, false);
+    public static LocalRaftGroup newGroupWithService(int nodeCount, RaftAlgorithmConfig raftAlgorithmConfig) {
+        return newGroupWithService(nodeCount, raftAlgorithmConfig, false);
     }
 
-    public static LocalRaftGroup newGroupWithService(int nodeCount, RaftConfig raftConfig, boolean appendNopEntryOnLeaderElection) {
-        return new LocalRaftGroup(nodeCount, raftConfig, SERVICE_NAME, RaftDataService.class, appendNopEntryOnLeaderElection);
+    public static LocalRaftGroup newGroupWithService(int nodeCount, RaftAlgorithmConfig raftAlgorithmConfig, boolean appendNopEntryOnLeaderElection) {
+        return new LocalRaftGroup(nodeCount, raftAlgorithmConfig, SERVICE_NAME, RaftDataService.class, appendNopEntryOnLeaderElection);
     }
 }

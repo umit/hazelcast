@@ -2,7 +2,7 @@ package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.config.raft.RaftMetadataGroupConfig;
-import com.hazelcast.config.raft.RaftServiceConfig;
+import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftGroupId;
@@ -80,7 +80,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         for (int i = 0; i < nodeCount; i++) {
             Config config = createConfig(raftGroupSize, metadataGroupSize);
             if (i < raftGroupSize) {
-                config.getRaftServiceConfig().getMetadataGroupConfig().setInitialRaftMember(true);
+                config.getRaftConfig().getMetadataGroupConfig().setInitialRaftMember(true);
                 instances[i] = factory.newHazelcastInstance(config);
             } else {
                 instances[i] = factory.newHazelcastInstance(config);
@@ -99,8 +99,8 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         RaftMetadataGroupConfig metadataGroupConfig = new RaftMetadataGroupConfig()
                 .setGroupSize(groupSize)
                 .setMetadataGroupSize(metadataGroupSize);
-        RaftServiceConfig raftServiceConfig = new RaftServiceConfig().setMetadataGroupConfig(metadataGroupConfig);
-        config.setRaftServiceConfig(raftServiceConfig);
+        RaftConfig raftConfig = new RaftConfig().setMetadataGroupConfig(metadataGroupConfig);
+        config.setRaftConfig(raftConfig);
         return config;
     }
 

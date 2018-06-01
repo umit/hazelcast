@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl;
 
 import com.hazelcast.raft.MembershipChangeType;
-import com.hazelcast.config.raft.RaftConfig;
+import com.hazelcast.config.raft.RaftAlgorithmConfig;
 import com.hazelcast.raft.exception.CannotReplicateException;
 import com.hazelcast.raft.exception.MemberAlreadyExistsException;
 import com.hazelcast.raft.exception.MemberDoesNotExistException;
@@ -61,7 +61,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
 
     @Test
     public void when_newRaftNodeJoins_then_itAppendsMissingEntries() throws ExecutionException, InterruptedException {
-        group = newGroupWithService(3, new RaftConfig());
+        group = newGroupWithService(3, new RaftAlgorithmConfig());
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();
@@ -100,7 +100,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
 
     @Test
     public void when_followerLeaves_then_itIsRemovedFromTheGroupMembers() throws ExecutionException, InterruptedException {
-        group = newGroupWithService(3, new RaftConfig());
+        group = newGroupWithService(3, new RaftAlgorithmConfig());
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();
@@ -127,7 +127,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
 
     @Test
     public void when_leaderLeaves_then_itIsRemovedFromTheGroupMembers() throws ExecutionException, InterruptedException {
-        group = newGroupWithService(3, new RaftConfig());
+        group = newGroupWithService(3, new RaftAlgorithmConfig());
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();
@@ -151,7 +151,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
 
     @Test
     public void when_leaderLeaves_then_itCannotVoteForCommitOfMemberChange() throws ExecutionException, InterruptedException {
-        group = newGroupWithService(3, new RaftConfig().setLeaderHeartbeatPeriodInMillis(1000));
+        group = newGroupWithService(3, new RaftAlgorithmConfig().setLeaderHeartbeatPeriodInMillis(1000));
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();
@@ -172,7 +172,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
 
     @Test
     public void when_leaderLeaves_then_followersElectNewLeader() throws ExecutionException, InterruptedException {
-        group = newGroupWithService(3, new RaftConfig());
+        group = newGroupWithService(3, new RaftAlgorithmConfig());
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();
@@ -205,7 +205,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
 
     @Test
     public void when_membershipChangeRequestIsMadeWithWrongType_then_theChangeFails() throws ExecutionException, InterruptedException {
-        group = newGroupWithService(3, new RaftConfig());
+        group = newGroupWithService(3, new RaftAlgorithmConfig());
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();
@@ -220,7 +220,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
 
     @Test
     public void when_nonExistingEndpointIsRemoved_then_theChangeFails() throws ExecutionException, InterruptedException {
-        group = newGroupWithService(3, new RaftConfig());
+        group = newGroupWithService(3, new RaftAlgorithmConfig());
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();
@@ -238,7 +238,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
 
     @Test
     public void when_existingEndpointIsAdded_then_theChangeFails() throws ExecutionException, InterruptedException {
-        group = newGroupWithService(3, new RaftConfig());
+        group = newGroupWithService(3, new RaftAlgorithmConfig());
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();
@@ -256,7 +256,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
     public void when_thereIsNoCommitInTheCurrentTerm_then_cannotMakeMemberChange() throws ExecutionException, InterruptedException {
         // https://groups.google.com/forum/#!msg/raft-dev/t4xj6dJTP6E/d2D9LrWRza8J
 
-        group = newGroupWithService(3, new RaftConfig());
+        group = newGroupWithService(3, new RaftAlgorithmConfig());
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();
@@ -272,7 +272,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
     public void when_appendNopEntryOnLeaderElection_then_canMakeMemberChangeAfterNopEntryCommitted() {
         // https://groups.google.com/forum/#!msg/raft-dev/t4xj6dJTP6E/d2D9LrWRza8J
 
-        group = newGroupWithService(3, new RaftConfig(), true);
+        group = newGroupWithService(3, new RaftAlgorithmConfig(), true);
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();
@@ -292,7 +292,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
 
     @Test
     public void when_newJoiningNodeFirstReceivesSnapshot_then_itInstallsSnapshot() throws ExecutionException, InterruptedException {
-        group = newGroupWithService(3, new RaftConfig().setCommitIndexAdvanceCountToSnapshot(5));
+        group = newGroupWithService(3, new RaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(5));
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();
@@ -329,7 +329,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
 
     @Test
     public void when_leaderFailsWhileLeavingRaftGroup_othersCommitTheMemberChange() throws ExecutionException, InterruptedException {
-        group = newGroupWithService(3, new RaftConfig());
+        group = newGroupWithService(3, new RaftAlgorithmConfig());
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();

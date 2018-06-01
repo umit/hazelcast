@@ -156,7 +156,7 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         getRaftService(newInstances[1]).resetAndInitRaftState();
 
         Config config = createConfig(3, 3);
-        config.getRaftServiceConfig().getMetadataGroupConfig().setInitialRaftMember(true);
+        config.getRaftConfig().getMetadataGroupConfig().setInitialRaftMember(true);
         newInstances[2] = factory.newHazelcastInstance(config);
 
         waitAllForLeaderElection(newInstances, METADATA_GROUP_ID);
@@ -184,7 +184,7 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertClusterSizeEventually(1, instances[3]);
 
         Config config = createConfig(3, 3);
-        config.getRaftServiceConfig().getMetadataGroupConfig().setInitialRaftMember(true);
+        config.getRaftConfig().getMetadataGroupConfig().setInitialRaftMember(true);
         factory.newHazelcastInstance(config);
         factory.newHazelcastInstance(config);
         factory.newHazelcastInstance(config);
@@ -207,7 +207,7 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         getRaftService(instances[2]).resetAndInitRaftState();
 
         Config config = createConfig(3, 3);
-        config.getRaftServiceConfig().getMetadataGroupConfig().setInitialRaftMember(true);
+        config.getRaftConfig().getMetadataGroupConfig().setInitialRaftMember(true);
         HazelcastInstance newInstance = factory.newHazelcastInstance(config);
 
         List<RaftMember> newEndpoints = invocationManager.<List<RaftMember>>invoke(METADATA_GROUP_ID, new GetActiveRaftMembersOp()).get();

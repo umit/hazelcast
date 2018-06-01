@@ -30,6 +30,7 @@ import com.hazelcast.config.ListenerConfig;
 import com.hazelcast.config.MemberAttributeConfig;
 import com.hazelcast.config.UserCodeDeploymentConfig;
 import com.hazelcast.config.raft.RaftMetadataGroupConfig;
+import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.core.ClientListener;
 import com.hazelcast.core.DistributedObjectListener;
 import com.hazelcast.core.HazelcastException;
@@ -882,8 +883,11 @@ public class Node {
             }
         }
 
-        boolean initialRaftMember = config.getRaftServiceConfig().getMetadataGroupConfig().isInitialRaftMember();
-        attributes.put(RaftMetadataGroupConfig.RAFT_MEMBER_ATTRIBUTE_NAME, initialRaftMember);
+        RaftConfig raftConfig = config.getRaftConfig();
+        if (raftConfig != null && raftConfig.getMetadataGroupConfig() != null) {
+            boolean initialRaftMember = raftConfig.getMetadataGroupConfig().isInitialRaftMember();
+            attributes.put(RaftMetadataGroupConfig.RAFT_MEMBER_ATTRIBUTE_NAME, initialRaftMember);
+        }
 
         return attributes;
     }

@@ -76,7 +76,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     void initIfInitialRaftMember() {
-        boolean initialRaftMember = config.isInitialRaftMember();
+        boolean initialRaftMember = config != null && config.isInitialRaftMember();
         if (!initialRaftMember) {
             logger.warning("I am not a Raft member :(");
             return;
@@ -107,6 +107,10 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     void reset() {
         activeMembers = Collections.emptySet();
         groups.clear();
+
+        if (config == null) {
+            return;
+        }
 
         init();
 

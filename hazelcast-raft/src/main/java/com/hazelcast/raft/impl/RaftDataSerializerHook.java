@@ -15,7 +15,6 @@ import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.log.LogEntry;
-import com.hazelcast.raft.impl.log.NopEntry;
 import com.hazelcast.raft.impl.log.SnapshotEntry;
 
 public final class RaftDataSerializerHook implements DataSerializerHook {
@@ -37,7 +36,6 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
     public static final int INSTALL_SNAPSHOT = 10;
     public static final int TERMINATE_RAFT_GROUP_COMMAND = 11;
     public static final int APPLY_RAFT_GROUP_MEMBERS_COMMAND = 12;
-    public static final int NOP_ENTRY = 13;
 
     @Override
     public int getFactoryId() {
@@ -74,8 +72,6 @@ public final class RaftDataSerializerHook implements DataSerializerHook {
                         return new TerminateRaftGroupCmd();
                     case APPLY_RAFT_GROUP_MEMBERS_COMMAND:
                         return new ApplyRaftGroupMembersCmd();
-                    case NOP_ENTRY:
-                        return new NopEntry();
 
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
