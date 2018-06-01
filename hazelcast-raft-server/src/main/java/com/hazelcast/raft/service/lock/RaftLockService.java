@@ -148,23 +148,14 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
 
     public ICompletableFuture<RaftGroupId> createNewAsync(String name) {
         RaftLockConfig config = getConfig(name);
-        checkNotNull(config);
+        String raftGroupRef = config != null ? config.getRaftGroupRef() : RaftGroupConfig.DEFAULT_GROUP;
 
         RaftInvocationManager invocationManager = raftService.getInvocationManager();
-        RaftGroupConfig groupConfig = config.getRaftGroupConfig();
-        if (groupConfig != null) {
-            return invocationManager.createRaftGroup(groupConfig);
-        } else {
-            return invocationManager.createRaftGroup(config.getRaftGroupRef());
-        }
+        return invocationManager.createRaftGroup(raftGroupRef);
     }
 
     private RaftLockConfig getConfig(String name) {
         return nodeEngine.getConfig().findRaftLockConfig(name);
-    }
-
-    public RaftLockProxy newProxy(String name, RaftGroupId groupId, String sessionId) {
-        throw new UnsupportedOperationException();
     }
 
     private LockRegistry getLockRegistry(RaftGroupId groupId) {

@@ -205,11 +205,19 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
         assertEquals(3, v);
     }
 
+    @Test
+    public void testCreate_withDefaultGroup() {
+        IAtomicLong atomicLong = createAtomicLong(randomName());
+        atomicLong.set(3);
+        assertEquals(3, atomicLong.get());
+    }
+
     @Override
     protected Config createConfig(int groupSize, int metadataGroupSize) {
         Config config = super.createConfig(groupSize, metadataGroupSize);
+        config.getRaftConfig().addGroupConfig(new RaftGroupConfig(name, raftGroupSize));
 
-        RaftAtomicLongConfig atomicLongConfig = new RaftAtomicLongConfig(name, new RaftGroupConfig(name, raftGroupSize));
+        RaftAtomicLongConfig atomicLongConfig = new RaftAtomicLongConfig(name, name);
         config.addRaftAtomicLongConfig(atomicLongConfig);
 
         return config;

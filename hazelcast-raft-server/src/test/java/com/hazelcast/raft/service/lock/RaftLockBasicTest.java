@@ -241,12 +241,20 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
         assertEquals(1, lock.getLockCount());
     }
 
+    @Test
+    public void testCreate_withDefaultGroup() {
+        ILock lock = createLock(randomName());
+        lock.lock();
+        lock.unlock();
+    }
+
 
     @Override
     protected Config createConfig(int groupSize, int metadataGroupSize) {
         Config config = super.createConfig(groupSize, metadataGroupSize);
+        config.getRaftConfig().addGroupConfig(new RaftGroupConfig(name, groupSize));
 
-        RaftLockConfig lockConfig = new RaftLockConfig(name, new RaftGroupConfig(name, this.groupSize));
+        RaftLockConfig lockConfig = new RaftLockConfig(name, name);
         config.addRaftLockConfig(lockConfig);
         return config;
     }

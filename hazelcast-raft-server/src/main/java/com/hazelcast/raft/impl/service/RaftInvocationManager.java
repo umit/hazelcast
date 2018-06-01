@@ -61,12 +61,12 @@ public class RaftInvocationManager {
     public ICompletableFuture<RaftGroupId> createRaftGroup(String groupNameRef) {
         RaftGroupConfig groupConfig = raftService.getConfig().getGroupConfig(groupNameRef);
         if (groupConfig == null) {
-            throw new IllegalArgumentException("No RaftGroupConfig found with name '" + groupNameRef + "'.");
+            if (!RaftGroupConfig.DEFAULT_GROUP.equals(groupNameRef)) {
+                throw new IllegalArgumentException("No RaftGroupConfig found with name '" + groupNameRef + "'.");
+            }
+            int groupSize = raftService.getConfig().getMetadataGroupConfig().getGroupSize();
+            groupConfig = new RaftGroupConfig(RaftGroupConfig.DEFAULT_GROUP, groupSize);
         }
-        return createRaftGroup(groupConfig);
-    }
-
-    public ICompletableFuture<RaftGroupId> createRaftGroup(RaftGroupConfig groupConfig) {
         return createRaftGroup(groupConfig.getName(), groupConfig.getSize());
     }
 

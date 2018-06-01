@@ -1,11 +1,11 @@
 package com.hazelcast.raft.service.atomiclong;
 
 import com.hazelcast.config.raft.RaftAtomicLongConfig;
+import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
-import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.util.Tuple2;
@@ -80,15 +80,10 @@ public class RaftAtomicLongService implements ManagedService, SnapshotAwareServi
 
     public ICompletableFuture<RaftGroupId> createNewAsync(String name) {
         RaftAtomicLongConfig config = getConfig(name);
-        checkNotNull(config);
+        String raftGroupRef = config != null ? config.getRaftGroupRef() : RaftGroupConfig.DEFAULT_GROUP;
 
         RaftInvocationManager invocationManager = raftService.getInvocationManager();
-        RaftGroupConfig groupConfig = config.getRaftGroupConfig();
-        if (groupConfig != null) {
-            return invocationManager.createRaftGroup(groupConfig);
-        } else {
-            return invocationManager.createRaftGroup(config.getRaftGroupRef());
-        }
+        return invocationManager.createRaftGroup(raftGroupRef);
     }
 
     private RaftAtomicLongConfig getConfig(String name) {
