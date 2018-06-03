@@ -34,7 +34,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Executor;
 
-import static com.hazelcast.raft.impl.service.RaftService.METADATA_GROUP_ID;
+import static com.hazelcast.raft.impl.service.RaftMetadataManager.METADATA_GROUP_ID;
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 
 @SuppressWarnings("unchecked")

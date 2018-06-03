@@ -9,6 +9,7 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
+import com.hazelcast.raft.impl.MetadataRaftGroupNotInitializedException;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftNode;
@@ -31,6 +32,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -45,8 +47,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import static com.hazelcast.cluster.memberselector.MemberSelectors.NON_LOCAL_MEMBER_SELECTOR;
 import static com.hazelcast.config.raft.RaftMetadataGroupConfig.RAFT_MEMBER_ATTRIBUTE_NAME;
 import static com.hazelcast.raft.impl.service.MembershipChangeContext.RaftGroupMembershipChangeContext;
+import static com.hazelcast.util.Preconditions.checkFalse;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static com.hazelcast.util.Preconditions.checkState;
+import static com.hazelcast.util.Preconditions.checkTrue;
 import static java.util.Collections.unmodifiableCollection;
 
 /**
@@ -55,7 +59,7 @@ import static java.util.Collections.unmodifiableCollection;
  */
 public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapshot>  {
 
-    static final RaftGroupId METADATA_GROUP_ID = new RaftGroupIdImpl("METADATA", 0);
+    public static final RaftGroupId METADATA_GROUP_ID = new RaftGroupIdImpl("METADATA", 0);
     private static final RaftMemberSelector RAFT_MEMBER_SELECTOR = new RaftMemberSelector();
 
     private final NodeEngine nodeEngine;
@@ -143,6 +147,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     @Override
     public void restoreSnapshot(RaftGroupId groupId, long commitIndex, MetadataSnapshot snapshot) {
         ensureMetadataGroupId(groupId);
+        checkNotNull(snapshot);
 
         logger.info("Restoring snapshot for commit-index: " + commitIndex);
         for (RaftGroupInfo group : snapshot.getRaftGroups()) {
@@ -178,10 +183,8 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     private static void ensureMetadataGroupId(RaftGroupId groupId) {
-        if (!METADATA_GROUP_ID.equals(groupId)) {
-            throw new IllegalArgumentException("Invalid RaftGroupId! Expected: " + METADATA_GROUP_ID
-                    + ", Actual: " + groupId);
-        }
+        checkTrue(METADATA_GROUP_ID.equals(groupId), "Invalid RaftGroupId! Expected: " + METADATA_GROUP_ID
+                + ", Actual: " + groupId);
     }
 
     public RaftMemberImpl getLocalMember() {
@@ -189,23 +192,24 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     public RaftGroupInfo getRaftGroup(RaftGroupId groupId) {
+        checkNotNull(groupId);
+
         return groups.get(groupId);
     }
 
     public void createInitialMetadataRaftGroup(Collection<RaftMemberImpl> members) {
+        checkNotNull(members);
+        checkTrue(members.size() > 1, "initial metadata raft group must contain at least 2 members: " + members);
+
         RaftGroupInfo metadataGroup = new RaftGroupInfo(METADATA_GROUP_ID, members);
         RaftGroupInfo existingMetadataGroup = groups.putIfAbsent(METADATA_GROUP_ID, metadataGroup);
         if (existingMetadataGroup != null) {
-            if (members.size() != existingMetadataGroup.memberCount()) {
-                throw new IllegalArgumentException("Cannot create metadata raft group with " + members
-                        + " because it already exists with a different member list: " + existingMetadataGroup);
-            }
+            checkTrue(members.size() == existingMetadataGroup.memberCount(), "Cannot create metadata raft group with "
+                    + members + " because it already exists with a different member list: " + existingMetadataGroup);
 
             for (RaftMemberImpl member : members) {
-                if (!existingMetadataGroup.containsMember(member)) {
-                    throw new IllegalArgumentException("Cannot create metadata raft group with " + members
-                            + " because it already exists with a different member list: " + existingMetadataGroup);
-                }
+                checkTrue(existingMetadataGroup.containsMember(member), "Cannot create metadata raft group with " + members
+                        + " because it already exists with a different member list: " + existingMetadataGroup);
             }
 
             return;
@@ -215,9 +219,9 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     public RaftGroupId createRaftGroup(String groupName, Collection<RaftMemberImpl> members, long commitIndex) {
-        if (METADATA_GROUP_ID.name().equals(groupName)) {
-            throw new IllegalArgumentException(groupName + " is reserved for internal usage!");
-        }
+        checkFalse(METADATA_GROUP_ID.name().equals(groupName), groupName + " is reserved for internal usage!");
+        failIfMetadataRaftGroupNotInitialized();
+
         // keep configuration on every metadata node
         RaftGroupInfo group = getRaftGroupByName(groupName);
         if (group != null) {
@@ -250,7 +254,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         } else {
             // Broadcast group-info to non-metadata group members
             OperationService operationService = nodeEngine.getOperationService();
-            RaftGroupInfo metadataGroup = groups.get(RaftService.METADATA_GROUP_ID);
+            RaftGroupInfo metadataGroup = groups.get(METADATA_GROUP_ID);
             for (RaftMemberImpl member : group.memberImpls()) {
                 if (!metadataGroup.containsMember(member)) {
                     operationService.send(new CreateRaftNodeOp(group), member.getAddress());
@@ -277,12 +281,11 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     public void triggerRebalanceRaftGroups() {
-        if (membershipChangeContext != null) {
-            if (membershipChangeContext.getLeavingMember() != null) {
-                throw new IllegalStateException("Cannot rebalance raft groups because there is ongoing "
-                        + membershipChangeContext);
-            }
+        failIfMetadataRaftGroupNotInitialized();
 
+        if (membershipChangeContext != null) {
+            checkState(membershipChangeContext.getLeavingMember() == null,
+                    "Cannot rebalance raft groups because there is ongoing " + membershipChangeContext);
             return;
         }
 
@@ -294,14 +297,11 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     public MembershipChangeContext triggerExpandRaftGroups(Map<RaftGroupId, RaftMemberImpl> membersToAdd) {
-        if (membershipChangeContext == null) {
-            throw new IllegalStateException("There is no membership context change to add: " + membersToAdd);
-        }
+        checkNotNull(membersToAdd);
+        checkState(membershipChangeContext != null, "There is no membership context to expand groups with members: " + membersToAdd);
 
         for (RaftMemberImpl member : membersToAdd.values()) {
-            if (!activeMembers.contains(member)) {
-                throw new IllegalStateException(membersToAdd + " is not in active members: " + activeMembers);
-            }
+            checkTrue(activeMembers.contains(member), membersToAdd + " is not in active members: " + activeMembers);
         }
 
         Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups = membershipChangeContext.getMemberMissingGroups();
@@ -312,17 +312,9 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             RaftGroupInfo group = groups.get(groupId);
             Collection<RaftMemberImpl> candidates = memberMissingGroups.get(groupId);
 
-            if (group == null) {
-                throw new IllegalArgumentException(groupId + " not found in the raft groups");
-            }
-
-            if (candidates == null) {
-                throw new IllegalArgumentException(groupId + " has no membership change");
-            }
-
-            if (!candidates.contains(memberToAdd)) {
-                throw new IllegalArgumentException(groupId + " does not have " + membersToAdd + " in its candidate list");
-            }
+            checkTrue(group != null, groupId + " not found in the raft groups");
+            checkTrue(candidates != null, groupId + " has no membership change");
+            checkTrue(candidates.contains(memberToAdd), groupId + " does not have " + membersToAdd + " in its candidate list");
 
             long idx = group.getMembersCommitIndex();
             changes.put(groupId, new RaftGroupMembershipChangeContext(idx, group.memberImpls(), memberToAdd, null));
@@ -330,11 +322,13 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
 
         logger.info("Raft groups will be expanded with the following changes: " + changes);
 
-        membershipChangeContext.setChanges(changes);
+        membershipChangeContext = membershipChangeContext.setChanges(changes);
         return membershipChangeContext;
     }
 
     public void triggerDestroyRaftGroup(RaftGroupId groupId) {
+        checkNotNull(groupId);
+
         RaftGroupInfo group = groups.get(groupId);
         checkNotNull(group, "No raft group exists for " + groupId + " to trigger destroy");
 
@@ -346,12 +340,16 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     public void completeDestroyRaftGroups(Set<RaftGroupId> groupIds) {
+        checkNotNull(groupIds);
+
         for (RaftGroupId groupId : groupIds) {
             completeDestroyRaftGroup(groupId);
         }
     }
 
     private void completeDestroyRaftGroup(RaftGroupId groupId) {
+        checkNotNull(groupId);
+
         RaftGroupInfo group = groups.get(groupId);
         checkNotNull(group, "No raft group exists for " + groupId + " to commit destroy");
 
@@ -370,6 +368,9 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
      * this method is idempotent
      */
     public void triggerRemoveMember(RaftMemberImpl leavingMember) {
+        checkNotNull(leavingMember);
+        failIfMetadataRaftGroupNotInitialized();
+
         if (!activeMembers.contains(leavingMember)) {
             logger.warning("Not removing " + leavingMember + " since it is not present in the active members");
             return;
@@ -418,13 +419,15 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     public MembershipChangeContext completeRaftGroupMembershipChanges(Map<RaftGroupId, Tuple2<Long, Long>> changedGroups) {
-        if (membershipChangeContext == null) {
-            throw new IllegalStateException("Cannot apply raft group membership changes: " + changedGroups
-                    + " since there is no membership change context!");
-        }
+        checkNotNull(changedGroups);
+        checkState(membershipChangeContext != null,"Cannot apply raft group membership changes: "
+                + changedGroups + " since there is no membership change context!");
 
         Map<RaftGroupId, RaftGroupMembershipChangeContext> changingGroups = membershipChangeContext.getChanges();
-        for (Entry<RaftGroupId, Tuple2<Long, Long>> e : changedGroups.entrySet()) {
+
+        Iterator<Entry<RaftGroupId, Tuple2<Long, Long>>> it = changedGroups.entrySet().iterator();
+        while (it.hasNext()) {
+            Entry<RaftGroupId, Tuple2<Long, Long>> e = it.next();
             RaftGroupId groupId = e.getKey();
             RaftGroupInfo group = groups.get(groupId);
 
@@ -432,6 +435,13 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             long expectedMembersCommitIndex = value.element1;
             long newMembersCommitIndex = value.element2;
             RaftGroupMembershipChangeContext ctx = changingGroups.get(groupId);
+            if (ctx == null) {
+                it.remove();
+                logger.severe("Raft group membership change context not found in " + membershipChangeContext
+                        + " for changed group: " + e);
+                continue;
+            }
+
             RaftMemberImpl addedMember = ctx.getMemberToAdd();
             RaftMemberImpl removedMember = ctx.getMemberToRemove();
 
@@ -447,12 +457,15 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
                     nodeEngine.getOperationService().send(new CreateRaftNodeOp(group), addedMember.getAddress());
                 }
             } else {
-                throw new IllegalArgumentException("Could not apply add-member: " + (addedMember != null ? addedMember : "-")
+                logger.severe("Could not apply add-member: " + (addedMember != null ? addedMember : "-")
                         + " and remove-member: " + (removedMember != null ? removedMember : "-") + " in "  + group
                         + " with new members commit index: " + newMembersCommitIndex + " expected members commit index: "
                         + expectedMembersCommitIndex + " known members commit index: " + group.getMembersCommitIndex());
+                it.remove();
             }
         }
+
+        membershipChangeContext = membershipChangeContext.exclude(changedGroups.keySet());
 
         RaftMemberImpl leavingMember = membershipChangeContext.getLeavingMember();
         if (leavingMember != null) {
@@ -465,6 +478,9 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             }
 
             if (safeToRemove) {
+                checkState(membershipChangeContext.hasNoPendingChanges(), "Leaving " + leavingMember
+                        + " is removed from all groups but there are still pending membership changes: "
+                        + membershipChangeContext);
                 logger.info(leavingMember + " is removed from all raft groups and active members");
                 removeActiveMember(leavingMember);
                 membershipChangeContext = null;
@@ -472,17 +488,14 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             }
         }
 
-        if (!changedGroups.isEmpty()) {
-            membershipChangeContext.exclude(changedGroups.keySet());
-            if (membershipChangeContext.hasNoPendingChange() && leavingMember == null) {
-                // the current raft group rebalancing step is completed. let's attempt for another one
-                Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups = getMemberMissingRaftGroups();
-                if (memberMissingGroups.size() > 0) {
-                    membershipChangeContext = new MembershipChangeContext(memberMissingGroups);
-                    logger.info("Raft group rebalancing continues with " + memberMissingGroups);
-                } else {
-                    logger.info("Rebalancing is completed.");
-                }
+        if (membershipChangeContext.hasNoPendingChanges() && leavingMember == null) {
+            // the current raft group rebalancing step is completed. let's attempt for another one
+            Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups = getMemberMissingRaftGroups();
+            if (memberMissingGroups.size() > 0) {
+                membershipChangeContext = new MembershipChangeContext(memberMissingGroups);
+                logger.info("Raft group rebalancing continues with " + memberMissingGroups);
+            } else {
+                logger.info("Rebalancing is completed.");
             }
         }
 
@@ -502,6 +515,8 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     public boolean isMemberRemoved(RaftMemberImpl member) {
+        checkNotNull(member);
+
         return !activeMembers.contains(member);
     }
 
@@ -515,9 +530,10 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     public void setActiveMembers(Collection<RaftMemberImpl> members) {
-        if (localMember.get() != null) {
-            throw new IllegalStateException("This node is already part of Raft members!");
-        }
+        checkNotNull(members);
+        checkTrue(members.size() > 1, "active members must contain at least 2 members: " + members);
+        checkState(getLocalMember() == null, "This node is already part of Raft members!");
+
         logger.fine("Setting active members to " + members);
         activeMembers = unmodifiableCollection(new LinkedHashSet<RaftMemberImpl>(members));
         updateInvocationManagerMembers(members);
@@ -546,7 +562,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         if (member == null) {
             return false;
         }
-        RaftNode raftNode = raftService.getRaftNode(RaftService.METADATA_GROUP_ID);
+        RaftNode raftNode = raftService.getRaftNode(METADATA_GROUP_ID);
         // even if the local leader information is stale, it is fine.
         return raftNode != null && !raftNode.isTerminatedOrSteppedDown() && member.equals(raftNode.getLeader());
     }
@@ -555,6 +571,9 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
      * this method is idempotent
      */
     public void addActiveMember(RaftMemberImpl member) {
+        checkNotNull(member);
+        failIfMetadataRaftGroupNotInitialized();
+
         if (activeMembers.contains(member)) {
             logger.fine(member + " already exists. Silently returning from addActiveMember().");
             return;
@@ -579,10 +598,8 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     @SuppressWarnings("unchecked")
-    private void triggerCreateInitialMetadataRaftGroup(List<RaftMemberImpl> metadataMembers) {
+    private void commitInitialMetadataRaftGroup(List<RaftMemberImpl> metadataMembers) {
         if (metadataMembers.contains(localMember.get())) {
-            // TODO [basri] we should get rid of this call...
-            addRaftGroup(new RaftGroupInfo(METADATA_GROUP_ID, metadataMembers));
             raftService.createRaftNode(METADATA_GROUP_ID, (Collection) metadataMembers);
             try {
                 RaftOp op = new CreateMetadataRaftGroupOp(metadataMembers);
@@ -591,6 +608,12 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             } catch (Exception e) {
                 logger.severe("COULD NOT CREATE METADATA RAFT GROUP WITH " + metadataMembers, e);
             }
+        }
+    }
+
+    private void failIfMetadataRaftGroupNotInitialized() {
+        if (!groups.containsKey(METADATA_GROUP_ID)) {
+            throw new MetadataRaftGroupNotInitializedException();
         }
     }
 
@@ -630,7 +653,6 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     private class DiscoverInitialRaftMembersTask implements Runnable {
-
         @Override
         public void run() {
             ExecutionService executionService = nodeEngine.getExecutionService();
@@ -650,7 +672,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
                         + "Expected Raft member count: " + config.getGroupSize()
                         + ", Current member count: " + members.size());
 
-                List<Member> raftMembers = new ArrayList<Member>(members).subList(0, config.getGroupSize());
+                List<Member> raftMembers = sortMembers(new ArrayList<Member>(members)).subList(0, config.getGroupSize());
                 if (!raftMembers.contains(nodeEngine.getLocalMember())) {
                     logger.warning("We are not a Raft member!");
                     localMember.set(null);
@@ -658,24 +680,18 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
                 }
             }
 
-            Collection<RaftMemberImpl> all = new LinkedHashSet<RaftMemberImpl>(config.getGroupSize());
-            List<RaftMemberImpl> metadata = new ArrayList<RaftMemberImpl>(config.getMetadataGroupSize());
-            int index = 0;
+            List<RaftMemberImpl> allRaftMembers = new ArrayList<RaftMemberImpl>(config.getGroupSize());
             for (Member member : members) {
                 RaftMemberImpl raftMember = new RaftMemberImpl(member);
-                all.add(raftMember);
-
-                if (index < config.getMetadataGroupSize()) {
-                    metadata.add(raftMember);
-                }
-
-                if (++index == config.getGroupSize()) {
-                    break;
-                }
+                allRaftMembers.add(raftMember);
             }
-            activeMembers = unmodifiableCollection(all);
-            updateInvocationManagerMembers(all);
-            triggerCreateInitialMetadataRaftGroup(metadata);
+            allRaftMembers = sortRaftMembers(allRaftMembers).subList(0, config.getGroupSize());
+
+            activeMembers = unmodifiableCollection(new LinkedHashSet<RaftMemberImpl>(allRaftMembers));
+            updateInvocationManagerMembers(activeMembers);
+
+            List<RaftMemberImpl> metadataMembers = allRaftMembers.subList(0, config.getMetadataGroupSize());
+            commitInitialMetadataRaftGroup(metadataMembers);
 
             broadcastActiveMembers();
         }
@@ -695,11 +711,22 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         }
     }
 
-    private static List<RaftMemberImpl> sort(List<RaftMemberImpl> members) {
+    private static List<RaftMemberImpl> sortRaftMembers(List<RaftMemberImpl> members) {
         Collections.sort(members, new Comparator<RaftMemberImpl>() {
             @Override
             public int compare(RaftMemberImpl e1, RaftMemberImpl e2) {
                 return e1.getUid().compareTo(e2.getUid());
+            }
+        });
+
+        return members;
+    }
+
+    private static List<Member> sortMembers(List<Member> members) {
+        Collections.sort(members, new Comparator<Member>() {
+            @Override
+            public int compare(Member e1, Member e2) {
+                return e1.getUuid().compareTo(e2.getUuid());
             }
         });
 

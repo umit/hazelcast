@@ -62,18 +62,21 @@ public class RaftInvocationContext {
         return knownLeaders.get(groupId);
     }
 
-    void setKnownLeader(RaftGroupId groupId, RaftMemberImpl leader) {
-        logger.fine("Setting known leader for raft: " + groupId + " to " + leader);
-        knownLeaders.put(groupId, leader);
+    boolean setKnownLeader(RaftGroupId groupId, RaftMemberImpl leader) {
+        if (leader != null) {
+            logger.fine("Setting known leader for raft: " + groupId + " to " + leader);
+            knownLeaders.put(groupId, leader);
+            return true;
+        }
+
+        return false;
     }
 
     void updateKnownLeaderOnFailure(RaftGroupId groupId, Throwable cause) {
         if (cause instanceof RaftException) {
             RaftException e = (RaftException) cause;
             RaftMemberImpl leader = (RaftMemberImpl) e.getLeader();
-            if (leader != null) {
-                setKnownLeader(groupId, leader);
-            } else {
+            if (!setKnownLeader(groupId, leader)) {
                 resetKnownLeader(groupId);
             }
         } else {

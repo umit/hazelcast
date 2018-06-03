@@ -27,6 +27,8 @@ import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
 import java.io.IOException;
 
+import static com.hazelcast.raft.impl.service.RaftMetadataManager.METADATA_GROUP_ID;
+
 public class AddRaftMemberOp extends RaftOp implements IdentifiedDataSerializable {
 
     private RaftMemberImpl member;
@@ -40,7 +42,7 @@ public class AddRaftMemberOp extends RaftOp implements IdentifiedDataSerializabl
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
-        assert RaftService.METADATA_GROUP_ID.equals(groupId);
+        assert METADATA_GROUP_ID.equals(groupId);
         RaftService service = getService();
         service.getMetadataManager().addActiveMember(member);
         return null;

@@ -1,8 +1,8 @@
 package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.config.Config;
-import com.hazelcast.config.raft.RaftMetadataGroupConfig;
 import com.hazelcast.config.raft.RaftConfig;
+import com.hazelcast.config.raft.RaftMetadataGroupConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftGroupId;
@@ -21,6 +21,7 @@ import static com.hazelcast.spi.properties.GroupProperty.MERGE_FIRST_RUN_DELAY_S
 import static com.hazelcast.spi.properties.GroupProperty.MERGE_NEXT_RUN_DELAY_SECONDS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
 
@@ -44,6 +45,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
 
                 for (HazelcastInstance instance : instances) {
                     RaftNodeImpl raftNode = getRaftNode(instance, groupId);
+                    assertNotNull(raftNode);
                     assertEquals(leaderNode.getLocalMember(), getLeaderMember(raftNode));
                     assertEquals(leaderTerm, getTerm(raftNode));
                 }
@@ -114,14 +116,22 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
     }
 
     protected HazelcastInstance getLeaderInstance(final HazelcastInstance[] instances, final RaftGroupId groupId) {
+        final RaftNodeImpl[] raftNodeRef = new RaftNodeImpl[1];
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                assertNotNull(getRaftNode(instances[0], groupId));
+                for (HazelcastInstance instance : instances) {
+                    RaftNodeImpl raftNode = getRaftNode(instance, groupId);
+                    if (raftNode != null) {
+                        raftNodeRef[0] = raftNode;
+                        return;
+                    }
+                }
+                fail();
             }
         });
 
-        RaftNodeImpl raftNode = getRaftNode(instances[0], groupId);
+        RaftNodeImpl raftNode = raftNodeRef[0];
         waitUntilLeaderElected(raftNode);
         RaftMemberImpl leaderEndpoint = getLeaderMember(raftNode);
 
@@ -135,14 +145,22 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
     }
 
     protected HazelcastInstance getRandomFollowerInstance(final HazelcastInstance[] instances, final RaftGroupId groupId) {
+        final RaftNodeImpl[] raftNodeRef = new RaftNodeImpl[1];
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                assertNotNull(getRaftNode(instances[0], groupId));
+                for (HazelcastInstance instance : instances) {
+                    RaftNodeImpl raftNode = getRaftNode(instance, groupId);
+                    if (raftNode != null) {
+                        raftNodeRef[0] = raftNode;
+                        return;
+                    }
+                }
+                fail();
             }
         });
 
-        RaftNodeImpl raftNode = getRaftNode(instances[0], groupId);
+        RaftNodeImpl raftNode = raftNodeRef[0];
         waitUntilLeaderElected(raftNode);
         RaftMemberImpl leaderEndpoint = getLeaderMember(raftNode);
 
