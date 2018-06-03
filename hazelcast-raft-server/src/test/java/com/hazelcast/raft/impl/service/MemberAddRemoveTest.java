@@ -19,6 +19,8 @@ package com.hazelcast.raft.impl.service;
 import com.hazelcast.config.Config;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.Member;
+import com.hazelcast.nio.Address;
+import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftMember;
 import com.hazelcast.raft.impl.RaftMemberImpl;
@@ -29,6 +31,7 @@ import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -38,7 +41,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-import static com.hazelcast.raft.impl.service.RaftService.METADATA_GROUP_ID;
+import static com.hazelcast.raft.impl.service.RaftMetadataManager.METADATA_GROUP_ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -233,7 +236,7 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws ExecutionException, InterruptedException {
-                RaftGroupInfo metadataGroup = invocationManager.<RaftGroupInfo>invoke(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID)).get();
+                RaftGroupInfo metadataGroup = invocationManager.<RaftGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID), QueryPolicy.LEADER_LOCAL).get();
                 assertEquals(3, metadataGroup.memberCount());
                 Collection<RaftMember> metadataMembers = metadataGroup.members();
                 assertTrue(metadataMembers.contains(getRaftService(instances[3]).getLocalMember()));
@@ -243,24 +246,25 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         });
     }
 
+    @Ignore
     @Test
     public void testExpandRaftGroupMultipleTimes() throws ExecutionException, InterruptedException {
-        final HazelcastInstance[] instances = newInstances(5, 5, 2);
+        final HazelcastInstance[] instances = newInstances(4, 4, 2);
 
         final RaftInvocationManager invocationManager = getRaftInvocationManager(instances[2]);
 
         instances[0].shutdown();
         instances[1].shutdown();
 
+        getRaftService(instances[4]).triggerRaftMemberPromotion().get();
         getRaftService(instances[5]).triggerRaftMemberPromotion().get();
-        getRaftService(instances[6]).triggerRaftMemberPromotion().get();
         getRaftService(instances[2]).triggerRebalanceRaftGroups().get();
 
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws ExecutionException, InterruptedException {
-                RaftGroupInfo metadataGroup = invocationManager.<RaftGroupInfo>invoke(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID)).get();
-                assertEquals(5, metadataGroup.memberCount());
+                RaftGroupInfo metadataGroup = invocationManager.<RaftGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID), QueryPolicy.LEADER_LOCAL).get();
+                assertEquals(4, metadataGroup.memberCount());
                 Collection<RaftMember> metadataMembers = metadataGroup.members();
                 assertTrue(metadataMembers.contains(getRaftService(instances[4]).getLocalMember()));
                 assertTrue(metadataMembers.contains(getRaftService(instances[5]).getLocalMember()));
@@ -268,21 +272,24 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
                 assertNotNull(getRaftNode(instances[4], METADATA_GROUP_ID));
                 assertNotNull(getRaftNode(instances[5], METADATA_GROUP_ID));
             }
-        });
+        }, 60);
     }
 
     @Test
     public void testExpandMultipleRaftGroupsMultipleTimes() throws ExecutionException, InterruptedException {
-        final HazelcastInstance[] instances = newInstances(5, 4, 2);
+        final HazelcastInstance[] instances = newInstances(5, 5, 2);
 
         final RaftInvocationManager invocationManager = getRaftInvocationManager(instances[6]);
-        final RaftGroupId groupId = invocationManager.createRaftGroup("id", 5).get();
+        final RaftGroupId groupId = invocationManager.createRaftGroup("g1", 4).get();
         invocationManager.invoke(groupId, new DummyOp()).get();
 
-        RaftGroupInfo metadataGroup = invocationManager.<RaftGroupInfo>invoke(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID)).get();
-        RaftMemberImpl[] metadataMembers = metadataGroup.membersArray();
-        factory.getInstance(metadataMembers[0].getAddress()).shutdown();
-        factory.getInstance(metadataMembers[1].getAddress()).shutdown();
+        RaftGroupInfo otherGroup = invocationManager.<RaftGroupInfo>invoke(METADATA_GROUP_ID, new GetRaftGroupOp(groupId)).get();
+        RaftMemberImpl[] otherGroupMembers = otherGroup.membersArray();
+        List<Address> shutdownAddresses = Arrays.asList(otherGroupMembers[0].getAddress(), otherGroupMembers[1].getAddress());
+
+        for (Address address : shutdownAddresses) {
+            factory.getInstance(address).shutdown();
+        }
 
         getRaftService(instances[5]).triggerRaftMemberPromotion().get();
         getRaftService(instances[6]).triggerRaftMemberPromotion().get();
@@ -292,16 +299,16 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws ExecutionException, InterruptedException {
-                RaftGroupInfo metadataGroup = invocationManager.<RaftGroupInfo>invoke(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID)).get();
-                RaftGroupInfo otherGroup = invocationManager.<RaftGroupInfo>invoke(METADATA_GROUP_ID, new GetRaftGroupOp(groupId)).get();
-                assertEquals(4, metadataGroup.memberCount());
-                assertEquals(5, otherGroup.memberCount());
+                RaftGroupInfo metadataGroup = invocationManager.<RaftGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID), QueryPolicy.LEADER_LOCAL).get();
+                RaftGroupInfo otherGroup = invocationManager.<RaftGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId), QueryPolicy.LEADER_LOCAL).get();
+                assertEquals(5, metadataGroup.memberCount());
+                assertEquals(4, otherGroup.memberCount());
 
-                assertNotNull(getRaftNode(instances[5], groupId));
-                assertNotNull(getRaftNode(instances[6], groupId));
+                assertNotNull(getRaftNode(instances[5], METADATA_GROUP_ID));
+                assertNotNull(getRaftNode(instances[6], METADATA_GROUP_ID));
 
-                boolean metadataNodeCreatedOnInstance5 = (getRaftNode(instances[5], METADATA_GROUP_ID) != null);
-                boolean metadataNodeCreatedOnInstance6 = (getRaftNode(instances[6], METADATA_GROUP_ID) != null);
+                boolean metadataNodeCreatedOnInstance5 = (getRaftNode(instances[5], groupId) != null);
+                boolean metadataNodeCreatedOnInstance6 = (getRaftNode(instances[6], groupId) != null);
                 assertTrue(metadataNodeCreatedOnInstance5 ^ metadataNodeCreatedOnInstance6);
             }
         });

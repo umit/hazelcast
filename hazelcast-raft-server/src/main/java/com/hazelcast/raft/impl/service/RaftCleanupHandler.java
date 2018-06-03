@@ -40,7 +40,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 
-import static com.hazelcast.raft.impl.service.RaftService.METADATA_GROUP_ID;
+import static com.hazelcast.raft.impl.service.RaftMetadataManager.METADATA_GROUP_ID;
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;

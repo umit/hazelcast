@@ -47,7 +47,9 @@ import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.raft.QueryPolicy.LEADER_LOCAL;
 import static com.hazelcast.raft.impl.service.RaftCleanupHandler.CLEANUP_TASK_PERIOD_IN_MILLIS;
+import static com.hazelcast.raft.impl.service.RaftMetadataManager.METADATA_GROUP_ID;
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
+import static com.hazelcast.util.Preconditions.checkState;
 import static java.util.Collections.newSetFromMap;
 import static java.util.Collections.singletonList;
 
@@ -58,7 +60,6 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         GracefulShutdownAwareService, MembershipAwareService {
 
     public static final String SERVICE_NAME = "hz:core:raft";
-    public static final RaftGroupId METADATA_GROUP_ID = RaftMetadataManager.METADATA_GROUP_ID;
 
     private final ConcurrentMap<RaftGroupId, RaftNode> nodes = new ConcurrentHashMap<RaftGroupId, RaftNode>();
     private final NodeEngineImpl nodeEngine;
@@ -126,13 +127,8 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return invocationManager.invoke(METADATA_GROUP_ID, new TriggerRebalanceRaftGroupsOp());
     }
 
-    /**
-     * this method is idempotent
-     */
     public ICompletableFuture<Object> triggerRaftMemberPromotion() {
-        if (metadataManager.getLocalMember() != null) {
-            throw new IllegalStateException("We are already a Raft member!");
-        }
+        checkState(metadataManager.getLocalMember() == null, "We are already a Raft member!");
 
         RaftMemberImpl member = new RaftMemberImpl(nodeEngine.getLocalMember());
         logger.info("Adding new Raft member: " + member);
@@ -156,12 +152,10 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
      */
     public ICompletableFuture<Object> triggerRemoveRaftMember(RaftMemberImpl member) {
         ClusterService clusterService = nodeEngine.getClusterService();
-        if (!clusterService.isMaster()) {
-            throw new IllegalStateException("Only master can remove a Raft member!");
-        }
-        if (clusterService.getMember(member.getAddress()) != null) {
-            throw new IllegalArgumentException("Cannot remove " + member + ", it is a live member!");
-        }
+        checkState(clusterService.isMaster(), "Only master can remove a Raft member!");
+        checkState(clusterService.getMember(member.getAddress()) == null,
+                "Cannot remove " + member + ", it is a live member!");
+
         return invokeTriggerRemoveMember(member);
     }
 
@@ -203,8 +197,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             }
             remainingTimeNanos -= CLEANUP_TASK_PERIOD_IN_MILLIS;
         }
-        logger.fine("Remove member procedure NOT completed for " + localMember + " in "
-                + unit.toMillis(timeout) + " ms.");
+        logger.fine("Remove member procedure NOT completed for " + localMember + " in " + unit.toMillis(timeout) + " ms.");
         return false;
     }
 

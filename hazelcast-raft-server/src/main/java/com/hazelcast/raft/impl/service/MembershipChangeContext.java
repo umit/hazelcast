@@ -1,3 +1,19 @@
+/*
+ *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.nio.ObjectDataInput;
@@ -10,12 +26,23 @@ import com.hazelcast.raft.impl.RaftMemberImpl;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import static com.hazelcast.util.Preconditions.checkFalse;
+import static com.hazelcast.util.Preconditions.checkNotNull;
+import static com.hazelcast.util.Preconditions.checkState;
+import static java.util.Collections.unmodifiableMap;
+
+/**
+ * TODO: Javadoc Pending...
+ *
+ * This class is IMMUTABLE because it can be returned as a response to local queries...
+ */
 public class MembershipChangeContext implements IdentifiedDataSerializable {
 
     private final Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups = new HashMap<RaftGroupId, List<RaftMemberImpl>>();
@@ -34,8 +61,15 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
         this.changes.putAll(changes);
     }
 
+    private MembershipChangeContext(Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups, RaftMemberImpl leavingMember,
+                                    Map<RaftGroupId, RaftGroupMembershipChangeContext> changes) {
+        this.memberMissingGroups.putAll(memberMissingGroups);
+        this.leavingMember = leavingMember;
+        this.changes.putAll(changes);
+    }
+
     public Map<RaftGroupId, List<RaftMemberImpl>> getMemberMissingGroups() {
-        return memberMissingGroups;
+        return unmodifiableMap(memberMissingGroups);
     }
 
     public boolean hasNoPendingMembersToAdd() {
@@ -47,34 +81,35 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
     }
 
     public Map<RaftGroupId, RaftGroupMembershipChangeContext> getChanges() {
-        return changes;
+        return unmodifiableMap(changes);
     }
 
-    public boolean hasNoPendingChange() {
+    public boolean hasNoPendingChanges() {
         return changes.isEmpty();
     }
 
-    public void exclude(Collection<RaftGroupId> groupIds) {
+    public MembershipChangeContext exclude(Collection<RaftGroupId> groupIds) {
+        Map<RaftGroupId, RaftGroupMembershipChangeContext> remainingChanges =
+                new HashMap<RaftGroupId, RaftGroupMembershipChangeContext>(changes);
         for (RaftGroupId leftGroupId : groupIds) {
-            changes.remove(leftGroupId);
+            remainingChanges.remove(leftGroupId);
         }
+
+        return new MembershipChangeContext(memberMissingGroups, leavingMember, remainingChanges);
     }
 
-    public void setChanges(Map<RaftGroupId, RaftGroupMembershipChangeContext> newChanges) {
-        if (newChanges.isEmpty()) {
-            throw new IllegalArgumentException();
-        }
+    public MembershipChangeContext setChanges(Map<RaftGroupId, RaftGroupMembershipChangeContext> newChanges) {
+        checkNotNull(newChanges);
+        checkFalse(newChanges.isEmpty(), "Cannot set empty changes for " + this);
+        checkState(leavingMember == null,
+                "Cannot set changes: " + newChanges + " because there is a leaving member for " + this);
+        checkState(changes.isEmpty(),
+                "Cannot set changes: " + newChanges + " because there are pending membership for: " + this);
+        HashSet<RaftGroupId> groupIds = new HashSet<RaftGroupId>(memberMissingGroups.keySet());
+        groupIds.removeAll(newChanges.keySet());
+        checkState(groupIds.isEmpty(), "Changes: " + newChanges + " do not cover all missing member groups for " + this);
 
-        if (leavingMember != null) {
-            throw new IllegalStateException("Cannot set changes: " + newChanges + " because there is a leaving member: " + leavingMember);
-        }
-
-        if (changes.size() > 0) {
-            throw new IllegalStateException("Cannot set changes: " + newChanges + " because there are pending membership changes: " + changes);
-        }
-
-        memberMissingGroups.clear();
-        changes.putAll(newChanges);
+        return new MembershipChangeContext(Collections.<RaftGroupId, List<RaftMemberImpl>>emptyMap(), leavingMember, newChanges);
     }
 
     public static class RaftGroupMembershipChangeContext implements DataSerializable {
