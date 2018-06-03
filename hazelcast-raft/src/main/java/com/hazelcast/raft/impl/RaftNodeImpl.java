@@ -521,10 +521,11 @@ public class RaftNodeImpl implements RaftNode {
         } else if (operation instanceof ApplyRaftGroupMembersCmd) {
             assert status == CHANGING_MEMBERSHIP : "STATUS: " + status;
             state.commitGroupMembers();
-            if (state.members().contains(localMember)) {
-                setStatus(ACTIVE);
-            } else {
+            ApplyRaftGroupMembersCmd cmd = (ApplyRaftGroupMembersCmd) operation;
+            if (cmd.getMember().equals(localMember) && cmd.getChangeType() == MembershipChangeType.REMOVE) {
                 setStatus(STEPPED_DOWN);
+            } else {
+                setStatus(ACTIVE);
             }
             response = entry.index();
         } else {

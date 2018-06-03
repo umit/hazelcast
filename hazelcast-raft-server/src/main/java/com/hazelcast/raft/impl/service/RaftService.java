@@ -51,7 +51,6 @@ import static com.hazelcast.raft.impl.service.RaftMetadataManager.METADATA_GROUP
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 import static com.hazelcast.util.Preconditions.checkState;
 import static java.util.Collections.newSetFromMap;
-import static java.util.Collections.singletonList;
 
 /**
  * TODO: Javadoc Pending...
@@ -375,11 +374,8 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     }
 
     public void createRaftNode(RaftGroupInfo group) {
-        RaftMemberImpl localMember = getLocalMember();
-        if (group.containsMember(localMember)) {
-            Collection<RaftMember> members = group.isInitialMember(localMember)
-                    ? group.members() : singletonList((RaftMember) localMember);
-            createRaftNode(group.id(), members);
+        if (group.containsMember(getLocalMember())) {
+            createRaftNode(group.id(), group.initialMembers());
         }
     }
 

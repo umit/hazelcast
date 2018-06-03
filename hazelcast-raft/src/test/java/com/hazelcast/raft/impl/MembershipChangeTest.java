@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl;
 
-import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.config.raft.RaftAlgorithmConfig;
+import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.exception.CannotReplicateException;
 import com.hazelcast.raft.exception.MemberAlreadyExistsException;
 import com.hazelcast.raft.exception.MemberDoesNotExistException;
@@ -83,7 +83,8 @@ public class MembershipChangeTest extends HazelcastTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                for (RaftNodeImpl raftNode : group.getNodes()) {
+                RaftNodeImpl[] nodes = group.getNodes();
+                for (RaftNodeImpl raftNode : nodes) {
                     assertEquals(RaftNodeStatus.ACTIVE, getStatus(raftNode));
                     assertEquals(lastGroupMembers.members(), getLastGroupMembers(raftNode).members());
                     assertEquals(lastGroupMembers.index(), getLastGroupMembers(raftNode).index());
@@ -123,6 +124,118 @@ public class MembershipChangeTest extends HazelcastTestSupport {
         });
 
         group.terminateNode(leavingFollower.getLocalMember());
+    }
+
+    @Test
+    public void when_newRaftNodeJoinsAfterAnotherNodeLeaves_then_itAppendsMissingEntries() throws ExecutionException, InterruptedException {
+        group = newGroupWithService(3, new RaftAlgorithmConfig());
+        group.start();
+
+        final RaftNodeImpl leader = group.waitUntilLeaderElected();
+        leader.replicate(new ApplyRaftRunnable("val")).get();
+
+        RaftNodeImpl[] followers = group.getNodesExcept(leader.getLocalMember());
+        final RaftNodeImpl leavingFollower = followers[0];
+        final RaftNodeImpl stayingFollower = followers[1];
+
+        leader.replicateMembershipChange(leavingFollower.getLocalMember(), REMOVE).get();
+
+        final RaftNodeImpl newRaftNode = group.createNewRaftNode();
+
+        leader.replicateMembershipChange(newRaftNode.getLocalMember(), MembershipChangeType.ADD).get();
+
+        final long commitIndex = getCommitIndex(leader);
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertEquals(commitIndex, getCommitIndex(newRaftNode));
+            }
+        });
+
+        final RaftGroupMembers lastGroupMembers = RaftUtil.getLastGroupMembers(leader);
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (RaftNodeImpl raftNode : asList(leader, stayingFollower, newRaftNode)) {
+                    assertEquals(RaftNodeStatus.ACTIVE, getStatus(raftNode));
+                    assertEquals(lastGroupMembers.members(), getLastGroupMembers(raftNode).members());
+                    assertEquals(lastGroupMembers.index(), getLastGroupMembers(raftNode).index());
+                    assertEquals(lastGroupMembers.members(), getCommittedGroupMembers(raftNode).members());
+                    assertEquals(lastGroupMembers.index(), getCommittedGroupMembers(raftNode).index());
+                    assertFalse(getLastGroupMembers(raftNode).isKnownMember(leavingFollower.getLocalMember()));
+                    assertFalse(getCommittedGroupMembers(raftNode).isKnownMember(leavingFollower.getLocalMember()));
+                }
+            }
+        });
+
+        RaftDataService service = group.getService(newRaftNode);
+        assertEquals(1, service.size());
+        assertTrue(service.values().contains("val"));
+    }
+
+    @Test
+    public void when_newRaftNodeJoinsAfterAnotherNodeLeavesAndSnapshotIsTaken_then_itAppendsMissingEntries() throws ExecutionException, InterruptedException {
+        int commitIndexAdvanceCountToSnapshot = 10;
+        RaftAlgorithmConfig config = new RaftAlgorithmConfig();
+        config.setCommitIndexAdvanceCountToSnapshot(commitIndexAdvanceCountToSnapshot);
+        group = newGroupWithService(3, config);
+        group.start();
+
+        final RaftNodeImpl leader = group.waitUntilLeaderElected();
+
+        leader.replicate(new ApplyRaftRunnable("val")).get();
+
+        RaftNodeImpl[] followers = group.getNodesExcept(leader.getLocalMember());
+        final RaftNodeImpl leavingFollower = followers[0];
+        final RaftNodeImpl stayingFollower = followers[1];
+
+        leader.replicateMembershipChange(leavingFollower.getLocalMember(), REMOVE).get();
+
+        for (int i = 0; i < commitIndexAdvanceCountToSnapshot; i++) {
+            leader.replicate(new ApplyRaftRunnable("val" + i)).get();
+        }
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertTrue(getSnapshotEntry(leader).index() > 0);
+            }
+        });
+
+        final RaftNodeImpl newRaftNode = group.createNewRaftNode();
+
+        leader.replicateMembershipChange(newRaftNode.getLocalMember(), MembershipChangeType.ADD).get();
+
+        final long commitIndex = getCommitIndex(leader);
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertEquals(commitIndex, getCommitIndex(newRaftNode));
+            }
+        });
+
+        final RaftGroupMembers lastGroupMembers = RaftUtil.getLastGroupMembers(leader);
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (RaftNodeImpl raftNode : asList(leader, stayingFollower, newRaftNode)) {
+                    assertEquals(RaftNodeStatus.ACTIVE, getStatus(raftNode));
+                    assertEquals(lastGroupMembers.members(), getLastGroupMembers(raftNode).members());
+                    assertEquals(lastGroupMembers.index(), getLastGroupMembers(raftNode).index());
+                    assertEquals(lastGroupMembers.members(), getCommittedGroupMembers(raftNode).members());
+                    assertEquals(lastGroupMembers.index(), getCommittedGroupMembers(raftNode).index());
+                    assertFalse(getLastGroupMembers(raftNode).isKnownMember(leavingFollower.getLocalMember()));
+                    assertFalse(getCommittedGroupMembers(raftNode).isKnownMember(leavingFollower.getLocalMember()));
+                }
+            }
+        });
+
+        RaftDataService service = group.getService(newRaftNode);
+        assertEquals(commitIndexAdvanceCountToSnapshot + 1, service.size());
+        assertTrue(service.values().contains("val"));
+        for (int i = 0; i < commitIndexAdvanceCountToSnapshot; i++) {
+            assertTrue(service.values().contains("val" + i));
+        }
     }
 
     @Test

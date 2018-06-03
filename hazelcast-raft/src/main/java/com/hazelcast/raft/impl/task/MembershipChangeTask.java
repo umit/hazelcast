@@ -75,8 +75,6 @@ public class MembershipChangeTask implements Runnable {
             return;
         }
 
-        logger.info("Changing membership -> " + changeType + ": " + member);
-
         Collection<RaftMember> members = new LinkedHashSet<RaftMember>(state.members());
         boolean memberExists = members.contains(member);
 
@@ -101,8 +99,9 @@ public class MembershipChangeTask implements Runnable {
                 resultFuture.setResult(new IllegalArgumentException("Unknown type: " + changeType));
                 return;
         }
-        logger.info("New members after " + changeType + " -> " + members);
-        new ReplicateTask(raftNode, new ApplyRaftGroupMembersCmd(members), resultFuture).run();
+
+        logger.info("New members after " + changeType + " " + member + " -> " + members);
+        new ReplicateTask(raftNode, new ApplyRaftGroupMembersCmd(members, member, changeType), resultFuture).run();
     }
 
     private boolean verifyRaftNodeStatus() {

@@ -31,7 +31,6 @@ import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -246,33 +245,36 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         });
     }
 
-    @Ignore
     @Test
     public void testExpandRaftGroupMultipleTimes() throws ExecutionException, InterruptedException {
-        final HazelcastInstance[] instances = newInstances(4, 4, 2);
+        final HazelcastInstance[] instances = newInstances(5, 5, 3);
 
-        final RaftInvocationManager invocationManager = getRaftInvocationManager(instances[2]);
+        final RaftInvocationManager invocationManager = getRaftInvocationManager(instances[3]);
 
         instances[0].shutdown();
         instances[1].shutdown();
+        instances[2].shutdown();
 
-        getRaftService(instances[4]).triggerRaftMemberPromotion().get();
         getRaftService(instances[5]).triggerRaftMemberPromotion().get();
-        getRaftService(instances[2]).triggerRebalanceRaftGroups().get();
+        getRaftService(instances[6]).triggerRaftMemberPromotion().get();
+        getRaftService(instances[7]).triggerRaftMemberPromotion().get();
+        getRaftService(instances[3]).triggerRebalanceRaftGroups().get();
 
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws ExecutionException, InterruptedException {
                 RaftGroupInfo metadataGroup = invocationManager.<RaftGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID), QueryPolicy.LEADER_LOCAL).get();
-                assertEquals(4, metadataGroup.memberCount());
+                assertEquals(5, metadataGroup.memberCount());
                 Collection<RaftMember> metadataMembers = metadataGroup.members();
-                assertTrue(metadataMembers.contains(getRaftService(instances[4]).getLocalMember()));
                 assertTrue(metadataMembers.contains(getRaftService(instances[5]).getLocalMember()));
+                assertTrue(metadataMembers.contains(getRaftService(instances[6]).getLocalMember()));
+                assertTrue(metadataMembers.contains(getRaftService(instances[7]).getLocalMember()));
 
-                assertNotNull(getRaftNode(instances[4], METADATA_GROUP_ID));
                 assertNotNull(getRaftNode(instances[5], METADATA_GROUP_ID));
+                assertNotNull(getRaftNode(instances[6], METADATA_GROUP_ID));
+                assertNotNull(getRaftNode(instances[7], METADATA_GROUP_ID));
             }
-        }, 60);
+        });
     }
 
     @Test
