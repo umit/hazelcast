@@ -17,7 +17,6 @@ import static com.hazelcast.raft.impl.RaftUtil.minority;
 import static com.hazelcast.raft.impl.RaftUtil.newRaftMember;
 import static com.hazelcast.test.HazelcastTestSupport.assertTrueEventually;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertEquals;
@@ -35,6 +34,7 @@ public class LocalRaftGroup {
     private final String serviceName;
     private final Class<? extends SnapshotAwareService> serviceClazz;
     private final boolean appendNopEntryOnLeaderElection;
+    private RaftMember[] initialMembers;
     private RaftMember[] members;
     private LocalRaftIntegration[] integrations;
     private RaftNodeImpl[] nodes;
@@ -51,6 +51,7 @@ public class LocalRaftGroup {
     public LocalRaftGroup(int size, RaftAlgorithmConfig raftAlgorithmConfig,
                           String serviceName, Class<? extends SnapshotAwareService> serviceClazz,
                           boolean appendNopEntryOnLeaderElection) {
+        initialMembers = new RaftMember[size];
         members = new RaftMember[size];
         integrations = new LocalRaftIntegration[size];
         groupId = new TestRaftGroupId("test");
@@ -62,6 +63,7 @@ public class LocalRaftGroup {
         for (; createdNodeCount < size; createdNodeCount++) {
             LocalRaftIntegration integration = createNewLocalRaftIntegration();
             integrations[createdNodeCount] = integration;
+            initialMembers[createdNodeCount] = integration.getLocalEndpoint();
             members[createdNodeCount] = integration.getLocalEndpoint();
         }
 
@@ -127,7 +129,7 @@ public class LocalRaftGroup {
         integrations[oldSize] = integration;
         RaftMember endpoint = integration.getLocalEndpoint();
         endpoints[oldSize] = endpoint;
-        RaftNodeImpl node = new RaftNodeImpl(groupId, endpoint, singletonList(endpoint), raftAlgorithmConfig, integration);
+        RaftNodeImpl node = new RaftNodeImpl(groupId, endpoint, asList(initialMembers), raftAlgorithmConfig, integration);
         nodes[oldSize] = node;
         this.members = endpoints;
         this.integrations = integrations;

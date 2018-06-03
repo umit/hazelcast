@@ -51,11 +51,11 @@ import static com.hazelcast.util.Preconditions.checkFalse;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static com.hazelcast.util.Preconditions.checkState;
 import static com.hazelcast.util.Preconditions.checkTrue;
+import static java.util.Collections.sort;
 import static java.util.Collections.unmodifiableCollection;
 
 /**
  * TODO: Javadoc Pending...
- *
  */
 public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapshot>  {
 
@@ -505,7 +505,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     private Map<RaftGroupId, List<RaftMemberImpl>> getMemberMissingRaftGroups() {
         Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups = new HashMap<RaftGroupId, List<RaftMemberImpl>>();
         for (RaftGroupInfo group : groups.values()) {
-            if (group.initialGroupSize() > group.memberCount() && activeMembers.size() > group.memberCount()) {
+            if (group.initialMemberCount() > group.memberCount() && activeMembers.size() > group.memberCount()) {
                 List<RaftMemberImpl> candidates = new ArrayList<RaftMemberImpl>(activeMembers);
                 candidates.removeAll(group.memberImpls());
                 memberMissingGroups.put(group.id(), candidates);
@@ -671,26 +671,20 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
                 logger.severe("INVALID RAFT MEMBERS INITIALIZATION !!! "
                         + "Expected Raft member count: " + config.getGroupSize()
                         + ", Current member count: " + members.size());
-
-                List<Member> raftMembers = sortMembers(new ArrayList<Member>(members)).subList(0, config.getGroupSize());
-                if (!raftMembers.contains(nodeEngine.getLocalMember())) {
-                    logger.warning("We are not a Raft member!");
-                    localMember.set(null);
-                    return;
-                }
             }
 
-            List<RaftMemberImpl> allRaftMembers = new ArrayList<RaftMemberImpl>(config.getGroupSize());
-            for (Member member : members) {
-                RaftMemberImpl raftMember = new RaftMemberImpl(member);
-                allRaftMembers.add(raftMember);
-            }
-            allRaftMembers = sortRaftMembers(allRaftMembers).subList(0, config.getGroupSize());
+            List<RaftMemberImpl> raftMembers = getInitialRaftMembers(members);
 
-            activeMembers = unmodifiableCollection(new LinkedHashSet<RaftMemberImpl>(allRaftMembers));
+            if (!raftMembers.contains(localMember.get())) {
+                logger.warning("I am demoting to the non-raft member node!");
+                localMember.set(null);
+                return;
+            }
+
+            activeMembers = unmodifiableCollection(new LinkedHashSet<RaftMemberImpl>(raftMembers));
             updateInvocationManagerMembers(activeMembers);
 
-            List<RaftMemberImpl> metadataMembers = allRaftMembers.subList(0, config.getMetadataGroupSize());
+            List<RaftMemberImpl> metadataMembers = raftMembers.subList(0, config.getMetadataGroupSize());
             commitInitialMetadataRaftGroup(metadataMembers);
 
             broadcastActiveMembers();
@@ -711,26 +705,21 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         }
     }
 
-    private static List<RaftMemberImpl> sortRaftMembers(List<RaftMemberImpl> members) {
-        Collections.sort(members, new Comparator<RaftMemberImpl>() {
+    private List<RaftMemberImpl> getInitialRaftMembers(Collection<Member> members) {
+        List<RaftMemberImpl> raftMembers = new ArrayList<RaftMemberImpl>(config.getGroupSize());
+        for (Member member : members) {
+            RaftMemberImpl raftMember = new RaftMemberImpl(member);
+            raftMembers.add(raftMember);
+        }
+
+        sort(raftMembers, new Comparator<RaftMemberImpl>() {
             @Override
             public int compare(RaftMemberImpl e1, RaftMemberImpl e2) {
                 return e1.getUid().compareTo(e2.getUid());
             }
         });
 
-        return members;
-    }
-
-    private static List<Member> sortMembers(List<Member> members) {
-        Collections.sort(members, new Comparator<Member>() {
-            @Override
-            public int compare(Member e1, Member e2) {
-                return e1.getUuid().compareTo(e2.getUuid());
-            }
-        });
-
-        return members;
+        return raftMembers.subList(0, config.getGroupSize());
     }
 
     private static class RaftMemberSelector implements MemberSelector {

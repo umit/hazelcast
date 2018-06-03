@@ -95,8 +95,6 @@ public class RaftState {
     private CandidateState candidateState;
 
     public RaftState(RaftGroupId groupId, RaftMember localEndpoint, Collection<RaftMember> endpoints) {
-        assert endpoints.contains(localEndpoint)
-                : "Members set must contain local member! Members: " + endpoints + ", Local member: " + localEndpoint;
         this.groupId = groupId;
         this.localEndpoint = localEndpoint;
         RaftGroupMembers groupMembers = new RaftGroupMembers(0, endpoints, localEndpoint);
