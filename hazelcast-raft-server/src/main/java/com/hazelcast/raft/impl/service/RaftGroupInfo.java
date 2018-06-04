@@ -101,7 +101,10 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
 
     public boolean setDestroyed() {
         checkState(status != ACTIVE, "Cannot destroy " + id + " because status is: " + status);
+        return forceSetDestroyed();
+    }
 
+    public boolean forceSetDestroyed() {
         if (status == DESTROYED) {
             return false;
         }

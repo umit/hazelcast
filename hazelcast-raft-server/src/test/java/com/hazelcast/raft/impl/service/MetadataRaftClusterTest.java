@@ -43,6 +43,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
@@ -277,6 +278,79 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         });
 
         createNewRaftGroup(instances[0], "id", cpNodeCount - 1);
+    }
+
+    @Test
+    public void when_nonMetadataRaftGroupIsAlive_then_itCanBeForceDestroyed() throws ExecutionException, InterruptedException {
+        instances = newInstances(3);
+
+        waitAllForLeaderElection(instances, METADATA_GROUP_ID);
+
+        final RaftGroupId groupId = createNewRaftGroup(instances[0], "id", 3);
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (HazelcastInstance instance : instances) {
+                    assertNotNull(getRaftService(instance).getRaftNode(groupId));
+                }
+            }
+        });
+
+        getRaftService(instances[0]).forceDestroyRaftGroup(groupId).get();
+
+        RaftGroupInfo groupInfo = getRaftInvocationManager(instances[0]).<RaftGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId), QueryPolicy.LEADER_LOCAL).get();
+        assertEquals(RaftGroupStatus.DESTROYED, groupInfo.status());
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (HazelcastInstance instance : instances) {
+                    assertNull(getRaftNode(instance, groupId));
+                }
+            }
+        });
+
+        RaftGroupId newGroupId = createNewRaftGroup(instances[0], "id", 3);
+        assertNotEquals(groupId, newGroupId);
+    }
+
+    @Test
+    public void when_nonMetadataRaftGroupLosesMajority_then_itCanBeForceDestroyed() throws ExecutionException, InterruptedException {
+        instances = newInstances(5);
+
+        waitAllForLeaderElection(instances, METADATA_GROUP_ID);
+
+        final RaftGroupId groupId = createNewRaftGroup(instances[0], "id", 3);
+
+        RaftGroupInfo groupInfo = getRaftInvocationManager(instances[0]).<RaftGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId), QueryPolicy.LEADER_LOCAL).get();
+        final RaftMemberImpl[] groupMembers = groupInfo.membersArray();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (RaftMemberImpl member : groupMembers) {
+                    HazelcastInstance instance = factory.getInstance(member.getAddress());
+                    assertNotNull(getRaftNode(instance, groupId));
+                }
+            }
+        });
+
+        factory.getInstance(groupMembers[0].getAddress()).getLifecycleService().terminate();
+        factory.getInstance(groupMembers[1].getAddress()).getLifecycleService().terminate();
+
+        final HazelcastInstance runningInstance = factory.getInstance(groupMembers[2].getAddress());
+        getRaftService(runningInstance).forceDestroyRaftGroup(groupId).get();
+
+        groupInfo = getRaftInvocationManager(runningInstance).<RaftGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId), QueryPolicy.LEADER_LOCAL).get();
+        assertEquals(RaftGroupStatus.DESTROYED, groupInfo.status());
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertNull(getRaftNode(runningInstance, groupId));
+            }
+        });
     }
 
     @Test

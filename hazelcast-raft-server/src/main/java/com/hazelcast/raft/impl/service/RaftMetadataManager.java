@@ -19,6 +19,7 @@ import com.hazelcast.raft.impl.service.exception.CannotCreateRaftGroupException;
 import com.hazelcast.raft.impl.service.exception.CannotRemoveMemberException;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateMetadataRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftNodeOp;
+import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOp;
 import com.hazelcast.raft.impl.service.operation.metadata.SendActiveRaftMembersOp;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.spi.ExecutionService;
@@ -51,6 +52,7 @@ import static com.hazelcast.util.Preconditions.checkFalse;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static com.hazelcast.util.Preconditions.checkState;
 import static com.hazelcast.util.Preconditions.checkTrue;
+import static java.util.Collections.singleton;
 import static java.util.Collections.sort;
 import static java.util.Collections.unmodifiableCollection;
 
@@ -343,24 +345,49 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         checkNotNull(groupIds);
 
         for (RaftGroupId groupId : groupIds) {
-            completeDestroyRaftGroup(groupId);
+            checkNotNull(groupId);
+
+            RaftGroupInfo group = groups.get(groupId);
+            checkNotNull(group, "No raft group exists for " + groupId + " to complete destroy");
+
+            completeDestroyRaftGroup(group);
         }
-    }
-
-    private void completeDestroyRaftGroup(RaftGroupId groupId) {
-        checkNotNull(groupId);
-
-        RaftGroupInfo group = groups.get(groupId);
-        checkNotNull(group, "No raft group exists for " + groupId + " to commit destroy");
-
-        completeDestroyRaftGroup(group);
     }
 
     private void completeDestroyRaftGroup(RaftGroupInfo group) {
         RaftGroupId groupId = group.id();
         if (group.setDestroyed()) {
             logger.info(groupId + " is destroyed.");
-            raftService.destroyRaftNode(groupId);
+            sendDestroyRaftNodeOps(group);
+        } else {
+            logger.fine(groupId + " is already destroyed.");
+        }
+    }
+
+    public void forceDestroyRaftGroup(RaftGroupId groupId) {
+        checkNotNull(groupId);
+        checkFalse(METADATA_GROUP_ID.equals(groupId), "Cannot force-destroy the METADATA raft group");
+
+        RaftGroupInfo group = groups.get(groupId);
+        checkNotNull(group, "No raft group exists for " + groupId + " to force-destroy");
+
+        if (group.forceSetDestroyed()) {
+            logger.info(groupId + " is force-destroyed.");
+            sendDestroyRaftNodeOps(group);
+        } else {
+            logger.fine(groupId + " is already force-destroyed.");
+        }
+    }
+
+    private void sendDestroyRaftNodeOps(RaftGroupInfo group) {
+        OperationService operationService = nodeEngine.getOperationService();
+        Operation op = new DestroyRaftNodesOp(singleton(group.id()));
+        for (RaftMemberImpl member : group.memberImpls())  {
+            if (member.equals(getLocalMember())) {
+                raftService.destroyRaftNode(group.id());
+            } else {
+                operationService.send(op, member.getAddress());
+            }
         }
     }
 

@@ -24,6 +24,7 @@ import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.exception.CannotRemoveMemberException;
 import com.hazelcast.raft.impl.service.operation.metadata.AddRaftMemberOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CheckRemovedRaftMemberOp;
+import com.hazelcast.raft.impl.service.operation.metadata.ForceDestroyRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRebalanceRaftGroupsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveRaftMemberOp;
@@ -117,8 +118,6 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         metadataManager.reset();
     }
 
-    // TODO: add a method to reset (destroy + re-initialize) a single Raft group
-
     /**
      * this method is idempotent
      */
@@ -156,6 +155,14 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
                 "Cannot remove " + member + ", it is a live member!");
 
         return invokeTriggerRemoveMember(member);
+    }
+
+    // TODO: we should also notify services...
+    /**
+     * this method is idempotent
+     */
+    public ICompletableFuture<Object> forceDestroyRaftGroup(RaftGroupId groupId) {
+        return invocationManager.invoke(METADATA_GROUP_ID, new ForceDestroyRaftGroupOp(groupId));
     }
 
     @Override
