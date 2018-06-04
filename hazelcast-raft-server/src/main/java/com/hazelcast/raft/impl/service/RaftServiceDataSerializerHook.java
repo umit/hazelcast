@@ -23,6 +23,7 @@ import com.hazelcast.raft.impl.service.operation.metadata.CreateMetadataRaftGrou
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftNodeOp;
 import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOp;
+import com.hazelcast.raft.impl.service.operation.metadata.ForceDestroyRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerExpandRaftGroupsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetActiveRaftMembersOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetDestroyingRaftGroupIdsOp;
@@ -81,6 +82,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int TRIGGER_EXPAND_RAFT_GROUPS_OP = 34;
     public static final int TRIGGER_REBALANCE_RAFT_GROUPS_OP = 35;
     public static final int CREATE_METADATA_RAFT_GROUP_OP = 36;
+    public static final int FORCE_DESTROY_RAFT_GROUP_OP = 37;
 
     @Override
     public int getFactoryId() {
@@ -165,6 +167,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new TriggerRebalanceRaftGroupsOp();
                     case CREATE_METADATA_RAFT_GROUP_OP:
                         return new CreateMetadataRaftGroupOp();
+                    case FORCE_DESTROY_RAFT_GROUP_OP:
+                        return new ForceDestroyRaftGroupOp();
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
             }
