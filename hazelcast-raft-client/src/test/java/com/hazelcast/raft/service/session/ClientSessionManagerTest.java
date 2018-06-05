@@ -18,6 +18,8 @@ package com.hazelcast.raft.service.session;
 
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.ICompletableFuture;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.service.util.ClientAccessor;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
@@ -25,14 +27,25 @@ import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ExecutionException;
+
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.spy;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
 public class ClientSessionManagerTest extends AbstractSessionManagerTest {
+
+    @Rule
+    public ExpectedException exception = ExpectedException.none();
 
     private HazelcastInstance client;
 
@@ -45,6 +58,22 @@ public class ClientSessionManagerTest extends AbstractSessionManagerTest {
     public void setupClient() {
         TestHazelcastFactory f = (TestHazelcastFactory) factory;
         client = f.newHazelcastClient();
+    }
+
+    @Test
+    public void testClientSessionManagerShutdown() throws ExecutionException, InterruptedException {
+        AbstractSessionManager sessionManager = getSessionManager();
+        sessionManager.acquireSession(groupId);
+        Map<RaftGroupId, ICompletableFuture<Object>> futures = sessionManager.shutdown();
+        assertEquals(1, futures.size());
+
+        Entry<RaftGroupId, ICompletableFuture<Object>> e = futures.entrySet().iterator().next();
+        assertEquals(groupId, e.getKey());
+        e.getValue().get();
+
+        exception.expect(IllegalStateException.class);
+
+        sessionManager.acquireSession(groupId);
     }
 
     @After

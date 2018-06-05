@@ -37,6 +37,7 @@ import java.util.concurrent.TimeUnit;
  * TODO: Javadoc Pending...
  *
  */
+// TODO [basri] integrate shutdown() to graceful shutdown of the client
 public class ClientSessionManager extends AbstractSessionManager {
 
     private static final ClientMessageDecoder SESSION_RESPONSE_DECODER = new SessionResponseDecoder();
@@ -72,6 +73,20 @@ public class ClientSessionManager extends AbstractSessionManager {
         int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
         ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
         clientMessage.setMessageType(SessionMessageTaskFactoryProvider.HEARTBEAT);
+        clientMessage.setRetryable(false);
+        clientMessage.setOperationName("");
+        RaftGroupIdImpl.writeTo(groupId, clientMessage);
+        clientMessage.set(sessionId);
+        clientMessage.updateFrameLength();
+
+        return invoke(clientMessage, BOOLEAN_RESPONSE_DECODER);
+    }
+
+    @Override
+    protected ICompletableFuture<Object> closeSession(RaftGroupId groupId, Long sessionId) {
+        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
+        ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
+        clientMessage.setMessageType(SessionMessageTaskFactoryProvider.CLOSE_SESSION);
         clientMessage.setRetryable(false);
         clientMessage.setOperationName("");
         RaftGroupIdImpl.writeTo(groupId, clientMessage);

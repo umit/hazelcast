@@ -7,13 +7,16 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ILock;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
+import com.hazelcast.raft.service.session.SessionManagerService;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import com.hazelcast.util.RandomPicker;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 
 import java.util.concurrent.CountDownLatch;
@@ -30,6 +33,9 @@ import static org.junit.Assert.fail;
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
 public class RaftLockBasicTest extends HazelcastRaftTestSupport {
+
+    @Rule
+    public ExpectedException exception = ExpectedException.none();
 
     private HazelcastInstance[] instances;
     private ILock lock;
@@ -248,6 +254,31 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
         lock.unlock();
     }
 
+    @Test
+    public void testLockAutoRelease_whenShutdownGracefully() {
+        ILock lock0 = RaftLockProxy.create(instances[0], name);
+        ILock lock1 = RaftLockProxy.create(instances[1], name);
+
+        lock0.lock();
+
+
+        instances[0].shutdown();
+
+        assertFalse(lock1.isLocked());
+        assertTrue(lock1.tryLock());
+    }
+
+    @Test
+    public void testLock_whenSessionManagerShutdown() {
+        ILock lock = RaftLockProxy.create(instances[0], name);
+        SessionManagerService sessionManager = getNodeEngineImpl(instances[0]).getService(SessionManagerService.SERVICE_NAME);
+
+        boolean success = sessionManager.onShutdown(60, TimeUnit.SECONDS);
+        assertTrue(success);
+
+        exception.expect(IllegalStateException.class);
+        lock.lock();
+    }
 
     @Override
     protected Config createConfig(int groupSize, int metadataGroupSize) {

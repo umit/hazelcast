@@ -2,16 +2,15 @@ package com.hazelcast.raft.service.lock;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.config.raft.RaftAtomicLongConfig;
+import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.config.raft.RaftLockConfig;
-import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.ILock;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
-import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
@@ -45,15 +44,13 @@ public class RaftLockServiceTest extends HazelcastRaftTestSupport {
     private static final int LOG_ENTRY_COUNT_TO_SNAPSHOT = 10;
 
     private HazelcastInstance[] instances;
-    private RaftInvocationManager invocationManager;
     private RaftGroupId groupId;
 
     @Before
     public void setup() throws ExecutionException, InterruptedException {
         int raftGroupSize = 3;
         instances = newInstances(raftGroupSize);
-        invocationManager = getRaftInvocationManager(instances[0]);
-        groupId = invocationManager.createRaftGroup(RAFT_GROUP_NAME, raftGroupSize).get();
+        groupId = getRaftInvocationManager(instances[0]).createRaftGroup(RAFT_GROUP_NAME, raftGroupSize).get();
     }
 
     @Test

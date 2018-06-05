@@ -48,7 +48,7 @@ public abstract class AbstractSessionManagerTest extends HazelcastRaftTestSuppor
     private static final int sessionTTLSeconds = 5;
 
     HazelcastInstance[] members;
-    private RaftGroupId groupId;
+    RaftGroupId groupId;
 
     @Before
     public void setup() throws ExecutionException, InterruptedException {

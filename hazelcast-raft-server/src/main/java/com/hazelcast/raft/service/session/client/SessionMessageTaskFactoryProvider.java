@@ -33,6 +33,7 @@ public class SessionMessageTaskFactoryProvider implements MessageTaskFactoryProv
 
     public static final int CREATE = 30000;
     public static final int HEARTBEAT = 30001;
+    public static final int CLOSE_SESSION = 30002;
 
     private final Node node;
 
@@ -55,6 +56,12 @@ public class SessionMessageTaskFactoryProvider implements MessageTaskFactoryProv
             @Override
             public MessageTask create(ClientMessage clientMessage, Connection connection) {
                 return new HeartbeatSessionMessageTask(clientMessage, node, connection);
+            }
+        };
+        factories[CLOSE_SESSION] = new MessageTaskFactory() {
+            @Override
+            public MessageTask create(ClientMessage clientMessage, Connection connection) {
+                return new CloseSessionMessageTask(clientMessage, node, connection);
             }
         };
         return factories;
