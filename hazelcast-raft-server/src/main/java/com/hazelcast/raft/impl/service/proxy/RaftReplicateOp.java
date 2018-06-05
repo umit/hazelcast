@@ -2,20 +2,16 @@ package com.hazelcast.raft.impl.service.proxy;
 
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
-import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.RaftGroupTerminatedException;
-import com.hazelcast.raft.impl.service.RaftService;
+import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.spi.ExceptionAction;
+import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.spi.Operation;
-import com.hazelcast.spi.exception.CallerNotMemberException;
-import com.hazelcast.spi.exception.TargetNotMemberException;
 import com.hazelcast.spi.impl.AllowedDuringPassiveState;
 
 import java.io.IOException;
@@ -97,16 +93,6 @@ public abstract class RaftReplicateOp extends Operation implements IdentifiedDat
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         groupId = in.readObject();
-    }
-
-    @Override
-    public ExceptionAction onInvocationException(Throwable throwable) {
-        if (throwable instanceof MemberLeftException
-                || throwable instanceof TargetNotMemberException
-                || throwable instanceof CallerNotMemberException) {
-            return ExceptionAction.THROW_EXCEPTION;
-        }
-        return super.onInvocationException(throwable);
     }
 
     @Override
