@@ -1,12 +1,9 @@
 package com.hazelcast.raft.service.atomiclong.proxy;
 
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.IFunction;
-import com.hazelcast.instance.HazelcastInstanceImpl;
-import com.hazelcast.instance.HazelcastInstanceProxy;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
@@ -20,10 +17,9 @@ import com.hazelcast.raft.service.atomiclong.operation.CompareAndSetOp;
 import com.hazelcast.raft.service.atomiclong.operation.GetAndAddOp;
 import com.hazelcast.raft.service.atomiclong.operation.GetAndSetOp;
 import com.hazelcast.raft.service.atomiclong.operation.LocalGetOp;
-import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
 import com.hazelcast.util.ExceptionUtil;
 
-import static com.hazelcast.raft.service.atomiclong.RaftAtomicLongService.SERVICE_NAME;
 import static com.hazelcast.raft.service.atomiclong.operation.AlterOp.AlterResultType.AFTER_VALUE;
 import static com.hazelcast.raft.service.atomiclong.operation.AlterOp.AlterResultType.BEFORE_VALUE;
 
@@ -32,28 +28,6 @@ public class RaftAtomicLongProxy implements IAtomicLong {
     private final String name;
     private final RaftGroupId groupId;
     private final RaftInvocationManager raftInvocationManager;
-
-    public static IAtomicLong create(HazelcastInstance instance, String name) {
-        NodeEngine nodeEngine = getNodeEngine(instance);
-        RaftAtomicLongService service = nodeEngine.getService(SERVICE_NAME);
-        try {
-            return service.createNew(name);
-        } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
-        }
-    }
-
-    private static NodeEngine getNodeEngine(HazelcastInstance instance) {
-        HazelcastInstanceImpl instanceImpl;
-        if (instance instanceof HazelcastInstanceProxy) {
-            instanceImpl = ((HazelcastInstanceProxy) instance).getOriginal();
-        } else if (instance instanceof HazelcastInstanceImpl) {
-            instanceImpl = (HazelcastInstanceImpl) instance;
-        } else {
-            throw new IllegalArgumentException("Unknown instance! " + instance);
-        }
-        return instanceImpl.node.getNodeEngine();
-    }
 
     public RaftAtomicLongProxy(String name, RaftGroupId groupId, RaftInvocationManager invocationManager) {
         this.name = name;
@@ -267,10 +241,15 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public void destroy() {
-        join(raftInvocationManager.triggerDestroyRaftGroup(groupId));
+        join(raftInvocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)));
     }
 
     public RaftGroupId getGroupId() {
         return groupId;
+    }
+
+    @Override
+    public String toString() {
+        return "RaftAtomicLongProxy{" + "name='" + name + '\'' + ", groupId=" + groupId + '}';
     }
 }

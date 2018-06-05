@@ -20,6 +20,7 @@ public class LockMessageTaskFactoryProvider implements MessageTaskFactoryProvide
     public static final int UNLOCK = 20002;
     public static final int TRY_LOCK = 20003;
     public static final int LOCK_COUNT = 20004;
+    public static final int DESTROY_TYPE = 20005;
 
     private final Node node;
 
@@ -63,6 +64,12 @@ public class LockMessageTaskFactoryProvider implements MessageTaskFactoryProvide
             @Override
             public MessageTask create(ClientMessage clientMessage, Connection connection) {
                 return new GetLockCountMessageTask(clientMessage, node, connection);
+            }
+        };
+        factories[DESTROY_TYPE] = new MessageTaskFactory() {
+            @Override
+            public MessageTask create(ClientMessage clientMessage, Connection connection) {
+                return new DestroyLockMessageTask(clientMessage, node, connection);
             }
         };
         return factories;

@@ -20,6 +20,7 @@ public class AtomicLongMessageTaskFactoryProvider implements MessageTaskFactoryP
     public static final int GET_AND_ADD_TYPE = 10002;
     public static final int GET_AND_SET_TYPE = 10003;
     public static final int COMPARE_AND_SET_TYPE = 10004;
+    public static final int DESTROY_TYPE = 10005;
 
     private final Node node;
 
@@ -63,6 +64,12 @@ public class AtomicLongMessageTaskFactoryProvider implements MessageTaskFactoryP
             @Override
             public MessageTask create(ClientMessage clientMessage, Connection connection) {
                 return new CompareAndSetMessageTask(clientMessage, node, connection);
+            }
+        };
+        factories[DESTROY_TYPE] = new MessageTaskFactory() {
+            @Override
+            public MessageTask create(ClientMessage clientMessage, Connection connection) {
+                return new DestroyAtomicLongMessageTask(clientMessage, node, connection);
             }
         };
 

@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * TODO: Javadoc Pending...
@@ -36,11 +37,13 @@ public class LockRegistrySnapshot implements IdentifiedDataSerializable {
 
     private List<RaftLockSnapshot> locks;
     private Map<LockInvocationKey, Long> tryLockTimeouts;
+    private Collection<String> destroyedLockNames;
 
     public LockRegistrySnapshot() {
     }
 
-    LockRegistrySnapshot(Collection<RaftLock> locks, Map<LockInvocationKey, Tuple2<Long, Long>> tryLockTimeouts) {
+    LockRegistrySnapshot(Collection<RaftLock> locks, Map<LockInvocationKey, Tuple2<Long, Long>> tryLockTimeouts,
+            Set<String> destroyedLockNames) {
         this.locks = new ArrayList<RaftLockSnapshot>(locks.size());
         for (RaftLock lock : locks) {
             this.locks.add(lock.toSnapshot());
@@ -50,6 +53,7 @@ public class LockRegistrySnapshot implements IdentifiedDataSerializable {
             long timeout = e.getValue().element1;
             this.tryLockTimeouts.put(e.getKey(), timeout);
         }
+        this.destroyedLockNames = new ArrayList<String>(destroyedLockNames);
     }
 
     List<RaftLockSnapshot> getLocks() {
@@ -58,6 +62,10 @@ public class LockRegistrySnapshot implements IdentifiedDataSerializable {
 
     Map<LockInvocationKey, Long> getTryLockTimeouts() {
         return tryLockTimeouts;
+    }
+
+    public Collection<String> getDestroyedLockNames() {
+        return destroyedLockNames;
     }
 
     @Override
@@ -81,6 +89,10 @@ public class LockRegistrySnapshot implements IdentifiedDataSerializable {
             out.writeObject(e.getKey());
             out.writeLong(e.getValue());
         }
+        out.writeInt(destroyedLockNames.size());
+        for (String name : destroyedLockNames) {
+            out.writeUTF(name);
+        }
     }
 
     @Override
@@ -98,6 +110,12 @@ public class LockRegistrySnapshot implements IdentifiedDataSerializable {
             LockInvocationKey key = in.readObject();
             long timestamp = in.readLong();
             tryLockTimeouts.put(key, timestamp);
+        }
+
+        int destroyedCount = in.readInt();
+        destroyedLockNames = new ArrayList<String>(destroyedCount);
+        for (int i = 0; i < destroyedCount; i++) {
+            destroyedLockNames.add(in.readUTF());
         }
     }
 }

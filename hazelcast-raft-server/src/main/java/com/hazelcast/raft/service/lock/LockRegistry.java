@@ -25,9 +25,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -40,6 +42,7 @@ class LockRegistry {
 
     private final RaftGroupId groupId;
     private final Map<String, RaftLock> locks = new HashMap<String, RaftLock>();
+    private final Set<String> destroyedLockNames = new HashSet<String>();
     // value.element1: timeout duration, value.element2: deadline (transient)
     private final Map<LockInvocationKey, Tuple2<Long, Long>> tryLockTimeouts
             = new ConcurrentHashMap<LockInvocationKey, Tuple2<Long, Long>>();
@@ -77,6 +80,9 @@ class LockRegistry {
 
     private RaftLock getRaftLock(String name) {
         checkNotNull(name);
+        if (destroyedLockNames.contains(name)) {
+            throw new IllegalStateException("Lock[" + name + "] is already destroyed!");
+        }
         RaftLock raftLock = locks.get(name);
         if (raftLock == null) {
             raftLock = new RaftLock(groupId, name);
@@ -101,6 +107,9 @@ class LockRegistry {
     }
 
     Collection<LockInvocationKey> release(String name, LockEndpoint endpoint, UUID invocationUid) {
+        if (destroyedLockNames.contains(name)) {
+            throw new IllegalStateException("Lock[" + name + "] is already destroyed!");
+        }
         RaftLock lock = locks.get(name);
         if (lock == null) {
             return Collections.emptyList();
@@ -126,6 +135,9 @@ class LockRegistry {
 
     Tuple2<LockEndpoint, Integer> lockCount(String name) {
         checkNotNull(name);
+        if (destroyedLockNames.contains(name)) {
+            throw new IllegalStateException("Lock[" + name + "] is already destroyed!");
+        }
 
         RaftLock raftLock = locks.get(name);
         if (raftLock == null) {
@@ -154,13 +166,15 @@ class LockRegistry {
     }
 
     LockRegistrySnapshot toSnapshot() {
-        return new LockRegistrySnapshot(locks.values(), tryLockTimeouts);
+        return new LockRegistrySnapshot(locks.values(), tryLockTimeouts, destroyedLockNames);
     }
 
     Map<LockInvocationKey, Long> restore(LockRegistrySnapshot snapshot) {
         for (RaftLockSnapshot lockSnapshot : snapshot.getLocks()) {
             locks.put(lockSnapshot.getName(), new RaftLock(lockSnapshot));
         }
+
+        destroyedLockNames.addAll(snapshot.getDestroyedLockNames());
 
         long now = Clock.currentTimeMillis();
         Map<LockInvocationKey, Long> added = new HashMap<LockInvocationKey, Long>();
@@ -176,4 +190,31 @@ class LockRegistry {
         return added;
     }
 
+    Collection<Long> destroyLock(String name) {
+        destroyedLockNames.add(name);
+        RaftLock raftLock = locks.remove(name);
+        if (raftLock == null) {
+            return null;
+        }
+
+        Collection<Long> indices = new ArrayList<Long>(raftLock.waiters().size());
+        for (LockInvocationKey key : raftLock.waiters()) {
+            indices.add(key.commitIndex());
+            tryLockTimeouts.remove(key);
+        }
+        return indices;
+    }
+
+    Collection<Long> destroy() {
+        destroyedLockNames.addAll(locks.keySet());
+        Collection<Long> indices = new ArrayList<Long>();
+        for (RaftLock raftLock : locks.values()) {
+            for (LockInvocationKey key : raftLock.waiters()) {
+                indices.add(key.commitIndex());
+            }
+        }
+        locks.clear();
+        tryLockTimeouts.clear();
+        return indices;
+    }
 }

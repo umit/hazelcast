@@ -1,22 +1,18 @@
 package com.hazelcast.raft.service.lock.proxy;
 
-import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.ICondition;
 import com.hazelcast.core.ILock;
-import com.hazelcast.instance.HazelcastInstanceImpl;
-import com.hazelcast.instance.HazelcastInstanceProxy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
-import com.hazelcast.raft.service.lock.RaftLockService;
 import com.hazelcast.raft.service.lock.operation.GetLockCountOp;
 import com.hazelcast.raft.service.lock.operation.LockOp;
 import com.hazelcast.raft.service.lock.operation.TryLockOp;
 import com.hazelcast.raft.service.lock.operation.UnlockOp;
 import com.hazelcast.raft.service.session.SessionAwareProxy;
 import com.hazelcast.raft.service.session.SessionManagerService;
-import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
 import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.ThreadUtil;
 import com.hazelcast.util.UuidUtil;
@@ -31,28 +27,6 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     private final String name;
     private final RaftInvocationManager raftInvocationManager;
-
-    public static ILock create(HazelcastInstance instance, String name) {
-        NodeEngine nodeEngine = getNodeEngine(instance);
-        try {
-            RaftLockService service = nodeEngine.getService(SERVICE_NAME);
-            return service.createNew(name);
-        } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
-        }
-    }
-
-    private static NodeEngine getNodeEngine(HazelcastInstance instance) {
-        HazelcastInstanceImpl instanceImpl;
-        if (instance instanceof HazelcastInstanceProxy) {
-            instanceImpl = ((HazelcastInstanceProxy) instance).getOriginal();
-        } else if (instance instanceof HazelcastInstanceImpl) {
-            instanceImpl = (HazelcastInstanceImpl) instance;
-        } else {
-            throw new IllegalArgumentException("Unknown instance! " + instance);
-        }
-        return instanceImpl.node.getNodeEngine();
-    }
 
     public RaftLockProxy(String name, RaftGroupId groupId, SessionManagerService sessionManager,
             RaftInvocationManager invocationManager) {
@@ -201,7 +175,7 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     @Override
     public void destroy() {
-        join(raftInvocationManager.triggerDestroyRaftGroup(groupId));
+        join(raftInvocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)));
     }
 
     public RaftGroupId getGroupId() {

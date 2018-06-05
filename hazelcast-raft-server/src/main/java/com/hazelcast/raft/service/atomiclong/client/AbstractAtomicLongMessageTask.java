@@ -3,12 +3,13 @@ package com.hazelcast.raft.service.atomiclong.client;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
+import com.hazelcast.raft.impl.service.RaftInvocationManager;
+import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 
 import java.security.Permission;
@@ -26,10 +27,9 @@ public abstract class AbstractAtomicLongMessageTask extends AbstractMessageTask 
         super(clientMessage, node, connection);
     }
 
-    protected IAtomicLong getProxy() {
-        RaftAtomicLongService service = (RaftAtomicLongService) getService(getServiceName());
-        // TODO: creates a new proxy on each client request
-        return service.newProxy(name, groupId);
+    RaftInvocationManager getRaftInvocationManager() {
+        RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
+        return raftService.getInvocationManager();
     }
 
     @Override

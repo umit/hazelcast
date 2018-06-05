@@ -29,7 +29,7 @@ public class CreateLockMessageTask extends AbstractMessageTask implements Execut
     @Override
     protected void processMessage() {
         RaftLockService service = nodeEngine.getService(RaftLockService.SERVICE_NAME);
-        service.createNewAsync(name).andThen(this);
+        service.createRaftGroup(name).andThen(this);
     }
 
     @Override

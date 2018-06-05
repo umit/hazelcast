@@ -241,6 +241,7 @@ public class RaftNodeImpl implements RaftNode {
         } else {
             logger.warning("Status is set to: " + status);
         }
+        raftIntegration.onNodeStatusChange(status);
     }
 
     /**

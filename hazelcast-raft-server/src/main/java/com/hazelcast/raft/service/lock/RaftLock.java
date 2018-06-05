@@ -152,6 +152,10 @@ class RaftLock {
         return owner;
     }
 
+    Collection<LockInvocationKey> waiters() {
+        return Collections.unmodifiableCollection(waiters);
+    }
+
     RaftLockSnapshot toSnapshot() {
         return new RaftLockSnapshot(groupId, name, owner, lockCount, refUid, waiters);
     }
