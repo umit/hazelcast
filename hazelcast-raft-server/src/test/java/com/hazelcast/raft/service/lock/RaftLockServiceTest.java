@@ -14,6 +14,7 @@ import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
+import com.hazelcast.raft.service.spi.RaftProxyFactory;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -61,7 +62,7 @@ public class RaftLockServiceTest extends HazelcastRaftTestSupport {
         // the follower falls behind the leader. It neither append entries nor installs snapshots.
         dropOperationsBetween(leader, follower, RaftServiceDataSerializerHook.F_ID, asList(RaftServiceDataSerializerHook.APPEND_REQUEST_OP, RaftServiceDataSerializerHook.INSTALL_SNAPSHOT_OP));
 
-        final ILock lock = ((RaftLockService) getNodeEngineImpl(leader).getService(RaftLockService.SERVICE_NAME)).createNew(RAFT_GROUP_NAME);
+        final ILock lock = RaftProxyFactory.create(leader, RaftLockService.SERVICE_NAME, RAFT_GROUP_NAME);
         lockByOtherThread(lock);
 
         spawn(new Runnable() {
@@ -85,7 +86,7 @@ public class RaftLockServiceTest extends HazelcastRaftTestSupport {
             }
         });
 
-        IAtomicLong atomicLong = ((RaftAtomicLongService) getNodeEngineImpl(instances[0]).getService(RaftAtomicLongService.SERVICE_NAME)).createNew(RAFT_GROUP_NAME);
+        IAtomicLong atomicLong = RaftProxyFactory.create(instances[0], RaftAtomicLongService.SERVICE_NAME, RAFT_GROUP_NAME);
         for (int i = 0; i < LOG_ENTRY_COUNT_TO_SNAPSHOT; i++) {
             atomicLong.incrementAndGet();
         }

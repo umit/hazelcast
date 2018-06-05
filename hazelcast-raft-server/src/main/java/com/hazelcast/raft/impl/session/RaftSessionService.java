@@ -25,6 +25,7 @@ import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.TermChangeAwareService;
 import com.hazelcast.raft.impl.session.operation.InvalidateSessionsOp;
 import com.hazelcast.raft.impl.util.Tuple2;
+import com.hazelcast.raft.impl.RaftGroupLifecycleAwareService;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
@@ -46,7 +47,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * TODO: Javadoc Pending...
  */
 public class RaftSessionService
-        implements ManagedService, SnapshotAwareService<SessionRegistrySnapshot>, SessionAccessor, TermChangeAwareService {
+        implements ManagedService, SnapshotAwareService<SessionRegistrySnapshot>, SessionAccessor,
+        TermChangeAwareService, RaftGroupLifecycleAwareService {
 
     public static String SERVICE_NAME = "hz:core:raftSession";
     private static final long CHECK_EXPIRED_SESSIONS_TASK_PERIOD_IN_MILLIS = SECONDS.toMillis(1);
@@ -104,6 +106,12 @@ public class RaftSessionService
             registry.shiftExpirationTimes(getHeartbeatIntervalMillis());
             logger.info("Session expiration times are shifted in " + groupId);
         }
+    }
+
+    @Override
+    public void onGroupDestroy(RaftGroupId groupId) {
+        SessionRegistry registry = registries.remove(groupId);
+        //...
     }
 
     public SessionResponse createNewSession(RaftGroupId groupId) {

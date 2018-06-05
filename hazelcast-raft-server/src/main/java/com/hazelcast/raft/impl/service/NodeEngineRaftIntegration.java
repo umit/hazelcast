@@ -3,9 +3,11 @@ package com.hazelcast.raft.impl.service;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
+import com.hazelcast.raft.impl.RaftGroupLifecycleAwareService;
 import com.hazelcast.raft.impl.RaftMember;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftIntegration;
+import com.hazelcast.raft.impl.RaftNodeStatus;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
@@ -37,6 +39,7 @@ import com.hazelcast.spi.impl.operationservice.impl.OperationServiceImpl;
 import com.hazelcast.spi.impl.servicemanager.ServiceInfo;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
@@ -197,5 +200,15 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
 
     private boolean send(Operation operation, RaftMember target) {
         return nodeEngine.getOperationService().send(operation.setPartitionId(partitionId), ((RaftMemberImpl) target).getAddress());
+    }
+
+    @Override
+    public void onNodeStatusChange(RaftNodeStatus status) {
+        if (status == RaftNodeStatus.TERMINATED) {
+            Collection<RaftGroupLifecycleAwareService> services = nodeEngine.getServices(RaftGroupLifecycleAwareService.class);
+            for (RaftGroupLifecycleAwareService service : services) {
+                service.onGroupDestroy(groupId);
+            }
+        }
     }
 }

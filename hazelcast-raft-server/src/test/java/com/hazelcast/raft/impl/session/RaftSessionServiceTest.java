@@ -18,6 +18,7 @@ import com.hazelcast.raft.impl.session.operation.CloseSessionOp;
 import com.hazelcast.raft.impl.session.operation.CreateSessionOp;
 import com.hazelcast.raft.impl.session.operation.HeartbeatSessionOp;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
+import com.hazelcast.raft.service.spi.RaftProxyFactory;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -250,7 +251,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
 
         final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, new CreateSessionOp()).get();
 
-        IAtomicLong atomicLong = ((RaftAtomicLongService) getNodeEngineImpl(instances[0]).getService(RaftAtomicLongService.SERVICE_NAME)).createNew(RAFT_GROUP_NAME);
+        IAtomicLong atomicLong = RaftProxyFactory.create(instances[0], RaftAtomicLongService.SERVICE_NAME, RAFT_GROUP_NAME);
         for (int i = 0; i < LOG_ENTRY_COUNT_TO_SNAPSHOT; i++) {
             atomicLong.incrementAndGet();
         }

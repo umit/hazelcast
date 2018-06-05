@@ -27,7 +27,7 @@ public class CreateAtomicLongMessageTask extends AbstractMessageTask implements 
     @Override
     protected void processMessage() {
         RaftAtomicLongService service = nodeEngine.getService(RaftAtomicLongService.SERVICE_NAME);
-        service.createNewAsync(name).andThen(this);
+        service.createRaftGroup(name).andThen(this);
     }
 
     @Override

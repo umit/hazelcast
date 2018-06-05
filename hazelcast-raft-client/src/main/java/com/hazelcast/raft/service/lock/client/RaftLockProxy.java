@@ -27,6 +27,7 @@ import java.util.concurrent.locks.Condition;
 
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.CREATE_TYPE;
+import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.DESTROY_TYPE;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.LOCK;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.LOCK_COUNT;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.TRY_LOCK;
@@ -211,7 +212,12 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     @Override
     public void destroy() {
-        throw new UnsupportedOperationException();
+        int dataSize = ClientMessage.HEADER_SIZE
+                + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(name);
+        ClientMessage clientMessage = prepareClientMessage(groupId, name, dataSize, DESTROY_TYPE);
+        clientMessage.updateFrameLength();
+
+        join(invoke(clientMessage, BOOLEAN_RESPONSE_DECODER));
     }
 
     private <T> ICompletableFuture<T> invoke(ClientMessage clientMessage, ClientMessageDecoder decoder) {
@@ -276,6 +282,10 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
         RaftGroupIdImpl.writeTo(groupId, clientMessage);
         clientMessage.set(name);
         return clientMessage;
+    }
+
+    public RaftGroupId getGroupId() {
+        return groupId;
     }
 
     private static class IntResponseDecoder implements ClientMessageDecoder {

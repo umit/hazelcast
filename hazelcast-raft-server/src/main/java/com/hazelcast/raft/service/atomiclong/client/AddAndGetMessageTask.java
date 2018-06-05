@@ -1,9 +1,11 @@
 package com.hazelcast.raft.service.atomiclong.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.core.IAtomicLong;
+import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
+import com.hazelcast.raft.impl.service.RaftInvocationManager;
+import com.hazelcast.raft.service.atomiclong.operation.AddAndGetOp;
 
 /**
  * TODO: Javadoc Pending...
@@ -19,8 +21,9 @@ public class AddAndGetMessageTask extends AbstractAtomicLongMessageTask {
 
     @Override
     protected void processMessage() {
-        IAtomicLong atomicLong = getProxy();
-        atomicLong.addAndGetAsync(delta).andThen(this);
+        RaftInvocationManager raftInvocationManager = getRaftInvocationManager();
+        ICompletableFuture<Object> future = raftInvocationManager.invoke(groupId, new AddAndGetOp(name, delta));
+        future.andThen(this);
     }
 
     @Override

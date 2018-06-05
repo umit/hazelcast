@@ -10,26 +10,33 @@ import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy;
+import com.hazelcast.raft.impl.RaftGroupLifecycleAwareService;
+import com.hazelcast.raft.service.spi.RaftRemoteService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.util.ExceptionUtil;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 
 import static com.hazelcast.util.Preconditions.checkNotNull;
+import static java.util.Collections.newSetFromMap;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public class RaftAtomicLongService implements ManagedService, SnapshotAwareService<Map<String, Long>> {
+public class RaftAtomicLongService implements ManagedService, RaftRemoteService, RaftGroupLifecycleAwareService, SnapshotAwareService<RaftAtomicLongSnapshot> {
 
     public static final String SERVICE_NAME = "hz:raft:atomicLongService";
 
-    private final Map<Tuple2<RaftGroupId, String>, RaftAtomicLong> map = new ConcurrentHashMap<Tuple2<RaftGroupId, String>, RaftAtomicLong>();
+    private final Map<Tuple2<RaftGroupId, String>, RaftAtomicLong> atomicLongs = new ConcurrentHashMap<Tuple2<RaftGroupId, String>, RaftAtomicLong>();
+    private final Set<Tuple2<RaftGroupId, String>> destroyedLongs = newSetFromMap(new ConcurrentHashMap<Tuple2<RaftGroupId, String>, Boolean>());
     private final NodeEngine nodeEngine;
     private volatile RaftService raftService;
 
@@ -48,62 +55,99 @@ public class RaftAtomicLongService implements ManagedService, SnapshotAwareServi
 
     @Override
     public void shutdown(boolean terminate) {
+        atomicLongs.clear();
     }
 
     @Override
-    public Map<String, Long> takeSnapshot(RaftGroupId groupId, long commitIndex) {
+    public RaftAtomicLongSnapshot takeSnapshot(RaftGroupId groupId, long commitIndex) {
         checkNotNull(groupId);
         Map<String, Long> longs = new HashMap<String, Long>();
-        for (RaftAtomicLong atomicLong : map.values()) {
+        for (RaftAtomicLong atomicLong : atomicLongs.values()) {
             if (atomicLong.groupId().equals(groupId)) {
                 longs.put(atomicLong.name(), atomicLong.value());
             }
         }
 
-        return longs;
+        Set<String> destroyed = new HashSet<String>();
+        for (Tuple2<RaftGroupId, String> tuple : destroyedLongs) {
+            if (groupId.equals(tuple.element1)) {
+                destroyed.add(tuple.element2);
+            }
+        }
+
+        return new RaftAtomicLongSnapshot(longs, destroyed);
     }
 
     @Override
-    public void restoreSnapshot(RaftGroupId groupId, long commitIndex, Map<String, Long> snapshot) {
+    public void restoreSnapshot(RaftGroupId groupId, long commitIndex, RaftAtomicLongSnapshot snapshot) {
         checkNotNull(groupId);
-        for (Map.Entry<String, Long> e : snapshot.entrySet()) {
+        for (Map.Entry<String, Long> e : snapshot.getLongs()) {
             String name = e.getKey();
             long val = e.getValue();
-            map.put(Tuple2.of(groupId, name), new RaftAtomicLong(groupId, name, val));
+            atomicLongs.put(Tuple2.of(groupId, name), new RaftAtomicLong(groupId, name, val));
+        }
+
+        for (String name : snapshot.getDestroyed()) {
+            destroyedLongs.add(Tuple2.of(groupId, name));
         }
     }
 
-    public IAtomicLong createNew(String name) throws ExecutionException, InterruptedException {
-        RaftGroupId groupId = createNewAsync(name).get();
-        return new RaftAtomicLongProxy(name, groupId, raftService.getInvocationManager());
+    @Override
+    public IAtomicLong createRaftObjectProxy(String name) {
+        try {
+            RaftGroupId groupId = createRaftGroup(name).get();
+            return new RaftAtomicLongProxy(name, groupId, raftService.getInvocationManager());
+        } catch (Exception e) {
+            throw ExceptionUtil.rethrow(e);
+        }
     }
 
-    public ICompletableFuture<RaftGroupId> createNewAsync(String name) {
-        RaftAtomicLongConfig config = getConfig(name);
-        String raftGroupRef = config != null ? config.getRaftGroupRef() : RaftGroupConfig.DEFAULT_GROUP;
+    @Override
+    public boolean destroyRaftObject(RaftGroupId groupId, String name) {
+        Tuple2<RaftGroupId, String> key = Tuple2.of(groupId, name);
+        destroyedLongs.add(key);
+        return atomicLongs.remove(key) != null;
+    }
+
+    @Override
+    public void onGroupDestroy(RaftGroupId groupId) {
+        Iterator<Tuple2<RaftGroupId, String>> iter = atomicLongs.keySet().iterator();
+        while (iter.hasNext()) {
+            Tuple2<RaftGroupId, String> next = iter.next();
+            if (groupId.equals(next.element1)) {
+                destroyedLongs.add(next);
+                iter.remove();
+            }
+        }
+    }
+
+    public ICompletableFuture<RaftGroupId> createRaftGroup(String name) {
+        String raftGroupRef = getRaftGroupRef(name);
 
         RaftInvocationManager invocationManager = raftService.getInvocationManager();
         return invocationManager.createRaftGroup(raftGroupRef);
+    }
+
+    private String getRaftGroupRef(String name) {
+        RaftAtomicLongConfig config = getConfig(name);
+        return config != null ? config.getRaftGroupRef() : RaftGroupConfig.DEFAULT_GROUP;
     }
 
     private RaftAtomicLongConfig getConfig(String name) {
         return nodeEngine.getConfig().findRaftAtomicLongConfig(name);
     }
 
-    public IAtomicLong newProxy(String name, RaftGroupId groupId) {
-        checkNotNull(name);
-        checkNotNull(groupId);
-        return new RaftAtomicLongProxy(name, groupId, raftService.getInvocationManager());
-    }
-
     public RaftAtomicLong getAtomicLong(RaftGroupId groupId, String name) {
         checkNotNull(groupId);
         checkNotNull(name);
         Tuple2<RaftGroupId, String> key = Tuple2.of(groupId, name);
-        RaftAtomicLong atomicLong = map.get(key);
+        if (destroyedLongs.contains(key)) {
+            throw new IllegalStateException("AtomicLong[" + name + "] is already destroyed!");
+        }
+        RaftAtomicLong atomicLong = atomicLongs.get(key);
         if (atomicLong == null) {
             atomicLong = new RaftAtomicLong(groupId, groupId.name());
-            map.put(key, atomicLong);
+            atomicLongs.put(key, atomicLong);
         }
         return atomicLong;
     }

@@ -3,6 +3,7 @@ package com.hazelcast.raft.service.atomiclong.client;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongBasicTest;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
@@ -41,6 +42,11 @@ public class RaftAtomicLongClientBasicTest extends RaftAtomicLongBasicTest {
     @After
     public void shutdown() {
         factory.terminateAll();
+    }
+
+
+    protected RaftGroupId getGroupId(IAtomicLong atomicLong) {
+        return ((RaftAtomicLongProxy) atomicLong).getGroupId();
     }
 
     @Test
@@ -84,12 +90,12 @@ public class RaftAtomicLongClientBasicTest extends RaftAtomicLongBasicTest {
     }
 
     @Test
+    @Ignore
     public void testLocalGet_withLeaderLocalPolicy() {
-        // unsupported
     }
 
     @Test
+    @Ignore
     public void testLocalGet_withAnyLocalPolicy() {
-        // unsupported
     }
 }

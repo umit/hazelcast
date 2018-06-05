@@ -10,6 +10,7 @@ import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftMember;
 import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.raft.impl.RaftNodeImpl;
+import com.hazelcast.raft.impl.RaftNodeStatus;
 import com.hazelcast.raft.impl.RaftUtil;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
@@ -344,5 +345,9 @@ public class LocalRaftIntegration implements RaftIntegration {
             result = 31 * result + endpoint.hashCode();
             return result;
         }
+    }
+
+    @Override
+    public void onNodeStatusChange(RaftNodeStatus status) {
     }
 }

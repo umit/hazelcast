@@ -5,12 +5,17 @@ import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ILock;
+import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.exception.RaftGroupTerminatedException;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
 import com.hazelcast.raft.service.session.SessionManagerService;
+import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
+import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
+import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.RandomPicker;
 import org.junit.Before;
 import org.junit.Rule;
@@ -19,13 +24,21 @@ import org.junit.experimental.categories.Category;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.concurrent.lock.LockTestUtils.lockByOtherThread;
+import static com.hazelcast.raft.service.lock.RaftLockService.SERVICE_NAME;
 import static com.hazelcast.raft.service.lock.RaftLockService.TRY_LOCK_TIMEOUT_TASK_UPPER_BOUND_MILLIS;
+import static com.hazelcast.raft.service.spi.RaftProxyFactory.create;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -40,6 +53,7 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     private HazelcastInstance[] instances;
     private ILock lock;
     private String name = "lock";
+    private String groupName = "lock";
     private int groupSize = 3;
 
     @Before
@@ -55,7 +69,7 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     }
 
     protected ILock createLock(String name) {
-        return RaftLockProxy.create(instances[RandomPicker.getInt(instances.length)], name);
+        return create(instances[RandomPicker.getInt(instances.length)], RaftLockService.SERVICE_NAME, name);
     }
 
     @Test
@@ -250,14 +264,19 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     @Test
     public void testCreate_withDefaultGroup() {
         ILock lock = createLock(randomName());
+        assertEquals(RaftGroupConfig.DEFAULT_GROUP, getGroupId(lock).name());
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testUse_afterDestroy() {
+        lock.destroy();
         lock.lock();
-        lock.unlock();
     }
 
     @Test
     public void testLockAutoRelease_whenShutdownGracefully() {
-        ILock lock0 = RaftLockProxy.create(instances[0], name);
-        ILock lock1 = RaftLockProxy.create(instances[1], name);
+        ILock lock0 = create(instances[0], SERVICE_NAME, name);
+        ILock lock1 = create(instances[1], SERVICE_NAME, name);
 
         lock0.lock();
 
@@ -270,7 +289,7 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
 
     @Test
     public void testLock_whenSessionManagerShutdown() {
-        ILock lock = RaftLockProxy.create(instances[0], name);
+        ILock lock = create(instances[0], SERVICE_NAME, name);
         SessionManagerService sessionManager = getNodeEngineImpl(instances[0]).getService(SessionManagerService.SERVICE_NAME);
 
         boolean success = sessionManager.onShutdown(60, TimeUnit.SECONDS);
@@ -280,12 +299,127 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
         lock.lock();
     }
 
+    @Test(expected = IllegalStateException.class)
+    public void testCreate_afterDestroy() {
+        lock.destroy();
+
+        lock = createLock(name);
+        lock.lock();
+    }
+
+    @Test
+    public void testMultipleDestroy() {
+        lock.destroy();
+        lock.destroy();
+    }
+
+    @Test
+    public void testWaiters_afterDestroy() throws Exception {
+        lock.lock();
+
+        Collection<Future> futures = new ArrayList<Future>();
+        for (int i = 0; i < 4; i++) {
+            Future<Object> future = spawn(new Callable<Object>() {
+                @Override
+                public Object call() {
+                    lock.lock();
+                    return null;
+                }
+            });
+            futures.add(future);
+        }
+
+        sleepSeconds(1);
+        lock.destroy();
+
+        for (Future future : futures) {
+            try {
+                future.get();
+                fail("Lock acquire should fail!");
+            } catch (ExecutionException e) {
+                Throwable cause = e.getCause();
+                if (cause instanceof DistributedObjectDestroyedException) {
+                    // expected when destroyed while waiting
+                    continue;
+                }
+                if (cause instanceof IllegalStateException) {
+                    // expected when lock called after destroyed
+                    continue;
+                }
+                throw ExceptionUtil.rethrow(e);
+            }
+        }
+    }
+
+    @Test
+    public void testRecreate_afterGroupDestroy() throws Exception {
+        lock.destroy();
+
+        final RaftGroupId groupId = getGroupId(lock);
+        getRaftInvocationManager(instances[0]).triggerDestroyRaftGroup(groupId).get();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                lock = createLock(name);
+                RaftGroupId newGroupId = getGroupId(lock);
+                assertNotEquals(groupId, newGroupId);
+            }
+        });
+
+        lock.lock();
+    }
+
+    @Test
+    public void testWaiters_afterGroupDestroy() throws Exception {
+        lock.lock();
+
+        Collection<Future> futures = new ArrayList<Future>();
+        for (int i = 0; i < 4; i++) {
+            Future<Object> future = spawn(new Callable<Object>() {
+                @Override
+                public Object call() {
+                    lock.lock();
+                    return null;
+                }
+            });
+            futures.add(future);
+        }
+
+        sleepSeconds(1);
+
+        final RaftGroupId groupId = getGroupId(lock);
+        getRaftInvocationManager(instances[0]).triggerDestroyRaftGroup(groupId).get();
+
+        for (Future future : futures) {
+            try {
+                future.get();
+                fail("Lock acquire should fail!");
+            } catch (ExecutionException e) {
+                Throwable cause = e.getCause();
+                if (cause instanceof DistributedObjectDestroyedException) {
+                    // expected when destroyed while waiting
+                    continue;
+                }
+                if (cause instanceof RaftGroupTerminatedException) {
+                    // expected when lock called after destroyed
+                    continue;
+                }
+                throw ExceptionUtil.rethrow(e);
+            }
+        }
+    }
+
+    protected RaftGroupId getGroupId(ILock lock) {
+        return ((RaftLockProxy) lock).getGroupId();
+    }
+
     @Override
     protected Config createConfig(int groupSize, int metadataGroupSize) {
         Config config = super.createConfig(groupSize, metadataGroupSize);
-        config.getRaftConfig().addGroupConfig(new RaftGroupConfig(name, groupSize));
+        config.getRaftConfig().addGroupConfig(new RaftGroupConfig(groupName, groupSize));
 
-        RaftLockConfig lockConfig = new RaftLockConfig(name, name);
+        RaftLockConfig lockConfig = new RaftLockConfig(name, groupName);
         config.addRaftLockConfig(lockConfig);
         return config;
     }

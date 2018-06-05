@@ -162,4 +162,10 @@ public interface RaftIntegration {
      * <i>Bug in single-server membership changes</i></a> post by Diego Ongaro for more info.
      */
     Object getAppendedEntryOnLeaderElection();
+
+    /**
+     * Called when RaftNode status changes.
+     * @param status new status
+     */
+    void onNodeStatusChange(RaftNodeStatus status);
 }

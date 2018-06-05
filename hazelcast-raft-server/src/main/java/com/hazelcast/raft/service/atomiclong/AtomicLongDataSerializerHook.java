@@ -26,6 +26,7 @@ public final class AtomicLongDataSerializerHook implements DataSerializerHook {
     public static final int ALTER_OP = 5;
     public static final int APPLY_OP = 6;
     public static final int LOCAL_GET_OP = 7;
+    public static final int SNAPSHOT = 8;
 
     @Override
     public int getFactoryId() {
@@ -52,6 +53,8 @@ public final class AtomicLongDataSerializerHook implements DataSerializerHook {
                         return new ApplyOp();
                     case LOCAL_GET_OP:
                         return new LocalGetOp();
+                    case SNAPSHOT:
+                        return new RaftAtomicLongSnapshot();
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
             }

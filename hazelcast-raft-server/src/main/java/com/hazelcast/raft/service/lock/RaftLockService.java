@@ -35,10 +35,14 @@ import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.lock.operation.InvalidateWaitEntriesOp;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
 import com.hazelcast.raft.service.session.SessionManagerService;
+import com.hazelcast.raft.impl.RaftGroupLifecycleAwareService;
+import com.hazelcast.raft.service.spi.RaftRemoteService;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 import com.hazelcast.util.Clock;
+import com.hazelcast.util.ExceptionUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -51,7 +55,6 @@ import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import static com.hazelcast.util.Preconditions.checkNotNull;
@@ -60,7 +63,8 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 /**
  * TODO: Javadoc Pending...
  */
-public class RaftLockService implements ManagedService, SnapshotAwareService<LockRegistrySnapshot>, SessionAwareService {
+public class RaftLockService implements ManagedService, SnapshotAwareService<LockRegistrySnapshot>,
+        RaftRemoteService, RaftGroupLifecycleAwareService, SessionAwareService {
 
     private static final long TRY_LOCK_TIMEOUT_TASK_PERIOD_MILLIS = 500;
     static final long TRY_LOCK_TIMEOUT_TASK_UPPER_BOUND_MILLIS = 1500;
@@ -92,7 +96,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
 
     @Override
     public void shutdown(boolean terminate) {
-
+        registries.clear();
     }
 
     @Override
@@ -140,18 +144,52 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
         }
     }
 
-    public ILock createNew(String name) throws ExecutionException, InterruptedException {
-        RaftGroupId groupId = createNewAsync(name).get();
-        SessionManagerService sessionManager = nodeEngine.getService(SessionManagerService.SERVICE_NAME);
-        return new RaftLockProxy(name, groupId, sessionManager, raftService.getInvocationManager());
+    @Override
+    public ILock createRaftObjectProxy(String name) {
+        try {
+            RaftGroupId groupId = createRaftGroup(name).get();
+            SessionManagerService sessionManager = nodeEngine.getService(SessionManagerService.SERVICE_NAME);
+            return new RaftLockProxy(name, groupId, sessionManager, raftService.getInvocationManager());
+        } catch (Exception e) {
+            throw ExceptionUtil.rethrow(e);
+        }
     }
 
-    public ICompletableFuture<RaftGroupId> createNewAsync(String name) {
-        RaftLockConfig config = getConfig(name);
-        String raftGroupRef = config != null ? config.getRaftGroupRef() : RaftGroupConfig.DEFAULT_GROUP;
+    @Override
+    public boolean destroyRaftObject(RaftGroupId groupId, String name) {
+        LockRegistry registry = getLockRegistry(groupId);
+        Collection<Long> indices = registry.destroyLock(name);
+        if (indices == null) {
+            return false;
+        }
+        completeFutures(groupId, indices, new DistributedObjectDestroyedException("Lock[" + name + " is destroyed"));
+        return true;
+    }
+
+    @Override
+    public void onGroupDestroy(final RaftGroupId groupId) {
+        final LockRegistry registry = registries.get(groupId);
+        if (registry != null) {
+            raftService.getInvocationManager().execute(groupId, new Runnable() {
+                @Override
+                public void run() {
+                    Collection<Long> indices = registry.destroy();
+                    completeFutures(groupId, indices, new DistributedObjectDestroyedException("Lock is destroyed"));
+                }
+            });
+        }
+    }
+
+    public ICompletableFuture<RaftGroupId> createRaftGroup(String name) {
+        String raftGroupRef = getRaftGroupRef(name);
 
         RaftInvocationManager invocationManager = raftService.getInvocationManager();
         return invocationManager.createRaftGroup(raftGroupRef);
+    }
+
+    private String getRaftGroupRef(String name) {
+        RaftLockConfig config = getConfig(name);
+        return config != null ? config.getRaftGroupRef() : RaftGroupConfig.DEFAULT_GROUP;
     }
 
     private RaftLockConfig getConfig(String name) {

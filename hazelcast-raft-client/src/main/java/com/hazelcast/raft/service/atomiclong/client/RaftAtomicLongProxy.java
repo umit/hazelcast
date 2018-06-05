@@ -20,6 +20,7 @@ import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDat
 import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.ADD_AND_GET_TYPE;
 import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.COMPARE_AND_SET_TYPE;
 import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.CREATE_TYPE;
+import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.DESTROY_TYPE;
 import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.GET_AND_ADD_TYPE;
 import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.GET_AND_SET_TYPE;
 import static com.hazelcast.raft.service.util.ClientAccessor.getClient;
@@ -219,7 +220,12 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public void destroy() {
-        throw new UnsupportedOperationException();
+        int dataSize = ClientMessage.HEADER_SIZE
+                + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(name);
+        ClientMessage clientMessage = prepareClientMessage(groupId, name, dataSize, DESTROY_TYPE);
+        clientMessage.updateFrameLength();
+
+        join(invoke(clientMessage, BOOLEAN_RESPONSE_DECODER));
     }
 
     private <T> ICompletableFuture<T> invoke(ClientMessage clientMessage, ClientMessageDecoder decoder) {
@@ -262,6 +268,10 @@ public class RaftAtomicLongProxy implements IAtomicLong {
         RaftGroupIdImpl.writeTo(groupId, clientMessage);
         clientMessage.set(name);
         return clientMessage;
+    }
+
+    public RaftGroupId getGroupId() {
+        return groupId;
     }
 
     private static class LongResponseDecoder implements ClientMessageDecoder {
