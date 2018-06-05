@@ -280,7 +280,6 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
 
         lock0.lock();
 
-
         instances[0].shutdown();
 
         assertFalse(lock1.isLocked());
@@ -314,7 +313,7 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testWaiters_afterDestroy() throws Exception {
+    public void testWaitEntries_afterDestroy() throws Exception {
         lock.lock();
 
         Collection<Future> futures = new ArrayList<Future>();
@@ -371,7 +370,7 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testWaiters_afterGroupDestroy() throws Exception {
+    public void testWaitEntries_afterGroupDestroy() throws Exception {
         lock.lock();
 
         Collection<Future> futures = new ArrayList<Future>();
