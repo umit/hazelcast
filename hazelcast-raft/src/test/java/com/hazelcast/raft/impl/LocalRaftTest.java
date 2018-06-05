@@ -62,21 +62,21 @@ public class LocalRaftTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void when_twoNodeCluster_then_leaderIsElected() throws Exception {
+    public void when_twoNodeCluster_then_leaderIsElected() {
         testLeaderElection(2);
     }
 
     @Test
-    public void when_threeNodeCluster_then_leaderIsElected() throws Exception {
+    public void when_threeNodeCluster_then_leaderIsElected() {
         testLeaderElection(3);
     }
 
-    private void testLeaderElection(int nodeCount) throws Exception {
+    private void testLeaderElection(int nodeCount) {
         group = new LocalRaftGroup(nodeCount, new RaftAlgorithmConfig());
         group.start();
         group.waitUntilLeaderElected();
 
-        RaftMember leaderEndpoint = group.getLeaderEndpoint();
+        final RaftMember leaderEndpoint = group.getLeaderEndpoint();
         assertNotNull(leaderEndpoint);
 
         int leaderIndex = group.getLeaderIndex();
@@ -84,6 +84,15 @@ public class LocalRaftTest extends HazelcastTestSupport {
 
         RaftNodeImpl leaderNode = group.getLeaderNode();
         assertNotNull(leaderNode);
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (RaftNodeImpl node : group.getNodes()) {
+                    assertEquals(leaderEndpoint, getLeaderMember(node));
+                }
+            }
+        });
     }
 
     @Test
