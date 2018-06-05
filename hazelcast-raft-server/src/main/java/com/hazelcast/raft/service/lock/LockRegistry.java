@@ -197,8 +197,8 @@ class LockRegistry {
             return null;
         }
 
-        Collection<Long> indices = new ArrayList<Long>(raftLock.waiters().size());
-        for (LockInvocationKey key : raftLock.waiters()) {
+        Collection<Long> indices = new ArrayList<Long>(raftLock.waitEntries().size());
+        for (LockInvocationKey key : raftLock.waitEntries()) {
             indices.add(key.commitIndex());
             tryLockTimeouts.remove(key);
         }
@@ -209,7 +209,7 @@ class LockRegistry {
         destroyedLockNames.addAll(locks.keySet());
         Collection<Long> indices = new ArrayList<Long>();
         for (RaftLock raftLock : locks.values()) {
-            for (LockInvocationKey key : raftLock.waiters()) {
+            for (LockInvocationKey key : raftLock.waitEntries()) {
                 indices.add(key.commitIndex());
             }
         }

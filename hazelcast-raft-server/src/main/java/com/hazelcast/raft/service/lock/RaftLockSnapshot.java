@@ -36,19 +36,19 @@ public class RaftLockSnapshot implements IdentifiedDataSerializable {
     private LockEndpoint owner;
     private int lockCount;
     private UUID refUid;
-    private List<LockInvocationKey> waiters;
+    private List<LockInvocationKey> waitEntries;
 
     public RaftLockSnapshot() {
     }
 
     RaftLockSnapshot(RaftGroupId groupId, String name, LockEndpoint owner, int lockCount, UUID refUid,
-                            List<LockInvocationKey> waiters) {
+                            List<LockInvocationKey> waitEntries) {
         this.groupId = groupId;
         this.name = name;
         this.owner = owner;
         this.lockCount = lockCount;
         this.refUid = refUid;
-        this.waiters = new ArrayList<LockInvocationKey>(waiters);
+        this.waitEntries = new ArrayList<LockInvocationKey>(waitEntries);
     }
 
     RaftGroupId getGroupId() {
@@ -71,8 +71,8 @@ public class RaftLockSnapshot implements IdentifiedDataSerializable {
         return refUid;
     }
 
-    List<LockInvocationKey> getWaiters() {
-        return waiters;
+    List<LockInvocationKey> getWaitEntries() {
+        return waitEntries;
     }
 
     @Override
@@ -101,8 +101,8 @@ public class RaftLockSnapshot implements IdentifiedDataSerializable {
             out.writeLong(refUid.getLeastSignificantBits());
             out.writeLong(refUid.getMostSignificantBits());
         }
-        out.writeInt(waiters.size());
-        for (LockInvocationKey key : waiters) {
+        out.writeInt(waitEntries.size());
+        for (LockInvocationKey key : waitEntries) {
             out.writeObject(key);
         }
     }
@@ -123,10 +123,10 @@ public class RaftLockSnapshot implements IdentifiedDataSerializable {
             refUid = new UUID(most, least);
         }
         int count = in.readInt();
-        waiters = new ArrayList<LockInvocationKey>();
+        waitEntries = new ArrayList<LockInvocationKey>();
         for (int i = 0; i < count; i++)  {
             LockInvocationKey key = in.readObject();
-            waiters.add(key);
+            waitEntries.add(key);
         }
     }
 }

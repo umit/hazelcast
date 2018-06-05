@@ -168,15 +168,10 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
 
     @Override
     public void onGroupDestroy(final RaftGroupId groupId) {
-        final LockRegistry registry = registries.get(groupId);
+        LockRegistry registry = registries.get(groupId);
         if (registry != null) {
-            raftService.getInvocationManager().execute(groupId, new Runnable() {
-                @Override
-                public void run() {
-                    Collection<Long> indices = registry.destroy();
-                    completeFutures(groupId, indices, new DistributedObjectDestroyedException("Lock is destroyed"));
-                }
-            });
+            Collection<Long> indices = registry.destroy();
+            completeFutures(groupId, indices, new DistributedObjectDestroyedException("Lock is destroyed"));
         }
     }
 

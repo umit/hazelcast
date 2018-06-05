@@ -38,7 +38,7 @@ class RaftLock {
     private LockEndpoint owner;
     private int lockCount;
     private UUID refUid;
-    private LinkedList<LockInvocationKey> waiters = new LinkedList<LockInvocationKey>();
+    private LinkedList<LockInvocationKey> waitEntries = new LinkedList<LockInvocationKey>();
 
     RaftLock(RaftGroupId groupId, String name) {
         this.groupId = groupId;
@@ -51,7 +51,7 @@ class RaftLock {
         this.owner = snapshot.getOwner();
         this.lockCount = snapshot.getLockCount();
         this.refUid = snapshot.getRefUid();
-        this.waiters.addAll(snapshot.getWaiters());
+        this.waitEntries.addAll(snapshot.getWaitEntries());
     }
 
     boolean acquire(LockEndpoint endpoint, long commitIndex, UUID invocationUid, boolean wait) {
@@ -66,7 +66,7 @@ class RaftLock {
             return true;
         }
         if (wait) {
-            waiters.offer(new LockInvocationKey(name, endpoint, commitIndex, invocationUid));
+            waitEntries.offer(new LockInvocationKey(name, endpoint, commitIndex, invocationUid));
         }
         return false;
     }
@@ -89,12 +89,12 @@ class RaftLock {
                 return Collections.emptyList();
             }
 
-            LockInvocationKey next = waiters.poll();
+            LockInvocationKey next = waitEntries.poll();
             if (next != null) {
                 List<LockInvocationKey> entries = new ArrayList<LockInvocationKey>();
                 entries.add(next);
 
-                Iterator<LockInvocationKey> iter = waiters.iterator();
+                Iterator<LockInvocationKey> iter = waitEntries.iterator();
                 while (iter.hasNext()) {
                     LockInvocationKey n = iter.next();
                     if (next.invocationUid().equals(n.invocationUid())) {
@@ -119,7 +119,7 @@ class RaftLock {
 
     List<Long> invalidateWaitEntries(long sessionId) {
         List<Long> commitIndices = new ArrayList<Long>();
-        Iterator<LockInvocationKey> iter = waiters.iterator();
+        Iterator<LockInvocationKey> iter = waitEntries.iterator();
         while (iter.hasNext()) {
             LockInvocationKey entry = iter.next();
             if (sessionId == entry.endpoint().sessionId()) {
@@ -132,7 +132,7 @@ class RaftLock {
     }
 
     boolean invalidateWaitEntry(LockInvocationKey key) {
-        Iterator<LockInvocationKey> iter = waiters.iterator();
+        Iterator<LockInvocationKey> iter = waitEntries.iterator();
         while (iter.hasNext()) {
             LockInvocationKey waiter = iter.next();
             if (waiter.equals(key)) {
@@ -152,12 +152,12 @@ class RaftLock {
         return owner;
     }
 
-    Collection<LockInvocationKey> waiters() {
-        return Collections.unmodifiableCollection(waiters);
+    Collection<LockInvocationKey> waitEntries() {
+        return Collections.unmodifiableCollection(waitEntries);
     }
 
     RaftLockSnapshot toSnapshot() {
-        return new RaftLockSnapshot(groupId, name, owner, lockCount, refUid, waiters);
+        return new RaftLockSnapshot(groupId, name, owner, lockCount, refUid, waitEntries);
     }
 
 }

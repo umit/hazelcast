@@ -18,13 +18,10 @@ import com.hazelcast.raft.impl.service.proxy.ChangeRaftGroupMembershipOp;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOp;
 import com.hazelcast.raft.impl.service.proxy.RaftQueryOp;
 import com.hazelcast.raft.impl.service.proxy.TerminateRaftGroupOp;
-import com.hazelcast.raft.impl.util.PartitionSpecificRunnableAdaptor;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.impl.NodeEngineImpl;
-import com.hazelcast.spi.impl.operationexecutor.impl.OperationExecutorImpl;
-import com.hazelcast.spi.impl.operationexecutor.impl.PartitionOperationThread;
 import com.hazelcast.spi.impl.operationservice.impl.Invocation;
 import com.hazelcast.spi.impl.operationservice.impl.OperationServiceImpl;
 import com.hazelcast.spi.impl.operationservice.impl.RaftInvocation;
@@ -173,20 +170,6 @@ public class RaftInvocationManager {
         Invocation invocation = new RaftInvocation(operationService.getInvocationContext(), raftInvocationContext,
                 groupId, operation, true);
         return invocation.invoke();
-    }
-
-    public void execute(RaftGroupId groupId, Runnable task) {
-        int partitionId = nodeEngine.getPartitionService().getPartitionId(groupId);
-        OperationExecutorImpl operationExecutor = (OperationExecutorImpl) operationService.getOperationExecutor();
-        int threadId = operationExecutor.toPartitionThreadIndex(partitionId);
-
-        Thread currentThread = Thread.currentThread();
-        if (currentThread instanceof PartitionOperationThread
-                && ((PartitionOperationThread) currentThread).getThreadId() == threadId) {
-            task.run();
-        } else {
-            operationService.execute(new PartitionSpecificRunnableAdaptor(task, partitionId));
-        }
     }
 
     void setAllMembers(Collection<RaftMemberImpl> members) {
