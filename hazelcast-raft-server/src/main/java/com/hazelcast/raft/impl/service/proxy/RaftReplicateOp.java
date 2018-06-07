@@ -8,19 +8,18 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.RaftGroupDestroyedException;
+import com.hazelcast.raft.impl.RaftSystemOperation;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.spi.Operation;
-import com.hazelcast.spi.impl.AllowedDuringPassiveState;
 
 import java.io.IOException;
 
 /**
  * The base class that replicates the given {@link RaftOp} to the target raft group
  */
-public abstract class RaftReplicateOp extends Operation implements IdentifiedDataSerializable,
-        AllowedDuringPassiveState, ExecutionCallback {
+public abstract class RaftReplicateOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation, ExecutionCallback {
 
     private RaftGroupId groupId;
 
@@ -74,7 +73,7 @@ public abstract class RaftReplicateOp extends Operation implements IdentifiedDat
     }
 
     @Override
-    public boolean validatesTarget() {
+    public final boolean validatesTarget() {
         return false;
     }
 

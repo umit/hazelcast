@@ -4,16 +4,16 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.RaftSystemOperation;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.spi.Operation;
-import com.hazelcast.spi.impl.AllowedDuringPassiveState;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 
-public class DestroyRaftNodesOp extends Operation implements IdentifiedDataSerializable, AllowedDuringPassiveState {
+public class DestroyRaftNodesOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation {
 
     private Collection<RaftGroupId> groupIds;
 
