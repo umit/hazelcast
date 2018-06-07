@@ -14,7 +14,7 @@ import com.hazelcast.raft.impl.state.RaftState;
  * Also a {@link LeaderElectionTimeoutTask} is scheduled with a {@link RaftNodeImpl#getLeaderElectionTimeoutInMillis()}
  * delay to trigger leader election if one is not elected yet.
  */
-public class LeaderElectionTask extends RaftNodeAwareTask implements Runnable {
+public class LeaderElectionTask extends RaftNodeStatusAwareTask implements Runnable {
 
     public LeaderElectionTask(RaftNodeImpl raftNode) {
         super(raftNode);

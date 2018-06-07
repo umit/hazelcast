@@ -10,7 +10,7 @@ import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.log.RaftLog;
 import com.hazelcast.raft.impl.command.ApplyRaftGroupMembersCmd;
 import com.hazelcast.raft.impl.state.RaftState;
-import com.hazelcast.raft.impl.task.RaftNodeAwareTask;
+import com.hazelcast.raft.impl.task.RaftNodeStatusAwareTask;
 import com.hazelcast.raft.command.TerminateRaftGroupCmd;
 
 import java.util.Arrays;
@@ -30,7 +30,7 @@ import static java.util.Arrays.asList;
  * @see AppendSuccessResponse
  * @see AppendFailureResponse
  */
-public class AppendRequestHandlerTask extends RaftNodeAwareTask implements Runnable {
+public class AppendRequestHandlerTask extends RaftNodeStatusAwareTask implements Runnable {
     private final AppendRequest req;
 
     public AppendRequestHandlerTask(RaftNodeImpl raftNode, AppendRequest req) {

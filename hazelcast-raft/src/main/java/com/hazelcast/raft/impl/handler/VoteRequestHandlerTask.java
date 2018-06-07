@@ -7,7 +7,7 @@ import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.log.RaftLog;
 import com.hazelcast.raft.impl.state.RaftState;
-import com.hazelcast.raft.impl.task.RaftNodeAwareTask;
+import com.hazelcast.raft.impl.task.RaftNodeStatusAwareTask;
 import com.hazelcast.util.Clock;
 
 /**
@@ -21,7 +21,7 @@ import com.hazelcast.util.Clock;
  * @see VoteResponse
  * @see com.hazelcast.raft.impl.task.LeaderElectionTask
  */
-public class VoteRequestHandlerTask extends RaftNodeAwareTask implements Runnable {
+public class VoteRequestHandlerTask extends RaftNodeStatusAwareTask implements Runnable {
     private final VoteRequest req;
 
     public VoteRequestHandlerTask(RaftNodeImpl raftNode, VoteRequest req) {
