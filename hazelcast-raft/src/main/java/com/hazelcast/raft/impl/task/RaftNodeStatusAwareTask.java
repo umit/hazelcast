@@ -9,12 +9,12 @@ import com.hazelcast.raft.impl.RaftNodeImpl;
  * <p>
  * Subclasses must implement {@link #innerRun()} method.
  */
-public abstract class RaftNodeAwareTask implements Runnable {
+public abstract class RaftNodeStatusAwareTask implements Runnable {
 
     protected final RaftNodeImpl raftNode;
     protected final ILogger logger;
 
-    protected RaftNodeAwareTask(RaftNodeImpl raftNode) {
+    protected RaftNodeStatusAwareTask(RaftNodeImpl raftNode) {
         this.raftNode = raftNode;
         this.logger = raftNode.getLogger(getClass());
     }

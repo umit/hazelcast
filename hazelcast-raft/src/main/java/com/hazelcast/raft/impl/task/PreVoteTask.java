@@ -16,7 +16,7 @@ import java.util.Collection;
  * Also a {@link PreVoteTimeoutTask} is scheduled with a {@link RaftNodeImpl#getLeaderElectionTimeoutInMillis()}
  * delay to trigger pre-voting if a leader is not available yet.
  */
-public class PreVoteTask extends RaftNodeAwareTask implements Runnable {
+public class PreVoteTask extends RaftNodeStatusAwareTask implements Runnable {
 
     public PreVoteTask(RaftNodeImpl raftNode) {
         super(raftNode);

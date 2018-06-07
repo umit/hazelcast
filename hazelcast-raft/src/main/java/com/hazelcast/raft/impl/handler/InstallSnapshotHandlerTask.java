@@ -7,7 +7,7 @@ import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.raft.impl.dto.InstallSnapshot;
 import com.hazelcast.raft.impl.log.SnapshotEntry;
 import com.hazelcast.raft.impl.state.RaftState;
-import com.hazelcast.raft.impl.task.RaftNodeAwareTask;
+import com.hazelcast.raft.impl.task.RaftNodeStatusAwareTask;
 
 /**
  * Handles {@link InstallSnapshot} request sent by leader. Responds with an {@link AppendSuccessResponse} if snapshot
@@ -20,7 +20,7 @@ import com.hazelcast.raft.impl.task.RaftNodeAwareTask;
  * @see AppendSuccessResponse
  * @see AppendFailureResponse
  */
-public class InstallSnapshotHandlerTask extends RaftNodeAwareTask implements Runnable {
+public class InstallSnapshotHandlerTask extends RaftNodeStatusAwareTask implements Runnable {
 
     private final InstallSnapshot req;
 

@@ -35,7 +35,7 @@ import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.task.MembershipChangeTask;
 import com.hazelcast.raft.impl.task.PreVoteTask;
 import com.hazelcast.raft.impl.task.QueryTask;
-import com.hazelcast.raft.impl.task.RaftNodeAwareTask;
+import com.hazelcast.raft.impl.task.RaftNodeStatusAwareTask;
 import com.hazelcast.raft.impl.task.ReplicateTask;
 import com.hazelcast.raft.impl.util.PostponedResponse;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
@@ -770,7 +770,7 @@ public class RaftNodeImpl implements RaftNode {
      * and sends heartbeat messages (append-entries) if no append-entries request is sent
      * since {@link #lastAppendEntriesTimestamp}.
      */
-    private class HeartbeatTask extends RaftNodeAwareTask {
+    private class HeartbeatTask extends RaftNodeStatusAwareTask {
         HeartbeatTask() {
             super(RaftNodeImpl.this);
         }
@@ -791,7 +791,7 @@ public class RaftNodeImpl implements RaftNode {
      * Leader failure detection task checks whether leader exists and is reachable. Runs pre-vote mechanism
      * if leader doesn't exist or is unreachable or is an unknown member.
      */
-    private class LeaderFailureDetectionTask extends RaftNodeAwareTask {
+    private class LeaderFailureDetectionTask extends RaftNodeStatusAwareTask {
         LeaderFailureDetectionTask() {
             super(RaftNodeImpl.this);
         }
@@ -830,7 +830,7 @@ public class RaftNodeImpl implements RaftNode {
         }
     }
 
-    private class SnapshotTask extends RaftNodeAwareTask {
+    private class SnapshotTask extends RaftNodeStatusAwareTask {
         SnapshotTask() {
             super(RaftNodeImpl.this);
         }
