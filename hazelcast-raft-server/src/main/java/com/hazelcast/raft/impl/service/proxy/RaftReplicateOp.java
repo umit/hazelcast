@@ -7,7 +7,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.NotLeaderException;
-import com.hazelcast.raft.exception.RaftGroupTerminatedException;
+import com.hazelcast.raft.exception.RaftGroupDestroyedException;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
@@ -37,7 +37,7 @@ public abstract class RaftReplicateOp extends Operation implements IdentifiedDat
         RaftNode raftNode = service.getOrInitRaftNode(groupId);
         if (raftNode == null) {
             if (service.isRaftGroupDestroyed(groupId)) {
-                sendResponse(new RaftGroupTerminatedException());
+                sendResponse(new RaftGroupDestroyedException());
             } else {
                 sendResponse(new NotLeaderException(groupId, service.getLocalMember(), null));
             }

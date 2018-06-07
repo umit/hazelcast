@@ -3,7 +3,7 @@ package com.hazelcast.raft.impl.task;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.exception.NotLeaderException;
-import com.hazelcast.raft.exception.RaftGroupTerminatedException;
+import com.hazelcast.raft.exception.RaftGroupDestroyedException;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.RaftNodeStatus;
 import com.hazelcast.raft.impl.RaftRole;
@@ -91,7 +91,7 @@ public class QueryTask implements Runnable {
 
     private boolean verifyRaftNodeStatus() {
         if (raftNode.getStatus() == RaftNodeStatus.TERMINATED) {
-            resultFuture.setResult(new RaftGroupTerminatedException());
+            resultFuture.setResult(new RaftGroupDestroyedException());
             return false;
         } else if (raftNode.getStatus() == RaftNodeStatus.STEPPED_DOWN) {
             resultFuture.setResult(new NotLeaderException(raftNode.getGroupId(), raftNode.getLocalMember(), null));

@@ -38,7 +38,7 @@ import com.hazelcast.raft.impl.service.operation.snapshot.RestoreSnapshotOp;
 import com.hazelcast.raft.impl.service.proxy.ChangeRaftGroupMembershipOp;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOp;
 import com.hazelcast.raft.impl.service.proxy.RaftQueryOp;
-import com.hazelcast.raft.impl.service.proxy.TerminateRaftGroupOp;
+import com.hazelcast.raft.impl.service.proxy.DestroyRaftGroupOp;
 
 public final class RaftServiceDataSerializerHook implements DataSerializerHook {
 
@@ -74,7 +74,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int GET_MEMBERSHIP_CHANGE_CONTEXT_OP = 25;
     public static final int GET_RAFT_GROUP_OP = 26;
     public static final int CREATE_RAFT_NODE_OP = 27;
-    public static final int TERMINATE_RAFT_GROUP_OP = 28;
+    public static final int DESTROY_RAFT_GROUP_OP = 28;
     public static final int RESTORE_SNAPSHOT_OP = 29;
     public static final int NOTIFY_TERM_CHANGE_OP = 30;
     public static final int MEMBER = 31;
@@ -151,8 +151,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new GetRaftGroupOp();
                     case CREATE_RAFT_NODE_OP:
                         return new CreateRaftNodeOp();
-                    case TERMINATE_RAFT_GROUP_OP:
-                        return new TerminateRaftGroupOp();
+                    case DESTROY_RAFT_GROUP_OP:
+                        return new DestroyRaftGroupOp();
                     case RESTORE_SNAPSHOT_OP:
                         return new RestoreSnapshotOp();
                     case NOTIFY_TERM_CHANGE_OP:

@@ -7,7 +7,7 @@ import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.command.RaftGroupCmd;
-import com.hazelcast.raft.command.TerminateRaftGroupCmd;
+import com.hazelcast.raft.command.DestroyRaftGroupCmd;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.StaleAppendRequestException;
 import com.hazelcast.raft.impl.command.ApplyRaftGroupMembersCmd;
@@ -139,6 +139,9 @@ public class RaftNodeImpl implements RaftNode {
             public void run() {
                 if (!isTerminatedOrSteppedDown()) {
                     setStatus(RaftNodeStatus.TERMINATED);
+                    if (localMember.equals(state.leader())) {
+                        invalidateFuturesFrom(state.commitIndex() + 1);
+                    }
                 }
             }
         });
@@ -528,7 +531,7 @@ public class RaftNodeImpl implements RaftNode {
         Object response = null;
         Object operation = entry.operation();
         if (operation instanceof RaftGroupCmd) {
-            if (operation instanceof TerminateRaftGroupCmd) {
+            if (operation instanceof DestroyRaftGroupCmd) {
                 assert status == TERMINATING;
                 setStatus(TERMINATED);
             } else if (operation instanceof ApplyRaftGroupMembersCmd) {

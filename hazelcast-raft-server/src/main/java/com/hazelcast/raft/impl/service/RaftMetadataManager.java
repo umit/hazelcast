@@ -313,16 +313,14 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             checkTrue(group != null, groupId + " not found in the raft groups");
 
             Collection<RaftMemberImpl> candidates = memberMissingGroups.get(groupId);
-            if (candidates == null) {
-                checkTrue(group.status() == RaftGroupStatus.DESTROYED,
-                        groupId + " cannot be expanded with " + membersToAdd + " because it is not in "
-                                + membershipChangeContext + " although its " + group + " is not destroyed");
-                logger.warning("Ignoring expand of " + groupId + " with " + membersToAdd + " because the group is destroyed");
-                continue;
-            }
-
+            checkTrue(candidates != null, groupId + " has no membership change");
             checkTrue(candidates.contains(memberToAdd), groupId + " does not have " + membersToAdd
                     + " in its candidate list");
+
+            if (group.status() == RaftGroupStatus.DESTROYED) {
+                logger.warning("Will not expand " + groupId + " with " + membersToAdd + " since the group is already destroyed");
+                continue;
+            }
 
             long idx = group.getMembersCommitIndex();
             Collection<RaftMemberImpl> members = group.memberImpls();
@@ -432,6 +430,11 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         for (RaftGroupInfo group : groups.values()) {
             RaftGroupId groupId = group.id();
             if (group.containsMember(leavingMember)) {
+                if (group.status() == RaftGroupStatus.DESTROYED) {
+                    logger.warning("Cannot remove " + leavingMember + " from " + groupId + " since the group is DESTROYED");
+                    continue;
+                }
+
                 boolean foundSubstitute = false;
                 for (RaftMemberImpl substitute : activeMembers) {
                     if (activeMembers.contains(substitute) && !group.containsMember(substitute)) {
@@ -450,6 +453,12 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             }
         }
 
+        if (leavingGroups.isEmpty()) {
+            logger.info(leavingMember + " is not present in any raft group. Removing it directly.");
+            removeActiveMember(leavingMember);
+            return;
+        }
+
         membershipChangeContext = new MembershipChangeContext(leavingMember, leavingGroups);
         logger.info("Removing " + leavingMember + " from raft groups: " + leavingGroups);
     }
@@ -461,14 +470,18 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
 
         for (RaftGroupMembershipChangeContext ctx : membershipChangeContext.getChanges()) {
             RaftGroupId groupId = ctx.getGroupId();
-            Tuple2<Long, Long> t = changedGroups.get(groupId);
-            if (t == null) {
-                continue;
-            }
-
             RaftGroupInfo group = groups.get(groupId);
             checkState(group != null, groupId + "not found in raft groups: " + groups.keySet()
                     + "to apply " + ctx);
+            Tuple2<Long, Long> t = changedGroups.get(groupId);
+
+            if (t == null) {
+                if (group.status() == RaftGroupStatus.DESTROYED && !changedGroups.containsKey(groupId)) {
+                    logger.warning(groupId + " is already destroyed so will skip: " + ctx);
+                    changedGroups.put(groupId, Tuple2.of(0L, 0L));
+                }
+                continue;
+            }
 
             long expectedMembersCommitIndex = t.element1;
             long newMembersCommitIndex = t.element2;

@@ -6,11 +6,11 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
 
 /**
- * A {@code RaftGroupCmd} to terminate an existing Raft group.
+ * A {@code RaftGroupCmd} to destroy an existing Raft group.
  */
-public class TerminateRaftGroupCmd extends RaftGroupCmd implements IdentifiedDataSerializable {
+public class DestroyRaftGroupCmd extends RaftGroupCmd implements IdentifiedDataSerializable {
 
-    public TerminateRaftGroupCmd() {
+    public DestroyRaftGroupCmd() {
     }
 
     @Override
@@ -20,7 +20,7 @@ public class TerminateRaftGroupCmd extends RaftGroupCmd implements IdentifiedDat
 
     @Override
     public int getId() {
-        return RaftDataSerializerHook.TERMINATE_RAFT_GROUP_COMMAND;
+        return RaftDataSerializerHook.DESTROY_RAFT_GROUP_COMMAND;
     }
 
     @Override
@@ -33,6 +33,6 @@ public class TerminateRaftGroupCmd extends RaftGroupCmd implements IdentifiedDat
 
     @Override
     public String toString() {
-        return "TerminateRaftGroupCmd{}";
+        return "DestroyRaftGroupCmd{}";
     }
 }
