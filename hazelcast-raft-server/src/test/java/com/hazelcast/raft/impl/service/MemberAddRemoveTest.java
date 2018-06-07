@@ -66,22 +66,6 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testPromoteToRaftMemberIdempotency() throws ExecutionException, InterruptedException {
-        HazelcastInstance[] instances = newInstances(2, 2, 1);
-
-        final RaftService service = getRaftService(instances[instances.length - 1]);
-        service.triggerRaftMemberPromotion().get();
-        service.triggerRaftMemberPromotion().get();
-
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() {
-                assertNotNull(service.getMetadataManager().getLocalMember());
-            }
-        });
-    }
-
-    @Test
     public void testRemoveRaftMember() throws ExecutionException, InterruptedException {
         final HazelcastInstance[] instances = newInstances(3);
 
@@ -235,10 +219,10 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws ExecutionException, InterruptedException {
-                RaftGroupInfo metadataGroup = invocationManager.<RaftGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID), QueryPolicy.LEADER_LOCAL).get();
-                assertEquals(3, metadataGroup.memberCount());
-                Collection<RaftMember> metadataMembers = metadataGroup.members();
-                assertTrue(metadataMembers.contains(getRaftService(instances[3]).getLocalMember()));
+                RaftGroupInfo group = invocationManager.<RaftGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID), QueryPolicy.LEADER_LOCAL).get();
+                assertEquals(3, group.memberCount());
+                Collection<RaftMember> members = group.members();
+                assertTrue(members.contains(getRaftService(instances[3]).getLocalMember()));
 
                 assertNotNull(getRaftNode(instances[3], METADATA_GROUP_ID));
             }
@@ -263,12 +247,12 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws ExecutionException, InterruptedException {
-                RaftGroupInfo metadataGroup = invocationManager.<RaftGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID), QueryPolicy.LEADER_LOCAL).get();
-                assertEquals(5, metadataGroup.memberCount());
-                Collection<RaftMember> metadataMembers = metadataGroup.members();
-                assertTrue(metadataMembers.contains(getRaftService(instances[5]).getLocalMember()));
-                assertTrue(metadataMembers.contains(getRaftService(instances[6]).getLocalMember()));
-                assertTrue(metadataMembers.contains(getRaftService(instances[7]).getLocalMember()));
+                RaftGroupInfo group = invocationManager.<RaftGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID), QueryPolicy.LEADER_LOCAL).get();
+                assertEquals(5, group.memberCount());
+                Collection<RaftMember> members = group.members();
+                assertTrue(members.contains(getRaftService(instances[5]).getLocalMember()));
+                assertTrue(members.contains(getRaftService(instances[6]).getLocalMember()));
+                assertTrue(members.contains(getRaftService(instances[7]).getLocalMember()));
 
                 assertNotNull(getRaftNode(instances[5], METADATA_GROUP_ID));
                 assertNotNull(getRaftNode(instances[6], METADATA_GROUP_ID));

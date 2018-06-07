@@ -152,17 +152,15 @@ public class RaftInvocationManager {
     }
 
     public <T> ICompletableFuture<T> query(RaftGroupId groupId, RaftOp raftOp, QueryPolicy queryPolicy) {
-        RaftQueryOp operation = new RaftQueryOp(groupId, raftOp);
-        operation.setQueryPolicy(queryPolicy);
+        RaftQueryOp operation = new RaftQueryOp(groupId, raftOp, queryPolicy);
         Invocation invocation = new RaftInvocation(operationService.getInvocationContext(), raftInvocationContext,
                 groupId, operation, false);
         return invocation.invoke();
     }
 
     public <T> ICompletableFuture<T> queryOnLocal(RaftGroupId groupId, RaftOp raftOp, QueryPolicy queryPolicy) {
-        RaftQueryOp queryOperation = new RaftQueryOp(groupId, raftOp);
-        return nodeEngine.getOperationService().invokeOnTarget(RaftService.SERVICE_NAME,
-                queryOperation.setQueryPolicy(queryPolicy), nodeEngine.getThisAddress());
+        RaftQueryOp operation = new RaftQueryOp(groupId, raftOp, queryPolicy);
+        return nodeEngine.getOperationService().invokeOnTarget(RaftService.SERVICE_NAME, operation, nodeEngine.getThisAddress());
     }
 
     public ICompletableFuture<Object> terminate(RaftGroupId groupId) {

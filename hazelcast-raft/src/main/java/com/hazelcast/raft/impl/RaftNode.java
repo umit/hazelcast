@@ -13,6 +13,8 @@ import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
 
+import java.util.Collection;
+
 /**
  * {@code RaftNode} maintains the state of a member for a specific Raft group
  * and exposes methods to handle external client requests (such as append requests, queries and membership changes)
@@ -39,6 +41,18 @@ public interface RaftNode {
      * Returns the current status of this node.
      */
     RaftNodeStatus getStatus();
+
+    /**
+     * Returns the initial member list of the raft group this node belongs to.
+     */
+    Collection<RaftMember> getInitialMembers();
+
+    /**
+     * Returns the last committed member list of the raft group this node belongs to.
+     * Please note that the returned member list can be different from the current effective member list,
+     * if there is an ongoing membership change in the group
+     */
+    Collection<RaftMember> getCommittedMembers();
 
     /**
      * Returns true if this node is {@link RaftNodeStatus#TERMINATED} or {@link RaftNodeStatus#STEPPED_DOWN},

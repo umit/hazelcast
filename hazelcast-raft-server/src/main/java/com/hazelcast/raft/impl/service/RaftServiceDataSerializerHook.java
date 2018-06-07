@@ -4,8 +4,8 @@ import com.hazelcast.internal.serialization.DataSerializerHook;
 import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
+import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.service.operation.NotifyTermChangeOp;
 import com.hazelcast.raft.impl.service.operation.integration.AppendFailureResponseOp;
 import com.hazelcast.raft.impl.service.operation.integration.AppendRequestOp;
@@ -24,13 +24,14 @@ import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftNodeOp;
 import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOp;
 import com.hazelcast.raft.impl.service.operation.metadata.ForceDestroyRaftGroupOp;
-import com.hazelcast.raft.impl.service.operation.metadata.TriggerExpandRaftGroupsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetActiveRaftMembersOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetDestroyingRaftGroupIdsOp;
+import com.hazelcast.raft.impl.service.operation.metadata.GetInitialRaftGroupMembersIfCurrentGroupMemberOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetMembershipChangeContextOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.SendActiveRaftMembersOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOp;
+import com.hazelcast.raft.impl.service.operation.metadata.TriggerExpandRaftGroupsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRebalanceRaftGroupsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveRaftMemberOp;
 import com.hazelcast.raft.impl.service.operation.snapshot.RestoreSnapshotOp;
@@ -83,6 +84,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int TRIGGER_REBALANCE_RAFT_GROUPS_OP = 35;
     public static final int CREATE_METADATA_RAFT_GROUP_OP = 36;
     public static final int FORCE_DESTROY_RAFT_GROUP_OP = 37;
+    public static final int GET_INITIAL_RAFT_GROUP_MEMBERS_IF_CURRENT_GROUP_MEMBER_OP = 38;
 
     @Override
     public int getFactoryId() {
@@ -169,6 +171,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new CreateMetadataRaftGroupOp();
                     case FORCE_DESTROY_RAFT_GROUP_OP:
                         return new ForceDestroyRaftGroupOp();
+                    case GET_INITIAL_RAFT_GROUP_MEMBERS_IF_CURRENT_GROUP_MEMBER_OP:
+                        return new GetInitialRaftGroupMembersIfCurrentGroupMemberOp();
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
             }

@@ -33,8 +33,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -259,7 +257,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             RaftGroupInfo metadataGroup = groups.get(METADATA_GROUP_ID);
             for (RaftMemberImpl member : group.memberImpls()) {
                 if (!metadataGroup.containsMember(member)) {
-                    operationService.send(new CreateRaftNodeOp(group), member.getAddress());
+                    operationService.send(new CreateRaftNodeOp(group.id(), group.initialMembers()), member.getAddress());
                 }
             }
         }
@@ -307,19 +305,28 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         }
 
         Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups = membershipChangeContext.getMemberMissingGroups();
-        Map<RaftGroupId, RaftGroupMembershipChangeContext> changes = new HashMap<RaftGroupId, RaftGroupMembershipChangeContext>();
+        List<RaftGroupMembershipChangeContext> changes = new ArrayList<RaftGroupMembershipChangeContext>();
         for (Entry<RaftGroupId, RaftMemberImpl> e : membersToAdd.entrySet()) {
             RaftGroupId groupId = e.getKey();
             RaftMemberImpl memberToAdd = e.getValue();
             RaftGroupInfo group = groups.get(groupId);
-            Collection<RaftMemberImpl> candidates = memberMissingGroups.get(groupId);
-
             checkTrue(group != null, groupId + " not found in the raft groups");
-            checkTrue(candidates != null, groupId + " has no membership change");
-            checkTrue(candidates.contains(memberToAdd), groupId + " does not have " + membersToAdd + " in its candidate list");
+
+            Collection<RaftMemberImpl> candidates = memberMissingGroups.get(groupId);
+            if (candidates == null) {
+                checkTrue(group.status() == RaftGroupStatus.DESTROYED,
+                        groupId + " cannot be expanded with " + membersToAdd + " because it is not in "
+                                + membershipChangeContext + " although its " + group + " is not destroyed");
+                logger.warning("Ignoring expand of " + groupId + " with " + membersToAdd + " because the group is destroyed");
+                continue;
+            }
+
+            checkTrue(candidates.contains(memberToAdd), groupId + " does not have " + membersToAdd
+                    + " in its candidate list");
 
             long idx = group.getMembersCommitIndex();
-            changes.put(groupId, new RaftGroupMembershipChangeContext(idx, group.memberImpls(), memberToAdd, null));
+            Collection<RaftMemberImpl> members = group.memberImpls();
+            changes.add(new RaftGroupMembershipChangeContext(groupId, idx, members, memberToAdd, null));
         }
 
         logger.info("Raft groups will be expanded with the following changes: " + changes);
@@ -330,6 +337,8 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
 
     public void triggerDestroyRaftGroup(RaftGroupId groupId) {
         checkNotNull(groupId);
+        checkState(membershipChangeContext == null,
+                "Cannot destroy raft group while there are raft group membership changes");
 
         RaftGroupInfo group = groups.get(groupId);
         checkNotNull(group, "No raft group exists for " + groupId + " to trigger destroy");
@@ -419,14 +428,14 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             return;
         }
 
-        Map<RaftGroupId, RaftGroupMembershipChangeContext> leavingGroups = new LinkedHashMap<RaftGroupId, RaftGroupMembershipChangeContext>();
+        List<RaftGroupMembershipChangeContext> leavingGroups = new ArrayList<RaftGroupMembershipChangeContext>();
         for (RaftGroupInfo group : groups.values()) {
             RaftGroupId groupId = group.id();
             if (group.containsMember(leavingMember)) {
                 boolean foundSubstitute = false;
                 for (RaftMemberImpl substitute : activeMembers) {
                     if (activeMembers.contains(substitute) && !group.containsMember(substitute)) {
-                        leavingGroups.put(groupId, new RaftGroupMembershipChangeContext(group.getMembersCommitIndex(),
+                        leavingGroups.add(new RaftGroupMembershipChangeContext(groupId, group.getMembersCommitIndex(),
                                 group.memberImpls(), substitute, leavingMember));
                         logger.fine("Substituted " + leavingMember + " with " + substitute + " in " + group);
                         foundSubstitute = true;
@@ -435,14 +444,14 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
                 }
                 if (!foundSubstitute) {
                     logger.fine("Cannot find a substitute for " + leavingMember + " in " + group);
-                    leavingGroups.put(groupId, new RaftGroupMembershipChangeContext(group.getMembersCommitIndex(),
+                    leavingGroups.add(new RaftGroupMembershipChangeContext(groupId, group.getMembersCommitIndex(),
                             group.memberImpls(), null, leavingMember));
                 }
             }
         }
 
         membershipChangeContext = new MembershipChangeContext(leavingMember, leavingGroups);
-        logger.info("Removing " + leavingMember + " from raft groups: " + leavingGroups.keySet());
+        logger.info("Removing " + leavingMember + " from raft groups: " + leavingGroups);
     }
 
     public MembershipChangeContext completeRaftGroupMembershipChanges(Map<RaftGroupId, Tuple2<Long, Long>> changedGroups) {
@@ -450,57 +459,56 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         checkState(membershipChangeContext != null,"Cannot apply raft group membership changes: "
                 + changedGroups + " since there is no membership change context!");
 
-        Map<RaftGroupId, RaftGroupMembershipChangeContext> changingGroups = membershipChangeContext.getChanges();
-
-        Iterator<Entry<RaftGroupId, Tuple2<Long, Long>>> it = changedGroups.entrySet().iterator();
-        while (it.hasNext()) {
-            Entry<RaftGroupId, Tuple2<Long, Long>> e = it.next();
-            RaftGroupId groupId = e.getKey();
-            RaftGroupInfo group = groups.get(groupId);
-
-            Tuple2<Long, Long> value = e.getValue();
-            long expectedMembersCommitIndex = value.element1;
-            long newMembersCommitIndex = value.element2;
-            RaftGroupMembershipChangeContext ctx = changingGroups.get(groupId);
-            if (ctx == null) {
-                it.remove();
-                logger.severe("Raft group membership change context not found in " + membershipChangeContext
-                        + " for changed group: " + e);
+        for (RaftGroupMembershipChangeContext ctx : membershipChangeContext.getChanges()) {
+            RaftGroupId groupId = ctx.getGroupId();
+            Tuple2<Long, Long> t = changedGroups.get(groupId);
+            if (t == null) {
                 continue;
             }
+
+            RaftGroupInfo group = groups.get(groupId);
+            checkState(group != null, groupId + "not found in raft groups: " + groups.keySet()
+                    + "to apply " + ctx);
+
+            long expectedMembersCommitIndex = t.element1;
+            long newMembersCommitIndex = t.element2;
 
             RaftMemberImpl addedMember = ctx.getMemberToAdd();
             RaftMemberImpl removedMember = ctx.getMemberToRemove();
 
             if (group.applyMembershipChange(removedMember, addedMember, expectedMembersCommitIndex, newMembersCommitIndex)) {
                 logger.fine("Applied add-member: " + (addedMember != null ? addedMember : "-") + " and remove-member: "
-                        + (removedMember != null ? removedMember : "-") + " in "  + group.id()
+                        + (removedMember != null ? removedMember : "-") + " in "  + groupId
                         + " with new members commit index: " + newMembersCommitIndex);
                 if (localMember.get().equals(addedMember)) {
                     // we are the added member to the group, we can try to create the local raft node if not created already
                     raftService.createRaftNode(groupId, group.members());
                 } else if (addedMember != null) {
                     // publish group-info to the joining member
-                    nodeEngine.getOperationService().send(new CreateRaftNodeOp(group), addedMember.getAddress());
+                    Operation op = new CreateRaftNodeOp(group.id(), group.initialMembers());
+                    nodeEngine.getOperationService().send(op, addedMember.getAddress());
                 }
             } else {
                 logger.severe("Could not apply add-member: " + (addedMember != null ? addedMember : "-")
                         + " and remove-member: " + (removedMember != null ? removedMember : "-") + " in "  + group
                         + " with new members commit index: " + newMembersCommitIndex + " expected members commit index: "
                         + expectedMembersCommitIndex + " known members commit index: " + group.getMembersCommitIndex());
-                it.remove();
             }
         }
 
-        membershipChangeContext = membershipChangeContext.exclude(changedGroups.keySet());
+        membershipChangeContext = membershipChangeContext.excludeCompletedChanges(changedGroups.keySet());
 
         RaftMemberImpl leavingMember = membershipChangeContext.getLeavingMember();
         if (leavingMember != null) {
             boolean safeToRemove = true;
             for (RaftGroupInfo group : groups.values()) {
                 if (group.containsMember(leavingMember)) {
-                    safeToRemove = false;
-                    break;
+                    if (group.status() == RaftGroupStatus.DESTROYED) {
+                        logger.warning("Leaving " + leavingMember + " was in the destroyed " + group.id());
+                    } else {
+                        safeToRemove = false;
+                        break;
+                    }
                 }
             }
 

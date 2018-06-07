@@ -29,43 +29,45 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import static com.hazelcast.util.Preconditions.checkFalse;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static com.hazelcast.util.Preconditions.checkState;
+import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 
 /**
  * TODO: Javadoc Pending...
  *
- * This class is IMMUTABLE because it can be returned as a response to local queries...
+ * This class is IMMUTABLE because it can be returned as a response to local queries of {@link RaftCleanupHandler}
  */
 public class MembershipChangeContext implements IdentifiedDataSerializable {
 
     private final Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups = new HashMap<RaftGroupId, List<RaftMemberImpl>>();
     private RaftMemberImpl leavingMember;
-    private final Map<RaftGroupId, RaftGroupMembershipChangeContext> changes = new HashMap<RaftGroupId, RaftGroupMembershipChangeContext>();
+    private final List<RaftGroupMembershipChangeContext> changes = new ArrayList<RaftGroupMembershipChangeContext>();
 
     public MembershipChangeContext() {
     }
 
     public MembershipChangeContext(Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups) {
-        this.memberMissingGroups.putAll(memberMissingGroups);
+        this(memberMissingGroups, null, Collections.<RaftGroupMembershipChangeContext>emptyList());
     }
 
-    public MembershipChangeContext(RaftMemberImpl leavingMember, Map<RaftGroupId, RaftGroupMembershipChangeContext> changes) {
-        this.leavingMember = leavingMember;
-        this.changes.putAll(changes);
+    public MembershipChangeContext(RaftMemberImpl leavingMember, List<RaftGroupMembershipChangeContext> changes) {
+        this(Collections.<RaftGroupId, List<RaftMemberImpl>>emptyMap(), leavingMember, changes);
     }
 
     private MembershipChangeContext(Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups, RaftMemberImpl leavingMember,
-                                    Map<RaftGroupId, RaftGroupMembershipChangeContext> changes) {
+                                    List<RaftGroupMembershipChangeContext> changes) {
         this.memberMissingGroups.putAll(memberMissingGroups);
         this.leavingMember = leavingMember;
-        this.changes.putAll(changes);
+        this.changes.addAll(changes);
     }
 
     public Map<RaftGroupId, List<RaftMemberImpl>> getMemberMissingGroups() {
@@ -80,39 +82,48 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
         return leavingMember;
     }
 
-    public Map<RaftGroupId, RaftGroupMembershipChangeContext> getChanges() {
-        return unmodifiableMap(changes);
+    public List<RaftGroupMembershipChangeContext> getChanges() {
+        return unmodifiableList(changes);
     }
 
     public boolean hasNoPendingChanges() {
         return changes.isEmpty();
     }
 
-    public MembershipChangeContext exclude(Collection<RaftGroupId> groupIds) {
-        Map<RaftGroupId, RaftGroupMembershipChangeContext> remainingChanges =
-                new HashMap<RaftGroupId, RaftGroupMembershipChangeContext>(changes);
-        for (RaftGroupId leftGroupId : groupIds) {
-            remainingChanges.remove(leftGroupId);
-        }
-
-        return new MembershipChangeContext(memberMissingGroups, leavingMember, remainingChanges);
-    }
-
-    public MembershipChangeContext setChanges(Map<RaftGroupId, RaftGroupMembershipChangeContext> newChanges) {
+    public MembershipChangeContext setChanges(List<RaftGroupMembershipChangeContext> newChanges) {
         checkNotNull(newChanges);
         checkFalse(newChanges.isEmpty(), "Cannot set empty changes for " + this);
         checkState(leavingMember == null,
                 "Cannot set changes: " + newChanges + " because there is a leaving member for " + this);
         checkState(changes.isEmpty(),
                 "Cannot set changes: " + newChanges + " because there are pending membership for: " + this);
-        HashSet<RaftGroupId> groupIds = new HashSet<RaftGroupId>(memberMissingGroups.keySet());
-        groupIds.removeAll(newChanges.keySet());
+        Set<RaftGroupId> groupIds = new HashSet<RaftGroupId>(memberMissingGroups.keySet());
+        for (RaftGroupMembershipChangeContext ctx : newChanges) {
+            groupIds.remove(ctx.groupId);
+        }
         checkState(groupIds.isEmpty(), "Changes: " + newChanges + " do not cover all missing member groups for " + this);
 
-        return new MembershipChangeContext(Collections.<RaftGroupId, List<RaftMemberImpl>>emptyMap(), leavingMember, newChanges);
+        return new MembershipChangeContext(leavingMember, newChanges);
+    }
+
+    public MembershipChangeContext excludeCompletedChanges(Collection<RaftGroupId> completedGroupIds) {
+        checkNotNull(completedGroupIds);
+
+        List<RaftGroupMembershipChangeContext> remainingChanges = new ArrayList<RaftGroupMembershipChangeContext>(changes);
+        Iterator<RaftGroupMembershipChangeContext> it = remainingChanges.iterator();
+        while (it.hasNext()) {
+            RaftGroupMembershipChangeContext ctx = it.next();
+            if (completedGroupIds.contains(ctx.groupId)) {
+                it.remove();
+            }
+        }
+
+        return new MembershipChangeContext(leavingMember, remainingChanges);
     }
 
     public static class RaftGroupMembershipChangeContext implements DataSerializable {
+
+        private RaftGroupId groupId;
 
         private long membersCommitIndex;
 
@@ -125,12 +136,17 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
         public RaftGroupMembershipChangeContext() {
         }
 
-        public RaftGroupMembershipChangeContext(long membersCommitIndex, Collection<RaftMemberImpl> members,
+        public RaftGroupMembershipChangeContext(RaftGroupId groupId, long membersCommitIndex, Collection<RaftMemberImpl> members,
                                                 RaftMemberImpl memberToAdd, RaftMemberImpl memberToRemove) {
+            this.groupId = groupId;
             this.membersCommitIndex = membersCommitIndex;
             this.members = members;
             this.memberToAdd = memberToAdd;
             this.memberToRemove = memberToRemove;
+        }
+
+        public RaftGroupId getGroupId() {
+            return groupId;
         }
 
         public long getMembersCommitIndex() {
@@ -175,8 +191,8 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
 
         @Override
         public String toString() {
-            return "RaftGroupMembershipChangeContext{" + "membersCommitIndex=" + membersCommitIndex + ", members=" + members
-                    + ", memberToAdd=" + memberToAdd + ", memberToRemove=" + memberToRemove + '}';
+            return "RaftGroupMembershipChangeContext{" + "groupId=" + groupId + ", membersCommitIndex=" + membersCommitIndex
+                    + ", members=" + members + ", memberToAdd=" + memberToAdd + ", memberToRemove=" + memberToRemove + '}';
         }
     }
 
@@ -203,9 +219,8 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
         }
         out.writeObject(leavingMember);
         out.writeInt(changes.size());
-        for (Entry<RaftGroupId, RaftGroupMembershipChangeContext> entry : changes.entrySet()) {
-            out.writeObject(entry.getKey());
-            entry.getValue().writeData(out);
+        for (RaftGroupMembershipChangeContext ctx : changes) {
+            ctx.writeData(out);
         }
     }
 
@@ -225,10 +240,9 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
         leavingMember = in.readObject();
         int groupCount = in.readInt();
         for (int i = 0; i < groupCount; i++) {
-            RaftGroupId groupId = in.readObject();
             RaftGroupMembershipChangeContext context = new RaftGroupMembershipChangeContext();
             context.readData(in);
-            changes.put(groupId, context);
+            changes.add(context);
         }
     }
 

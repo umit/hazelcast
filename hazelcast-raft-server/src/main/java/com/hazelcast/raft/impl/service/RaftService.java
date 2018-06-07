@@ -12,6 +12,7 @@ import com.hazelcast.raft.impl.RaftMember;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftNodeImpl;
+import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;
@@ -20,11 +21,11 @@ import com.hazelcast.raft.impl.dto.PreVoteRequest;
 import com.hazelcast.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.dto.VoteResponse;
-import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.exception.CannotRemoveMemberException;
 import com.hazelcast.raft.impl.service.operation.metadata.AddRaftMemberOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CheckRemovedRaftMemberOp;
 import com.hazelcast.raft.impl.service.operation.metadata.ForceDestroyRaftGroupOp;
+import com.hazelcast.raft.impl.service.operation.metadata.GetInitialRaftGroupMembersIfCurrentGroupMemberOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRebalanceRaftGroupsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveRaftMemberOp;
@@ -333,7 +334,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         RaftNode node = nodes.get(groupId);
         if (node == null && !destroyedGroupIds.contains(groupId)) {
             logger.fine("There is no RaftNode for " + groupId + ". Asking to the metadata group...");
-            nodeEngine.getExecutionService().execute(ASYNC_EXECUTOR, new QueryRaftGroupTask(groupId));
+            nodeEngine.getExecutionService().execute(ASYNC_EXECUTOR, new InitializeRaftNodeTask(groupId));
         }
         return node;
     }
@@ -354,7 +355,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return metadataManager.getLocalMember();
     }
 
-    void createRaftNode(RaftGroupId groupId, Collection<RaftMember> members) {
+    public void createRaftNode(RaftGroupId groupId, Collection<RaftMember> members) {
         if (nodes.containsKey(groupId)) {
             logger.fine("Not creating RaftNode for " + groupId + " since it is already created...");
             return;
@@ -380,12 +381,6 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
     }
 
-    public void createRaftNode(RaftGroupInfo group) {
-        if (group.containsMember(getLocalMember())) {
-            createRaftNode(group.id(), group.initialMembers());
-        }
-    }
-
     public void destroyRaftNode(RaftGroupId groupId) {
         destroyedGroupIds.add(groupId);
         RaftNode node = nodes.remove(groupId);
@@ -408,35 +403,51 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
     }
 
-    private class QueryRaftGroupTask implements Runnable {
+    private class InitializeRaftNodeTask implements Runnable {
         private final RaftGroupId groupId;
 
-        QueryRaftGroupTask(RaftGroupId groupId) {
+        InitializeRaftNodeTask(RaftGroupId groupId) {
             this.groupId = groupId;
         }
 
         @Override
         public void run() {
-            ICompletableFuture<RaftGroupInfo> f = invocationManager.query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId),
-                    LEADER_LOCAL);
+            queryInitialMembersFromMetadataRaftGroup();
+        }
+
+        private void queryInitialMembersFromMetadataRaftGroup() {
+            RaftOp op = new GetRaftGroupOp(groupId);
+            ICompletableFuture<RaftGroupInfo> f = invocationManager.query(METADATA_GROUP_ID, op, LEADER_LOCAL);
             f.andThen(new ExecutionCallback<RaftGroupInfo>() {
                 @Override
                 public void onResponse(RaftGroupInfo group) {
-                    if (group == null) {
-                        return;
+                    if (group.members().contains(getLocalMember())) {
+                        createRaftNode(groupId, group.initialMembers());
+                    } else {
+                        // I can be the member that is just added to the raft group...
+                        queryInitialMembersFromTargetRaftGroup();
                     }
-
-                    if (group.status() == RaftGroupStatus.DESTROYED) {
-                        destroyRaftNode(groupId);
-                        return;
-                    }
-
-                    createRaftNode(group);
                 }
 
                 @Override
                 public void onFailure(Throwable t) {
-                    logger.warning("Cannot get raft group: " + groupId + " from the metadata group", t);
+                    logger.warning("Cannot get initial members of: " + groupId + " from the metadata group", t);
+                }
+            });
+        }
+
+        void queryInitialMembersFromTargetRaftGroup() {
+            RaftOp op = new GetInitialRaftGroupMembersIfCurrentGroupMemberOp(getLocalMember());
+            ICompletableFuture<Collection<RaftMember>> f = invocationManager.query(groupId, op, LEADER_LOCAL);
+            f.andThen(new ExecutionCallback<Collection<RaftMember>>() {
+                @Override
+                public void onResponse(Collection<RaftMember> initialMembers) {
+                    createRaftNode(groupId, initialMembers);
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    logger.warning("Cannot get initial members of: " + groupId + " from the group itself", t);
                 }
             });
         }
