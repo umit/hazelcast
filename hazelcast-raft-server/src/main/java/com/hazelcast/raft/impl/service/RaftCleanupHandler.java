@@ -7,7 +7,7 @@ import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.MismatchingGroupMembersCommitIndexException;
-import com.hazelcast.raft.exception.RaftGroupTerminatedException;
+import com.hazelcast.raft.exception.RaftGroupDestroyedException;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftNodeStatus;
@@ -141,7 +141,7 @@ public class RaftCleanupHandler {
 
             Map<RaftGroupId, Future<Object>> futures = new HashMap<RaftGroupId, Future<Object>>();
             for (RaftGroupId groupId : destroyingRaftGroupIds) {
-                Future<Object> future = invocationManager.terminate(groupId);
+                Future<Object> future = invocationManager.destroy(groupId);
                 futures.put(groupId, future);
             }
 
@@ -189,7 +189,7 @@ public class RaftCleanupHandler {
                 logger.severe("Cannot get result of DESTROY commit to " + groupId, e);
                 return false;
             } catch (ExecutionException e) {
-                if (e.getCause() instanceof RaftGroupTerminatedException) {
+                if (e.getCause() instanceof RaftGroupDestroyedException) {
                     return true;
                 }
 

@@ -17,7 +17,7 @@ import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGrou
 import com.hazelcast.raft.impl.service.proxy.ChangeRaftGroupMembershipOp;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOp;
 import com.hazelcast.raft.impl.service.proxy.RaftQueryOp;
-import com.hazelcast.raft.impl.service.proxy.TerminateRaftGroupOp;
+import com.hazelcast.raft.impl.service.proxy.DestroyRaftGroupOp;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
@@ -163,8 +163,8 @@ public class RaftInvocationManager {
         return nodeEngine.getOperationService().invokeOnTarget(RaftService.SERVICE_NAME, operation, nodeEngine.getThisAddress());
     }
 
-    public ICompletableFuture<Object> terminate(RaftGroupId groupId) {
-        Operation operation = new TerminateRaftGroupOp(groupId);
+    public ICompletableFuture<Object> destroy(RaftGroupId groupId) {
+        Operation operation = new DestroyRaftGroupOp(groupId);
         Invocation invocation = new RaftInvocation(operationService.getInvocationContext(), raftInvocationContext,
                 groupId, operation, true);
         return invocation.invoke();

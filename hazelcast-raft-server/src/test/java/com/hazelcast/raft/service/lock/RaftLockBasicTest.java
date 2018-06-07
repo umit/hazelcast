@@ -6,7 +6,7 @@ import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ILock;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.exception.RaftGroupTerminatedException;
+import com.hazelcast.raft.exception.RaftGroupDestroyedException;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
 import com.hazelcast.raft.service.session.SessionManagerService;
@@ -400,7 +400,7 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
                     // expected when destroyed while waiting
                     continue;
                 }
-                if (cause instanceof RaftGroupTerminatedException) {
+                if (cause instanceof RaftGroupDestroyedException) {
                     // expected when lock called after destroyed
                     continue;
                 }

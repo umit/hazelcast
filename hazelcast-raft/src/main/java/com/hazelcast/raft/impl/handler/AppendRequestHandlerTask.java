@@ -11,7 +11,7 @@ import com.hazelcast.raft.impl.log.RaftLog;
 import com.hazelcast.raft.impl.command.ApplyRaftGroupMembersCmd;
 import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.task.RaftNodeStatusAwareTask;
-import com.hazelcast.raft.command.TerminateRaftGroupCmd;
+import com.hazelcast.raft.command.DestroyRaftGroupCmd;
 
 import java.util.Arrays;
 import java.util.List;
@@ -162,7 +162,7 @@ public class AppendRequestHandlerTask extends RaftNodeStatusAwareTask implements
 
     private void handleRaftGroupCmd(List<LogEntry> entries, boolean revert) {
         for (LogEntry entry : entries) {
-            if (entry.operation() instanceof TerminateRaftGroupCmd) {
+            if (entry.operation() instanceof DestroyRaftGroupCmd) {
                 RaftNodeStatus status = revert ? RaftNodeStatus.ACTIVE : RaftNodeStatus.TERMINATING;
                 raftNode.setStatus(status);
                 return;

@@ -24,7 +24,10 @@ import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftMember;
 import com.hazelcast.raft.impl.RaftMemberImpl;
+import com.hazelcast.raft.impl.RaftNodeImpl;
+import com.hazelcast.raft.impl.command.ApplyRaftGroupMembersCmd;
 import com.hazelcast.raft.impl.service.operation.metadata.GetActiveRaftMembersOp;
+import com.hazelcast.raft.impl.service.operation.metadata.GetMembershipChangeContextOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
 import com.hazelcast.raft.impl.util.DummyOp;
 import com.hazelcast.test.AssertTask;
@@ -40,10 +43,12 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import static com.hazelcast.raft.impl.RaftUtil.getLastLogOrSnapshotEntry;
 import static com.hazelcast.raft.impl.service.RaftMetadataManager.METADATA_GROUP_ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(HazelcastSerialClassRunner.class)
@@ -122,6 +127,129 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
                 assertFalse(testGroup.containsMember(removedEndpoint));
             }
         });
+    }
+
+    @Test
+    public void testRemoveMemberFromForceDestroyedRaftGroup() throws ExecutionException, InterruptedException {
+        HazelcastInstance[] instances = newInstances(3, 3, 0);
+
+        waitAllForLeaderElection(instances, METADATA_GROUP_ID);
+
+        RaftGroupId groupId = getRaftInvocationManager(instances[0]).createRaftGroup("test", 2).get();
+        RaftGroupInfo group = getRaftInvocationManager(instances[0]).<RaftGroupInfo>invoke(METADATA_GROUP_ID, new GetRaftGroupOp(groupId)).get();
+        final RaftMemberImpl crashedMember = group.membersArray()[0];
+
+        HazelcastInstance runningInstance = (getAddress(instances[0])).equals(crashedMember.getAddress()) ? instances[1] : instances[0];
+
+        factory.getInstance(crashedMember.getAddress()).getLifecycleService().terminate();
+
+        RaftService raftService = getRaftService(runningInstance);
+        raftService.forceDestroyRaftGroup(groupId).get();
+        raftService.triggerRemoveRaftMember(crashedMember).get();
+
+        final RaftInvocationManager invocationManager = getRaftInvocationManager(runningInstance);
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run()
+                    throws Exception {
+                List<RaftMember> activeMembers = invocationManager.<List<RaftMember>>query(METADATA_GROUP_ID, new GetActiveRaftMembersOp(), QueryPolicy.LEADER_LOCAL).get();
+                assertFalse(activeMembers.contains(crashedMember));
+            }
+        });
+    }
+
+    @Test
+    public void testRemoveMemberFromMajorityLostRaftGroup() throws ExecutionException, InterruptedException {
+        HazelcastInstance[] instances = newInstances(3, 3, 0);
+
+        waitAllForLeaderElection(instances, METADATA_GROUP_ID);
+
+        RaftGroupId groupId = getRaftInvocationManager(instances[0]).createRaftGroup("test", 2).get();
+
+        getRaftInvocationManager(instances[0]).invoke(groupId, new DummyOp()).get();
+
+        final RaftNodeImpl groupLeaderRaftNode = getLeaderNode(instances, groupId);
+        RaftGroupInfo group = getRaftInvocationManager(instances[0]).<RaftGroupInfo>invoke(METADATA_GROUP_ID, new GetRaftGroupOp(groupId)).get();
+        RaftMemberImpl[] groupMembers = group.membersArray();
+        final RaftMemberImpl crashedMember = groupMembers[0].equals(groupLeaderRaftNode.getLocalMember()) ? groupMembers[1] : groupMembers[0];
+
+        HazelcastInstance runningInstance = (getAddress(instances[0])).equals(crashedMember.getAddress()) ? instances[1] : instances[0];
+
+        final RaftInvocationManager invocationManager = getRaftInvocationManager(runningInstance);
+
+        factory.getInstance(crashedMember.getAddress()).getLifecycleService().terminate();
+
+        // from now on, "test" group lost the majority
+
+        RaftService raftService = getRaftService(runningInstance);
+
+        // we triggered removal of the crashed member but we won't be able to commit to the "test" group
+        raftService.triggerRemoveRaftMember(crashedMember).get();
+
+        // wait until RaftCleanupHandler kicks in and appends ApplyRaftGroupMembersCmd to the leader of the "test" group
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertTrue(getLastLogOrSnapshotEntry(groupLeaderRaftNode).operation() instanceof ApplyRaftGroupMembersCmd);
+            }
+        });
+
+        // force-destroy the raft group.
+        // Now, the pending membership change in the "test" group will fail and we will fix it in the metadata group.
+        raftService.forceDestroyRaftGroup(groupId).get();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() throws Exception {
+                MembershipChangeContext ctx = invocationManager.<MembershipChangeContext>query(METADATA_GROUP_ID, new GetMembershipChangeContextOp(), QueryPolicy.LEADER_LOCAL).get();
+                assertNull(ctx);
+            }
+        });
+    }
+
+    @Test
+    public void testRaftMemberNotPresentInAnyRaftGroupIsRemovedDirectlyAfterCrash() throws ExecutionException, InterruptedException {
+        HazelcastInstance[] instances = newInstances(3, 3, 1);
+
+        HazelcastInstance master = instances[0];
+        final HazelcastInstance promoted = instances[instances.length - 1];
+        getRaftService(promoted).triggerRaftMemberPromotion().get();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertNotNull(getRaftService(promoted).getLocalMember());
+            }
+        });
+
+        RaftMemberImpl promotedRaftMember = getRaftService(promoted).getLocalMember();
+        promoted.getLifecycleService().terminate();
+
+        getRaftService(master).triggerRemoveRaftMember(promotedRaftMember).get();
+
+        MembershipChangeContext ctx = getRaftInvocationManager(master).<MembershipChangeContext>query(METADATA_GROUP_ID, new GetMembershipChangeContextOp(), QueryPolicy.LEADER_LOCAL).get();
+        assertNull(ctx);
+    }
+
+    @Test
+    public void testRaftMemberNotPresentInAnyRaftGroupIsRemovedDirectlyForGracefulShutdown() throws ExecutionException, InterruptedException {
+        HazelcastInstance[] instances = newInstances(3, 3, 1);
+
+        HazelcastInstance master = instances[0];
+        final HazelcastInstance promoted = instances[instances.length - 1];
+        getRaftService(promoted).triggerRaftMemberPromotion().get();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertNotNull(getRaftService(promoted).getLocalMember());
+            }
+        });
+
+        promoted.getLifecycleService().shutdown();
+
+        MembershipChangeContext ctx = getRaftInvocationManager(master).<MembershipChangeContext>query(METADATA_GROUP_ID, new GetMembershipChangeContextOp(), QueryPolicy.LEADER_LOCAL).get();
+        assertNull(ctx);
     }
 
     @Test

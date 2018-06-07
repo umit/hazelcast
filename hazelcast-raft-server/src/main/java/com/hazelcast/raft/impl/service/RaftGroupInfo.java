@@ -119,6 +119,8 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
 
     public boolean applyMembershipChange(RaftMemberImpl leaving, RaftMemberImpl joining,
                               long expectedMembersCommitIndex, long newMembersCommitIndex) {
+        checkState(status == ACTIVE, "Cannot apply membership change of Leave: " + leaving
+                + " and Join: " + joining + " since status is: " + status);
         if (membersCommitIndex != expectedMembersCommitIndex) {
             return false;
         }

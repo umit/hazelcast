@@ -2,11 +2,11 @@ package com.hazelcast.raft.impl;
 
 import com.hazelcast.config.raft.RaftAlgorithmConfig;
 import com.hazelcast.raft.exception.CannotReplicateException;
-import com.hazelcast.raft.exception.RaftGroupTerminatedException;
+import com.hazelcast.raft.exception.RaftGroupDestroyedException;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.service.ApplyRaftRunnable;
 import com.hazelcast.raft.impl.testing.LocalRaftGroup;
-import com.hazelcast.raft.command.TerminateRaftGroupCmd;
+import com.hazelcast.raft.command.DestroyRaftGroupCmd;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
@@ -31,7 +31,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
-public class TerminateRaftGroupTest extends HazelcastTestSupport {
+public class DestroyRaftGroupTest extends HazelcastTestSupport {
 
     private LocalRaftGroup group;
 
@@ -47,7 +47,7 @@ public class TerminateRaftGroupTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void when_terminateOpIsAppendedButNotCommitted_then_cannotAppendNewEntry() throws ExecutionException, InterruptedException {
+    public void when_destroyOpIsAppendedButNotCommitted_then_cannotAppendNewEntry() throws ExecutionException, InterruptedException {
         group = newGroupWithService(2, new RaftAlgorithmConfig());
         group.start();
 
@@ -56,7 +56,7 @@ public class TerminateRaftGroupTest extends HazelcastTestSupport {
 
         group.dropAllMessagesToMember(leader.getLocalMember(), follower.getLocalMember());
 
-        leader.replicate(new TerminateRaftGroupCmd());
+        leader.replicate(new DestroyRaftGroupCmd());
 
         try {
             leader.replicate(new ApplyRaftRunnable("val")).get();
@@ -66,7 +66,7 @@ public class TerminateRaftGroupTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void when_terminateOpIsAppended_then_statusIsTerminating() {
+    public void when_destroyOpIsAppended_then_statusIsTerminating() {
         group = newGroupWithService(2, new RaftAlgorithmConfig());
         group.start();
 
@@ -75,7 +75,7 @@ public class TerminateRaftGroupTest extends HazelcastTestSupport {
 
         group.dropAllMessagesToMember(follower.getLocalMember(), leader.getLocalMember());
 
-        leader.replicate(new TerminateRaftGroupCmd());
+        leader.replicate(new DestroyRaftGroupCmd());
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -87,14 +87,14 @@ public class TerminateRaftGroupTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void when_terminateOpIsCommitted_then_raftNodeIsTerminated() throws ExecutionException, InterruptedException {
+    public void when_destroyOpIsCommitted_then_raftNodeIsTerminated() throws ExecutionException, InterruptedException {
         group = newGroupWithService(2, new RaftAlgorithmConfig());
         group.start();
 
         final RaftNodeImpl leader = group.waitUntilLeaderElected();
         final RaftNodeImpl follower = group.getAnyFollowerNode();
 
-        leader.replicate(new TerminateRaftGroupCmd()).get();
+        leader.replicate(new DestroyRaftGroupCmd()).get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -109,19 +109,19 @@ public class TerminateRaftGroupTest extends HazelcastTestSupport {
         try {
             leader.replicate(new ApplyRaftRunnable("val")).get();
             fail();
-        } catch (RaftGroupTerminatedException ignored) {
+        } catch (RaftGroupDestroyedException ignored) {
 
         }
 
         try {
             follower.replicate(new ApplyRaftRunnable("val")).get();
             fail();
-        } catch (RaftGroupTerminatedException ignored) {
+        } catch (RaftGroupDestroyedException ignored) {
         }
     }
 
     @Test
-    public void when_terminateOpIsTruncated_then_statusIsActive() throws ExecutionException, InterruptedException {
+    public void when_destroyOpIsTruncated_then_statusIsActive() throws ExecutionException, InterruptedException {
         group = newGroupWithService(3, new RaftAlgorithmConfig());
         group.start();
 
@@ -130,7 +130,7 @@ public class TerminateRaftGroupTest extends HazelcastTestSupport {
 
         group.dropMessagesToAll(leader.getLocalMember(), AppendRequest.class);
 
-        leader.replicate(new TerminateRaftGroupCmd());
+        leader.replicate(new DestroyRaftGroupCmd());
 
         group.split(leader.getLocalMember());
 
