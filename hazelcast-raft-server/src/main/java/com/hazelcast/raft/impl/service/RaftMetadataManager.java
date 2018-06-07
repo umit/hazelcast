@@ -289,7 +289,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
             return;
         }
 
-        Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups = getMemberMissingRaftGroups();
+        Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups = getMemberMissingActiveRaftGroups();
         if (memberMissingGroups.size() > 0) {
             logger.info("Raft group rebalancing is triggered for " + memberMissingGroups);
             membershipChangeContext = new MembershipChangeContext(memberMissingGroups);
@@ -538,11 +538,12 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
 
         if (membershipChangeContext.hasNoPendingChanges() && leavingMember == null) {
             // the current raft group rebalancing step is completed. let's attempt for another one
-            Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups = getMemberMissingRaftGroups();
+            Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups = getMemberMissingActiveRaftGroups();
             if (memberMissingGroups.size() > 0) {
                 membershipChangeContext = new MembershipChangeContext(memberMissingGroups);
                 logger.info("Raft group rebalancing continues with " + memberMissingGroups);
             } else {
+                membershipChangeContext = null;
                 logger.info("Rebalancing is completed.");
             }
         }
@@ -550,10 +551,11 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         return membershipChangeContext;
     }
 
-    private Map<RaftGroupId, List<RaftMemberImpl>> getMemberMissingRaftGroups() {
+    private Map<RaftGroupId, List<RaftMemberImpl>> getMemberMissingActiveRaftGroups() {
         Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups = new HashMap<RaftGroupId, List<RaftMemberImpl>>();
         for (RaftGroupInfo group : groups.values()) {
-            if (group.initialMemberCount() > group.memberCount() && activeMembers.size() > group.memberCount()) {
+            if (group.status() == RaftGroupStatus.ACTIVE &&
+                    group.initialMemberCount() > group.memberCount() && activeMembers.size() > group.memberCount()) {
                 List<RaftMemberImpl> candidates = new ArrayList<RaftMemberImpl>(activeMembers);
                 candidates.removeAll(group.memberImpls());
                 memberMissingGroups.put(group.id(), candidates);
