@@ -22,14 +22,15 @@ public class RaftQueryOp extends Operation implements IdentifiedDataSerializable
 
     private RaftGroupId groupId;
     private QueryPolicy queryPolicy;
-    private RaftOp raftOp;
+    private Object op;
 
     public RaftQueryOp() {
     }
 
-    public RaftQueryOp(RaftGroupId groupId, RaftOp raftOp) {
+    public RaftQueryOp(RaftGroupId groupId, RaftOp raftOp, QueryPolicy queryPolicy) {
         this.groupId = groupId;
-        this.raftOp = raftOp;
+        this.op = raftOp;
+        this.queryPolicy = queryPolicy;
     }
 
     @Override
@@ -45,13 +46,12 @@ public class RaftQueryOp extends Operation implements IdentifiedDataSerializable
             return;
         }
 
-        ICompletableFuture future = raftNode.query(raftOp, queryPolicy);
-        future.andThen(this);
-    }
+        if (op instanceof RaftNodeAware) {
+            ((RaftNodeAware) op).setRaftNode(raftNode);
+        }
 
-    public RaftQueryOp setQueryPolicy(QueryPolicy queryPolicy) {
-        this.queryPolicy = queryPolicy;
-        return this;
+        ICompletableFuture future = raftNode.query(op, queryPolicy);
+        future.andThen(this);
     }
 
     @Override
@@ -93,7 +93,7 @@ public class RaftQueryOp extends Operation implements IdentifiedDataSerializable
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeObject(groupId);
-        out.writeObject(raftOp);
+        out.writeObject(op);
         out.writeUTF(queryPolicy.toString());
     }
 
@@ -101,14 +101,15 @@ public class RaftQueryOp extends Operation implements IdentifiedDataSerializable
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         groupId = in.readObject();
-        raftOp = in.readObject();
+        op = in.readObject();
         queryPolicy = QueryPolicy.valueOf(in.readUTF());
     }
 
     @Override
     protected void toString(StringBuilder sb) {
         super.toString(sb);
-        sb.append(", groupId=").append(groupId)
+        sb.append(", op=").append(op)
+          .append(", groupId=").append(groupId)
           .append(", policy=").append(queryPolicy);
     }
 }

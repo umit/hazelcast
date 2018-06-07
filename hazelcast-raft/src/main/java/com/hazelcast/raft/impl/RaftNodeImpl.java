@@ -35,6 +35,7 @@ import com.hazelcast.raft.impl.state.RaftState;
 import com.hazelcast.raft.impl.task.MembershipChangeTask;
 import com.hazelcast.raft.impl.task.PreVoteTask;
 import com.hazelcast.raft.impl.task.QueryTask;
+import com.hazelcast.raft.impl.task.RaftNodeAwareTask;
 import com.hazelcast.raft.impl.task.ReplicateTask;
 import com.hazelcast.raft.impl.util.PostponedResponse;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
@@ -119,6 +120,16 @@ public class RaftNodeImpl implements RaftNode {
     @Override
     public RaftNodeStatus getStatus() {
         return status;
+    }
+
+    @Override
+    public Collection<RaftMember> getInitialMembers() {
+        return state.initialMembers();
+    }
+
+    @Override
+    public Collection<RaftMember> getCommittedMembers() {
+        return state.committedGroupMembers().members();
     }
 
     @Override
@@ -516,19 +527,23 @@ public class RaftNodeImpl implements RaftNode {
 
         Object response = null;
         Object operation = entry.operation();
-        if (operation instanceof TerminateRaftGroupCmd) {
-            assert status == TERMINATING;
-            setStatus(TERMINATED);
-        } else if (operation instanceof ApplyRaftGroupMembersCmd) {
-            assert status == CHANGING_MEMBERSHIP : "STATUS: " + status;
-            state.commitGroupMembers();
-            ApplyRaftGroupMembersCmd cmd = (ApplyRaftGroupMembersCmd) operation;
-            if (cmd.getMember().equals(localMember) && cmd.getChangeType() == MembershipChangeType.REMOVE) {
-                setStatus(STEPPED_DOWN);
+        if (operation instanceof RaftGroupCmd) {
+            if (operation instanceof TerminateRaftGroupCmd) {
+                assert status == TERMINATING;
+                setStatus(TERMINATED);
+            } else if (operation instanceof ApplyRaftGroupMembersCmd) {
+                assert status == CHANGING_MEMBERSHIP : "STATUS: " + status;
+                state.commitGroupMembers();
+                ApplyRaftGroupMembersCmd cmd = (ApplyRaftGroupMembersCmd) operation;
+                if (cmd.getMember().equals(localMember) && cmd.getChangeType() == MembershipChangeType.REMOVE) {
+                    setStatus(STEPPED_DOWN);
+                } else {
+                    setStatus(ACTIVE);
+                }
+                response = entry.index();
             } else {
-                setStatus(ACTIVE);
+                response = new IllegalArgumentException("Invalid command: " + operation);
             }
-            response = entry.index();
         } else {
             response = raftIntegration.runOperation(operation, entry.index());
         }
@@ -755,9 +770,13 @@ public class RaftNodeImpl implements RaftNode {
      * and sends heartbeat messages (append-entries) if no append-entries request is sent
      * since {@link #lastAppendEntriesTimestamp}.
      */
-    private class HeartbeatTask implements Runnable {
+    private class HeartbeatTask extends RaftNodeAwareTask {
+        HeartbeatTask() {
+            super(RaftNodeImpl.this);
+        }
+
         @Override
-        public void run() {
+        protected void innerRun() {
             if (state.role() == RaftRole.LEADER) {
                 if (lastAppendEntriesTimestamp < Clock.currentTimeMillis() - heartbeatPeriodInMillis) {
                     broadcastAppendRequest();
@@ -772,15 +791,14 @@ public class RaftNodeImpl implements RaftNode {
      * Leader failure detection task checks whether leader exists and is reachable. Runs pre-vote mechanism
      * if leader doesn't exist or is unreachable or is an unknown member.
      */
-    private class LeaderFailureDetectionTask implements Runnable {
-        @Override
-        public void run() {
-            try {
-                if (isTerminatedOrSteppedDown()) {
-                    logger.fine("Won't run, since raft node is terminated");
-                    return;
-                }
+    private class LeaderFailureDetectionTask extends RaftNodeAwareTask {
+        LeaderFailureDetectionTask() {
+            super(RaftNodeImpl.this);
+        }
 
+        @Override
+        protected void innerRun() {
+            try {
                 RaftMember leader = state.leader();
                 if (leader == null) {
                     if (state.role() == RaftRole.FOLLOWER) {
@@ -812,9 +830,13 @@ public class RaftNodeImpl implements RaftNode {
         }
     }
 
-    private class SnapshotTask implements Runnable {
+    private class SnapshotTask extends RaftNodeAwareTask {
+        SnapshotTask() {
+            super(RaftNodeImpl.this);
+        }
+
         @Override
-        public void run() {
+        protected void innerRun() {
             try {
                 if (state.role() == RaftRole.LEADER || state.role() == RaftRole.FOLLOWER) {
                     takeSnapshotIfCommitIndexAdvanced();

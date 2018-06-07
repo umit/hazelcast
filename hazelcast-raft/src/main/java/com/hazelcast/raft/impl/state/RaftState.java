@@ -7,6 +7,9 @@ import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.log.RaftLog;
 
 import java.util.Collection;
+import java.util.LinkedHashSet;
+
+import static java.util.Collections.unmodifiableSet;
 
 /**
  * {@code RaftState} is the mutable state maintained by Raft state machine on every node in the group.
@@ -24,7 +27,12 @@ public class RaftState {
     private final RaftGroupId groupId;
 
     /**
-     * Latest committed group members
+     * Initial members of the group
+     */
+    private final Collection<RaftMember> initialMembers;
+
+    /**
+     * Latest committed group members.
      */
     private RaftGroupMembers committedGroupMembers;
 
@@ -97,6 +105,7 @@ public class RaftState {
     public RaftState(RaftGroupId groupId, RaftMember localEndpoint, Collection<RaftMember> endpoints) {
         this.groupId = groupId;
         this.localEndpoint = localEndpoint;
+        this.initialMembers = unmodifiableSet(new LinkedHashSet<RaftMember>(endpoints));
         RaftGroupMembers groupMembers = new RaftGroupMembers(0, endpoints, localEndpoint);
         this.committedGroupMembers = groupMembers;
         this.lastGroupMembers = groupMembers;
@@ -108,6 +117,10 @@ public class RaftState {
 
     public RaftGroupId groupId() {
         return groupId;
+    }
+
+    public Collection<RaftMember> initialMembers() {
+        return initialMembers;
     }
 
     /**
