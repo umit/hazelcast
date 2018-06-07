@@ -421,11 +421,15 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             f.andThen(new ExecutionCallback<RaftGroupInfo>() {
                 @Override
                 public void onResponse(RaftGroupInfo group) {
-                    if (group.members().contains(getLocalMember())) {
-                        createRaftNode(groupId, group.initialMembers());
+                    if (group != null) {
+                        if (group.members().contains(getLocalMember())) {
+                            createRaftNode(groupId, group.initialMembers());
+                        } else {
+                            // I can be the member that is just added to the raft group...
+                            queryInitialMembersFromTargetRaftGroup();
+                        }
                     } else {
-                        // I can be the member that is just added to the raft group...
-                        queryInitialMembersFromTargetRaftGroup();
+                        logger.warning("Cannot get initial members of: " + groupId + " from the metadata group");
                     }
                 }
 
