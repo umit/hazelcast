@@ -6,6 +6,7 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.RaftMember;
 import com.hazelcast.raft.command.RaftGroupCmd;
 import com.hazelcast.raft.command.DestroyRaftGroupCmd;
 import com.hazelcast.raft.exception.LeaderDemotedException;
