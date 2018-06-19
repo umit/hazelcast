@@ -4,7 +4,7 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftGroupLifecycleAwareService;
-import com.hazelcast.raft.impl.RaftMember;
+import com.hazelcast.raft.RaftMember;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.raft.impl.RaftNodeStatus;

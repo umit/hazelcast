@@ -4,6 +4,7 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.RaftMember;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.dto.AppendSuccessResponse;

@@ -1,6 +1,6 @@
 package com.hazelcast.raft.impl.handler;
 
-import com.hazelcast.raft.impl.RaftMember;
+import com.hazelcast.raft.RaftMember;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.VoteRequest;

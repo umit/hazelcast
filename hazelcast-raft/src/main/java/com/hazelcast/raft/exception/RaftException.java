@@ -1,7 +1,7 @@
 package com.hazelcast.raft.exception;
 
 import com.hazelcast.core.HazelcastException;
-import com.hazelcast.raft.impl.RaftMember;
+import com.hazelcast.raft.RaftMember;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;

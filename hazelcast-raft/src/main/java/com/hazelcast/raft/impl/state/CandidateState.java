@@ -1,6 +1,6 @@
 package com.hazelcast.raft.impl.state;
 
-import com.hazelcast.raft.impl.RaftMember;
+import com.hazelcast.raft.RaftMember;
 
 import java.util.HashSet;
 import java.util.Set;

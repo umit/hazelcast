@@ -1,6 +1,7 @@
 package com.hazelcast.raft.impl;
 
 import com.hazelcast.config.raft.RaftAlgorithmConfig;
+import com.hazelcast.raft.RaftMember;
 import com.hazelcast.raft.exception.CannotReplicateException;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.NotLeaderException;

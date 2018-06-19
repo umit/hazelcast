@@ -22,7 +22,7 @@ import com.hazelcast.core.Member;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.RaftMember;
+import com.hazelcast.raft.RaftMember;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.command.ApplyRaftGroupMembersCmd;
