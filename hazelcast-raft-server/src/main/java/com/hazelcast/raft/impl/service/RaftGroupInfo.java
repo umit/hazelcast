@@ -3,6 +3,7 @@ package com.hazelcast.raft.impl.service;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.raft.RaftGroup;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.RaftMember;
 import com.hazelcast.raft.impl.RaftMemberImpl;
@@ -13,19 +14,15 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import static com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus.ACTIVE;
-import static com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus.DESTROYED;
-import static com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus.DESTROYING;
+import static com.hazelcast.raft.RaftGroup.RaftGroupStatus.ACTIVE;
+import static com.hazelcast.raft.RaftGroup.RaftGroupStatus.DESTROYED;
+import static com.hazelcast.raft.RaftGroup.RaftGroupStatus.DESTROYING;
 import static com.hazelcast.util.Preconditions.checkState;
 
 /**
  * TODO: Javadoc Pending...
  */
-public final class RaftGroupInfo implements IdentifiedDataSerializable {
-
-    public enum RaftGroupStatus {
-        ACTIVE, DESTROYING, DESTROYED
-    }
+public final class RaftGroupInfo implements RaftGroup, IdentifiedDataSerializable {
 
     private RaftGroupId id;
     private Set<RaftMemberImpl> initialMembers;
@@ -48,6 +45,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
         this.membersArray = members.toArray(new RaftMemberImpl[0]);
     }
 
+    @Override
     public RaftGroupId id() {
         return id;
     }
@@ -65,6 +63,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     }
 
     @SuppressWarnings("unchecked")
+    @Override
     public Collection<RaftMember> members() {
         return (Collection) members;
     }
@@ -74,6 +73,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
     }
 
     @SuppressWarnings("unchecked")
+    @Override
     public Collection<RaftMember> initialMembers() {
         return (Collection) initialMembers;
     }
@@ -86,6 +86,7 @@ public final class RaftGroupInfo implements IdentifiedDataSerializable {
         return members.size();
     }
 
+    @Override
     public RaftGroupStatus status() {
         return status;
     }
