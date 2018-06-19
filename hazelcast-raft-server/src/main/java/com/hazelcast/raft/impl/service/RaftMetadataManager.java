@@ -14,7 +14,7 @@ import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
+import com.hazelcast.raft.RaftGroup.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.exception.CannotCreateRaftGroupException;
 import com.hazelcast.raft.impl.service.exception.CannotRemoveMemberException;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateMetadataRaftGroupOp;
@@ -195,6 +195,10 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
         checkNotNull(groupId);
 
         return groups.get(groupId);
+    }
+
+    public Collection<RaftGroupId> getRaftGroupIds() {
+        return groups.keySet();
     }
 
     public void createInitialMetadataRaftGroup(Collection<RaftMemberImpl> members) {

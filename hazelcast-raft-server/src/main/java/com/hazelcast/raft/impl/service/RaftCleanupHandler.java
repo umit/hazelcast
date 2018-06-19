@@ -13,7 +13,7 @@ import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftNodeStatus;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.MembershipChangeContext.RaftGroupMembershipChangeContext;
-import com.hazelcast.raft.impl.service.RaftGroupInfo.RaftGroupStatus;
+import com.hazelcast.raft.RaftGroup.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteRaftGroupMembershipChangesOp;
 import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOp;

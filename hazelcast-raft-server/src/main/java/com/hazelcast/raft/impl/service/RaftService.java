@@ -6,6 +6,7 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.RaftManagementService;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.raft.RaftMember;
@@ -40,6 +41,7 @@ import com.hazelcast.util.ExceptionUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -58,7 +60,7 @@ import static java.util.Collections.newSetFromMap;
  * TODO: Javadoc Pending...
  */
 public class RaftService implements ManagedService, SnapshotAwareService<MetadataSnapshot>,
-        GracefulShutdownAwareService, MembershipAwareService {
+        GracefulShutdownAwareService, MembershipAwareService, RaftManagementService {
 
     public static final String SERVICE_NAME = "hz:core:raft";
 
@@ -104,9 +106,20 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         metadataManager.restoreSnapshot(groupId, commitIndex, snapshot);
     }
 
+    @Override
+    public Collection<RaftGroupId> getRaftGroupIds() {
+        return Collections.unmodifiableCollection(metadataManager.getRaftGroupIds());
+    }
+
+    @Override
+    public RaftGroupInfo getRaftGroup(RaftGroupId id) {
+        return metadataManager.getRaftGroup(id);
+    }
+
     /**
      * this method is NOT idempotent and multiple invocations on the same member can break the whole system !!!
      */
+    @Override
     public void resetAndInitRaftState() {
         // we should clear the current raft state before resetting the metadata manager
         for (RaftNode node : nodes.values()) {
@@ -122,20 +135,22 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     /**
      * this method is idempotent
      */
-    public ICompletableFuture<Object> triggerRebalanceRaftGroups() {
+    @Override
+    public ICompletableFuture<Void> triggerRebalanceRaftGroups() {
         return invocationManager.invoke(METADATA_GROUP_ID, new TriggerRebalanceRaftGroupsOp());
     }
 
-    public ICompletableFuture<Object> triggerRaftMemberPromotion() {
+    @Override
+    public ICompletableFuture<Void> triggerRaftMemberPromotion() {
         checkState(metadataManager.getLocalMember() == null, "We are already a Raft member!");
 
         RaftMemberImpl member = new RaftMemberImpl(nodeEngine.getLocalMember());
         logger.info("Adding new Raft member: " + member);
-        ICompletableFuture<Object> future = invocationManager.invoke(METADATA_GROUP_ID, new AddRaftMemberOp(member));
+        ICompletableFuture<Void> future = invocationManager.invoke(METADATA_GROUP_ID, new AddRaftMemberOp(member));
 
-        future.andThen(new ExecutionCallback<Object>() {
+        future.andThen(new ExecutionCallback<Void>() {
             @Override
-            public void onResponse(Object response) {
+            public void onResponse(Void response) {
                 metadataManager.init();
             }
 
@@ -149,7 +164,9 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     /**
      * this method is idempotent
      */
-    public ICompletableFuture<Object> triggerRemoveRaftMember(RaftMemberImpl member) {
+    @Override
+    public ICompletableFuture<Void> triggerRemoveRaftMember(RaftMember m) {
+        RaftMemberImpl member = (RaftMemberImpl) m;
         ClusterService clusterService = nodeEngine.getClusterService();
         checkState(clusterService.isMaster(), "Only master can remove a Raft member!");
         checkState(clusterService.getMember(member.getAddress()) == null,
@@ -158,11 +175,11 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return invokeTriggerRemoveMember(member);
     }
 
-    // TODO: we should also notify services...
     /**
      * this method is idempotent
      */
-    public ICompletableFuture<Object> forceDestroyRaftGroup(RaftGroupId groupId) {
+    @Override
+    public ICompletableFuture<Void> forceDestroyRaftGroup(RaftGroupId groupId) {
         return invocationManager.invoke(METADATA_GROUP_ID, new ForceDestroyRaftGroupOp(groupId));
     }
 
@@ -213,7 +230,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             long start = System.nanoTime();
             try {
                 // mark us as shutting-down in metadata
-                Future<Object> future = invokeTriggerRemoveMember(member);
+                Future<Void> future = invokeTriggerRemoveMember(member);
                 future.get(remainingTimeNanos, TimeUnit.NANOSECONDS);
                 logger.fine(member + " is marked as being removed.");
                 return;
@@ -339,10 +356,6 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return node;
     }
 
-    public RaftGroupInfo getRaftGroup(RaftGroupId id) {
-        return metadataManager.getRaftGroup(id);
-    }
-
     public boolean isRaftGroupDestroyed(RaftGroupId groupId) {
         return destroyedGroupIds.contains(groupId);
     }
@@ -390,7 +403,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
     }
 
-    private ICompletableFuture<Object> invokeTriggerRemoveMember(RaftMemberImpl member) {
+    private ICompletableFuture<Void> invokeTriggerRemoveMember(RaftMemberImpl member) {
         return invocationManager.invoke(METADATA_GROUP_ID, new TriggerRemoveRaftMemberOp(member));
     }
 
