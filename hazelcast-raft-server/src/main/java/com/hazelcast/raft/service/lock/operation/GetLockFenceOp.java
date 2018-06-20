@@ -18,59 +18,56 @@ package com.hazelcast.raft.service.lock.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.util.PostponedResponse;
+import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
 import com.hazelcast.raft.service.lock.RaftLockService;
 
 import java.io.IOException;
-import java.util.UUID;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class TryLockOp extends AbstractLockOp {
+public class GetLockFenceOp extends RaftOp implements IdentifiedDataSerializable {
 
-    private long timeoutMs;
+    private String name;
 
-    public TryLockOp() {
+    public GetLockFenceOp() {
     }
 
-    public TryLockOp(String name, long sessionId, long threadId, UUID invUid, long timeoutMs) {
-        super(name, sessionId, threadId, invUid);
-        this.timeoutMs = timeoutMs;
+    public GetLockFenceOp(String name) {
+        this.name = name;
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
-        if (service.tryAcquire(groupId, name, getLockEndpoint(), commitIndex, invocationUid, timeoutMs)) {
-            return commitIndex;
-        }
-
-        return timeoutMs > 0 ? PostponedResponse.INSTANCE : RaftLockService.INVALID_FENCE;
+        return service.getLockFence(groupId, name);
     }
 
     @Override
-    public void writeData(ObjectDataOutput out) throws IOException {
-        super.writeData(out);
-        out.writeLong(timeoutMs);
+    public final String getServiceName() {
+        return RaftLockService.SERVICE_NAME;
     }
 
     @Override
-    public void readData(ObjectDataInput in) throws IOException {
-        super.readData(in);
-        timeoutMs = in.readLong();
+    public int getFactoryId() {
+        return RaftLockDataSerializerHook.F_ID;
     }
 
     @Override
     public int getId() {
-        return RaftLockDataSerializerHook.TRY_LOCK_OP;
+        return RaftLockDataSerializerHook.GET_LOCK_FENCE_OP;
     }
 
     @Override
-    protected void toString(StringBuilder sb) {
-        super.toString(sb);
-        sb.append(", timeoutMs=").append(timeoutMs);
+    public void writeData(ObjectDataOutput out) throws IOException {
+        out.writeUTF(name);
+    }
+
+    @Override
+    public void readData(ObjectDataInput in) throws IOException {
+        name = in.readUTF();
     }
 }
