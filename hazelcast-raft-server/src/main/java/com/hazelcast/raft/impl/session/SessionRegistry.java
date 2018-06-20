@@ -116,7 +116,7 @@ public class SessionRegistry {
     private Session getSessionOrFail(long sessionId) {
         Session session = sessions.get(sessionId);
         if (session == null) {
-            throw new SessionExpiredException(sessionId);
+            throw new SessionExpiredException();
         }
         return session;
     }

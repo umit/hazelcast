@@ -18,9 +18,9 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
 
     private final RaftInvocationManager invocationManager;
 
-    public RaftFencedLockProxy(String name, RaftGroupId groupId, SessionManagerService sessionManager,
-                               RaftInvocationManager invocationManager) {
-        super(name, groupId, sessionManager);
+    public RaftFencedLockProxy(RaftInvocationManager invocationManager, SessionManagerService sessionManager, RaftGroupId groupId,
+                               String name) {
+        super(sessionManager, groupId, name);
         this.invocationManager = invocationManager;
     }
 

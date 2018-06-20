@@ -20,12 +20,12 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
+import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
 
 /**
  * TODO: Javadoc Pending...
- *
  */
 public class DestroyLockMessageTask extends AbstractLockMessageTask {
 
@@ -36,8 +36,8 @@ public class DestroyLockMessageTask extends AbstractLockMessageTask {
     @Override
     protected void processMessage() {
         RaftInvocationManager raftInvocationManager = getRaftInvocationManager();
-        ICompletableFuture<Object> future =
-                raftInvocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name));
+        RaftOp op = new DestroyRaftObjectOp(getServiceName(), name);
+        ICompletableFuture<Object> future = raftInvocationManager.invoke(groupId, op);
         future.andThen(this);
     }
 }

@@ -11,16 +11,17 @@ import com.hazelcast.spi.impl.NodeEngineImpl;
 
 /**
  * TODO: Javadoc Pending...
- *
  */
 public class LockMessageTaskFactoryProvider implements MessageTaskFactoryProvider {
 
     public static final int CREATE_TYPE = 20000;
     public static final int LOCK = 20001;
-    public static final int UNLOCK = 20002;
-    public static final int TRY_LOCK = 20003;
-    public static final int LOCK_COUNT = 20004;
-    public static final int DESTROY_TYPE = 20005;
+    public static final int TRY_LOCK = 20002;
+    public static final int UNLOCK = 20003;
+    public static final int FORCE_UNLOCK = 20004;
+    public static final int LOCK_COUNT = 20005;
+    public static final int LOCK_FENCE = 20006;
+    public static final int DESTROY_TYPE = 20007;
 
     private final Node node;
 
@@ -53,6 +54,13 @@ public class LockMessageTaskFactoryProvider implements MessageTaskFactoryProvide
             }
         };
 
+        factories[FORCE_UNLOCK] = new MessageTaskFactory() {
+            @Override
+            public MessageTask create(ClientMessage clientMessage, Connection connection) {
+                return new ForceUnlockMessageTask(clientMessage, node, connection);
+            }
+        };
+
         factories[TRY_LOCK] = new MessageTaskFactory() {
             @Override
             public MessageTask create(ClientMessage clientMessage, Connection connection) {
@@ -66,6 +74,14 @@ public class LockMessageTaskFactoryProvider implements MessageTaskFactoryProvide
                 return new GetLockCountMessageTask(clientMessage, node, connection);
             }
         };
+
+        factories[LOCK_FENCE] = new MessageTaskFactory() {
+            @Override
+            public MessageTask create(ClientMessage clientMessage, Connection connection) {
+                return new GetLockFenceMessageTask(clientMessage, node, connection);
+            }
+        };
+
         factories[DESTROY_TYPE] = new MessageTaskFactory() {
             @Override
             public MessageTask create(ClientMessage clientMessage, Connection connection) {

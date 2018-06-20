@@ -20,17 +20,12 @@ import com.hazelcast.core.HazelcastException;
 
 /**
  * TODO: Javadoc Pending...
- *
  */
 public class SessionExpiredException extends HazelcastException {
-
-    private final long sessionId;
-
-    public SessionExpiredException(long sessionId) {
-        this.sessionId = sessionId;
+    public SessionExpiredException() {
     }
 
-    public long getSessionId() {
-        return sessionId;
+    public SessionExpiredException(String message) {
+        super(message);
     }
 }

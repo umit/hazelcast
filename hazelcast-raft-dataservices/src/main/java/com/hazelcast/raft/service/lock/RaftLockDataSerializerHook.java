@@ -21,8 +21,8 @@ import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.service.lock.operation.ForceUnlockOp;
-import com.hazelcast.raft.service.lock.operation.GetLockFenceOp;
 import com.hazelcast.raft.service.lock.operation.GetLockCountOp;
+import com.hazelcast.raft.service.lock.operation.GetLockFenceOp;
 import com.hazelcast.raft.service.lock.operation.InvalidateWaitEntriesOp;
 import com.hazelcast.raft.service.lock.operation.LockOp;
 import com.hazelcast.raft.service.lock.operation.TryLockOp;
@@ -41,10 +41,10 @@ public class RaftLockDataSerializerHook implements DataSerializerHook {
     public static final int LOCK_OP = 5;
     public static final int TRY_LOCK_OP = 6;
     public static final int UNLOCK_OP = 7;
-    public static final int INVALIDATE_WAI_ENTRIES_OP = 8;
+    public static final int FORCE_UNLOCK_OP = 8;
     public static final int GET_LOCK_COUNT_OP = 9;
-    public static final int FORCE_UNLOCK_OP = 10;
-    public static final int GET_LOCK_FENCE_OP = 11;
+    public static final int GET_LOCK_FENCE_OP = 10;
+    public static final int INVALIDATE_WAI_ENTRIES_OP = 11;
 
 
     @Override
@@ -72,14 +72,14 @@ public class RaftLockDataSerializerHook implements DataSerializerHook {
                         return new TryLockOp();
                     case UNLOCK_OP:
                         return new UnlockOp();
-                    case INVALIDATE_WAI_ENTRIES_OP:
-                        return new InvalidateWaitEntriesOp();
-                    case GET_LOCK_COUNT_OP:
-                        return new GetLockCountOp();
                     case FORCE_UNLOCK_OP:
                         return new ForceUnlockOp();
+                    case GET_LOCK_COUNT_OP:
+                        return new GetLockCountOp();
                     case GET_LOCK_FENCE_OP:
                         return new GetLockFenceOp();
+                    case INVALIDATE_WAI_ENTRIES_OP:
+                        return new InvalidateWaitEntriesOp();
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
             }
