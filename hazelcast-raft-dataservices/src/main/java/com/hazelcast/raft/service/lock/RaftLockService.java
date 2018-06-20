@@ -131,7 +131,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
     public void onSessionInvalidated(RaftGroupId groupId, long sessionId) {
         LockRegistry registry = registries.get(groupId);
         if (registry == null) {
-            logger.warning("No lock registry for " + groupId + " to handle invalidated session: " + sessionId);
+            logger.warning("Lock registry of " + groupId + " not found to handle invalidated Session[" + sessionId + "]");
             return;
         }
 
@@ -165,7 +165,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
         if (indices == null) {
             return false;
         }
-        completeFutures(groupId, indices, new DistributedObjectDestroyedException("Lock[" + name + " is destroyed"));
+        completeFutures(groupId, indices, new DistributedObjectDestroyedException("Lock[" + name + "] is destroyed"));
         return true;
     }
 
@@ -174,7 +174,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
         LockRegistry registry = registries.get(groupId);
         if (registry != null) {
             Collection<Long> indices = registry.destroy();
-            completeFutures(groupId, indices, new DistributedObjectDestroyedException("Lock is destroyed"));
+            completeFutures(groupId, indices, new DistributedObjectDestroyedException(groupId + " is destroyed"));
         }
     }
 
@@ -208,8 +208,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
         checkNotNull(groupId);
         LockRegistry registry = registries.get(groupId);
         if (registry == null) {
-            throw new IllegalMonitorStateException("Lock: " + name + " is not locked because LockRegistry does not exist for "
-                    + groupId);
+            throw new IllegalMonitorStateException("Lock registry of " + groupId + " not found for Lock[" + name + "]");
         }
         return registry;
     }
@@ -223,7 +222,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
         heartbeatSession(groupId, endpoint);
         boolean acquired = getOrInitLockRegistry(groupId).acquire(name, endpoint, commitIndex, invocationUid);
         if (logger.isFineEnabled()) {
-            logger.fine("Lock: " + name + " in " + groupId + " acquired: " + acquired + " by <" + endpoint + ", "
+            logger.fine("Lock[" + name + "] in " + groupId + " acquired: " + acquired + " by <" + endpoint + ", "
                     + invocationUid + ">");
         }
         return acquired;
@@ -234,7 +233,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
         heartbeatSession(groupId, endpoint);
         boolean acquired = getOrInitLockRegistry(groupId).tryAcquire(name, endpoint, commitIndex, invocationUid, timeoutMs);
         if (logger.isFineEnabled()) {
-            logger.fine("Lock: " + name + " in " + groupId + " acquired: " + acquired + " by <" + endpoint + ", "
+            logger.fine("Lock[" + name + "] in " + groupId + " acquired: " + acquired + " by <" + endpoint + ", "
                     + invocationUid + ">");
         }
 
@@ -254,7 +253,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
         Collection<LockInvocationKey> waitEntries = registry.release(name, endpoint, invocationUid);
 
         if (logger.isFineEnabled()) {
-            logger.fine("Lock: " + name + " in " + groupId + " is released by <" + endpoint + ", " + invocationUid + ">");
+            logger.fine("Lock[" + name + "] in " + groupId + " is released by <" + endpoint + ", " + invocationUid + ">");
         }
 
         notifyLockAcquiredWaitEntries(groupId, name, waitEntries);
@@ -274,7 +273,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
         Collection<LockInvocationKey> waitEntries = registry.forceRelease(name, expectedFence, invocationUid);
 
         if (logger.isFineEnabled()) {
-            logger.fine("Lock: " + name + " in " + groupId + " is force-released by " + invocationUid + " for fence: "
+            logger.fine("Lock[" + name + "] in " + groupId + " is force-released by " + invocationUid + " for fence: "
                     + expectedFence);
         }
 
@@ -288,7 +287,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
 
         LockInvocationKey newOwner = entries.iterator().next();
         if (logger.isFineEnabled()) {
-            logger.fine("Lock: " + name + " in " + groupId + " is acquired by <" + newOwner.endpoint() + ","
+            logger.fine("Lock[" + name + "] in " + groupId + " is acquired by <" + newOwner.endpoint() + ","
                     + newOwner.invocationUid() + ">");
         }
 
@@ -304,7 +303,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
         // no need to validate the session. if the session is invalid, the corresponding wait entry is gone already
         LockRegistry registry = registries.get(groupId);
         if (registry == null) {
-            logger.severe("No LockRegistry is found for " + groupId + " to invalidate wait entries: " + keys);
+            logger.severe("Lock registry of " + groupId + " not found to invalidate wait entries: " + keys);
             return;
         }
 
@@ -383,7 +382,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
                 }
             } catch (Exception e) {
                 if (logger.isFineEnabled()) {
-                    logger.fine("Could not invalidate wait entries: " + keys + " of " + groupId, e);
+                    logger.fine("Could not invalidate wait entries: " + keys + " in " + groupId, e);
                 }
             }
         }

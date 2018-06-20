@@ -174,7 +174,7 @@ class LockRegistry {
 
         LockInvocationKey owner = lock.owner();
         if (owner == null) {
-            throw new IllegalMonitorStateException();
+            throw new IllegalMonitorStateException("Lock[" + name + "] has no owner!");
         }
 
         return owner.commitIndex();
