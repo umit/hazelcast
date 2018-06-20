@@ -1,7 +1,6 @@
 package com.hazelcast.raft.impl.session;
 
 import com.hazelcast.config.Config;
-import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.core.HazelcastInstance;
@@ -10,7 +9,6 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
-import com.hazelcast.raft.impl.service.RaftDataService;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
@@ -333,12 +331,6 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
         RaftConfig raftConfig = config.getRaftConfig();
         raftConfig.getRaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(LOG_ENTRY_COUNT_TO_SNAPSHOT);
         raftConfig.addGroupConfig(new RaftGroupConfig(RAFT_GROUP_NAME, 3));
-
-        ServiceConfig raftTestServiceConfig = new ServiceConfig().setEnabled(true)
-                .setName(RaftDataService.SERVICE_NAME)
-                .setClassName(RaftDataService.class.getName());
-        config.getServicesConfig().addServiceConfig(raftTestServiceConfig);
-
         return config;
     }
 
