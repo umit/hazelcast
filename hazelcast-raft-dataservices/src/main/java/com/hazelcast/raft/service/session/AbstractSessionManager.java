@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import static com.hazelcast.util.ExceptionUtil.peel;
 import static com.hazelcast.util.Preconditions.checkState;
 
 /**
@@ -235,7 +236,7 @@ public abstract class AbstractSessionManager {
 
                         @Override
                         public void onFailure(Throwable t) {
-                            if (t instanceof SessionExpiredException) {
+                            if (peel(t) instanceof SessionExpiredException) {
                                 invalidateSession(groupId, session.id);
                             }
                         }

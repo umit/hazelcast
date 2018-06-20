@@ -138,7 +138,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
         Tuple2<Collection<Long>, Collection<Long>> t = registry.invalidateSession(sessionId);
         if (t != null) {
             Collection<Long> invalidations = t.element1;
-            completeFutures(groupId, invalidations, new SessionExpiredException(sessionId));
+            completeFutures(groupId, invalidations, new SessionExpiredException());
             Collection<Long> acquires = t.element2;
             if (acquires.size() > 0) {
                 long newOwnerCommitIndex = acquires.iterator().next();
@@ -265,7 +265,7 @@ public class RaftLockService implements ManagedService, SnapshotAwareService<Loc
             return;
         }
 
-        throw new SessionExpiredException(endpoint.sessionId());
+        throw new SessionExpiredException();
     }
 
     public void forceRelease(RaftGroupId groupId, String name, long expectedFence, UUID invocationUid) {

@@ -4,6 +4,7 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
+import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.lock.operation.UnlockOp;
 
@@ -11,7 +12,6 @@ import java.util.UUID;
 
 /**
  * TODO: Javadoc Pending...
- *
  */
 public class UnlockMessageTask extends AbstractLockMessageTask {
 
@@ -25,8 +25,8 @@ public class UnlockMessageTask extends AbstractLockMessageTask {
     @Override
     protected void processMessage() {
         RaftInvocationManager raftInvocationManager = getRaftInvocationManager();
-        ICompletableFuture future =
-                raftInvocationManager.invoke(groupId, new UnlockOp(name, sessionId, threadId, invocationUid));
+        RaftOp op = new UnlockOp(name, sessionId, threadId, invocationUid);
+        ICompletableFuture future = raftInvocationManager.invoke(groupId, op);
         future.andThen(this);
     }
 

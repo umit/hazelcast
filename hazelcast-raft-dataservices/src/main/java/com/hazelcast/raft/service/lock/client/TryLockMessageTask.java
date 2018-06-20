@@ -4,12 +4,12 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
+import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.lock.operation.TryLockOp;
 
 /**
  * TODO: Javadoc Pending...
- *
  */
 public class TryLockMessageTask extends LockMessageTask {
 
@@ -22,7 +22,7 @@ public class TryLockMessageTask extends LockMessageTask {
     @Override
     protected void processMessage() {
         RaftInvocationManager raftInvocationManager = getRaftInvocationManager();
-        TryLockOp op = new TryLockOp(name, sessionId, threadId, invocationUid, timeoutMs);
+        RaftOp op = new TryLockOp(name, sessionId, threadId, invocationUid, timeoutMs);
         ICompletableFuture<Boolean> future = raftInvocationManager.invoke(groupId, op);
         future.andThen(this);
     }

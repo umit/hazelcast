@@ -47,7 +47,7 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
                 join(f);
                 break;
             } catch (SessionExpiredException e) {
-                invalidateSession(e.getSessionId());
+                invalidateSession(sessionId);
             }
         }
     }
@@ -68,7 +68,7 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
             try {
                 return join(f) > 0L;
             } catch (SessionExpiredException e) {
-                invalidateSession(e.getSessionId());
+                invalidateSession(sessionId);
             }
         }
     }

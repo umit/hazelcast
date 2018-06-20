@@ -2,9 +2,9 @@ package com.hazelcast.raft.service.lock.proxy;
 
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
+import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.lock.FencedLock;
 import com.hazelcast.raft.service.session.SessionAwareProxy;
-import com.hazelcast.raft.service.session.SessionManagerService;
 import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.UuidUtil;
 
@@ -22,7 +22,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
     private final ConcurrentMap<Long, LockState> lockStates = new ConcurrentHashMap<Long, LockState>();
     protected final String name;
 
-    public AbstractRaftFencedLockProxy(String name, RaftGroupId groupId, SessionManagerService sessionManager) {
+    public AbstractRaftFencedLockProxy(AbstractSessionManager sessionManager, RaftGroupId groupId, String name) {
         super(sessionManager, groupId);
         this.name = name;
     }
@@ -44,7 +44,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
                 lockStates.put(threadId, new LockState(sessionId, fence));
                 return fence;
             } catch (SessionExpiredException e) {
-                invalidateSession(e.getSessionId());
+                invalidateSession(sessionId);
             }
         }
     }
@@ -76,7 +76,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
 
                 return fence;
             } catch (SessionExpiredException e) {
-                invalidateSession(e.getSessionId());
+                invalidateSession(sessionId);
             }
         }
     }
