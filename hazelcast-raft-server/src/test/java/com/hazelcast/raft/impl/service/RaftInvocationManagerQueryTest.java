@@ -1,7 +1,5 @@
 package com.hazelcast.raft.impl.service;
 
-import com.hazelcast.config.Config;
-import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.raft.RaftGroupId;
@@ -121,17 +119,5 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
 
         ICompletableFuture<Object> future = leaderInvManager.queryOnLocal(groupId, new RaftTestQueryOp(), LEADER_LOCAL);
         assertEquals(value, future.get());
-    }
-
-    @Override
-    protected Config createConfig(int groupSize, int metadataGroupSize) {
-        Config config = super.createConfig(groupSize, metadataGroupSize);
-
-        ServiceConfig raftTestServiceConfig = new ServiceConfig().setEnabled(true)
-                .setName(RaftDataService.SERVICE_NAME)
-                .setClassName(RaftDataService.class.getName());
-        config.getServicesConfig().addServiceConfig(raftTestServiceConfig);
-
-        return config;
     }
 }
