@@ -1,24 +1,23 @@
 package com.hazelcast.raft.impl.session;
 
 import com.hazelcast.config.Config;
-import com.hazelcast.config.raft.RaftAtomicLongConfig;
-import com.hazelcast.config.raft.RaftGroupConfig;
+import com.hazelcast.config.ServiceConfig;
 import com.hazelcast.config.raft.RaftConfig;
+import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.instance.Node;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
+import com.hazelcast.raft.impl.service.RaftDataService;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
+import com.hazelcast.raft.impl.service.RaftTestApplyOp;
 import com.hazelcast.raft.impl.session.operation.CloseSessionOp;
 import com.hazelcast.raft.impl.session.operation.CreateSessionOp;
 import com.hazelcast.raft.impl.session.operation.HeartbeatSessionOp;
-import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
-import com.hazelcast.raft.service.spi.RaftProxyFactory;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -251,9 +250,8 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
 
         final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, new CreateSessionOp()).get();
 
-        IAtomicLong atomicLong = RaftProxyFactory.create(instances[0], RaftAtomicLongService.SERVICE_NAME, RAFT_GROUP_NAME);
         for (int i = 0; i < LOG_ENTRY_COUNT_TO_SNAPSHOT; i++) {
-            atomicLong.incrementAndGet();
+            invocationManager.invoke(groupId, new RaftTestApplyOp("value" + i)).get();
         }
 
         final RaftNodeImpl leaderRaftNode = (RaftNodeImpl) ((RaftService) getNodeEngineImpl(leader).getService(RaftService.SERVICE_NAME)).getRaftNode(groupId);
@@ -335,7 +333,11 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
         RaftConfig raftConfig = config.getRaftConfig();
         raftConfig.getRaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(LOG_ENTRY_COUNT_TO_SNAPSHOT);
         raftConfig.addGroupConfig(new RaftGroupConfig(RAFT_GROUP_NAME, 3));
-        config.addRaftAtomicLongConfig(new RaftAtomicLongConfig(RAFT_GROUP_NAME, RAFT_GROUP_NAME));
+
+        ServiceConfig raftTestServiceConfig = new ServiceConfig().setEnabled(true)
+                .setName(RaftDataService.SERVICE_NAME)
+                .setClassName(RaftDataService.class.getName());
+        config.getServicesConfig().addServiceConfig(raftTestServiceConfig);
 
         return config;
     }
