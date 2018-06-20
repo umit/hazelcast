@@ -16,7 +16,9 @@
 
 package com.hazelcast.raft.impl.session;
 
+import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.SessionInfo;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.util.Clock;
 
@@ -57,10 +59,10 @@ public class SessionRegistry {
         return sessions.get(sessionId);
     }
 
-    long createNewSession(long sessionTTLMs) {
+    long createNewSession(long sessionTTLMs, Address endpoint) {
         long id = nextSessionId++;
         long creationTime = Clock.currentTimeMillis();
-        Session session = new Session(id, creationTime, toExpirationTime(creationTime, sessionTTLMs));
+        Session session = new Session(id, creationTime, toExpirationTime(creationTime, sessionTTLMs), endpoint);
         sessions.put(id, session);
         return id;
     }
@@ -75,7 +77,7 @@ public class SessionRegistry {
             return false;
         }
 
-        if (session.getVersion() != expectedVersion) {
+        if (session.version() != expectedVersion) {
             return false;
         }
 
@@ -100,7 +102,7 @@ public class SessionRegistry {
         long now = Clock.currentTimeMillis();
         for (Session session : sessions.values()) {
             if (session.isExpired(now)) {
-                expired.add(Tuple2.of(session.id(), session.getVersion()));
+                expired.add(Tuple2.of(session.id(), session.version()));
             }
         }
 
@@ -119,4 +121,7 @@ public class SessionRegistry {
         return session;
     }
 
+    Collection<? extends SessionInfo> getSessions() {
+        return sessions.values();
+    }
 }

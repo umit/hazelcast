@@ -110,7 +110,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
                     assertNotNull(registry);
                     Session session = registry.getSession(response.getSessionId());
                     assertNotNull(session);
-                    assertTrue(session.getVersion() > sessions[i].getVersion());
+                    assertTrue(session.version() > sessions[i].version());
                 }
             }
         });
@@ -204,7 +204,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
                     assertNotNull(registry);
                     Session session = registry.getSession(response.getSessionId());
                     assertNotNull(session);
-                    assertTrue(session.getVersion() > sessions[i].getVersion());
+                    assertTrue(session.version() > sessions[i].version());
                 }
             }
         });
@@ -322,7 +322,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
                 assertNotNull(leaderSession);
                 assertNotNull(followerSession);
 
-                assertEquals(leaderSession.getVersion(), followerSession.getVersion());
+                assertEquals(leaderSession.version(), followerSession.version());
             }
         });
     }
