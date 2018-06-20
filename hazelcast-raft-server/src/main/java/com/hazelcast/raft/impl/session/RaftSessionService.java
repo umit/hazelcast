@@ -18,14 +18,18 @@ package com.hazelcast.raft.impl.session;
 
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.RaftSessionManagementService;
+import com.hazelcast.raft.SessionInfo;
 import com.hazelcast.raft.SnapshotAwareService;
+import com.hazelcast.raft.impl.RaftGroupLifecycleAwareService;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.TermChangeAwareService;
+import com.hazelcast.raft.impl.session.operation.CloseSessionOp;
 import com.hazelcast.raft.impl.session.operation.InvalidateSessionsOp;
 import com.hazelcast.raft.impl.util.Tuple2;
-import com.hazelcast.raft.impl.RaftGroupLifecycleAwareService;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
@@ -40,6 +44,8 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static java.util.Collections.emptySet;
+import static java.util.Collections.unmodifiableCollection;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -48,7 +54,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  */
 public class RaftSessionService
         implements ManagedService, SnapshotAwareService<SessionRegistrySnapshot>, SessionAccessor,
-        TermChangeAwareService, RaftGroupLifecycleAwareService {
+        TermChangeAwareService, RaftGroupLifecycleAwareService, RaftSessionManagementService {
 
     public static String SERVICE_NAME = "hz:core:raftSession";
     private static final long CHECK_EXPIRED_SESSIONS_TASK_PERIOD_IN_MILLIS = SECONDS.toMillis(1);
@@ -111,10 +117,24 @@ public class RaftSessionService
     @Override
     public void onGroupDestroy(RaftGroupId groupId) {
         SessionRegistry registry = registries.remove(groupId);
-        //...
+        // TODO: anything todo more?
     }
 
-    public SessionResponse createNewSession(RaftGroupId groupId) {
+    @Override
+    public Collection<SessionInfo> getSessions(RaftGroupId groupId) {
+        SessionRegistry registry = registries.get(groupId);
+        if (registry == null) {
+            return emptySet();
+        }
+        return unmodifiableCollection(registry.getSessions());
+    }
+
+    @Override
+    public ICompletableFuture<Boolean> forceCloseSession(RaftGroupId groupId, long sessionId) {
+        return raftService.getInvocationManager().invoke(groupId, new CloseSessionOp(sessionId));
+    }
+
+    public SessionResponse createNewSession(RaftGroupId groupId, Address endpoint) {
         SessionRegistry registry = registries.get(groupId);
         if (registry == null) {
             registry = new SessionRegistry(groupId);
@@ -123,7 +143,7 @@ public class RaftSessionService
         }
 
         long sessionTTLMillis = getSessionTimeToLiveMillis();
-        long sessionId = registry.createNewSession(sessionTTLMillis);
+        long sessionId = registry.createNewSession(sessionTTLMillis, endpoint);
         logger.info("Created new session: " + sessionId + " in " + groupId);
         return new SessionResponse(sessionId, sessionTTLMillis, getHeartbeatIntervalMillis());
     }

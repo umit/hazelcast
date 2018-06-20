@@ -16,6 +16,7 @@
 
 package com.hazelcast.raft.impl.session.operation;
 
+import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
@@ -31,13 +32,20 @@ import java.io.IOException;
  */
 public class CreateSessionOp extends RaftOp implements IdentifiedDataSerializable {
 
+    // used for diagnostics
+    private Address endpoint;
+
     public CreateSessionOp() {
+    }
+
+    public CreateSessionOp(Address endpoint) {
+        this.endpoint = endpoint;
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftSessionService service = getService();
-        return service.createNewSession(groupId);
+        return service.createNewSession(groupId, endpoint);
     }
 
     @Override
@@ -57,9 +65,11 @@ public class CreateSessionOp extends RaftOp implements IdentifiedDataSerializabl
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
+        out.writeObject(endpoint);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
+        endpoint = in.readObject();
     }
 }

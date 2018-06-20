@@ -102,7 +102,8 @@ public class SessionManagerService extends AbstractSessionManager implements Gra
 
     @Override
     protected SessionResponse requestNewSession(RaftGroupId groupId) {
-        ICompletableFuture<SessionResponse> future = getInvocationManager().invoke(groupId, new CreateSessionOp());
+        CreateSessionOp op = new CreateSessionOp(nodeEngine.getThisAddress());
+        ICompletableFuture<SessionResponse> future = getInvocationManager().invoke(groupId, op);
         try {
             return future.get();
         } catch (Exception e) {

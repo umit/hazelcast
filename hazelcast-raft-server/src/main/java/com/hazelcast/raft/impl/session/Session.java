@@ -16,6 +16,8 @@
 
 package com.hazelcast.raft.impl.session;
 
+import com.hazelcast.nio.Address;
+import com.hazelcast.raft.SessionInfo;
 import com.hazelcast.util.Clock;
 
 import static com.hazelcast.util.Preconditions.checkTrue;
@@ -24,7 +26,7 @@ import static java.lang.Math.max;
 /**
  * TODO: Javadoc Pending...
  */
-public class Session {
+public class Session implements SessionInfo {
 
     private final long id;
 
@@ -34,36 +36,50 @@ public class Session {
 
     private final long version;
 
-    Session(long id, long creationTime, long expirationTime) {
-        this(id, creationTime, expirationTime, 0);
+    // used for diagnostics
+    private final Address endpoint;
+
+    Session(long id, long creationTime, long expirationTime, Address endpoint) {
+        this(id, creationTime, expirationTime, 0, endpoint);
     }
 
-    Session(long id, long creationTime, long expirationTime, long version) {
+    Session(long id, long creationTime, long expirationTime, long version, Address endpoint) {
         checkTrue(version >= 0, "Session: " + id + " cannot have a negative version: " + version);
         this.id = id;
         this.creationTime = creationTime;
         this.expirationTime = expirationTime;
         this.version = version;
+        this.endpoint = endpoint;
     }
 
-    long id() {
+    @Override
+    public long id() {
         return id;
     }
 
-    long creationTime() {
+    @Override
+    public long creationTime() {
         return creationTime;
     }
 
-    long expirationTime() {
+    @Override
+    public long expirationTime() {
         return expirationTime;
     }
 
-    boolean isExpired(long timestamp) {
+    @Override
+    public boolean isExpired(long timestamp) {
         return expirationTime() <= timestamp;
     }
 
-    long getVersion() {
+    @Override
+    public long version() {
         return version;
+    }
+
+    @Override
+    public Address endpoint() {
+        return endpoint;
     }
 
     Session heartbeat(long ttlMs) {
@@ -77,13 +93,7 @@ public class Session {
     }
 
     private Session newSession(long newExpirationTime) {
-        return new Session(id, creationTime, newExpirationTime, version + 1);
-    }
-
-    @Override
-    public String toString() {
-        return "Session{" + "id=" + id + ", creationTime=" + creationTime + ", expirationTime=" + expirationTime
-                + ", version=" + version + '}';
+        return new Session(id, creationTime, newExpirationTime, version + 1, endpoint);
     }
 
     static long toExpirationTime(long timestamp, long ttlMillis) {
@@ -91,4 +101,9 @@ public class Session {
         return expirationTime > 0 ? expirationTime : Long.MAX_VALUE;
     }
 
+    @Override
+    public String toString() {
+        return "Session{" + "id=" + id + ", creationTime=" + creationTime + ", expirationTime=" + expirationTime
+                + ", version=" + version + ", endpoint=" + endpoint + '}';
+    }
 }

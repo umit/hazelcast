@@ -48,7 +48,8 @@ public class CreateSessionMessageTask extends AbstractMessageTask implements Exe
     protected void processMessage() {
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         RaftInvocationManager invocationManager = service.getInvocationManager();
-        ICompletableFuture<SessionResponse> future = invocationManager.invoke(groupId, new CreateSessionOp());
+        CreateSessionOp op = new CreateSessionOp(connection.getEndPoint());
+        ICompletableFuture<SessionResponse> future = invocationManager.invoke(groupId, op);
         future.andThen(this);
     }
 

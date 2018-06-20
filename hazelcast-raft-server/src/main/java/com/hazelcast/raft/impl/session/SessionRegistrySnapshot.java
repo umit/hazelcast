@@ -16,6 +16,7 @@
 
 package com.hazelcast.raft.impl.session;
 
+import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
@@ -67,7 +68,8 @@ public class SessionRegistrySnapshot implements IdentifiedDataSerializable {
             out.writeLong(session.id());
             out.writeLong(session.creationTime());
             out.writeLong(session.expirationTime());
-            out.writeLong(session.getVersion());
+            out.writeLong(session.version());
+            out.writeObject(session.endpoint());
         }
     }
 
@@ -81,7 +83,8 @@ public class SessionRegistrySnapshot implements IdentifiedDataSerializable {
             long creationTime = in.readLong();
             long expirationTime = in.readLong();
             long version = in.readLong();
-            sessions.add(new Session(id, creationTime, expirationTime, version));
+            Address endpoint = in.readObject();
+            sessions.add(new Session(id, creationTime, expirationTime, version, endpoint));
         }
     }
 
