@@ -2,6 +2,7 @@ package com.hazelcast.raft.service.lock.proxy;
 
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
+import com.hazelcast.raft.service.lock.FencedLock;
 import com.hazelcast.raft.service.session.SessionAwareProxy;
 import com.hazelcast.raft.service.session.SessionManagerService;
 import com.hazelcast.util.ExceptionUtil;
@@ -15,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.util.ThreadUtil.getThreadId;
 
-public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy {
+public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy implements FencedLock {
 
     // thread id -> lock state
     private final ConcurrentMap<Long, LockState> lockStates = new ConcurrentHashMap<Long, LockState>();
@@ -26,6 +27,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy {
         this.name = name;
     }
 
+    @Override
     public final long lock() {
         long threadId = getThreadId();
         long fence = tryReentrantLock(threadId);
@@ -47,10 +49,12 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy {
         }
     }
 
+    @Override
     public final long tryLock() {
         return tryLock(0, TimeUnit.MILLISECONDS);
     }
 
+    @Override
     public final long tryLock(long time, TimeUnit unit) {
         long threadId = getThreadId();
         long fence = tryReentrantLock(threadId);
@@ -94,6 +98,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy {
         return 0;
     }
 
+    @Override
     public final void unlock() {
         long sessionId = getSession();
         if (sessionId < 0) {
@@ -133,6 +138,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy {
         }
     }
 
+    @Override
     public final void forceUnlock() {
         long threadId = getThreadId();
         try {
@@ -153,6 +159,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy {
         }
     }
 
+    @Override
     public final long getFence() {
         LockState lockState = lockStates.get(getThreadId());
         if (lockState == null) {
@@ -162,15 +169,18 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy {
         return lockState.fence;
     }
 
+    @Override
     public final boolean isLocked() {
         return getLockCount() > 0;
     }
 
+    @Override
     public final boolean isLockedByCurrentThread() {
         LockState lockState = lockStates.get(getThreadId());
         return (lockState != null && lockState.sessionId == getSession());
     }
 
+    @Override
     public final int getLockCount() {
         LockState lockState = lockStates.get(getThreadId());
         if (lockState != null && lockState.sessionId == getSession()) {
@@ -181,8 +191,14 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy {
         return join(f);
     }
 
+    @Override
     public final RaftGroupId getRaftGroupId() {
         return groupId;
+    }
+
+    @Override
+    public final String getName() {
+        return name;
     }
 
     protected abstract Future<Long> doLock(RaftGroupId groupId, String name, long sessionId, long threadId, UUID invocationUid);
