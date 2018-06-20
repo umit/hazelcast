@@ -87,7 +87,8 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy {
 
             lockStates.remove(threadId);
 
-            throw new IllegalMonitorStateException();
+            throw new IllegalMonitorStateException("Current thread is not owner of the Lock[" + name + "] because Session["
+                    + lockState.sessionId + "] is closed by server!");
         }
 
         return 0;
@@ -96,20 +97,22 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy {
     public final void unlock() {
         long sessionId = getSession();
         if (sessionId < 0) {
-            throw new IllegalMonitorStateException();
+            throw new IllegalMonitorStateException("Current thread is not owner of the Lock[" + name
+                    + "] because session not found!");
         }
 
         long threadId = getThreadId();
 
         LockState lockState = lockStates.get(threadId);
         if (lockState == null) {
-            throw new IllegalMonitorStateException();
+            throw new IllegalMonitorStateException("Current thread is not owner of the Lock[" + name + "]");
         }
 
         if (lockState.sessionId != sessionId) {
             lockStates.remove(threadId);
 
-            throw new IllegalMonitorStateException();
+            throw new IllegalMonitorStateException("Current thread is not owner of the Lock[" + name + "] because Session["
+                    + lockState.sessionId + "] is closed by server!");
         }
 
         if (lockState.lockCount > 1) {
@@ -122,7 +125,8 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy {
         try {
             join(f);
         } catch (SessionExpiredException e) {
-            throw new IllegalMonitorStateException();
+            throw new IllegalMonitorStateException("Current thread is not owner of the Lock[" + name + "] because Session["
+                    + sessionId + "] is closed by server!");
         } finally {
             lockStates.remove(threadId);
             releaseSession(sessionId);
