@@ -21,42 +21,35 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.service.lock.LockEndpoint;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
 import com.hazelcast.raft.service.lock.RaftLockService;
 
 import java.io.IOException;
+import java.util.UUID;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class GetLockCountOp extends RaftOp implements IdentifiedDataSerializable {
-
-    private static int NO_SESSION = -1;
+public class ForceUnlockOp extends RaftOp implements IdentifiedDataSerializable {
 
     private String name;
-    private long sessionId = NO_SESSION;
-    private long threadId;
+    private long expectedFence;
+    private UUID invocationUid;
 
-    public GetLockCountOp() {
+    public ForceUnlockOp() {
     }
 
-    public GetLockCountOp(String name) {
+    public ForceUnlockOp(String name, long expectedFence, UUID invocationUid) {
         this.name = name;
-    }
-
-    public GetLockCountOp(String name, long sessionId, long threadId) {
-        this.name = name;
-        this.sessionId = sessionId;
-        this.threadId = threadId;
+        this.expectedFence = expectedFence;
+        this.invocationUid = invocationUid;
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
-        LockEndpoint endpoint = (sessionId != NO_SESSION) ? new LockEndpoint(sessionId, threadId) : null;
-
-        return service.getLockCount(groupId, name, endpoint);
+        service.forceRelease(groupId, name, expectedFence, invocationUid);
+        return true;
     }
 
     @Override
@@ -71,27 +64,23 @@ public class GetLockCountOp extends RaftOp implements IdentifiedDataSerializable
 
     @Override
     public int getId() {
-        return RaftLockDataSerializerHook.GET_LOCK_COUNT_OP;
+        return RaftLockDataSerializerHook.FORCE_UNLOCK_OP;
     }
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeUTF(name);
-        out.writeLong(sessionId);
-        out.writeLong(threadId);
+        out.writeLong(expectedFence);
+        out.writeLong(invocationUid.getLeastSignificantBits());
+        out.writeLong(invocationUid.getMostSignificantBits());
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         name = in.readUTF();
-        sessionId = in.readLong();
-        threadId = in.readLong();
-    }
-
-    @Override
-    protected void toString(StringBuilder sb) {
-        sb.append(", name=").append(name);
-        sb.append(", sessionId=").append(sessionId);
-        sb.append(", threadId=").append(threadId);
+        expectedFence = in.readLong();
+        long least = in.readLong();
+        long most = in.readLong();
+        invocationUid = new UUID(most, least);
     }
 }
