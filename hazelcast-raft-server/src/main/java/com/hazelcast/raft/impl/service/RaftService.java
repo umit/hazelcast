@@ -1,5 +1,6 @@
 package com.hazelcast.raft.impl.service;
 
+import com.hazelcast.client.impl.protocol.ClientExceptionFactory;
 import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
@@ -30,6 +31,7 @@ import com.hazelcast.raft.impl.service.operation.metadata.GetInitialRaftGroupMem
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRebalanceRaftGroupsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveRaftMemberOp;
+import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.spi.GracefulShutdownAwareService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.MemberAttributeServiceEvent;
@@ -85,6 +87,8 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
+        ClientExceptionFactory clientExceptionFactory = this.nodeEngine.getNode().clientEngine.getClientExceptionFactory();
+        SessionExpiredException.register(clientExceptionFactory);
         metadataManager.initIfInitialRaftMember();
     }
 
