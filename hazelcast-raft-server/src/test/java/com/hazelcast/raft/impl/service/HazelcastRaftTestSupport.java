@@ -12,6 +12,7 @@ import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
+import org.junit.After;
 import org.junit.Before;
 
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderMember;
@@ -30,6 +31,11 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
     @Before
     public void init() {
         factory = createTestFactory();
+    }
+
+    @After
+    public void tearDown() {
+        factory.terminateAll();
     }
 
     protected TestHazelcastInstanceFactory createTestFactory() {
