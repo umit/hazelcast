@@ -16,16 +16,34 @@
 
 package com.hazelcast.raft.impl.session;
 
+import com.hazelcast.client.impl.protocol.ClientExceptionFactory;
 import com.hazelcast.core.HazelcastException;
 
 /**
  * TODO: Javadoc Pending...
  */
 public class SessionExpiredException extends HazelcastException {
+
+    // TODO [basri] fixit
+    public static final int ERROR_CODE = 6767;
+
+    public static void register(ClientExceptionFactory factory) {
+        factory.register(ERROR_CODE, SessionExpiredException.class, new ClientExceptionFactory.ExceptionFactory() {
+            @Override
+            public Throwable createException(String message, Throwable cause) {
+                return new SessionExpiredException(message, cause);
+            }
+        });
+    }
+
     public SessionExpiredException() {
     }
 
     public SessionExpiredException(String message) {
         super(message);
+    }
+
+    public SessionExpiredException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

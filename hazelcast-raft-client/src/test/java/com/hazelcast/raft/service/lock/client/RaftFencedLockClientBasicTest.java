@@ -1,7 +1,9 @@
 package com.hazelcast.raft.service.lock.client;
 
+import com.hazelcast.client.impl.HazelcastClientInstanceImpl;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.raft.service.lock.FencedLock;
 import com.hazelcast.raft.service.lock.RaftFencedLockBasicTest;
 import com.hazelcast.raft.service.session.AbstractSessionManager;
@@ -29,6 +31,8 @@ public class RaftFencedLockClientBasicTest extends RaftFencedLockBasicTest {
         HazelcastInstance[] instances = super.createInstances();
         TestHazelcastFactory f = (TestHazelcastFactory) factory;
         lockInstance = f.newHazelcastClient();
+        HazelcastClientInstanceImpl client = getClient(lockInstance);
+        SessionExpiredException.register(client.getClientExceptionFactory());
         return instances;
     }
 
