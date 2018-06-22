@@ -1,10 +1,12 @@
 package com.hazelcast.raft.service.lock.proxy;
 
+import com.hazelcast.core.OperationTimeoutException;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
-import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.lock.FencedLock;
+import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.session.SessionAwareProxy;
+import com.hazelcast.util.Clock;
 import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.UuidUtil;
 
@@ -17,6 +19,8 @@ import java.util.concurrent.TimeUnit;
 import static com.hazelcast.util.ThreadUtil.getThreadId;
 
 public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy implements FencedLock {
+
+    protected static final long INVALID_FENCE = 0;
 
     // thread id -> lock state
     private final ConcurrentMap<Long, LockState> lockStates = new ConcurrentHashMap<Long, LockState>();
@@ -31,7 +35,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
     public final long lock() {
         long threadId = getThreadId();
         long fence = tryReentrantLock(threadId);
-        if (fence > 0) {
+        if (fence != INVALID_FENCE) {
             return fence;
         }
 
@@ -43,6 +47,8 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
                 fence = join(f);
                 lockStates.put(threadId, new LockState(sessionId, fence));
                 return fence;
+            } catch (OperationTimeoutException ignored) {
+                // I can retry safely because my retry would be idempotent...
             } catch (SessionExpiredException e) {
                 invalidateSession(sessionId);
             }
@@ -58,25 +64,34 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
     public final long tryLock(long time, TimeUnit unit) {
         long threadId = getThreadId();
         long fence = tryReentrantLock(threadId);
-        if (fence > 0) {
+        if (fence != INVALID_FENCE) {
             return fence;
         }
 
         UUID invocationUid = UuidUtil.newUnsecureUUID();
         long timeoutMillis = Math.max(0, unit.toMillis(time));
-
+        long start = Clock.currentTimeMillis();
         for (;;) {
             long sessionId = acquireSession();
             Future<Long> f = doTryLock(groupId, name, sessionId, threadId, invocationUid, timeoutMillis);
             try {
                 fence = join(f);
-                if (fence > 0) {
+                if (fence != INVALID_FENCE) {
                     lockStates.put(threadId, new LockState(sessionId, fence));
                 }
 
                 return fence;
+            } catch (OperationTimeoutException e) {
+                timeoutMillis -= (Clock.currentTimeMillis() - start);
+                timeoutMillis = Math.max(0, timeoutMillis);
+                start = Clock.currentTimeMillis();
             } catch (SessionExpiredException e) {
                 invalidateSession(sessionId);
+                timeoutMillis -= (Clock.currentTimeMillis() - start);
+                if (timeoutMillis <= 0) {
+                    return INVALID_FENCE;
+                }
+                start = Clock.currentTimeMillis();
             }
         }
     }
@@ -95,7 +110,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
                     + lockState.sessionId + "] is closed by server!");
         }
 
-        return 0;
+        return INVALID_FENCE;
     }
 
     @Override
@@ -126,12 +141,32 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
         }
 
         UUID invocationUid = UuidUtil.newUnsecureUUID();
-        Future f = doUnlock(groupId, name, sessionId, threadId, invocationUid);
         try {
-            join(f);
-        } catch (SessionExpiredException e) {
-            throw new IllegalMonitorStateException("Current thread is not owner of the Lock[" + name + "] because Session["
-                    + sessionId + "] is closed by server!");
+            boolean retry = false;
+            for (;;) {
+                Future f = doUnlock(groupId, name, sessionId, threadId, invocationUid);
+                try {
+                    join(f);
+                    return;
+                } catch (OperationTimeoutException ignored) {
+                    retry = true;
+                    // I will retry to make sure that the lock is released.
+                    // If the lock is already released by me and acquired by somebody else,
+                    // but I couldn't get the response in time, I will get an IllegalMonitorStateException...
+                    // In this case, which is handled just below, I can silently return,
+                    // because if I get to this point, I know that I was the lock owner once
+                } catch (IllegalMonitorStateException e) {
+                    if (retry) {
+                        return;
+                    }
+
+                    throw e;
+                } catch (SessionExpiredException e) {
+                    invalidateSession(sessionId);
+                    throw new IllegalMonitorStateException("Current thread is not owner of the Lock[" + name + "] because Session["
+                            + sessionId + "] is closed by server!");
+                }
+            }
         } finally {
             lockStates.remove(threadId);
             releaseSession(sessionId);
