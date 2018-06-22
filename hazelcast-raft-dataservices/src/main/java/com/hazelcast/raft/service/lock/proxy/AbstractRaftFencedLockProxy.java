@@ -70,8 +70,9 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
 
         UUID invocationUid = UuidUtil.newUnsecureUUID();
         long timeoutMillis = Math.max(0, unit.toMillis(time));
-        long start = Clock.currentTimeMillis();
+        long start;
         for (;;) {
+            start = Clock.currentTimeMillis();
             long sessionId = acquireSession();
             Future<Long> f = doTryLock(groupId, name, sessionId, threadId, invocationUid, timeoutMillis);
             try {
@@ -82,16 +83,13 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
 
                 return fence;
             } catch (OperationTimeoutException e) {
-                timeoutMillis -= (Clock.currentTimeMillis() - start);
-                timeoutMillis = Math.max(0, timeoutMillis);
-                start = Clock.currentTimeMillis();
+                timeoutMillis = Math.max(0, (timeoutMillis - (Clock.currentTimeMillis() - start)));
             } catch (SessionExpiredException e) {
                 invalidateSession(sessionId);
                 timeoutMillis -= (Clock.currentTimeMillis() - start);
                 if (timeoutMillis <= 0) {
                     return INVALID_FENCE;
                 }
-                start = Clock.currentTimeMillis();
             }
         }
     }
