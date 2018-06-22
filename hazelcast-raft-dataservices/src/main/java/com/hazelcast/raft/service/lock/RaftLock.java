@@ -36,7 +36,7 @@ class RaftLock {
 
     private LockInvocationKey owner;
     private int lockCount;
-    private UUID refUid;
+    private UUID releaseRefUid;
     private LinkedList<LockInvocationKey> waitEntries = new LinkedList<LockInvocationKey>();
 
     RaftLock(RaftGroupId groupId, String name) {
@@ -49,13 +49,13 @@ class RaftLock {
         this.name = snapshot.getName();
         this.owner = snapshot.getOwner();
         this.lockCount = snapshot.getLockCount();
-        this.refUid = snapshot.getRefUid();
+        this.releaseRefUid = snapshot.getRefUid();
         this.waitEntries.addAll(snapshot.getWaitEntries());
     }
 
     boolean acquire(LockEndpoint endpoint, long commitIndex, UUID invocationUid, boolean wait) {
         // if acquire() is being retried
-        if (invocationUid.equals(refUid)) {
+        if (owner != null && owner.invocationUid().equals(invocationUid)) {
             return true;
         }
 
@@ -66,7 +66,6 @@ class RaftLock {
 
         if (endpoint.equals(owner.endpoint())) {
             lockCount++;
-            refUid = invocationUid;
             return true;
         }
 
@@ -83,12 +82,12 @@ class RaftLock {
 
     Collection<LockInvocationKey> release(LockEndpoint endpoint, int releaseCount, UUID invocationUid) {
         // if release() is being retried
-        if (invocationUid.equals(refUid)) {
+        if (invocationUid.equals(releaseRefUid)) {
             return Collections.emptyList();
         }
 
         if (owner != null && endpoint.equals(owner.endpoint())) {
-            refUid = invocationUid;
+            releaseRefUid = invocationUid;
 
             lockCount -= Math.min(releaseCount, lockCount);
             if (lockCount > 0) {
@@ -125,7 +124,7 @@ class RaftLock {
 
     Collection<LockInvocationKey> forceRelease(long expectedFence, UUID invocationUid) {
         // if forceRelease() is being retried
-        if (invocationUid.equals(refUid)) {
+        if (invocationUid.equals(releaseRefUid)) {
             return Collections.emptyList();
         }
 
@@ -180,7 +179,7 @@ class RaftLock {
     }
 
     RaftLockSnapshot toSnapshot() {
-        return new RaftLockSnapshot(groupId, name, owner, lockCount, refUid, waitEntries);
+        return new RaftLockSnapshot(groupId, name, owner, lockCount, releaseRefUid, waitEntries);
     }
 
 }
