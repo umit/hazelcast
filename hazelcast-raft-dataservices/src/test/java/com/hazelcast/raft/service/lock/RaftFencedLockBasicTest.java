@@ -319,7 +319,7 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
     public void testTryLockLongTimeout_whenLockedByOther() {
         lockByOtherThread(lock);
 
-        long fence = lock.tryLock(RaftLockService.TRY_LOCK_TIMEOUT_TASK_UPPER_BOUND_MILLIS + 1, TimeUnit.MILLISECONDS);
+        long fence = lock.tryLock(RaftLockService.WAIT_TIMEOUT_TASK_UPPER_BOUND_MILLIS + 1, TimeUnit.MILLISECONDS);
 
         assertEquals(0, fence);
         assertFalse(lock.isLockedByCurrentThread());

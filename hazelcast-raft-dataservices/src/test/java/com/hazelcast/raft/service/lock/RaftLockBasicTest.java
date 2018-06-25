@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.concurrent.lock.LockTestUtils.lockByOtherThread;
 import static com.hazelcast.raft.service.lock.RaftLockService.SERVICE_NAME;
-import static com.hazelcast.raft.service.lock.RaftLockService.TRY_LOCK_TIMEOUT_TASK_UPPER_BOUND_MILLIS;
+import static com.hazelcast.raft.service.lock.RaftLockService.WAIT_TIMEOUT_TASK_UPPER_BOUND_MILLIS;
 import static com.hazelcast.raft.service.spi.RaftProxyFactory.create;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -253,7 +253,7 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     public void testTryLockLongTimeout_whenLockedByOther() throws InterruptedException {
         lockByOtherThread(lock);
 
-        boolean result = lock.tryLock(TRY_LOCK_TIMEOUT_TASK_UPPER_BOUND_MILLIS + 1, TimeUnit.MILLISECONDS);
+        boolean result = lock.tryLock(WAIT_TIMEOUT_TASK_UPPER_BOUND_MILLIS + 1, TimeUnit.MILLISECONDS);
 
         assertFalse(result);
         assertFalse(lock.isLockedByCurrentThread());
