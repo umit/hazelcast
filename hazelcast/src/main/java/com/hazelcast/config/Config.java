@@ -18,6 +18,7 @@ package com.hazelcast.config;
 
 import com.hazelcast.config.matcher.MatchingPointConfigPatternMatcher;
 import com.hazelcast.config.raft.RaftAtomicLongConfig;
+import com.hazelcast.config.raft.RaftAtomicReferenceConfig;
 import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.core.HazelcastInstance;
@@ -165,8 +166,13 @@ public class Config {
     private boolean liteMember;
 
     private RaftConfig raftConfig;
+
     private final Map<String, RaftAtomicLongConfig> raftAtomicLongConfigs = new ConcurrentHashMap<String, RaftAtomicLongConfig>();
+
     private final Map<String, RaftLockConfig> raftLockConfigs = new ConcurrentHashMap<String, RaftLockConfig>();
+
+    private final Map<String, RaftAtomicReferenceConfig> raftAtomicReferenceConfigs
+            = new ConcurrentHashMap<String, RaftAtomicReferenceConfig>();
 
     public Config() {
     }
@@ -3674,6 +3680,16 @@ public class Config {
 
     public Config addRaftLockConfig(RaftLockConfig config) {
         raftLockConfigs.put(config.getName(), config);
+        return this;
+    }
+
+    public RaftAtomicReferenceConfig findRaftAtomicReferenceConfig(String name) {
+        String baseName = getBaseName(name);
+        return lookupByPattern(configPatternMatcher, raftAtomicReferenceConfigs, baseName);
+    }
+
+    public Config addRaftAtomicReferenceConfig(RaftAtomicReferenceConfig config) {
+        raftAtomicReferenceConfigs.put(config.getName(), config);
         return this;
     }
 

@@ -17,6 +17,7 @@
 package com.hazelcast.raft.service;
 
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
+import com.hazelcast.raft.service.atomicref.RaftAtomicRefService;
 import com.hazelcast.raft.service.lock.RaftLockService;
 import com.hazelcast.raft.service.session.SessionManagerService;
 import com.hazelcast.spi.NodeEngine;
@@ -32,7 +33,8 @@ public class RaftDataServiceDescriptorProvider implements ServiceDescriptorProvi
         return new ServiceDescriptor[] {
             new RaftAtomicLongServiceDescriptor(),
             new RaftLockServiceDescriptor(),
-            new RaftSessionManagerServiceDescriptor()
+            new RaftSessionManagerServiceDescriptor(),
+            new RaftAtomicRefServiceDescriptor()
         };
     }
 
@@ -71,4 +73,17 @@ public class RaftDataServiceDescriptorProvider implements ServiceDescriptorProvi
             return new RaftLockService(nodeEngine);
         }
     }
+
+    private static class RaftAtomicRefServiceDescriptor implements ServiceDescriptor {
+        @Override
+        public String getServiceName() {
+            return RaftAtomicRefService.SERVICE_NAME;
+        }
+
+        @Override
+        public Object getService(NodeEngine nodeEngine) {
+            return new RaftAtomicRefService(nodeEngine);
+        }
+    }
+
 }
