@@ -267,7 +267,7 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
         assertEquals(RaftGroupConfig.DEFAULT_GROUP, getGroupId(lock).name());
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test(expected = DistributedObjectDestroyedException.class)
     public void testUse_afterDestroy() {
         lock.destroy();
         lock.lock();
@@ -298,7 +298,7 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
         lock.lock();
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test(expected = DistributedObjectDestroyedException.class)
     public void testCreate_afterDestroy() {
         lock.destroy();
 

@@ -14,6 +14,7 @@ import com.hazelcast.raft.impl.RaftGroupLifecycleAwareService;
 import com.hazelcast.raft.service.spi.RaftRemoteService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 import com.hazelcast.util.ExceptionUtil;
 
 import java.util.HashMap;
@@ -142,7 +143,7 @@ public class RaftAtomicLongService implements ManagedService, RaftRemoteService,
         checkNotNull(name);
         Tuple2<RaftGroupId, String> key = Tuple2.of(groupId, name);
         if (destroyedLongs.contains(key)) {
-            throw new IllegalStateException("AtomicLong[" + name + "] is already destroyed!");
+            throw new DistributedObjectDestroyedException("AtomicLong[" + name + "] is already destroyed!");
         }
         RaftAtomicLong atomicLong = atomicLongs.get(key);
         if (atomicLong == null) {
