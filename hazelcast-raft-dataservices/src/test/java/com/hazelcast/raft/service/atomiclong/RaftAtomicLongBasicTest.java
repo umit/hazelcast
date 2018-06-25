@@ -11,6 +11,7 @@ import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy;
+import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -215,13 +216,13 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
         assertEquals(RaftGroupConfig.DEFAULT_GROUP, getGroupId(atomicLong).name());
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test(expected = DistributedObjectDestroyedException.class)
     public void testUse_afterDestroy() {
         atomicLong.destroy();
         atomicLong.incrementAndGet();
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test(expected = DistributedObjectDestroyedException.class)
     public void testCreate_afterDestroy() {
         atomicLong.destroy();
 
@@ -254,10 +255,6 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
         atomicLong.incrementAndGet();
     }
 
-    protected RaftGroupId getGroupId(IAtomicLong atomicLong) {
-        return ((RaftAtomicLongProxy) atomicLong).getGroupId();
-    }
-
     @Override
     protected Config createConfig(int groupSize, int metadataGroupSize) {
         Config config = super.createConfig(groupSize, metadataGroupSize);
@@ -267,6 +264,10 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
         config.addRaftAtomicLongConfig(atomicLongConfig);
 
         return config;
+    }
+
+    private RaftGroupId getGroupId(IAtomicLong atomicLong) {
+        return ((RaftAtomicLongProxy) atomicLong).getGroupId();
     }
 
     public static class MultiplyByTwo implements IFunction<Long, Long> {

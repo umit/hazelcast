@@ -18,6 +18,7 @@ package com.hazelcast.raft.service.lock;
 
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.util.Tuple2;
+import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 import com.hazelcast.util.Clock;
 import com.hazelcast.util.UuidUtil;
 
@@ -34,7 +35,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.hazelcast.util.Preconditions.checkNotNull;
-import static com.hazelcast.util.Preconditions.checkState;
 
 /**
  * TODO: Javadoc Pending...
@@ -96,7 +96,9 @@ class LockRegistry {
 
     private void checkLockNotDestroyed(String name) {
         checkNotNull(name);
-        checkState(!destroyedLockNames.contains(name), "Lock[" + name + "] is already destroyed!");
+        if (destroyedLockNames.contains(name)) {
+            throw new DistributedObjectDestroyedException("Lock[" + name + "] is already destroyed!");
+        }
     }
 
     boolean acquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
