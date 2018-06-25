@@ -63,6 +63,7 @@ import com.hazelcast.config.TopicConfig;
 import com.hazelcast.config.UserCodeDeploymentConfig;
 import com.hazelcast.config.WanReplicationConfig;
 import com.hazelcast.config.raft.RaftAtomicLongConfig;
+import com.hazelcast.config.raft.RaftAtomicReferenceConfig;
 import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.core.ManagedContext;
@@ -1472,6 +1473,16 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     @Override
     public Config addRaftLockConfig(RaftLockConfig config) {
+        throw new UnsupportedOperationException("Unsupported operation");
+    }
+
+    @Override
+    public RaftAtomicReferenceConfig findRaftAtomicReferenceConfig(String name) {
+        return staticConfig.findRaftAtomicReferenceConfig(name);
+    }
+
+    @Override
+    public Config addRaftAtomicReferenceConfig(RaftAtomicReferenceConfig config) {
         throw new UnsupportedOperationException("Unsupported operation");
     }
 }
