@@ -23,13 +23,12 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.service.lock.operation.ForceUnlockOp;
 import com.hazelcast.raft.service.lock.operation.GetLockCountOp;
 import com.hazelcast.raft.service.lock.operation.GetLockFenceOp;
-import com.hazelcast.raft.service.lock.operation.InvalidateWaitEntriesOp;
 import com.hazelcast.raft.service.lock.operation.LockOp;
 import com.hazelcast.raft.service.lock.operation.TryLockOp;
 import com.hazelcast.raft.service.lock.operation.UnlockOp;
 
 public class RaftLockDataSerializerHook implements DataSerializerHook {
-    private static final int RAFT_LOCK_DS_FACTORY_ID = -3011;
+    private static final int RAFT_LOCK_DS_FACTORY_ID = -1012;
     private static final String RAFT_LOCK_DS_FACTORY = "hazelcast.serialization.ds.raft.lock";
 
     public static final int F_ID = FactoryIdHelper.getFactoryId(RAFT_LOCK_DS_FACTORY, RAFT_LOCK_DS_FACTORY_ID);
@@ -44,8 +43,6 @@ public class RaftLockDataSerializerHook implements DataSerializerHook {
     public static final int FORCE_UNLOCK_OP = 8;
     public static final int GET_LOCK_COUNT_OP = 9;
     public static final int GET_LOCK_FENCE_OP = 10;
-    public static final int INVALIDATE_WAI_ENTRIES_OP = 11;
-
 
     @Override
     public int getFactoryId() {
@@ -78,8 +75,6 @@ public class RaftLockDataSerializerHook implements DataSerializerHook {
                         return new GetLockCountOp();
                     case GET_LOCK_FENCE_OP:
                         return new GetLockFenceOp();
-                    case INVALIDATE_WAI_ENTRIES_OP:
-                        return new InvalidateWaitEntriesOp();
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
             }

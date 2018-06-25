@@ -6,6 +6,7 @@ import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.instance.Node;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.SessionInfo;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
@@ -27,6 +28,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 
+import java.util.Collection;
 import java.util.concurrent.ExecutionException;
 
 import static com.hazelcast.raft.impl.RaftUtil.getLeaderMember;
@@ -34,10 +36,13 @@ import static com.hazelcast.raft.impl.RaftUtil.getSnapshotEntry;
 import static com.hazelcast.test.PacketFiltersUtil.dropOperationsBetween;
 import static com.hazelcast.test.PacketFiltersUtil.resetPacketFiltersFrom;
 import static java.util.Arrays.asList;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.core.Is.isA;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(HazelcastSerialClassRunner.class)
@@ -65,7 +70,6 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
     @Test
     public void testSessionCreate() throws ExecutionException, InterruptedException {
         final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, new CreateSessionOp()).get();
-        System.out.println(response);
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
@@ -73,7 +77,12 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
                     RaftSessionService service = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
                     SessionRegistry registry = service.getSessionRegistryOrNull(groupId);
                     assertNotNull(registry);
-                    assertNotNull(registry.getSession(response.getSessionId()));
+
+                    Session session = registry.getSession(response.getSessionId());
+                    assertNotNull(session);
+
+                    Collection<SessionInfo> sessions = service.getSessions(groupId);
+                    assertThat(sessions, hasItem(session));
                 }
             }
         });
@@ -139,6 +148,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
                     SessionRegistry registry = service.getSessionRegistryOrNull(groupId);
                     assertNotNull(registry);
                     assertNull(registry.getSession(response.getSessionId()));
+                    assertThat(service.getSessions(groupId), empty());
                 }
             }
         });

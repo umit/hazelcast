@@ -55,7 +55,7 @@ public class RaftLockServiceTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testSnapshotRestore() throws ExecutionException, InterruptedException {
+    public void testSnapshotRestore() {
         final HazelcastInstance leader = getLeaderInstance(instances, groupId);
         final HazelcastInstance follower = getRandomFollowerInstance(instances, groupId);
 
@@ -80,9 +80,9 @@ public class RaftLockServiceTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 RaftLockService service = getNodeEngineImpl(leader).getService(RaftLockService.SERVICE_NAME);
-                LockRegistry registry = service.getLockRegistryOrNull(groupId);
+                LockRegistry registry = service.getResourceRegistryOrNull(groupId);
                 assertNotNull(registry);
-                assertFalse(registry.getTryLockTimeouts().isEmpty());
+                assertFalse(registry.getWaitTimeouts().isEmpty());
             }
         });
 
@@ -127,9 +127,9 @@ public class RaftLockServiceTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 RaftLockService service = getNodeEngineImpl(follower).getService(RaftLockService.SERVICE_NAME);
-                LockRegistry registry = service.getLockRegistryOrNull(groupId);
+                LockRegistry registry = service.getResourceRegistryOrNull(groupId);
                 assertNotNull(registry);
-                assertFalse(registry.getTryLockTimeouts().isEmpty());
+                assertFalse(registry.getWaitTimeouts().isEmpty());
             }
         });
     }

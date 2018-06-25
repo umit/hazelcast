@@ -17,40 +17,36 @@
 package com.hazelcast.raft.service.lock;
 
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.service.blocking.BlockingResource;
+import com.hazelcast.util.UuidUtil;
+import com.hazelcast.util.collection.Long2ObjectHashMap;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 
 /**
  * TODO: Javadoc Pending...
  */
-class RaftLock {
-
-    private final RaftGroupId groupId;
-    private final String name;
+class RaftLock extends BlockingResource<LockInvocationKey> {
 
     private LockInvocationKey owner;
     private int lockCount;
     private UUID releaseRefUid;
-    private LinkedList<LockInvocationKey> waitEntries = new LinkedList<LockInvocationKey>();
 
     RaftLock(RaftGroupId groupId, String name) {
-        this.groupId = groupId;
-        this.name = name;
+        super(groupId, name);
     }
 
     RaftLock(RaftLockSnapshot snapshot) {
-        this.groupId = snapshot.getGroupId();
-        this.name = snapshot.getName();
+        super(snapshot.getGroupId(), snapshot.getName());
         this.owner = snapshot.getOwner();
         this.lockCount = snapshot.getLockCount();
         this.releaseRefUid = snapshot.getRefUid();
-        this.waitEntries.addAll(snapshot.getWaitEntries());
+        this.waitKeys.addAll(snapshot.getWaitEntries());
     }
 
     boolean acquire(LockEndpoint endpoint, long commitIndex, UUID invocationUid, boolean wait) {
@@ -70,7 +66,7 @@ class RaftLock {
         }
 
         if (wait) {
-            waitEntries.offer(key);
+            waitKeys.offer(key);
         }
 
         return false;
@@ -80,7 +76,7 @@ class RaftLock {
         return release(endpoint, 1, invocationUuid);
     }
 
-    Collection<LockInvocationKey> release(LockEndpoint endpoint, int releaseCount, UUID invocationUid) {
+    private Collection<LockInvocationKey> release(LockEndpoint endpoint, int releaseCount, UUID invocationUid) {
         // if release() is being retried
         if (invocationUid.equals(releaseRefUid)) {
             return Collections.emptyList();
@@ -94,12 +90,12 @@ class RaftLock {
                 return Collections.emptyList();
             }
 
-            LockInvocationKey nextOwner = waitEntries.poll();
+            LockInvocationKey nextOwner = waitKeys.poll();
             if (nextOwner != null) {
                 List<LockInvocationKey> entries = new ArrayList<LockInvocationKey>();
                 entries.add(nextOwner);
 
-                Iterator<LockInvocationKey> iter = waitEntries.iterator();
+                Iterator<LockInvocationKey> iter = waitKeys.iterator();
                 while (iter.hasNext()) {
                     LockInvocationKey n = iter.next();
                     if (nextOwner.invocationUid().equals(n.invocationUid())) {
@@ -139,33 +135,6 @@ class RaftLock {
         throw new IllegalMonitorStateException();
     }
 
-    List<Long> invalidateWaitEntries(long sessionId) {
-        List<Long> commitIndices = new ArrayList<Long>();
-        Iterator<LockInvocationKey> iter = waitEntries.iterator();
-        while (iter.hasNext()) {
-            LockInvocationKey entry = iter.next();
-            if (sessionId == entry.endpoint().sessionId()) {
-                commitIndices.add(entry.commitIndex());
-                iter.remove();
-            }
-        }
-
-        return commitIndices;
-    }
-
-    boolean invalidateWaitEntry(LockInvocationKey key) {
-        Iterator<LockInvocationKey> iter = waitEntries.iterator();
-        while (iter.hasNext()) {
-            LockInvocationKey waiter = iter.next();
-            if (waiter.equals(key)) {
-                iter.remove();
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     int lockCount() {
         return lockCount;
     }
@@ -174,12 +143,21 @@ class RaftLock {
         return owner;
     }
 
-    Collection<LockInvocationKey> waitEntries() {
-        return Collections.unmodifiableCollection(waitEntries);
-    }
-
     RaftLockSnapshot toSnapshot() {
-        return new RaftLockSnapshot(groupId, name, owner, lockCount, releaseRefUid, waitEntries);
+        return new RaftLockSnapshot(groupId, name, owner, lockCount, releaseRefUid, waitKeys);
     }
 
+    @Override
+    protected void onInvalidateSession(long sessionId, Long2ObjectHashMap<Object> result) {
+        if (owner != null && sessionId == owner.endpoint().sessionId()) {
+            Collection<LockInvocationKey> w = release(owner.endpoint(), Integer.MAX_VALUE, UuidUtil.newUnsecureUUID());
+            if (w.isEmpty()) {
+                return;
+            }
+            Object newOwnerCommitIndex = w.iterator().next().commitIndex();
+            for (LockInvocationKey waitEntry : w) {
+                result.put(waitEntry.commitIndex(), newOwnerCommitIndex);
+            }
+        }
+    }
 }

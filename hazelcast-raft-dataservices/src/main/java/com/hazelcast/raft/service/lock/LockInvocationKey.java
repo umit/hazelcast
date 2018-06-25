@@ -19,6 +19,7 @@ package com.hazelcast.raft.service.lock;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.raft.service.blocking.WaitKey;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -26,7 +27,7 @@ import java.util.UUID;
 /**
  * TODO: Javadoc Pending...
  */
-public class LockInvocationKey implements IdentifiedDataSerializable {
+public class LockInvocationKey implements WaitKey, IdentifiedDataSerializable {
     private String name;
     private LockEndpoint endpoint;
     private long commitIndex;
@@ -42,6 +43,7 @@ public class LockInvocationKey implements IdentifiedDataSerializable {
         this.invocationUid = invocationUid;
     }
 
+    @Override
     public String name() {
         return name;
     }
@@ -50,8 +52,14 @@ public class LockInvocationKey implements IdentifiedDataSerializable {
         return endpoint;
     }
 
+    @Override
     public long commitIndex() {
         return commitIndex;
+    }
+
+    @Override
+    public long sessionId() {
+        return endpoint.sessionId();
     }
 
     public UUID invocationUid() {
