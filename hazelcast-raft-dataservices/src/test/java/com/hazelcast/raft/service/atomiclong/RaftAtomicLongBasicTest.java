@@ -266,7 +266,7 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
         return config;
     }
 
-    private RaftGroupId getGroupId(IAtomicLong atomicLong) {
+    protected RaftGroupId getGroupId(IAtomicLong atomicLong) {
         return ((RaftAtomicLongProxy) atomicLong).getGroupId();
     }
 

@@ -139,12 +139,12 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
 
     @Override
     public ICompletableFuture<Boolean> isNullAsync() {
-        return raftInvocationManager.invoke(groupId, new ContainsOp(name, null));
+        return containsAsync(null);
     }
 
     @Override
     public ICompletableFuture<Void> clearAsync() {
-        return raftInvocationManager.invoke(groupId, new SetOp(name, null, false));
+        return setAsync(null);
     }
 
     @Override
