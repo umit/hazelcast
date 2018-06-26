@@ -177,8 +177,4 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
     public void destroy() {
         join(raftInvocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)));
     }
-
-    public RaftGroupId getGroupId() {
-        return groupId;
-    }
 }

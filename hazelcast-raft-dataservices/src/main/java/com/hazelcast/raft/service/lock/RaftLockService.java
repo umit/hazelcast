@@ -22,14 +22,11 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.ILock;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
-import com.hazelcast.raft.impl.RaftGroupLifecycleAwareService;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
-import com.hazelcast.raft.impl.session.SessionAwareService;
 import com.hazelcast.raft.service.blocking.AbstractBlockingService;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
 import com.hazelcast.raft.service.session.SessionManagerService;
 import com.hazelcast.raft.service.spi.RaftRemoteService;
-import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 import com.hazelcast.util.ExceptionUtil;
@@ -45,26 +42,13 @@ import static com.hazelcast.util.Preconditions.checkNotNull;
  * TODO: Javadoc Pending...
  */
 public class RaftLockService extends AbstractBlockingService<LockInvocationKey, RaftLock, LockRegistry>
-        implements ManagedService, SnapshotAwareService<LockRegistrySnapshot>,
-        RaftRemoteService, RaftGroupLifecycleAwareService, SessionAwareService {
+        implements SnapshotAwareService<LockRegistrySnapshot>, RaftRemoteService {
 
     public static final long INVALID_FENCE = 0L;
     public static final String SERVICE_NAME = "hz:raft:lockService";
 
     public RaftLockService(NodeEngine nodeEngine) {
         super(nodeEngine);
-    }
-
-    @Override
-    protected void initImpl() {
-    }
-
-    @Override
-    public void reset() {
-    }
-
-    @Override
-    protected void shutdownImpl(boolean terminate) {
     }
 
     @Override
@@ -81,7 +65,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
             for (Entry<LockInvocationKey, Long> e : timeouts.entrySet()) {
                 LockInvocationKey key = e.getKey();
                 long waitTimeMs = e.getValue();
-                onWait(groupId, key, waitTimeMs);
+                scheduleWaitTimeout(groupId, key, waitTimeMs);
             }
         }
     }
@@ -150,7 +134,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
 
         if (!acquired) {
             LockInvocationKey key = new LockInvocationKey(name, endpoint, commitIndex, invocationUid);
-            onWait(groupId, key, timeoutMs);
+            scheduleWaitTimeout(groupId, key, timeoutMs);
         }
         return acquired;
     }
@@ -223,7 +207,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         checkNotNull(groupId);
         LockRegistry registry = getResourceRegistryOrNull(groupId);
         if (registry == null) {
-            throw new IllegalMonitorStateException("Resource registry of " + groupId + " not found for Resource[" + name + "]");
+            throw new IllegalMonitorStateException("Lock registry of " + groupId + " not found for Lock[" + name + "]");
         }
         return registry;
     }

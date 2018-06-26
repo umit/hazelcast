@@ -19,6 +19,7 @@ package com.hazelcast.raft.service.blocking;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
+import com.hazelcast.util.Clock;
 import com.hazelcast.util.collection.Long2ObjectHashMap;
 
 import java.util.ArrayList;
@@ -75,6 +76,10 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
         if (destroyedNames.contains(name)) {
             throw new DistributedObjectDestroyedException("Resource[" + name + "] is already destroyed!");
         }
+    }
+
+    protected void scheduleWaitTimeout(W key, long timeoutMs) {
+        waitTimeouts.put(key, Tuple2.of(timeoutMs, Clock.currentTimeMillis() + timeoutMs));
     }
 
     public Map<Long, Object> invalidateSession(long sessionId) {

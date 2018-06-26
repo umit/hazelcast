@@ -76,7 +76,12 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
         initImpl();
     }
 
-    protected abstract void initImpl();
+    protected void initImpl() {
+    }
+
+    @Override
+    public void reset() {
+    }
 
     @Override
     public final void shutdown(boolean terminate) {
@@ -84,7 +89,8 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
         shutdownImpl(terminate);
     }
 
-    protected abstract void shutdownImpl(boolean terminate);
+    protected void shutdownImpl(boolean terminate) {
+    }
 
     @Override
     public void setSessionAccessor(SessionAccessor accessor) {
@@ -132,7 +138,7 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
         return registries.get(groupId);
     }
 
-    protected void onWait(RaftGroupId groupId, W waitEntry, long timeoutMs) {
+    protected void scheduleWaitTimeout(RaftGroupId groupId, W waitEntry, long timeoutMs) {
         if (timeoutMs > 0 && timeoutMs <= WAIT_TIMEOUT_TASK_UPPER_BOUND_MILLIS) {
             Runnable task = new InvalidateExpiredWaitEntriesTask(groupId, waitEntry);
             ExecutionService executionService = nodeEngine.getExecutionService();

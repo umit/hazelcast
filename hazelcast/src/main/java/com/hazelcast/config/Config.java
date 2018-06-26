@@ -19,8 +19,9 @@ package com.hazelcast.config;
 import com.hazelcast.config.matcher.MatchingPointConfigPatternMatcher;
 import com.hazelcast.config.raft.RaftAtomicLongConfig;
 import com.hazelcast.config.raft.RaftAtomicReferenceConfig;
-import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.config.raft.RaftConfig;
+import com.hazelcast.config.raft.RaftLockConfig;
+import com.hazelcast.config.raft.RaftSemaphoreConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ManagedContext;
 import com.hazelcast.flakeidgen.FlakeIdGenerator;
@@ -172,9 +173,8 @@ public class Config {
     private RaftConfig raftConfig;
 
     private final Map<String, RaftAtomicLongConfig> raftAtomicLongConfigs = new ConcurrentHashMap<String, RaftAtomicLongConfig>();
-
     private final Map<String, RaftLockConfig> raftLockConfigs = new ConcurrentHashMap<String, RaftLockConfig>();
-
+    private final Map<String, RaftSemaphoreConfig> raftSemaphoreConfigs = new ConcurrentHashMap<String, RaftSemaphoreConfig>();
     private final Map<String, RaftAtomicReferenceConfig> raftAtomicReferenceConfigs
             = new ConcurrentHashMap<String, RaftAtomicReferenceConfig>();
 
@@ -3490,6 +3490,16 @@ public class Config {
 
     public Config addRaftAtomicReferenceConfig(RaftAtomicReferenceConfig config) {
         raftAtomicReferenceConfigs.put(config.getName(), config);
+        return this;
+    }
+
+    public RaftSemaphoreConfig findRaftSemaphoreConfig(String name) {
+        String baseName = getBaseName(name);
+        return lookupByPattern(configPatternMatcher, raftSemaphoreConfigs, baseName);
+    }
+
+    public Config addRaftSemaphoreConfig(RaftSemaphoreConfig config) {
+        raftSemaphoreConfigs.put(config.getName(), config);
         return this;
     }
 

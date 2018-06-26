@@ -47,4 +47,8 @@ public abstract class SessionAwareProxy {
     protected void invalidateSession(long sessionId) {
         sessionManager.invalidateSession(groupId, sessionId);
     }
+
+    public RaftGroupId getGroupId() {
+        return groupId;
+    }
 }
