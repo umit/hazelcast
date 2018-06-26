@@ -242,7 +242,7 @@ public class RaftAtomicRefBasicTest extends HazelcastRaftTestSupport {
         return config;
     }
 
-    private RaftGroupId getGroupId(IAtomicReference ref) {
+    protected RaftGroupId getGroupId(IAtomicReference ref) {
         return ((RaftAtomicRefProxy) ref).getGroupId();
     }
 
