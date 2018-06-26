@@ -17,9 +17,7 @@
 package com.hazelcast.raft.service.lock;
 
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.blocking.ResourceRegistry;
-import com.hazelcast.util.Clock;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -51,7 +49,7 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> {
         boolean acquired = getOrInitResource(name).acquire(endpoint, commitIndex, invocationUid, wait);
         if (wait && !acquired) {
             LockInvocationKey key = new LockInvocationKey(name, endpoint, commitIndex, invocationUid);
-            waitTimeouts.put(key, Tuple2.of(timeoutMs, Clock.currentTimeMillis() + timeoutMs));
+            scheduleWaitTimeout(key, timeoutMs);
         }
 
         return acquired;
@@ -124,13 +122,12 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> {
 
         destroyedNames.addAll(snapshot.getDestroyedLockNames());
 
-        long now = Clock.currentTimeMillis();
         Map<LockInvocationKey, Long> added = new HashMap<LockInvocationKey, Long>();
         for (Entry<LockInvocationKey, Long> e : snapshot.getTryLockTimeouts().entrySet()) {
             LockInvocationKey key = e.getKey();
             if (!waitTimeouts.containsKey(key)) {
                 long timeout = e.getValue();
-                waitTimeouts.put(key, Tuple2.of(timeout, now + timeout));
+                scheduleWaitTimeout(key, timeout);
                 added.put(key, timeout);
             }
         }

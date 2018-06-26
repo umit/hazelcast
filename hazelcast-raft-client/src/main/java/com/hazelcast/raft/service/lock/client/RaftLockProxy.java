@@ -285,10 +285,6 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
         return clientMessage;
     }
 
-    public RaftGroupId getGroupId() {
-        return groupId;
-    }
-
     private static class IntResponseDecoder implements ClientMessageDecoder {
         @Override
         public Integer decodeClientMessage(ClientMessage clientMessage) {
