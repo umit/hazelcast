@@ -21,7 +21,10 @@ import com.hazelcast.raft.service.blocking.BlockingResource;
 import com.hazelcast.util.collection.Long2LongHashMap;
 import com.hazelcast.util.collection.Long2ObjectHashMap;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 
 import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
 import static com.hazelcast.util.Preconditions.checkPositive;
@@ -61,19 +64,18 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> {
 
     boolean isAvailable(int permits) {
         checkPositive(permits, "Permits should be positive!");
-        return available - permits >= 0;
+        return available >= permits;
     }
 
-    boolean acquire(long commitIndex, String name, long sessionId, int permits, long timeoutMs) {
+    boolean acquire(long commitIndex, String name, long sessionId, int permits, boolean wait) {
         if (!isAvailable(permits)) {
-            if (timeoutMs != 0) {
+            if (wait) {
                 waitKeys.add(new SemaphoreInvocationKey(commitIndex, name, sessionId, permits));
             }
             return false;
         }
-        available -= permits;
-        long acquired = getAcquired(sessionId);
-        acquires.put(sessionId, acquired + permits);
+
+        doAcquire(sessionId, permits);
         return true;
     }
 
@@ -85,33 +87,42 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> {
         return acquired;
     }
 
-    SemaphoreInvocationKey release(long sessionId, int permits) {
+    private void doAcquire(long sessionId, int permits) {
+        available -= permits;
+        long acquired = getAcquired(sessionId);
+        acquires.put(sessionId, acquired + permits);
+    }
+
+    Collection<SemaphoreInvocationKey> release(long sessionId, int permits) {
         checkPositive(permits, "Permits should be positive!");
 
         long acquired = getAcquired(sessionId);
         if (acquired < permits) {
-            throw new IllegalStateException("Cannot release " + permits
+            throw new IllegalArgumentException("Cannot release " + permits
                     + " permits. Session has acquired only " + acquired + " permits!");
         }
 
         available += permits;
-        if (acquired == permits) {
+        acquired -= permits;
+        if (acquired == 0) {
             acquires.remove(sessionId);
         } else {
-            acquires.put(sessionId, acquired - permits);
+            acquires.put(sessionId, acquired);
         }
 
+        List<SemaphoreInvocationKey> keys = new ArrayList<SemaphoreInvocationKey>();
         Iterator<SemaphoreInvocationKey> iterator = waitKeys.iterator();
-        if (iterator.hasNext()) {
+        while (iterator.hasNext()) {
             SemaphoreInvocationKey key = iterator.next();
-            if (key.permits() <= available) {
-                iterator.remove();
-                available -= key.permits();
-                acquired = getAcquired(sessionId);
-                acquires.put(key.sessionId(), acquired + key.permits());
+            if (key.permits() > available) {
+                break;
             }
-            return key;
+
+            keys.add(key);
+            iterator.remove();
+            doAcquire(sessionId, key.permits());
         }
-        return null;
+
+        return keys;
     }
 }

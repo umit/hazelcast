@@ -19,6 +19,8 @@ package com.hazelcast.raft.service.semaphore;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.service.blocking.ResourceRegistry;
 
+import java.util.Collection;
+
 /**
  * TODO: Javadoc Pending...
  */
@@ -48,7 +50,8 @@ public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, 
 
     boolean acquire(long commitIndex, String name, long sessionId, int permits, long timeoutMs) {
         RaftSemaphore semaphore = getOrInitResource(name);
-        boolean acquired = semaphore.acquire(commitIndex, name, sessionId, permits, timeoutMs);
+        boolean wait = (timeoutMs != 0);
+        boolean acquired = semaphore.acquire(commitIndex, name, sessionId, permits, wait);
         if (!acquired && timeoutMs > 0) {
             SemaphoreInvocationKey key = new SemaphoreInvocationKey(commitIndex, name, sessionId, permits);
             scheduleWaitTimeout(key, timeoutMs);
@@ -56,16 +59,17 @@ public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, 
         return acquired;
     }
 
-    SemaphoreInvocationKey release(String name, long sessionId, int permits) {
+    Collection<SemaphoreInvocationKey> release(String name, long sessionId, int permits) {
         RaftSemaphore semaphore = getResourceOrNull(name);
         if (semaphore == null) {
             return null;
         }
 
-        SemaphoreInvocationKey key = semaphore.release(sessionId, permits);
-        if (key != null) {
+        Collection<SemaphoreInvocationKey> keys = semaphore.release(sessionId, permits);
+        for (SemaphoreInvocationKey key : keys) {
             waitTimeouts.remove(key);
         }
-        return key;
+
+        return keys;
     }
 }

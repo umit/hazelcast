@@ -32,7 +32,6 @@ import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 import com.hazelcast.util.ExceptionUtil;
 
 import java.util.Collection;
-import java.util.Collections;
 
 import static com.hazelcast.util.Preconditions.checkNotNull;
 
@@ -132,10 +131,8 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
     public void releasePermits(RaftGroupId groupId, String name, long sessionId, int permits) {
         heartbeatSession(groupId, sessionId);
         SemaphoreRegistry registry = getSemaphoreRegistryOrFail(groupId, name);
-        SemaphoreInvocationKey key = registry.release(name, sessionId, permits);
-        if (key != null) {
-            notifyWaitEntries(groupId, Collections.singleton(key), true);
-        }
+        Collection<SemaphoreInvocationKey> keys = registry.release(name, sessionId, permits);
+        notifyWaitEntries(groupId, keys, true);
     }
 
     private SemaphoreRegistry getSemaphoreRegistryOrFail(RaftGroupId groupId, String name) {
