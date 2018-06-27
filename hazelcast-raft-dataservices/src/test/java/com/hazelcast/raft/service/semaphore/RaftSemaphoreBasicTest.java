@@ -35,6 +35,8 @@ import org.junit.experimental.categories.Category;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 
+import java.util.concurrent.CountDownLatch;
+
 import static com.hazelcast.raft.service.spi.RaftProxyFactory.create;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -79,8 +81,8 @@ public class RaftSemaphoreBasicTest extends HazelcastRaftTestSupport {
     @Test
     public void testInitFails_whenAlreadyInitialized() {
         assertTrue(semaphore.init(7));
-        assertFalse(semaphore.init(7));
-        //...
+        assertFalse(semaphore.init(5));
+        assertEquals(7, semaphore.availablePermits());
     }
 
     @Test
@@ -123,6 +125,37 @@ public class RaftSemaphoreBasicTest extends HazelcastRaftTestSupport {
 
         semaphore.acquire();
     }
+
+    @Test
+    public void testMultipleAcquires_afterRelease() throws InterruptedException {
+        assertTrue(semaphore.init(2));
+        semaphore.acquire(2);
+
+        final CountDownLatch latch1 = new CountDownLatch(2);
+        final CountDownLatch latch2 = new CountDownLatch(2);
+        for (int i = 0; i < 2; i++) {
+            spawn(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        latch1.countDown();
+                        semaphore.acquire();
+                        latch2.countDown();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        }
+
+        assertOpenEventually(latch1);
+        sleepAtLeastSeconds(2);
+
+        semaphore.release(2);
+
+        assertOpenEventually(latch2);
+    }
+
 
     protected RaftGroupId getGroupId(ISemaphore semaphore) {
         return ((RaftSemaphoreProxy) semaphore).getGroupId();
