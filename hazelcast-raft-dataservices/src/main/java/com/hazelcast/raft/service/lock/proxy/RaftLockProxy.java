@@ -6,6 +6,7 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
+import com.hazelcast.raft.service.lock.RaftLockService;
 import com.hazelcast.raft.service.lock.operation.GetLockCountOp;
 import com.hazelcast.raft.service.lock.operation.LockOp;
 import com.hazelcast.raft.service.lock.operation.TryLockOp;
@@ -66,7 +67,12 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
             RaftOp op = new TryLockOp(name, sessionId, ThreadUtil.getThreadId(), invUid, timeoutMs);
             Future<Long> f = raftInvocationManager.invoke(groupId, op);
             try {
-                return join(f) > 0L;
+                boolean locked = join(f) != RaftLockService.INVALID_FENCE;
+                if (!locked) {
+                    releaseSession(sessionId);
+                }
+
+                return locked;
             } catch (SessionExpiredException e) {
                 invalidateSession(sessionId);
             }
