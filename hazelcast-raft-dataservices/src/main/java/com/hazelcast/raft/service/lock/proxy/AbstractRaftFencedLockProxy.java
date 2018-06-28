@@ -79,6 +79,8 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
                 fence = join(f);
                 if (fence != INVALID_FENCE) {
                     lockStates.put(threadId, new LockState(sessionId, fence));
+                } else {
+                    releaseSession(sessionId);
                 }
 
                 return fence;

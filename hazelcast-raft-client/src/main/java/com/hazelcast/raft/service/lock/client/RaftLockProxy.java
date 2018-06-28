@@ -110,7 +110,11 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
                     invUid, timeoutMs);
             ICompletableFuture<Long> future = invoke(client, LONG_RESPONSE_DECODER, name, clientMessage);
             try {
-                return join(future) > 0L;
+                boolean locked = join(future) > RaftLockService.INVALID_FENCE;
+                if (!locked) {
+                    releaseSession(sessionId);
+                }
+                return locked;
             } catch (SessionExpiredException e) {
                 invalidateSession(sessionId);
             }

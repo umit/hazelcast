@@ -9,8 +9,10 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.RaftGroupDestroyedException;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
+import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.session.SessionManagerService;
 import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
+import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -51,6 +53,7 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     public ExpectedException exception = ExpectedException.none();
 
     private HazelcastInstance[] instances;
+    private HazelcastInstance lockInstance;
     private ILock lock;
     private String name = "lock";
     private String groupName = "lock";
@@ -69,7 +72,8 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     }
 
     protected ILock createLock(String name) {
-        return create(instances[RandomPicker.getInt(instances.length)], RaftLockService.SERVICE_NAME, name);
+        lockInstance = instances[RandomPicker.getInt(instances.length)];
+        return create(lockInstance, RaftLockService.SERVICE_NAME, name);
     }
 
     @Test
@@ -298,6 +302,21 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
         lock.lock();
     }
 
+    @Test(timeout = 60000)
+    public void test_failedTryLock_doesNotAcquireSession() {
+        lockByOtherThread(lock);
+
+        final AbstractSessionManager sessionManager = getSessionManager();
+        final RaftGroupId groupId = getGroupId(lock);
+        final long sessionId = sessionManager.getSession(groupId);
+        assertNotEquals(AbstractSessionManager.NO_SESSION_ID, sessionId);
+        assertEquals(1, sessionManager.getSessionUsageCount(groupId, sessionId));
+
+        boolean locked = lock.tryLock();
+        assertFalse(locked);
+        assertEquals(1, sessionManager.getSessionUsageCount(groupId, sessionId));
+    }
+
     @Test(expected = DistributedObjectDestroyedException.class)
     public void testCreate_afterDestroy() {
         lock.destroy();
@@ -421,5 +440,10 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
         RaftLockConfig lockConfig = new RaftLockConfig(name, groupName);
         config.addRaftLockConfig(lockConfig);
         return config;
+    }
+
+    protected AbstractSessionManager getSessionManager() {
+        NodeEngineImpl nodeEngine = getNodeEngineImpl(lockInstance);
+        return nodeEngine.getService(SessionManagerService.SERVICE_NAME);
     }
 }

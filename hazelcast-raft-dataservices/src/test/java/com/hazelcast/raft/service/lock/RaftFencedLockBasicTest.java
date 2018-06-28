@@ -460,6 +460,21 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
         assertEquals(2, lock.getLockCount());
     }
 
+    @Test(timeout = 60000)
+    public void test_failedTryLock_doesNotAcquireSession() {
+        lockByOtherThread(lock);
+
+        final AbstractSessionManager sessionManager = getSessionManager(lockInstance);
+        final RaftGroupId groupId = lock.getRaftGroupId();
+        final long sessionId = sessionManager.getSession(groupId);
+        assertNotEquals(AbstractSessionManager.NO_SESSION_ID, sessionId);
+        assertEquals(1, sessionManager.getSessionUsageCount(groupId, sessionId));
+
+        long fence = lock.tryLock();
+        assertEquals(RaftLockService.INVALID_FENCE, fence);
+        assertEquals(1, sessionManager.getSessionUsageCount(groupId, sessionId));
+    }
+
     private void lockByOtherThread(final FencedLock lock) {
         try {
             spawn(new Runnable() {
