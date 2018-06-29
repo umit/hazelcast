@@ -18,6 +18,7 @@ package com.hazelcast.raft.service.semaphore.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 
@@ -27,18 +28,23 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-// TODO: Implement IdentifiedDataSerializable
-abstract class AbstractSemaphoreOp extends RaftOp {
+public class ChangePermitsOp extends RaftOp {
 
-    protected String name;
-    protected long sessionId;
+    private String name;
+    private int permits;
 
-    public AbstractSemaphoreOp() {
+    public ChangePermitsOp() {
     }
 
-    public AbstractSemaphoreOp(String name, long sessionId) {
+    public ChangePermitsOp(String name, int permits) {
         this.name = name;
-        this.sessionId = sessionId;
+        this.permits = permits;
+    }
+
+    @Override
+    public Object run(RaftGroupId groupId, long commitIndex) throws Exception {
+        RaftSemaphoreService service = getService();
+        return service.changePermits(groupId, name, permits);
     }
 
     @Override
@@ -49,12 +55,12 @@ abstract class AbstractSemaphoreOp extends RaftOp {
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeUTF(name);
-        out.writeLong(sessionId);
+        out.writeInt(permits);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         name = in.readUTF();
-        sessionId = in.readLong();
+        permits = in.readInt();
     }
 }
