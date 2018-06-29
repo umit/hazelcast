@@ -97,14 +97,12 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> {
         checkPositive(permits, "Permits should be positive!");
 
         long acquired = getAcquired(sessionId);
-        if (acquired < permits) {
-            throw new IllegalArgumentException("Cannot release " + permits
-                    + " permits. Session has acquired only " + acquired + " permits!");
-        }
 
         available += permits;
+        initialized = true;
+
         acquired -= permits;
-        if (acquired == 0) {
+        if (acquired <= 0) {
             acquires.remove(sessionId);
         } else {
             acquires.put(sessionId, acquired);
@@ -125,4 +123,24 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> {
 
         return keys;
     }
+
+    int drain(long sessionId) {
+        int drained = available;
+        if (drained > 0) {
+            doAcquire(sessionId, drained);
+        }
+        available = 0;
+        return drained;
+    }
+
+    boolean change(int permits) {
+        if (permits == 0) {
+            return false;
+        }
+
+        available += permits;
+        initialized = true;
+        return true;
+    }
+
 }

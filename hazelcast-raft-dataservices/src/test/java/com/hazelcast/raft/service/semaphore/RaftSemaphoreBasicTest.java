@@ -24,6 +24,7 @@ import com.hazelcast.core.ISemaphore;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.service.semaphore.proxy.RaftSemaphoreProxy;
+import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
@@ -36,12 +37,15 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import static com.hazelcast.raft.service.spi.RaftProxyFactory.create;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
@@ -97,6 +101,51 @@ public class RaftSemaphoreBasicTest extends HazelcastRaftTestSupport {
     }
 
     @Test
+    public void testAcquire_whenNoPermits() {
+        semaphore.init(0);
+        final Future future = spawn(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    semaphore.acquire();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        assertTrueAllTheTime(new AssertTask() {
+            @Override
+            public void run() {
+                assertFalse(future.isDone());
+                assertEquals(0, semaphore.availablePermits());
+            }
+        }, 5);
+    }
+
+    @Test
+    public void testAcquire_whenNoPermits_andSemaphoreDestroyed() throws Exception {
+        semaphore.init(0);
+        Future future = spawn(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    semaphore.acquire();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        semaphore.destroy();
+        try {
+            future.get();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
     public void testRelease() throws InterruptedException {
         assertTrue(semaphore.init(7));
         semaphore.acquire();
@@ -104,10 +153,11 @@ public class RaftSemaphoreBasicTest extends HazelcastRaftTestSupport {
         assertEquals(7, semaphore.availablePermits());
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void testRelease_whenNotAcquired() {
         assertTrue(semaphore.init(7));
         semaphore.release();
+        assertEquals(8, semaphore.availablePermits());
     }
 
     @Test
@@ -156,6 +206,273 @@ public class RaftSemaphoreBasicTest extends HazelcastRaftTestSupport {
         assertOpenEventually(latch2);
     }
 
+    @Test
+    public void testAllowNegativePermits() {
+        assertTrue(semaphore.init(10));
+
+        semaphore.reducePermits(15);
+
+        assertEquals(-5, semaphore.availablePermits());
+
+        semaphore.release(10);
+
+        assertEquals(5, semaphore.availablePermits());
+    }
+
+    @Test
+    public void testNegativePermitsJucCompatibility() {
+        assertTrue(semaphore.init(0));
+
+        semaphore.reducePermits(100);
+        semaphore.release(10);
+
+        assertEquals(-90, semaphore.availablePermits());
+        assertEquals(-90, semaphore.drainPermits());
+
+        semaphore.release(10);
+
+        assertEquals(10, semaphore.availablePermits());
+        assertEquals(10, semaphore.drainPermits());
+    }
+
+
+    @Test
+    public void testIncreasePermits() {
+        assertTrue(semaphore.init(10));
+
+        assertEquals(10, semaphore.availablePermits());
+
+        semaphore.increasePermits(100);
+
+        assertEquals(110, semaphore.availablePermits());
+    }
+
+    @Test
+    public void testRelease_whenArgumentNegative() {
+        try {
+            semaphore.release(-5);
+            fail();
+        } catch (IllegalArgumentException expected) {
+        }
+        assertEquals(0, semaphore.availablePermits());
+    }
+
+    @Test
+    public void testRelease_whenBlockedAcquireThread() {
+        semaphore.init(0);
+
+        spawn(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    semaphore.acquire();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        semaphore.release();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertEquals(0, semaphore.availablePermits());
+            }
+        });
+    }
+
+    @Test
+    public void testMultipleAcquire() throws InterruptedException {
+        int permits = 10;
+
+        assertTrue(semaphore.init(permits));
+        for (int i = 0; i < permits; i += 5) {
+            assertEquals(permits - i, semaphore.availablePermits());
+            semaphore.acquire(5);
+        }
+        assertEquals(semaphore.availablePermits(), 0);
+    }
+
+    @Test
+    public void testMultipleAcquire_whenNegative() throws InterruptedException {
+        int permits = 10;
+        semaphore.init(permits);
+        try {
+            semaphore.acquire(-5);
+            fail();
+        } catch (IllegalArgumentException expected) {
+        }
+        assertEquals(permits, semaphore.availablePermits());
+    }
+
+    @Test
+    public void testMultipleAcquire_whenNotEnoughPermits() {
+        final int permits = 5;
+        semaphore.init(permits);
+        final Future future = spawn(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    semaphore.acquire(6);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        assertTrueAllTheTime(new AssertTask() {
+            @Override
+            public void run() {
+                assertFalse(future.isDone());
+                assertEquals(permits, semaphore.availablePermits());
+            }
+        }, 5);
+    }
+
+    @Test
+    public void testMultipleRelease() {
+        int permits = 20;
+
+        for (int i = 0; i < permits; i += 5) {
+            assertEquals(i, semaphore.availablePermits());
+            semaphore.release(5);
+        }
+        assertEquals(semaphore.availablePermits(), permits);
+    }
+
+    @Test
+    public void testMultipleRelease_whenNegative() {
+        semaphore.init(0);
+
+        try {
+            semaphore.release(-5);
+            fail();
+        } catch (IllegalArgumentException expected) {
+        }
+        assertEquals(0, semaphore.availablePermits());
+    }
+
+    @Test
+    public void testMultipleRelease_whenBlockedAcquireThreads() throws Exception {
+        int permits = 10;
+        semaphore.init(permits);
+        semaphore.acquire(permits);
+
+        Future future = spawn(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    semaphore.acquire();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        semaphore.release();
+        future.get();
+    }
+
+    @Test
+    public void testDrain() throws InterruptedException {
+        int permits = 20;
+
+        assertTrue(semaphore.init(permits));
+        semaphore.acquire(5);
+        int drainedPermits = semaphore.drainPermits();
+        assertEquals(drainedPermits, permits - 5);
+        assertEquals(0, semaphore.availablePermits());
+    }
+
+    @Test
+    public void testDrain_whenNoPermits() {
+        semaphore.init(0);
+        assertEquals(0, semaphore.drainPermits());
+    }
+
+    @Test
+    public void testReduce() {
+        int permits = 20;
+
+        assertTrue(semaphore.init(permits));
+        for (int i = 0; i < permits; i += 5) {
+            assertEquals(permits - i, semaphore.availablePermits());
+            semaphore.reducePermits(5);
+        }
+
+        assertEquals(semaphore.availablePermits(), 0);
+    }
+
+    @Test
+    public void testReduce_whenArgumentNegative() {
+        try {
+            semaphore.reducePermits(-5);
+            fail();
+        } catch (IllegalArgumentException expected) {
+        }
+        assertEquals(0, semaphore.availablePermits());
+    }
+
+    @Test
+    public void testIncrease_whenArgumentNegative() {
+        try {
+            semaphore.increasePermits(-5);
+            fail();
+        } catch (IllegalArgumentException expected) {
+        }
+        assertEquals(0, semaphore.availablePermits());
+    }
+
+
+    @Test
+    public void testTryAcquire() {
+        int permits = 20;
+
+        assertTrue(semaphore.init(permits));
+        for (int i = 0; i < permits; i++) {
+            assertEquals(permits - i, semaphore.availablePermits());
+            assertTrue(semaphore.tryAcquire());
+        }
+        assertFalse(semaphore.tryAcquire());
+        assertEquals(semaphore.availablePermits(), 0);
+    }
+
+    @Test
+    public void testTryAcquireMultiple() {
+        int numberOfPermits = 20;
+
+        assertTrue(semaphore.init(numberOfPermits));
+        for (int i = 0; i < numberOfPermits; i += 5) {
+            assertEquals(numberOfPermits - i, semaphore.availablePermits());
+            assertTrue(semaphore.tryAcquire(5));
+        }
+
+        assertEquals(semaphore.availablePermits(), 0);
+    }
+
+    @Test
+    public void testTryAcquireMultiple_whenArgumentNegative() {
+        int negativePermits = -5;
+        semaphore.init(0);
+        try {
+            semaphore.tryAcquire(negativePermits);
+            fail();
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+        }
+        assertEquals(0, semaphore.availablePermits());
+    }
+
+    @Test
+    public void testTryAcquire_whenNotEnoughPermits() throws InterruptedException {
+        int numberOfPermits = 10;
+        semaphore.init(numberOfPermits);
+        semaphore.acquire(10);
+        boolean result = semaphore.tryAcquire(1);
+
+        assertFalse(result);
+        assertEquals(0, semaphore.availablePermits());
+    }
 
     protected RaftGroupId getGroupId(ISemaphore semaphore) {
         return ((RaftSemaphoreProxy) semaphore).getGroupId();

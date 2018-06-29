@@ -33,8 +33,6 @@ import com.hazelcast.util.ExceptionUtil;
 
 import java.util.Collection;
 
-import static com.hazelcast.util.Preconditions.checkNotNull;
-
 /**
  * TODO: Javadoc Pending...
  */
@@ -124,25 +122,27 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
 
     public boolean acquirePermits(RaftGroupId groupId, long commitIndex, String name, long sessionId, int permits, long timeoutMs) {
         heartbeatSession(groupId, sessionId);
-        SemaphoreRegistry registry = getSemaphoreRegistryOrFail(groupId, name);
+        SemaphoreRegistry registry = getOrInitResourceRegistry(groupId);
         return registry.acquire(commitIndex, name, sessionId, permits, timeoutMs);
     }
 
     public void releasePermits(RaftGroupId groupId, String name, long sessionId, int permits) {
         heartbeatSession(groupId, sessionId);
-        SemaphoreRegistry registry = getSemaphoreRegistryOrFail(groupId, name);
+        SemaphoreRegistry registry = getOrInitResourceRegistry(groupId);
         Collection<SemaphoreInvocationKey> keys = registry.release(name, sessionId, permits);
         notifyWaitEntries(groupId, keys, true);
     }
 
-    private SemaphoreRegistry getSemaphoreRegistryOrFail(RaftGroupId groupId, String name) {
-        checkNotNull(groupId);
+    public int drainPermits(RaftGroupId groupId, long commitIndex, String name, long sessionId) {
         SemaphoreRegistry registry = getResourceRegistryOrNull(groupId);
         if (registry == null) {
-            throw new IllegalStateException("Semaphore registry of " + groupId + " not found for Semaphore[" + name + "]");
+            return 0;
         }
-        return registry;
+        return registry.drainPermits(name, sessionId);
     }
 
-
+    public boolean changePermits(RaftGroupId groupId, String name, int permits) {
+        SemaphoreRegistry registry = getOrInitResourceRegistry(groupId);
+        return registry.changePermits(name, permits);
+    }
 }
