@@ -32,23 +32,31 @@ public abstract class SessionAwareProxy {
         this.groupId = groupId;
     }
 
-    protected long getSession() {
+    protected final long getSession() {
         return sessionManager.getSession(groupId);
     }
 
-    protected long acquireSession() {
+    protected final long acquireSession() {
         return sessionManager.acquireSession(groupId);
     }
 
-    protected void releaseSession(long sessionId) {
+    protected final long acquireSession(int count) {
+        return sessionManager.acquireSession(groupId, count);
+    }
+
+    protected final void releaseSession(long sessionId) {
         sessionManager.releaseSession(groupId, sessionId);
     }
 
-    protected void invalidateSession(long sessionId) {
+    protected final void releaseSession(long sessionId, int count) {
+        sessionManager.releaseSession(groupId, sessionId, count);
+    }
+
+    protected final void invalidateSession(long sessionId) {
         sessionManager.invalidateSession(groupId, sessionId);
     }
 
-    public RaftGroupId getGroupId() {
+    public final RaftGroupId getGroupId() {
         return groupId;
     }
 }

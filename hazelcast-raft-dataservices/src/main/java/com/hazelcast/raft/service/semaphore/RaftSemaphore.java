@@ -27,6 +27,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
+import static com.hazelcast.util.Preconditions.checkNotNegative;
 import static com.hazelcast.util.Preconditions.checkPositive;
 
 /**
@@ -93,21 +94,28 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> {
         acquires.put(sessionId, acquired + permits);
     }
 
-    Collection<SemaphoreInvocationKey> release(long sessionId, int permits) {
-        checkPositive(permits, "Permits should be positive!");
+    int release(long sessionId, int sessionPermits, int permits) {
+        checkNotNegative(sessionPermits, "Session permits should not be negative!");
+        checkNotNegative(permits, "Permits should not be negative!");
 
         long acquired = getAcquired(sessionId);
 
         available += permits;
+        if (acquired >= sessionPermits) {
+            available += sessionPermits;
+        }
         initialized = true;
 
-        acquired -= permits;
+        acquired -= sessionPermits;
         if (acquired <= 0) {
             acquires.remove(sessionId);
         } else {
             acquires.put(sessionId, acquired);
         }
+        return acquired >= sessionPermits ? sessionPermits : 0;
+    }
 
+    Collection<SemaphoreInvocationKey> pollWaitingKeys() {
         List<SemaphoreInvocationKey> keys = new ArrayList<SemaphoreInvocationKey>();
         Iterator<SemaphoreInvocationKey> iterator = waitKeys.iterator();
         while (iterator.hasNext()) {
@@ -118,9 +126,8 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> {
 
             keys.add(key);
             iterator.remove();
-            doAcquire(sessionId, key.permits());
+            doAcquire(key.sessionId(), key.permits());
         }
-
         return keys;
     }
 
