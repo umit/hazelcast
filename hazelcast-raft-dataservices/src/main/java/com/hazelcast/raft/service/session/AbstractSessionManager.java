@@ -54,7 +54,11 @@ public abstract class AbstractSessionManager {
     private boolean running = true;
 
     public final long acquireSession(RaftGroupId groupId) {
-        return getOrCreateSession(groupId).acquire();
+        return getOrCreateSession(groupId).acquire(1);
+    }
+
+    public final long acquireSession(RaftGroupId groupId, int count) {
+        return getOrCreateSession(groupId).acquire(count);
     }
 
     private ClientSession getOrCreateSession(RaftGroupId groupId) {
@@ -105,9 +109,13 @@ public abstract class AbstractSessionManager {
     }
 
     public final void releaseSession(RaftGroupId groupId, long id) {
+        releaseSession(groupId, id, 1);
+    }
+
+    public final void releaseSession(RaftGroupId groupId, long id, int count) {
         ClientSession session = sessions.get(groupId);
         if (session != null && session.id == id) {
-            session.release();
+            session.release(count);
         }
     }
 
@@ -185,13 +193,13 @@ public abstract class AbstractSessionManager {
             return timestamp > expirationTime;
         }
 
-        long acquire() {
-            operationsCount.incrementAndGet();
+        long acquire(int count) {
+            operationsCount.addAndGet(count);
             return id;
         }
 
-        void release() {
-            operationsCount.decrementAndGet();
+        void release(int count) {
+            operationsCount.addAndGet(-count);
         }
 
         @Override

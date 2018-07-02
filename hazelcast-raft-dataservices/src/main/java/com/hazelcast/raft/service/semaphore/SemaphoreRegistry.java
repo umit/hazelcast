@@ -59,14 +59,14 @@ public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, 
         return acquired;
     }
 
-    Collection<SemaphoreInvocationKey> release(String name, long sessionId, int permits) {
+    int release(String name, long sessionId, int sessionPermits, int permits) {
         RaftSemaphore semaphore = getOrInitResource(name);
-        Collection<SemaphoreInvocationKey> keys = semaphore.release(sessionId, permits);
-        for (SemaphoreInvocationKey key : keys) {
-            waitTimeouts.remove(key);
-        }
+        return semaphore.release(sessionId, sessionPermits, permits);
+    }
 
-        return keys;
+    Collection<SemaphoreInvocationKey> pollWaitingKeys(String name) {
+        RaftSemaphore semaphore = getOrInitResource(name);
+        return semaphore.pollWaitingKeys();
     }
 
     int drainPermits(String name, long sessionId) {

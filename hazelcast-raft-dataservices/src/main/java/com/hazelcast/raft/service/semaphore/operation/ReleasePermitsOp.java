@@ -29,32 +29,35 @@ import java.io.IOException;
  */
 public class ReleasePermitsOp extends AbstractSemaphoreOp {
 
+    private int sessionPermits;
     private int permits;
 
     public ReleasePermitsOp() {
     }
 
-    public ReleasePermitsOp(String name, long sessionId, int permits) {
+    public ReleasePermitsOp(String name, long sessionId, int sessionPermits, int permits) {
         super(name, sessionId);
+        this.sessionPermits = sessionPermits;
         this.permits = permits;
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) throws Exception {
         RaftSemaphoreService service = getService();
-        service.releasePermits(groupId, name, sessionId, permits);
-        return null;
+        return service.releasePermits(groupId, name, sessionId, sessionPermits, permits);
     }
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         super.writeData(out);
+        out.writeInt(sessionPermits);
         out.writeInt(permits);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         super.readData(in);
+        sessionPermits = in.readInt();
         permits = in.readInt();
     }
 }
