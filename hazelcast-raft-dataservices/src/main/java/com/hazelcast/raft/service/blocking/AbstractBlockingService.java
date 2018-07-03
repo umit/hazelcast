@@ -25,6 +25,7 @@ import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.session.SessionAccessor;
 import com.hazelcast.raft.impl.session.SessionAwareService;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
+import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
@@ -147,6 +148,9 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
     }
 
     protected void heartbeatSession(RaftGroupId groupId, long sessionId) {
+        if (sessionId == AbstractSessionManager.NO_SESSION_ID) {
+            throw new IllegalStateException("No valid session id provided for " + groupId);
+        }
         if (sessionAccessor.isValid(groupId, sessionId)) {
             sessionAccessor.heartbeat(groupId, sessionId);
             return;

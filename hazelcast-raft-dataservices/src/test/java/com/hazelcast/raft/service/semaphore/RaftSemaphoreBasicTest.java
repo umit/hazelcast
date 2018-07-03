@@ -23,7 +23,12 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
+import com.hazelcast.raft.impl.session.SessionExpiredException;
+import com.hazelcast.raft.impl.session.operation.CloseSessionOp;
 import com.hazelcast.raft.service.semaphore.proxy.RaftSemaphoreProxy;
+import com.hazelcast.raft.service.session.AbstractSessionManager;
+import com.hazelcast.raft.service.session.SessionManagerService;
+import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -59,6 +64,7 @@ public class RaftSemaphoreBasicTest extends HazelcastRaftTestSupport {
     private String name = "semaphore";
     private String groupName = "semaphore";
     private int groupSize = 3;
+    private HazelcastInstance semaphoreInstance;
 
     @Before
     public void setup() {
@@ -73,7 +79,8 @@ public class RaftSemaphoreBasicTest extends HazelcastRaftTestSupport {
     }
 
     protected ISemaphore createSemaphore(String name) {
-        return create(instances[RandomPicker.getInt(instances.length)], RaftSemaphoreService.SERVICE_NAME, name);
+        semaphoreInstance = instances[RandomPicker.getInt(instances.length)];
+        return create(semaphoreInstance, RaftSemaphoreService.SERVICE_NAME, name);
     }
 
     @Test
@@ -153,11 +160,17 @@ public class RaftSemaphoreBasicTest extends HazelcastRaftTestSupport {
         assertEquals(7, semaphore.availablePermits());
     }
 
-    @Test
-    public void testRelease_whenNotAcquired() {
+    @Test(expected = IllegalArgumentException.class)
+    public void testRelease_whenNotAcquired() throws InterruptedException {
+        assertTrue(semaphore.init(7));
+        semaphore.acquire(1);
+        semaphore.release(3);
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testRelease_whenNoSessionCreated() {
         assertTrue(semaphore.init(7));
         semaphore.release();
-        assertEquals(8, semaphore.availablePermits());
     }
 
     @Test
@@ -213,10 +226,6 @@ public class RaftSemaphoreBasicTest extends HazelcastRaftTestSupport {
         semaphore.reducePermits(15);
 
         assertEquals(-5, semaphore.availablePermits());
-
-        semaphore.release(10);
-
-        assertEquals(5, semaphore.availablePermits());
     }
 
     @Test
@@ -224,17 +233,12 @@ public class RaftSemaphoreBasicTest extends HazelcastRaftTestSupport {
         assertTrue(semaphore.init(0));
 
         semaphore.reducePermits(100);
-        semaphore.release(10);
 
-        assertEquals(-90, semaphore.availablePermits());
-        assertEquals(-90, semaphore.drainPermits());
+        assertEquals(-100, semaphore.availablePermits());
+        assertEquals(-100, semaphore.drainPermits());
 
-        semaphore.release(10);
-
-        assertEquals(10, semaphore.availablePermits());
-        assertEquals(10, semaphore.drainPermits());
+        assertEquals(0, semaphore.availablePermits());
     }
-
 
     @Test
     public void testIncreasePermits() {
@@ -258,8 +262,9 @@ public class RaftSemaphoreBasicTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testRelease_whenBlockedAcquireThread() {
-        semaphore.init(0);
+    public void testRelease_whenBlockedAcquireThread() throws InterruptedException {
+        semaphore.init(1);
+        semaphore.acquire();
 
         spawn(new Runnable() {
             @Override
@@ -330,8 +335,10 @@ public class RaftSemaphoreBasicTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testMultipleRelease() {
+    public void testMultipleRelease() throws InterruptedException {
         int permits = 20;
+        semaphore.init(20);
+        semaphore.acquire(20);
 
         for (int i = 0; i < permits; i += 5) {
             assertEquals(i, semaphore.availablePermits());
@@ -473,6 +480,30 @@ public class RaftSemaphoreBasicTest extends HazelcastRaftTestSupport {
         assertFalse(result);
         assertEquals(0, semaphore.availablePermits());
     }
+
+    @Test
+    public void testNoDuplicateRelease_whenSessionExpires() throws InterruptedException, ExecutionException {
+        semaphore.init(5);
+        semaphore.acquire(3);
+
+        RaftGroupId groupId = getGroupId(semaphore);
+        long session = getSessionManager(semaphoreInstance).getSession(groupId);
+        getRaftInvocationManager(semaphoreInstance).invoke(groupId, new CloseSessionOp(session)).get();
+
+        assertEquals(5, semaphore.availablePermits());
+
+        try {
+            semaphore.release(1);
+            fail();
+        } catch (SessionExpiredException e) {
+        }
+    }
+
+    protected AbstractSessionManager getSessionManager(HazelcastInstance instance) {
+        NodeEngineImpl nodeEngine = getNodeEngineImpl(instance);
+        return nodeEngine.getService(SessionManagerService.SERVICE_NAME);
+    }
+
 
     protected RaftGroupId getGroupId(ISemaphore semaphore) {
         return ((RaftSemaphoreProxy) semaphore).getGroupId();
