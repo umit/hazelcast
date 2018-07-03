@@ -21,7 +21,6 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
-import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 import com.hazelcast.raft.service.semaphore.operation.AcquirePermitsOp;
 import com.hazelcast.raft.service.semaphore.operation.AvailablePermitsOp;
@@ -36,11 +35,10 @@ import com.hazelcast.util.ExceptionUtil;
 
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static com.hazelcast.util.Preconditions.checkNotNegative;
+import static com.hazelcast.util.Preconditions.checkPositive;
 import static java.lang.Math.max;
-import static java.lang.Math.min;
 
 /**
  * TODO: Javadoc Pending...
@@ -52,7 +50,6 @@ public class RaftSemaphoreProxy extends SessionAwareProxy implements ISemaphore 
 
     private final String name;
     private final RaftInvocationManager raftInvocationManager;
-    private final AtomicReference<Tuple2<Long, Integer>> sessionPermits = new AtomicReference<Tuple2<Long, Integer>>();
 
     public RaftSemaphoreProxy(String name, RaftGroupId groupId, SessionManagerService sessionManager,
             RaftInvocationManager invocationManager) {
@@ -74,14 +71,13 @@ public class RaftSemaphoreProxy extends SessionAwareProxy implements ISemaphore 
 
     @Override
     public void acquire(int permits) {
-        checkNotNegative(permits, "Permits must be non-negative!");
+        checkPositive(permits, "Permits must be positive!");
         for (;;) {
             long sessionId = acquireSession(permits);
             AcquirePermitsOp op = new AcquirePermitsOp(name, sessionId, permits, -1L);
             Future<Long> f = raftInvocationManager.invoke(groupId, op);
             try {
                 join(f);
-                addSessionPermits(sessionId, permits);
                 break;
             } catch (SessionExpiredException e) {
                 invalidateSession(sessionId);
@@ -106,7 +102,7 @@ public class RaftSemaphoreProxy extends SessionAwareProxy implements ISemaphore 
 
     @Override
     public boolean tryAcquire(int permits, long timeout, TimeUnit unit) {
-        checkNotNegative(permits, "Permits must be non-negative!");
+        checkPositive(permits, "Permits must be positive!");
         long timeoutMs = max(0, unit.toMillis(timeout));
         for (;;) {
             long sessionId = acquireSession(permits);
@@ -114,9 +110,7 @@ public class RaftSemaphoreProxy extends SessionAwareProxy implements ISemaphore 
             Future<Boolean> f = raftInvocationManager.invoke(groupId, op);
             try {
                 boolean acquired = join(f);
-                if (acquired) {
-                    addSessionPermits(sessionId, permits);
-                } else {
+                if (!acquired) {
                     releaseSession(sessionId, permits);
                 }
                 return acquired;
@@ -133,71 +127,16 @@ public class RaftSemaphoreProxy extends SessionAwareProxy implements ISemaphore 
 
     @Override
     public void release(int permits) {
-        checkNotNegative(permits, "Permits must be non-negative!");
+        checkPositive(permits, "Permits must be positive!");
         long sessionId = getSession();
-        int sessionPermits = getSessionPermits(sessionId);
-        int count = 0;
-        Future<Integer> f = raftInvocationManager.invoke(groupId, new ReleasePermitsOp(name, sessionId,
-                min(sessionPermits, permits), max(0, permits - sessionPermits)));
+        if (sessionId < 0) {
+            throw new IllegalStateException("No valid session!");
+        }
+        Future f = raftInvocationManager.invoke(groupId, new ReleasePermitsOp(name, sessionId, permits));
         try {
-            count = join(f);
-            if (count == 0 && min(sessionPermits, permits) > 0) {
-                invalidateSessionPermits(sessionId);
-            } else {
-                removeSessionPermits(sessionId, count);
-            }
+            join(f);
         } finally {
-            releaseSession(sessionId, count);
-        }
-    }
-
-    private void invalidateSessionPermits(long sessionId) {
-        for (;;) {
-            Tuple2<Long, Integer> t = sessionPermits.get();
-            if (t != null && t.element1 == sessionId) {
-                if (sessionPermits.compareAndSet(t, null)) {
-                    return;
-                }
-            } else {
-                return;
-            }
-        }
-    }
-
-    private int getSessionPermits(long sessionId) {
-        Tuple2<Long, Integer> t = sessionPermits.get();
-        return t != null && t.element1 == sessionId ? t.element2 : 0;
-    }
-
-    private void addSessionPermits(long sessionId, int permits) {
-        for (;;) {
-            Tuple2<Long, Integer> t = sessionPermits.get();
-            Tuple2<Long, Integer> t2;
-            if (t == null || t.element1 < sessionId) {
-                t2 = Tuple2.of(sessionId, permits);
-            } else if (t.element1 == sessionId)  {
-                t2 = Tuple2.of(sessionId, t.element2 + permits);
-            } else {
-                return;
-            }
-            if (sessionPermits.compareAndSet(t, t2)) {
-                return;
-            }
-        }
-    }
-
-    private void removeSessionPermits(long sessionId, int permits) {
-        for (;;) {
-            Tuple2<Long, Integer> t = sessionPermits.get();
-            Tuple2<Long, Integer> t2;
-            if (t != null && t.element1 == sessionId) {
-                t2 = Tuple2.of(sessionId, t.element2 - permits);
-                if (sessionPermits.compareAndSet(t, t2)) {
-                    return;
-                }
-            } else {
-                return;
-            }
+            releaseSession(sessionId, permits);
         }
     }
 
@@ -209,7 +148,7 @@ public class RaftSemaphoreProxy extends SessionAwareProxy implements ISemaphore 
     @Override
     public int drainPermits() {
         for (;;) {
-            long sessionId = acquireSession(1024);
+            long sessionId = acquireSession(DRAIN_SESSION_ACQ_COUNT);
             RaftOp op = new DrainPermitsOp(name, sessionId);
             Future<Integer> f = raftInvocationManager.invoke(groupId, op);
             try {

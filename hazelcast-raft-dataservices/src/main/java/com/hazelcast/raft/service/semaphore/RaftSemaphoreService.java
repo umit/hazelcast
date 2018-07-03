@@ -126,13 +126,11 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
         return registry.acquire(commitIndex, name, sessionId, permits, timeoutMs);
     }
 
-    public int releasePermits(RaftGroupId groupId, String name, long sessionId, int sessionPermits, int permits) {
-        // heartbeatSession(groupId, sessionId);
+    public void releasePermits(RaftGroupId groupId, String name, long sessionId, int permits) {
+        heartbeatSession(groupId, sessionId);
         SemaphoreRegistry registry = getOrInitResourceRegistry(groupId);
-        int released = registry.release(name, sessionId, sessionPermits, permits);
-        Collection<SemaphoreInvocationKey> keys = registry.pollWaitingKeys(name);
+        Collection<SemaphoreInvocationKey> keys = registry.release(name, sessionId, permits);
         notifyWaitEntries(groupId, keys, true);
-        return released;
     }
 
     public int drainPermits(RaftGroupId groupId, long commitIndex, String name, long sessionId) {
