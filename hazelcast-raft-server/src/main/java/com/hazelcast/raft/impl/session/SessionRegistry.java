@@ -60,7 +60,7 @@ public class SessionRegistry {
     }
 
     long createNewSession(long sessionTTLMs, Address endpoint) {
-        long id = nextSessionId++;
+        long id = ++nextSessionId;
         long creationTime = Clock.currentTimeMillis();
         Session session = new Session(id, creationTime, toExpirationTime(creationTime, sessionTTLMs), endpoint);
         sessions.put(id, session);
