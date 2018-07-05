@@ -24,7 +24,8 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.blocking.AbstractBlockingService;
-import com.hazelcast.raft.service.semaphore.proxy.RaftSemaphoreProxy;
+import com.hazelcast.raft.service.semaphore.proxy.RaftSessionAwareSemaphoreProxy;
+import com.hazelcast.raft.service.semaphore.proxy.RaftSessionlessSemaphoreProxy;
 import com.hazelcast.raft.service.session.SessionManagerService;
 import com.hazelcast.raft.service.spi.RaftRemoteService;
 import com.hazelcast.spi.NodeEngine;
@@ -73,8 +74,12 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
     public ISemaphore createRaftObjectProxy(String name) {
         try {
             RaftGroupId groupId = createRaftGroup(name).get();
+            RaftSemaphoreConfig config = getConfig(name);
             SessionManagerService sessionManager = nodeEngine.getService(SessionManagerService.SERVICE_NAME);
-            return new RaftSemaphoreProxy(name, groupId, sessionManager, raftService.getInvocationManager());
+            RaftInvocationManager invocationManager = raftService.getInvocationManager();
+            return config != null && config.isStrictModeEnabled()
+                    ? new RaftSessionAwareSemaphoreProxy(invocationManager, sessionManager, groupId, name)
+                    : new RaftSessionlessSemaphoreProxy(invocationManager, sessionManager, groupId, name);
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
@@ -133,7 +138,7 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
         notifyWaitEntries(groupId, keys, true);
     }
 
-    public int drainPermits(RaftGroupId groupId, long commitIndex, String name, long sessionId) {
+    public int drainPermits(RaftGroupId groupId, String name, long sessionId) {
         SemaphoreRegistry registry = getResourceRegistryOrNull(groupId);
         if (registry == null) {
             return 0;

@@ -149,8 +149,9 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
 
     protected void heartbeatSession(RaftGroupId groupId, long sessionId) {
         if (sessionId == AbstractSessionManager.NO_SESSION_ID) {
-            throw new IllegalStateException("No valid session id provided for " + groupId);
+            return;
         }
+
         if (sessionAccessor.isValid(groupId, sessionId)) {
             sessionAccessor.heartbeat(groupId, sessionId);
             return;

@@ -96,6 +96,11 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> {
 
     private void doAcquire(long sessionId, int permits) {
         available -= permits;
+
+        if (sessionId == NO_SESSION_ID) {
+            return;
+        }
+
         long acquired = getAcquired(sessionId);
         acquires.put(sessionId, acquired + permits);
     }
@@ -105,17 +110,19 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> {
 
         long acquired = getAcquired(sessionId);
 
-        if (acquired < permits) {
+        if (sessionId != NO_SESSION_ID && acquired < permits) {
             throw new IllegalArgumentException("Cannot release " + permits
                     + " permits. Session has acquired only " + acquired + " permits!");
         }
 
         available += permits;
-        acquired -= permits;
-        if (acquired == 0) {
-            acquires.remove(sessionId);
-        } else {
-            acquires.put(sessionId, acquired);
+        if (sessionId != NO_SESSION_ID) {
+            acquired -= permits;
+            if (acquired == 0) {
+                acquires.remove(sessionId);
+            } else {
+                acquires.put(sessionId, acquired);
+            }
         }
 
         List<SemaphoreInvocationKey> keys = new ArrayList<SemaphoreInvocationKey>();

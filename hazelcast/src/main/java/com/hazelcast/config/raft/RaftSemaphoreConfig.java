@@ -22,6 +22,8 @@ package com.hazelcast.config.raft;
  */
 public class RaftSemaphoreConfig extends AbstractRaftObjectConfig {
 
+    private boolean strictModeEnabled;
+
     public RaftSemaphoreConfig() {
         super();
     }
@@ -30,4 +32,17 @@ public class RaftSemaphoreConfig extends AbstractRaftObjectConfig {
         super(name, raftGroupRef);
     }
 
+    public RaftSemaphoreConfig(String name, String raftGroupRef, boolean strictModeEnabled) {
+        super(name, raftGroupRef);
+        this.strictModeEnabled = strictModeEnabled;
+    }
+
+    public boolean isStrictModeEnabled() {
+        return strictModeEnabled;
+    }
+
+    public RaftSemaphoreConfig setStrictModeEnabled(boolean strictModeEnabled) {
+        this.strictModeEnabled = strictModeEnabled;
+        return this;
+    }
 }
