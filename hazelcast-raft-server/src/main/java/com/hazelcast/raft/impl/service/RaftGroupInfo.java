@@ -82,6 +82,10 @@ public final class RaftGroupInfo implements RaftGroup, IdentifiedDataSerializabl
         return members.contains(member);
     }
 
+    public boolean containsInitialMember(RaftMemberImpl member) {
+        return initialMembers.contains(member);
+    }
+
     public int memberCount() {
         return members.size();
     }
