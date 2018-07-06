@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 
 import static com.hazelcast.raft.service.lock.RaftLockService.SERVICE_NAME;
+import static com.hazelcast.util.Preconditions.checkNotNull;
 
 public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
@@ -60,6 +61,7 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     @Override
     public boolean tryLock(long time, TimeUnit unit) {
+        checkNotNull(unit);
         UUID invUid = UuidUtil.newUnsecureUUID();
         long timeoutMs = Math.max(0, unit.toMillis(time));
         for (;;) {

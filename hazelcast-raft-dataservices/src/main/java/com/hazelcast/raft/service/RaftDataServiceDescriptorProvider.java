@@ -18,6 +18,7 @@ package com.hazelcast.raft.service;
 
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.raft.service.atomicref.RaftAtomicRefService;
+import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchService;
 import com.hazelcast.raft.service.lock.RaftLockService;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 import com.hazelcast.raft.service.session.SessionManagerService;
@@ -37,6 +38,7 @@ public class RaftDataServiceDescriptorProvider implements ServiceDescriptorProvi
             new RaftSessionManagerServiceDescriptor(),
             new RaftAtomicRefServiceDescriptor(),
             new RaftSemaphoreServiceDescriptor(),
+            new RaftCountDownLatcherviceDescriptor()
         };
     }
 
@@ -97,6 +99,18 @@ public class RaftDataServiceDescriptorProvider implements ServiceDescriptorProvi
         @Override
         public Object getService(NodeEngine nodeEngine) {
             return new RaftSemaphoreService(nodeEngine);
+        }
+    }
+
+    private static class RaftCountDownLatcherviceDescriptor implements ServiceDescriptor {
+        @Override
+        public String getServiceName() {
+            return RaftCountDownLatchService.SERVICE_NAME;
+        }
+
+        @Override
+        public Object getService(NodeEngine nodeEngine) {
+            return new RaftCountDownLatchService(nodeEngine);
         }
     }
 }

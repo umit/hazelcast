@@ -90,17 +90,17 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
         return result;
     }
 
-    public boolean invalidateWaitEntry(W key) {
+    public boolean invalidateWaitKey(W key) {
         BlockingResource<W> resource = getResourceOrNull(key.name());
         if (resource == null) {
             return false;
         }
 
         waitTimeouts.remove(key);
-        return resource.invalidateWaitEntry(key);
+        return resource.invalidateWaitKey(key);
     }
 
-    public Collection<W> getExpiredWaitEntries(long now) {
+    public Collection<W> getExpiredWaitKeys(long now) {
         List<W> expired = new ArrayList<W>();
         for (Entry<W, Tuple2<Long, Long>> e : waitTimeouts.entrySet()) {
             long deadline = e.getValue().element2;
@@ -124,8 +124,9 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
             return null;
         }
 
-        Collection<Long> indices = new ArrayList<Long>(resource.waitEntries().size());
-        for (W key : resource.waitEntries()) {
+        Collection<W> waitKeys = resource.getWaitKeys();
+        Collection<Long> indices = new ArrayList<Long>(waitKeys.size());
+        for (W key : waitKeys) {
             indices.add(key.commitIndex());
             waitTimeouts.remove(key);
         }
@@ -136,7 +137,7 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
         destroyedNames.addAll(resources.keySet());
         Collection<Long> indices = new ArrayList<Long>();
         for (BlockingResource<W> raftLock : resources.values()) {
-            for (W key : raftLock.waitEntries()) {
+            for (W key : raftLock.getWaitKeys()) {
                 indices.add(key.commitIndex());
             }
         }

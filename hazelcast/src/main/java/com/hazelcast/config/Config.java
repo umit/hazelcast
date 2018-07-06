@@ -20,6 +20,7 @@ import com.hazelcast.config.matcher.MatchingPointConfigPatternMatcher;
 import com.hazelcast.config.raft.RaftAtomicLongConfig;
 import com.hazelcast.config.raft.RaftAtomicReferenceConfig;
 import com.hazelcast.config.raft.RaftConfig;
+import com.hazelcast.config.raft.RaftCountDownLatchConfig;
 import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.config.raft.RaftSemaphoreConfig;
 import com.hazelcast.core.HazelcastInstance;
@@ -177,6 +178,8 @@ public class Config {
     private final Map<String, RaftSemaphoreConfig> raftSemaphoreConfigs = new ConcurrentHashMap<String, RaftSemaphoreConfig>();
     private final Map<String, RaftAtomicReferenceConfig> raftAtomicReferenceConfigs
             = new ConcurrentHashMap<String, RaftAtomicReferenceConfig>();
+    private final Map<String, RaftCountDownLatchConfig> raftCountDownLatchConfigs
+            = new ConcurrentHashMap<String, RaftCountDownLatchConfig>();
 
     public Config() {
     }
@@ -3464,8 +3467,7 @@ public class Config {
     }
 
     public RaftAtomicLongConfig findRaftAtomicLongConfig(String name) {
-        String baseName = getBaseName(name);
-        return lookupByPattern(configPatternMatcher, raftAtomicLongConfigs, baseName);
+        return lookupByPattern(configPatternMatcher, raftAtomicLongConfigs, getBaseName(name));
     }
 
     public Config addRaftAtomicLongConfig(RaftAtomicLongConfig config) {
@@ -3474,8 +3476,7 @@ public class Config {
     }
 
     public RaftLockConfig findRaftLockConfig(String name) {
-        String baseName = getBaseName(name);
-        return lookupByPattern(configPatternMatcher, raftLockConfigs, baseName);
+        return lookupByPattern(configPatternMatcher, raftLockConfigs, getBaseName(name));
     }
 
     public Config addRaftLockConfig(RaftLockConfig config) {
@@ -3484,8 +3485,7 @@ public class Config {
     }
 
     public RaftAtomicReferenceConfig findRaftAtomicReferenceConfig(String name) {
-        String baseName = getBaseName(name);
-        return lookupByPattern(configPatternMatcher, raftAtomicReferenceConfigs, baseName);
+        return lookupByPattern(configPatternMatcher, raftAtomicReferenceConfigs, getBaseName(name));
     }
 
     public Config addRaftAtomicReferenceConfig(RaftAtomicReferenceConfig config) {
@@ -3494,12 +3494,20 @@ public class Config {
     }
 
     public RaftSemaphoreConfig findRaftSemaphoreConfig(String name) {
-        String baseName = getBaseName(name);
-        return lookupByPattern(configPatternMatcher, raftSemaphoreConfigs, baseName);
+        return lookupByPattern(configPatternMatcher, raftSemaphoreConfigs, getBaseName(name));
     }
 
     public Config addRaftSemaphoreConfig(RaftSemaphoreConfig config) {
         raftSemaphoreConfigs.put(config.getName(), config);
+        return this;
+    }
+
+    public RaftCountDownLatchConfig findRaftCountDownLatchConfig(String name) {
+        return lookupByPattern(configPatternMatcher, raftCountDownLatchConfigs, getBaseName(name));
+    }
+
+    public Config addRaftCountDownLatchConfig(RaftCountDownLatchConfig config) {
+        raftCountDownLatchConfigs.put(config.getName(), config);
         return this;
     }
 

@@ -31,7 +31,7 @@ import com.hazelcast.raft.service.atomicref.operation.SetOp;
  */
 public final class AtomicReferenceDataSerializerHook implements DataSerializerHook {
 
-    private static final int RAFT_ATOMIC_REF_DS_FACTORY_ID = -4011;
+    private static final int RAFT_ATOMIC_REF_DS_FACTORY_ID = -1014;
     private static final String RAFT_ATOMIC_REF_DS_FACTORY = "hazelcast.serialization.ds.raft.atomicref";
 
     public static final int F_ID = FactoryIdHelper.getFactoryId(RAFT_ATOMIC_REF_DS_FACTORY, RAFT_ATOMIC_REF_DS_FACTORY_ID);

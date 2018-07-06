@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import static com.hazelcast.util.Preconditions.checkNotNull;
 import static com.hazelcast.util.ThreadUtil.getThreadId;
 
 public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy implements FencedLock {
@@ -62,6 +63,8 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
 
     @Override
     public final long tryLock(long time, TimeUnit unit) {
+        checkNotNull(unit);
+
         long threadId = getThreadId();
         long fence = tryReentrantLock(threadId);
         if (fence != INVALID_FENCE) {

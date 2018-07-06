@@ -174,7 +174,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
                     + waitKey.invocationUid() + ">");
         }
 
-        notifyWaitEntries(groupId, waitEntries, waitKey.commitIndex());
+        notifyWaitKeys(groupId, waitEntries, waitKey.commitIndex());
     }
 
     @Override
