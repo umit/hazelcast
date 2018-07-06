@@ -97,7 +97,7 @@ public class RaftAtomicLongService implements ManagedService, RaftRemoteService,
     public IAtomicLong createRaftObjectProxy(String name) {
         try {
             RaftGroupId groupId = createRaftGroup(name).get();
-            return new RaftAtomicLongProxy(name, groupId, raftService.getInvocationManager());
+            return new RaftAtomicLongProxy(raftService.getInvocationManager(), groupId, name);
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }

@@ -75,7 +75,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         try {
             RaftGroupId groupId = createRaftGroup(name).get();
             SessionManagerService sessionManager = nodeEngine.getService(SessionManagerService.SERVICE_NAME);
-            return new RaftLockProxy(name, groupId, sessionManager, raftService.getInvocationManager());
+            return new RaftLockProxy(raftService.getInvocationManager(), sessionManager, groupId, name);
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }

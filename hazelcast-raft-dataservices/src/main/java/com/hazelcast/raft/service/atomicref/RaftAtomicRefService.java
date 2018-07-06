@@ -130,7 +130,7 @@ public class RaftAtomicRefService implements ManagedService, RaftRemoteService, 
             RaftGroupId groupId = createRaftGroup(name).get();
             RaftInvocationManager invocationManager = raftService.getInvocationManager();
             SerializationService serializationService = nodeEngine.getSerializationService();
-            return new RaftAtomicRefProxy(name, groupId, invocationManager, serializationService);
+            return new RaftAtomicRefProxy(invocationManager, serializationService, groupId, name);
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }

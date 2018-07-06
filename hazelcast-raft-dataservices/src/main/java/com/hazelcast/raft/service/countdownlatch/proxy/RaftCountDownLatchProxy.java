@@ -27,11 +27,9 @@ import com.hazelcast.raft.service.countdownlatch.operation.GetRemainingCountOp;
 import com.hazelcast.raft.service.countdownlatch.operation.GetRoundOp;
 import com.hazelcast.raft.service.countdownlatch.operation.TrySetCountOp;
 import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
-import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.UuidUtil;
 
 import java.util.UUID;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.util.Preconditions.checkNotNull;
@@ -56,20 +54,16 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
         checkNotNull(unit);
 
         long timeoutMillis = Math.max(0, unit.toMillis(timeout));
-        Future<Boolean> f = raftInvocationManager.invoke(groupId, new AwaitOp(name, timeoutMillis));
-        Object o = join(f);
-        return (Boolean) o;
+        return raftInvocationManager.<Boolean>invoke(groupId, new AwaitOp(name, timeoutMillis)).join();
     }
 
     @Override
     public void countDown() {
-        Future<Integer> f = raftInvocationManager.invoke(groupId, new GetRoundOp(name));
-        int round = join(f);
+        int round = raftInvocationManager.<Integer>invoke(groupId, new GetRoundOp(name)).join();
         UUID invocationUid = UuidUtil.newUnsecureUUID();
         for (;;) {
             try {
-                f = raftInvocationManager.invoke(groupId, new CountDownOp(name, round, invocationUid));
-                join(f);
+                raftInvocationManager.invoke(groupId, new CountDownOp(name, round, invocationUid)).join();
                 return;
             } catch (OperationTimeoutException ignored) {
                 // I can retry safely because my retry would be idempotent...
@@ -79,14 +73,12 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
 
     @Override
     public int getCount() {
-        Future<Integer> f = raftInvocationManager.invoke(groupId, new GetRemainingCountOp(name));
-        return join(f);
+        return raftInvocationManager.<Integer>invoke(groupId, new GetRemainingCountOp(name)).join();
     }
 
     @Override
     public boolean trySetCount(int count) {
-        Future<Boolean> f = raftInvocationManager.invoke(groupId, new TrySetCountOp(name, count));
-        return join(f);
+        return raftInvocationManager.<Boolean>invoke(groupId, new TrySetCountOp(name, count)).join();
     }
 
     @Override
@@ -106,15 +98,7 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
 
     @Override
     public void destroy() {
-        join(raftInvocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)));
-    }
-
-    private <T> T join(Future<T> future) {
-        try {
-            return future.get();
-        } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
-        }
+        raftInvocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
     }
 
 }

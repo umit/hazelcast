@@ -30,9 +30,7 @@ import com.hazelcast.raft.service.semaphore.operation.ReleasePermitsOp;
 import com.hazelcast.raft.service.session.SessionAwareProxy;
 import com.hazelcast.raft.service.session.SessionManagerService;
 import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
-import com.hazelcast.util.ExceptionUtil;
 
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
@@ -58,7 +56,7 @@ public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements 
     @Override
     public boolean init(int permits) {
         checkNotNegative(permits, "Permits must be non-negative!");
-        return join(raftInvocationManager.<Boolean>invoke(groupId, new InitSemaphoreOp(name, permits)));
+        return raftInvocationManager.<Boolean>invoke(groupId, new InitSemaphoreOp(name, permits)).join();
     }
 
     @Override
@@ -69,10 +67,7 @@ public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements 
     @Override
     public void acquire(int permits) {
         checkPositive(permits, "Permits must be positive!");
-
-        AcquirePermitsOp op = new AcquirePermitsOp(name, NO_SESSION_ID, permits, -1L);
-        Future<Long> f = raftInvocationManager.invoke(groupId, op);
-        join(f);
+        raftInvocationManager.invoke(groupId, new AcquirePermitsOp(name, NO_SESSION_ID, permits, -1L)).join();
     }
 
     @Override
@@ -94,9 +89,8 @@ public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements 
     public boolean tryAcquire(int permits, long timeout, TimeUnit unit) {
         checkPositive(permits, "Permits must be positive!");
         long timeoutMs = max(0, unit.toMillis(timeout));
-        AcquirePermitsOp op = new AcquirePermitsOp(name, NO_SESSION_ID, permits, timeoutMs);
-        Future<Boolean> f = raftInvocationManager.invoke(groupId, op);
-        return join(f);
+        RaftOp op = new AcquirePermitsOp(name, NO_SESSION_ID, permits, timeoutMs);
+        return raftInvocationManager.<Boolean>invoke(groupId, op).join();
     }
 
     @Override
@@ -107,20 +101,17 @@ public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements 
     @Override
     public void release(int permits) {
         checkPositive(permits, "Permits must be positive!");
-        Future f = raftInvocationManager.invoke(groupId, new ReleasePermitsOp(name, NO_SESSION_ID, permits));
-        join(f);
+        raftInvocationManager.invoke(groupId, new ReleasePermitsOp(name, NO_SESSION_ID, permits)).join();
     }
 
     @Override
     public int availablePermits() {
-        return join(raftInvocationManager.<Integer>invoke(groupId, new AvailablePermitsOp(name)));
+        return raftInvocationManager.<Integer>invoke(groupId, new AvailablePermitsOp(name)).join();
     }
 
     @Override
     public int drainPermits() {
-        RaftOp op = new DrainPermitsOp(name, NO_SESSION_ID);
-        Future<Integer> f = raftInvocationManager.invoke(groupId, op);
-        return join(f);
+        return raftInvocationManager.<Integer>invoke(groupId, new DrainPermitsOp(name, NO_SESSION_ID)).join();
     }
 
     @Override
@@ -129,7 +120,7 @@ public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements 
         if (reduction == 0) {
             return;
         }
-        join(raftInvocationManager.invoke(groupId, new ChangePermitsOp(name, -reduction)));
+        raftInvocationManager.invoke(groupId, new ChangePermitsOp(name, -reduction)).join();
     }
 
     @Override
@@ -138,7 +129,7 @@ public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements 
         if (increase == 0) {
             return;
         }
-        join(raftInvocationManager.invoke(groupId, new ChangePermitsOp(name, increase)));
+        raftInvocationManager.invoke(groupId, new ChangePermitsOp(name, increase)).join();
     }
 
     @Override
@@ -158,15 +149,7 @@ public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements 
 
     @Override
     public void destroy() {
-        join(raftInvocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)));
-    }
-
-    private <T> T join(Future<T> future) {
-        try {
-            return future.get();
-        } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
-        }
+        raftInvocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
     }
 
 }

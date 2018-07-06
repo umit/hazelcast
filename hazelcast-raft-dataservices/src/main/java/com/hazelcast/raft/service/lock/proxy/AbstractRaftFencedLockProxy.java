@@ -6,14 +6,13 @@ import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.raft.service.lock.FencedLock;
 import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.session.SessionAwareProxy;
+import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.util.Clock;
-import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.UuidUtil;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.util.Preconditions.checkNotNull;
@@ -43,9 +42,9 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
         UUID invocationUid = UuidUtil.newUnsecureUUID();
         for (;;) {
             long sessionId = acquireSession();
-            Future<Long> f = doLock(groupId, name, sessionId, threadId, invocationUid);
+            InternalCompletableFuture<Long> f = doLock(groupId, name, sessionId, threadId, invocationUid);
             try {
-                fence = join(f);
+                fence = f.join();
                 lockStates.put(threadId, new LockState(sessionId, fence));
                 return fence;
             } catch (OperationTimeoutException ignored) {
@@ -77,9 +76,9 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
         for (;;) {
             start = Clock.currentTimeMillis();
             long sessionId = acquireSession();
-            Future<Long> f = doTryLock(groupId, name, sessionId, threadId, invocationUid, timeoutMillis);
+            InternalCompletableFuture<Long> f = doTryLock(groupId, name, sessionId, threadId, invocationUid, timeoutMillis);
             try {
-                fence = join(f);
+                fence = f.join();
                 if (fence != INVALID_FENCE) {
                     lockStates.put(threadId, new LockState(sessionId, fence));
                 } else {
@@ -147,9 +146,9 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
         try {
             boolean retry = false;
             for (;;) {
-                Future f = doUnlock(groupId, name, sessionId, threadId, invocationUid);
+                InternalCompletableFuture f = doUnlock(groupId, name, sessionId, threadId, invocationUid);
                 try {
-                    join(f);
+                    f.join();
                     return;
                 } catch (OperationTimeoutException ignored) {
                     retry = true;
@@ -185,13 +184,12 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
             if (lockState != null) {
                 fence = lockState.fence;
             } else {
-                Future<Long> f = doGetLockFence(groupId, name);
-                fence = join(f);
+                InternalCompletableFuture<Long> f = doGetLockFence(groupId, name);
+                fence = f.join();
             }
 
             UUID invocationUid = UuidUtil.newUnsecureUUID();
-            Future f = doForceUnlock(groupId, name, fence, invocationUid);
-            join(f);
+            doForceUnlock(groupId, name, fence, invocationUid).join();
         } finally {
             lockStates.remove(threadId);
         }
@@ -225,8 +223,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
             return lockState.lockCount;
         }
 
-        Future<Integer> f = doGetLockCount(groupId, name);
-        return join(f);
+        return doGetLockCount(groupId, name).join();
     }
 
     @Override
@@ -239,25 +236,21 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
         return name;
     }
 
-    protected abstract Future<Long> doLock(RaftGroupId groupId, String name, long sessionId, long threadId, UUID invocationUid);
+    protected abstract InternalCompletableFuture<Long> doLock(RaftGroupId groupId, String name, long sessionId, long threadId,
+                                                              UUID invocationUid);
 
-    protected abstract Future<Long> doTryLock(RaftGroupId groupId, String name, long sessionId, long threadId, UUID invocationUid, long timeoutMillis);
+    protected abstract InternalCompletableFuture<Long> doTryLock(RaftGroupId groupId, String name, long sessionId, long threadId,
+                                                                 UUID invocationUid, long timeoutMillis);
 
-    protected abstract Future<Object> doUnlock(RaftGroupId groupId, String name, long sessionId, long threadId, UUID invocationUid);
+    protected abstract InternalCompletableFuture<Object> doUnlock(RaftGroupId groupId, String name, long sessionId, long threadId,
+                                                                  UUID invocationUid);
 
-    protected abstract Future<Object> doForceUnlock(RaftGroupId groupId, String name, long expectedFence, UUID invocationUid);
+    protected abstract InternalCompletableFuture<Object> doForceUnlock(RaftGroupId groupId, String name, long expectedFence,
+                                                                       UUID invocationUid);
 
-    protected abstract Future<Long> doGetLockFence(RaftGroupId groupId, String name);
+    protected abstract InternalCompletableFuture<Long> doGetLockFence(RaftGroupId groupId, String name);
 
-    protected abstract Future<Integer> doGetLockCount(RaftGroupId groupId, String name);
-
-    private <T> T join(Future<T> future) {
-        try {
-            return future.get();
-        } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
-        }
-    }
+    protected abstract InternalCompletableFuture<Integer> doGetLockCount(RaftGroupId groupId, String name);
 
     private static class LockState {
         final long sessionId;

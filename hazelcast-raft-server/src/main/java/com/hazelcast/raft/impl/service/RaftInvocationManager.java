@@ -19,6 +19,7 @@ import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOp;
 import com.hazelcast.raft.impl.service.proxy.RaftQueryOp;
 import com.hazelcast.raft.impl.service.proxy.DestroyRaftGroupOp;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
+import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.impl.NodeEngineImpl;
@@ -132,11 +133,11 @@ public class RaftInvocationManager {
         });
     }
 
-    public ICompletableFuture<RaftGroupId> triggerDestroyRaftGroup(final RaftGroupId groupId) {
+    public InternalCompletableFuture<RaftGroupId> triggerDestroyRaftGroup(final RaftGroupId groupId) {
         return invoke(METADATA_GROUP_ID, new TriggerDestroyRaftGroupOp(groupId));
     }
 
-    <T> ICompletableFuture<T> changeRaftGroupMembership(RaftGroupId groupId, long membersCommitIndex, RaftMemberImpl member,
+    <T> InternalCompletableFuture<T> changeRaftGroupMembership(RaftGroupId groupId, long membersCommitIndex, RaftMemberImpl member,
                                                         MembershipChangeType changeType) {
         Operation operation = new ChangeRaftGroupMembershipOp(groupId, membersCommitIndex, member, changeType);
         Invocation invocation = new RaftInvocation(operationService.getInvocationContext(), raftInvocationContext,
@@ -144,26 +145,26 @@ public class RaftInvocationManager {
         return invocation.invoke();
     }
 
-    public <T> ICompletableFuture<T> invoke(RaftGroupId groupId, RaftOp raftOp) {
+    public <T> InternalCompletableFuture<T> invoke(RaftGroupId groupId, RaftOp raftOp) {
         Operation operation = new DefaultRaftReplicateOp(groupId, raftOp);
         Invocation invocation = new RaftInvocation(operationService.getInvocationContext(), raftInvocationContext,
                 groupId, operation, true);
         return invocation.invoke();
     }
 
-    public <T> ICompletableFuture<T> query(RaftGroupId groupId, RaftOp raftOp, QueryPolicy queryPolicy) {
+    public <T> InternalCompletableFuture<T> query(RaftGroupId groupId, RaftOp raftOp, QueryPolicy queryPolicy) {
         RaftQueryOp operation = new RaftQueryOp(groupId, raftOp, queryPolicy);
         Invocation invocation = new RaftInvocation(operationService.getInvocationContext(), raftInvocationContext,
                 groupId, operation, false);
         return invocation.invoke();
     }
 
-    public <T> ICompletableFuture<T> queryOnLocal(RaftGroupId groupId, RaftOp raftOp, QueryPolicy queryPolicy) {
+    public <T> InternalCompletableFuture<T> queryOnLocal(RaftGroupId groupId, RaftOp raftOp, QueryPolicy queryPolicy) {
         RaftQueryOp operation = new RaftQueryOp(groupId, raftOp, queryPolicy);
         return nodeEngine.getOperationService().invokeOnTarget(RaftService.SERVICE_NAME, operation, nodeEngine.getThisAddress());
     }
 
-    public ICompletableFuture<Object> destroy(RaftGroupId groupId) {
+    public InternalCompletableFuture<Object> destroy(RaftGroupId groupId) {
         Operation operation = new DestroyRaftGroupOp(groupId);
         Invocation invocation = new RaftInvocation(operationService.getInvocationContext(), raftInvocationContext,
                 groupId, operation, true);
