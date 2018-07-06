@@ -8,9 +8,9 @@ import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.RaftManagementService;
+import com.hazelcast.raft.RaftMember;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftIntegration;
-import com.hazelcast.raft.RaftMember;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftNodeImpl;
@@ -33,6 +33,7 @@ import com.hazelcast.raft.impl.service.operation.metadata.TriggerRebalanceRaftGr
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveRaftMemberOp;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.spi.GracefulShutdownAwareService;
+import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.MemberAttributeServiceEvent;
 import com.hazelcast.spi.MembershipAwareService;
@@ -412,12 +413,9 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     }
 
     private boolean isRemoved(RaftMemberImpl member) {
-        Future<Boolean> f = invocationManager.query(METADATA_GROUP_ID, new CheckRemovedRaftMemberOp(member), LEADER_LOCAL);
-        try {
-            return f.get();
-        } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
-        }
+        RaftOp op = new CheckRemovedRaftMemberOp(member);
+        InternalCompletableFuture<Boolean> f = invocationManager.query(METADATA_GROUP_ID, op, LEADER_LOCAL);
+        return f.join();
     }
 
     private class InitializeRaftNodeTask implements Runnable {

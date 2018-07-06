@@ -17,6 +17,7 @@ import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.raft.service.lock.RaftLockService;
 import com.hazelcast.raft.service.session.SessionAwareProxy;
 import com.hazelcast.raft.service.session.SessionManagerProvider;
+import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.ThreadUtil;
 import com.hazelcast.util.UuidUtil;
@@ -225,8 +226,8 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
         join(invoke(client, BOOLEAN_RESPONSE_DECODER, name, clientMessage));
     }
 
-    static <T> ICompletableFuture<T> invoke(HazelcastClientInstanceImpl client, ClientMessageDecoder decoder, String name,
-                                            ClientMessage clientMessage) {
+    static <T> InternalCompletableFuture<T> invoke(HazelcastClientInstanceImpl client, ClientMessageDecoder decoder, String name,
+                                                   ClientMessage clientMessage) {
         ClientInvocationFuture future = new ClientInvocation(client, clientMessage, name).invoke();
         return new ClientDelegatingFuture<T>(future, client.getSerializationService(), decoder);
     }

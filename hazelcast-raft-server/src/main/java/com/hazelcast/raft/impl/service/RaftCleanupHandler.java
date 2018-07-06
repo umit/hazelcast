@@ -5,6 +5,7 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.QueryPolicy;
+import com.hazelcast.raft.RaftGroup.RaftGroupStatus;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.MismatchingGroupMembersCommitIndexException;
 import com.hazelcast.raft.exception.RaftGroupDestroyedException;
@@ -13,7 +14,6 @@ import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftNodeStatus;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.MembershipChangeContext.RaftGroupMembershipChangeContext;
-import com.hazelcast.raft.RaftGroup.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteRaftGroupMembershipChangesOp;
 import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOp;
@@ -24,12 +24,12 @@ import com.hazelcast.raft.impl.service.operation.metadata.TriggerExpandRaftGroup
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.spi.ExecutionService;
+import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.util.RandomPicker;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -171,14 +171,8 @@ public class RaftCleanupHandler {
         }
 
         private Collection<RaftGroupId> getDestroyingRaftGroupIds() {
-            Future<Collection<RaftGroupId>> f = queryMetadata(new GetDestroyingRaftGroupIdsOp());
-
-            try {
-                return f.get();
-            } catch (Exception e) {
-                logger.severe("Cannot get destroying raft group ids", e);
-                return Collections.emptyList();
-            }
+            InternalCompletableFuture<Collection<RaftGroupId>> f = queryMetadata(new GetDestroyingRaftGroupIdsOp());
+            return f.join();
         }
 
         private boolean isRaftGroupTerminated(RaftGroupId groupId, Future<Object> future) {
@@ -231,14 +225,8 @@ public class RaftCleanupHandler {
         }
 
         private MembershipChangeContext getMembershipChangeContext() {
-            Future<MembershipChangeContext> f = queryMetadata(new GetMembershipChangeContextOp());
-
-            try {
-                return f.get();
-            } catch (Exception e) {
-                logger.severe("Cannot get membership change context", e);
-                return null;
-            }
+            InternalCompletableFuture<MembershipChangeContext> f = queryMetadata(new GetMembershipChangeContextOp());
+            return f.join();
         }
 
         private MembershipChangeContext decideMembersToAddIfNeeded(MembershipChangeContext membershipChangeContext) {
@@ -453,7 +441,7 @@ public class RaftCleanupHandler {
         }
     }
 
-    private <T> ICompletableFuture<T> queryMetadata(RaftOp raftOp) {
+    private <T> InternalCompletableFuture<T> queryMetadata(RaftOp raftOp) {
         return invocationManager.query(METADATA_GROUP_ID, raftOp, QueryPolicy.LEADER_LOCAL);
     }
 }
