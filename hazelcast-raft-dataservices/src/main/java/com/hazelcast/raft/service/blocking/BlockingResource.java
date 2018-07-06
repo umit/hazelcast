@@ -21,10 +21,11 @@ import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.util.collection.Long2ObjectHashMap;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
+
+import static java.util.Collections.unmodifiableCollection;
 
 /**
  * TODO: Javadoc Pending...
@@ -60,7 +61,7 @@ public abstract class BlockingResource<W extends WaitKey> {
 
     protected abstract void onInvalidateSession(long sessionId, Long2ObjectHashMap<Object> result);
 
-    protected boolean invalidateWaitEntry(W key) {
+    protected boolean invalidateWaitKey(W key) {
         Iterator<W> iter = waitKeys.iterator();
         while (iter.hasNext()) {
             W waiter = iter.next();
@@ -73,7 +74,7 @@ public abstract class BlockingResource<W extends WaitKey> {
         return false;
     }
 
-    protected Collection<W> waitEntries() {
-        return Collections.unmodifiableCollection(waitKeys);
+    protected Collection<W> getWaitKeys() {
+        return unmodifiableCollection(waitKeys);
     }
 }

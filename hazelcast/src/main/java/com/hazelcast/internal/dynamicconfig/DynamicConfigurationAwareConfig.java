@@ -59,8 +59,9 @@ import com.hazelcast.config.UserCodeDeploymentConfig;
 import com.hazelcast.config.WanReplicationConfig;
 import com.hazelcast.config.raft.RaftAtomicLongConfig;
 import com.hazelcast.config.raft.RaftAtomicReferenceConfig;
-import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.config.raft.RaftConfig;
+import com.hazelcast.config.raft.RaftCountDownLatchConfig;
+import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.config.raft.RaftSemaphoreConfig;
 import com.hazelcast.core.ManagedContext;
 import com.hazelcast.internal.cluster.ClusterService;
@@ -1540,6 +1541,14 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     @Override
     public Config addRaftSemaphoreConfig(RaftSemaphoreConfig config) {
+        throw new UnsupportedOperationException("Unsupported operation");
+    }
+
+    public RaftCountDownLatchConfig findRaftCountDownLatchConfig(String name) {
+        return staticConfig.findRaftCountDownLatchConfig(name);
+    }
+
+    public Config addRaftCountDownLatchConfig(RaftCountDownLatchConfig config) {
         throw new UnsupportedOperationException("Unsupported operation");
     }
 }

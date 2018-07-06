@@ -30,15 +30,15 @@ import java.util.Collection;
 /**
  * TODO: Javadoc Pending...
  */
-public class InvalidateWaitEntriesOp<W extends WaitKey> extends RaftOp implements IdentifiedDataSerializable {
+public class InvalidateWaitKeysOp<W extends WaitKey> extends RaftOp implements IdentifiedDataSerializable {
 
     private String serviceName;
     private Collection<W> keys;
 
-    public InvalidateWaitEntriesOp() {
+    public InvalidateWaitKeysOp() {
     }
 
-    public InvalidateWaitEntriesOp(String serviceName, Collection<W> keys) {
+    public InvalidateWaitKeysOp(String serviceName, Collection<W> keys) {
         this.serviceName = serviceName;
         this.keys = keys;
     }
@@ -46,7 +46,7 @@ public class InvalidateWaitEntriesOp<W extends WaitKey> extends RaftOp implement
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         AbstractBlockingService<W, BlockingResource<W>, ResourceRegistry<W, BlockingResource<W>>> service = getService();
-        service.invalidateWaitEntries(groupId, keys);
+        service.invalidateWaitKeys(groupId, keys);
         return null;
     }
 
@@ -62,7 +62,7 @@ public class InvalidateWaitEntriesOp<W extends WaitKey> extends RaftOp implement
 
     @Override
     public int getId() {
-        return RaftDataServiceDataSerializerHook.INVALIDATE_WAIT_ENTRIES_OP;
+        return RaftDataServiceDataSerializerHook.INVALIDATE_WAIT_KEYS_OP;
     }
 
     @Override

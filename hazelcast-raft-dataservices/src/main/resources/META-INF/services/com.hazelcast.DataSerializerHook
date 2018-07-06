@@ -3,3 +3,4 @@ com.hazelcast.raft.service.atomicref.AtomicReferenceDataSerializerHook
 com.hazelcast.raft.service.lock.RaftLockDataSerializerHook
 com.hazelcast.raft.service.semaphore.RaftSemaphoreDataSerializerHook
 com.hazelcast.raft.service.RaftDataServiceDataSerializerHook
+com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchDataSerializerHook

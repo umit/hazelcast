@@ -36,19 +36,19 @@ public class RaftLockSnapshot implements IdentifiedDataSerializable {
     private LockInvocationKey owner;
     private int lockCount;
     private UUID refUid;
-    private List<LockInvocationKey> waitEntries;
+    private List<LockInvocationKey> waitKeys;
 
     public RaftLockSnapshot() {
     }
 
     RaftLockSnapshot(RaftGroupId groupId, String name, LockInvocationKey owner, int lockCount, UUID refUid,
-                            List<LockInvocationKey> waitEntries) {
+                     List<LockInvocationKey> waitKeys) {
         this.groupId = groupId;
         this.name = name;
         this.owner = owner;
         this.lockCount = lockCount;
         this.refUid = refUid;
-        this.waitEntries = new ArrayList<LockInvocationKey>(waitEntries);
+        this.waitKeys = new ArrayList<LockInvocationKey>(waitKeys);
     }
 
     RaftGroupId getGroupId() {
@@ -71,8 +71,8 @@ public class RaftLockSnapshot implements IdentifiedDataSerializable {
         return refUid;
     }
 
-    List<LockInvocationKey> getWaitEntries() {
-        return waitEntries;
+    List<LockInvocationKey> getWaitKeys() {
+        return waitKeys;
     }
 
     @Override
@@ -101,8 +101,8 @@ public class RaftLockSnapshot implements IdentifiedDataSerializable {
             out.writeLong(refUid.getLeastSignificantBits());
             out.writeLong(refUid.getMostSignificantBits());
         }
-        out.writeInt(waitEntries.size());
-        for (LockInvocationKey key : waitEntries) {
+        out.writeInt(waitKeys.size());
+        for (LockInvocationKey key : waitKeys) {
             out.writeObject(key);
         }
     }
@@ -123,10 +123,10 @@ public class RaftLockSnapshot implements IdentifiedDataSerializable {
             refUid = new UUID(most, least);
         }
         int count = in.readInt();
-        waitEntries = new ArrayList<LockInvocationKey>();
+        waitKeys = new ArrayList<LockInvocationKey>();
         for (int i = 0; i < count; i++)  {
             LockInvocationKey key = in.readObject();
-            waitEntries.add(key);
+            waitKeys.add(key);
         }
     }
 }

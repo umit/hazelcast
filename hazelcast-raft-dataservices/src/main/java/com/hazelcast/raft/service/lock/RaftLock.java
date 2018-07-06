@@ -46,7 +46,7 @@ class RaftLock extends BlockingResource<LockInvocationKey> {
         this.owner = snapshot.getOwner();
         this.lockCount = snapshot.getLockCount();
         this.releaseRefUid = snapshot.getRefUid();
-        this.waitKeys.addAll(snapshot.getWaitEntries());
+        this.waitKeys.addAll(snapshot.getWaitKeys());
     }
 
     boolean acquire(LockEndpoint endpoint, long commitIndex, UUID invocationUid, boolean wait) {
