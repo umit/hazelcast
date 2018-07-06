@@ -12,27 +12,29 @@ import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.List;
 
 /**
  * TODO: Javadoc Pending...
  */
 public class CreateMetadataRaftGroupOp extends RaftOp implements IdentifiedDataSerializable {
 
-    private Collection<RaftMemberImpl> members;
+    private List<RaftMemberImpl> initialMembers;
+    private int metadataMembersCount;
 
     public CreateMetadataRaftGroupOp() {
     }
 
-    public CreateMetadataRaftGroupOp(Collection<RaftMemberImpl> members) {
-        this.members = members;
+    public CreateMetadataRaftGroupOp(List<RaftMemberImpl> initialMembers, int metadataMembersCount) {
+        this.initialMembers = initialMembers;
+        this.metadataMembersCount = metadataMembersCount;
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
-        metadataManager.createInitialMetadataRaftGroup(members);
+        metadataManager.createInitialMetadataRaftGroup(initialMembers, metadataMembersCount);
         return null;
     }
 
@@ -43,20 +45,22 @@ public class CreateMetadataRaftGroupOp extends RaftOp implements IdentifiedDataS
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeInt(members.size());
-        for (RaftMemberImpl member : members) {
+        out.writeInt(initialMembers.size());
+        for (RaftMemberImpl member : initialMembers) {
             out.writeObject(member);
         }
+        out.writeInt(metadataMembersCount);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         int len = in.readInt();
-        members = new ArrayList<RaftMemberImpl>(len);
+        initialMembers = new ArrayList<RaftMemberImpl>(len);
         for (int i = 0; i < len; i++) {
             RaftMemberImpl member = in.readObject();
-            members.add(member);
+            initialMembers.add(member);
         }
+        metadataMembersCount = in.readInt();
     }
 
     @Override
@@ -71,6 +75,6 @@ public class CreateMetadataRaftGroupOp extends RaftOp implements IdentifiedDataS
 
     @Override
     protected void toString(StringBuilder sb) {
-        sb.append("members=").append(members);
+        sb.append("members=").append(metadataMembersCount);
     }
 }

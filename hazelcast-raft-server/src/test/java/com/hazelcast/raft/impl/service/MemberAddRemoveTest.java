@@ -38,17 +38,24 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import static com.hazelcast.raft.impl.RaftUtil.getLastLogOrSnapshotEntry;
 import static com.hazelcast.raft.impl.service.RaftMetadataManager.METADATA_GROUP_ID;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(HazelcastSerialClassRunner.class)
@@ -424,6 +431,90 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
                 boolean metadataNodeCreatedOnInstance5 = (getRaftNode(instances[5], groupId) != null);
                 boolean metadataNodeCreatedOnInstance6 = (getRaftNode(instances[6], groupId) != null);
                 assertTrue(metadataNodeCreatedOnInstance5 ^ metadataNodeCreatedOnInstance6);
+            }
+        });
+    }
+
+    @Test
+    public void testNodeTerminates_whenInitialRaftMemberCount_isBiggerThanConfiguredNumber() {
+        int groupSize = 3;
+        HazelcastInstance[] instances = newInstances(groupSize);
+
+        Config config = createConfig(groupSize, groupSize);
+        config.getRaftConfig().getMetadataGroupConfig().setInitialRaftMember(true);
+        try {
+            final HazelcastInstance instance = factory.newHazelcastInstance(config);
+            assertTrueEventually(new AssertTask() {
+                @Override
+                public void run() {
+                    assertFalse(instance.getLifecycleService().isRunning());
+                }
+            });
+        } catch (IllegalStateException ignored) {
+        }
+
+        waitAllForLeaderElection(instances, METADATA_GROUP_ID);
+    }
+
+    @Test
+    public void testNodeTerminates_whenInitialRaftMembers_doesNotMatch() {
+        HazelcastInstance[] instances = newInstances(3);
+
+        instances[2].getLifecycleService().terminate();
+
+        Config config = createConfig(3, 3);
+        config.getRaftConfig().getMetadataGroupConfig().setInitialRaftMember(true);
+
+        try {
+            final HazelcastInstance instance = factory.newHazelcastInstance(config);
+            assertTrueEventually(new AssertTask() {
+                @Override
+                public void run() {
+                    assertFalse(instance.getLifecycleService().isRunning());
+                }
+            });
+        } catch (IllegalStateException ignored) {
+        }
+
+        waitAllForLeaderElection(Arrays.copyOf(instances, 2), METADATA_GROUP_ID);
+    }
+
+    @Test
+    public void testNodesTerminate_whenMoreThanInitialRaftMembers_areStartedConcurrently() throws Exception {
+        final Config config = createConfig(3, 3);
+        config.getRaftConfig().getMetadataGroupConfig().setInitialRaftMember(true);
+
+        final Set<HazelcastInstance> instances = Collections.newSetFromMap(new ConcurrentHashMap<HazelcastInstance, Boolean>());
+        Collection<Future> futures = new ArrayList<Future>();
+
+        for (int i = 0; i < 8; i++) {
+            Future future = spawn(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        HazelcastInstance instance = factory.newHazelcastInstance(config);
+                        instances.add(instance);
+                    } catch (IllegalStateException ignored) {
+                    }
+                }
+            });
+            futures.add(future);
+        }
+
+        for (Future future : futures) {
+            future.get();
+        }
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                int aliveCount = 0;
+                for (HazelcastInstance instance : instances) {
+                    if (instance.getLifecycleService().isRunning()) {
+                        aliveCount++;
+                    }
+                }
+                assertThat(aliveCount, lessThanOrEqualTo(3));
             }
         });
     }
