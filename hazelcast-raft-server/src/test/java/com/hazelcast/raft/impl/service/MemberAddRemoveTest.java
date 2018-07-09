@@ -269,7 +269,7 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         instances[2].getLifecycleService().terminate();
         assertClusterSizeEventually(2, instances[3]);
 
-        HazelcastInstance[] newInstances = new HazelcastInstance[3];
+        final HazelcastInstance[] newInstances = new HazelcastInstance[3];
         newInstances[0] = instances[0];
         newInstances[1] = instances[3];
 
@@ -282,14 +282,20 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         waitAllForLeaderElection(newInstances, METADATA_GROUP_ID);
 
-        RaftGroupInfo group = getRaftGroupLocally(newInstances[2], METADATA_GROUP_ID);
-        Collection<RaftMemberImpl> endpoints = group.memberImpls();
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                RaftGroupInfo group = getRaftGroupLocally(newInstances[2], METADATA_GROUP_ID);
+                assertNotNull(group);
+                Collection<RaftMemberImpl> endpoints = group.memberImpls();
 
-        for (HazelcastInstance instance : newInstances) {
-            Member localMember = instance.getCluster().getLocalMember();
-            RaftMemberImpl endpoint = new RaftMemberImpl(localMember);
-            assertTrue(endpoints.contains(endpoint));
-        }
+                for (HazelcastInstance instance : newInstances) {
+                    Member localMember = instance.getCluster().getLocalMember();
+                    RaftMemberImpl endpoint = new RaftMemberImpl(localMember);
+                    assertTrue(endpoints.contains(endpoint));
+                }
+            }
+        });
     }
 
     @Test
