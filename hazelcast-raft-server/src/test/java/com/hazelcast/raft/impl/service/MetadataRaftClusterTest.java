@@ -6,10 +6,10 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.Member;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.QueryPolicy;
+import com.hazelcast.raft.RaftGroup.RaftGroupStatus;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftNodeImpl;
-import com.hazelcast.raft.RaftGroup.RaftGroupStatus;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetActiveRaftMembersOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
@@ -528,7 +528,17 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
     @Test
     public void when_nonReachableEndpointsExist_createRaftGroupPrefersReachableEndpoints()
             throws ExecutionException, InterruptedException {
-        HazelcastInstance[] instances = newInstances(5);
+        final HazelcastInstance[] instances = newInstances(5);
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (HazelcastInstance instance : instances) {
+                    Collection<RaftMemberImpl> raftMembers = getRaftService(instance).getMetadataManager().getActiveMembers();
+                    assertFalse(raftMembers.isEmpty());
+                }
+            }
+        });
 
         RaftMemberImpl endpoint3 = getRaftService(instances[3]).getLocalMember();
         RaftMemberImpl endpoint4 = getRaftService(instances[4]).getLocalMember();
