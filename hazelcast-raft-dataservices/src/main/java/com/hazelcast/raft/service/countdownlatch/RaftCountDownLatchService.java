@@ -21,14 +21,10 @@ import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.SnapshotAwareService;
-import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.blocking.AbstractBlockingService;
 import com.hazelcast.raft.service.countdownlatch.proxy.RaftCountDownLatchProxy;
-import com.hazelcast.raft.service.spi.RaftRemoteService;
 import com.hazelcast.spi.NodeEngine;
-import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 import com.hazelcast.util.ExceptionUtil;
 
 import java.util.Collection;
@@ -38,42 +34,12 @@ import java.util.UUID;
  * TODO: Javadoc Pending...
  */
 public class RaftCountDownLatchService
-        extends AbstractBlockingService<CountDownLatchInvocationKey, RaftCountDownLatch, CountDownLatchRegistry>
-        implements SnapshotAwareService<CountDownLatchRegistrySnapshot>, RaftRemoteService {
+        extends AbstractBlockingService<CountDownLatchInvocationKey, RaftCountDownLatch, CountDownLatchRegistry> {
 
     public static final String SERVICE_NAME = "hz:raft:countDownLatchService";
 
     public RaftCountDownLatchService(NodeEngine nodeEngine) {
         super(nodeEngine);
-    }
-
-    @Override
-    protected CountDownLatchRegistry createNewRegistry(RaftGroupId groupId) {
-        return new CountDownLatchRegistry(groupId);
-    }
-
-    @Override
-    protected Object invalidatedResult() {
-        return false;
-    }
-
-    @Override
-    protected String serviceName() {
-        return SERVICE_NAME;
-    }
-
-    @Override
-    public CountDownLatchRegistrySnapshot takeSnapshot(RaftGroupId groupId, long commitIndex) {
-        CountDownLatchRegistry registry = getResourceRegistryOrNull(groupId);
-        return registry != null ? registry.toSnapshot() : null;
-    }
-
-    @Override
-    public void restoreSnapshot(RaftGroupId groupId, long commitIndex, CountDownLatchRegistrySnapshot snapshot) {
-        if (snapshot != null) {
-            CountDownLatchRegistry registry = getOrInitResourceRegistry(groupId);
-            registry.restore(snapshot);
-        }
     }
 
     @Override
@@ -88,9 +54,7 @@ public class RaftCountDownLatchService
 
     public ICompletableFuture<RaftGroupId> createRaftGroup(String name) {
         String raftGroupRef = getRaftGroupRef(name);
-
-        RaftInvocationManager invocationManager = raftService.getInvocationManager();
-        return invocationManager.createRaftGroup(raftGroupRef);
+        return raftService.getInvocationManager().createRaftGroup(raftGroupRef);
     }
 
     private String getRaftGroupRef(String name) {
@@ -102,24 +66,12 @@ public class RaftCountDownLatchService
         return nodeEngine.getConfig().findRaftCountDownLatchConfig(name);
     }
 
-    @Override
-    public boolean destroyRaftObject(RaftGroupId groupId, String name) {
-        CountDownLatchRegistry registry = getOrInitResourceRegistry(groupId);
-        Collection<Long> indices = registry.destroyResource(name);
-        if (indices == null) {
-            return false;
-        }
-        completeFutures(groupId, indices, new DistributedObjectDestroyedException("Lock[" + name + "] is destroyed"));
-        return true;
-    }
-
     public boolean trySetCount(RaftGroupId groupId, String name, int count) {
-        CountDownLatchRegistry registry = getOrInitResourceRegistry(groupId);
-        return registry.trySetCount(name, count);
+        return getOrInitRegistry(groupId).trySetCount(name, count);
     }
 
     public int countDown(RaftGroupId groupId, String name, int expectedRound, UUID invocationUuid) {
-        CountDownLatchRegistry registry = getOrInitResourceRegistry(groupId);
+        CountDownLatchRegistry registry = getOrInitRegistry(groupId);
         Tuple2<Integer, Collection<CountDownLatchInvocationKey>> t = registry.countDown(name, expectedRound, invocationUuid);
         notifyWaitKeys(groupId, t.element2, true);
 
@@ -127,17 +79,34 @@ public class RaftCountDownLatchService
     }
 
     public boolean await(RaftGroupId groupId, String name, long commitIndex, long timeoutMillis) {
-        CountDownLatchRegistry registry = getOrInitResourceRegistry(groupId);
-        return registry.await(name, commitIndex, timeoutMillis);
+        boolean success = getOrInitRegistry(groupId).await(name, commitIndex, timeoutMillis);
+        if (!success) {
+            scheduleTimeout(groupId, new CountDownLatchInvocationKey(name, commitIndex), timeoutMillis);
+        }
+
+        return success;
     }
 
     public int getRemainingCount(RaftGroupId groupId, String name) {
-        CountDownLatchRegistry registry = getOrInitResourceRegistry(groupId);
-        return registry.getRemainingCount(name);
+        return getOrInitRegistry(groupId).getRemainingCount(name);
     }
 
     public int getRound(RaftGroupId groupId, String name) {
-        CountDownLatchRegistry registry = getOrInitResourceRegistry(groupId);
-        return registry.getRound(name);
+        return getOrInitRegistry(groupId).getRound(name);
+    }
+
+    @Override
+    protected CountDownLatchRegistry createNewRegistry(RaftGroupId groupId) {
+        return new CountDownLatchRegistry(groupId);
+    }
+
+    @Override
+    protected Object invalidatedWaitKeyResponse() {
+        return false;
+    }
+
+    @Override
+    protected String serviceName() {
+        return SERVICE_NAME;
     }
 }

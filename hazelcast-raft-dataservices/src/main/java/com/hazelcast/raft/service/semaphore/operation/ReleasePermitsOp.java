@@ -19,13 +19,13 @@ package com.hazelcast.raft.service.semaphore.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.service.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 
 import java.io.IOException;
 
 /**
  * TODO: Javadoc Pending...
- *
  */
 public class ReleasePermitsOp extends AbstractSemaphoreOp {
 
@@ -40,10 +40,15 @@ public class ReleasePermitsOp extends AbstractSemaphoreOp {
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) throws Exception {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         RaftSemaphoreService service = getService();
         service.releasePermits(groupId, name, sessionId, permits);
         return null;
+    }
+
+    @Override
+    public int getId() {
+        return RaftSemaphoreDataSerializerHook.RELEASE_PERMITS_OP;
     }
 
     @Override

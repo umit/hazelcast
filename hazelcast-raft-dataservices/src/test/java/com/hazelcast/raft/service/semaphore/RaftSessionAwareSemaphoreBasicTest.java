@@ -35,10 +35,8 @@ import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import com.hazelcast.util.RandomPicker;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 
 import java.util.concurrent.CountDownLatch;
@@ -56,13 +54,9 @@ import static org.junit.Assert.fail;
 @Category({QuickTest.class, ParallelTest.class})
 public class RaftSessionAwareSemaphoreBasicTest extends HazelcastRaftTestSupport {
 
-    @Rule
-    public ExpectedException exception = ExpectedException.none();
-
     private HazelcastInstance[] instances;
     private ISemaphore semaphore;
     private String name = "semaphore";
-    private String groupName = "semaphore";
     private int groupSize = 3;
     private HazelcastInstance semaphoreInstance;
 
@@ -78,7 +72,7 @@ public class RaftSessionAwareSemaphoreBasicTest extends HazelcastRaftTestSupport
         return newInstances(groupSize);
     }
 
-    protected ISemaphore createSemaphore(String name) {
+    private ISemaphore createSemaphore(String name) {
         semaphoreInstance = instances[RandomPicker.getInt(instances.length)];
         return create(semaphoreInstance, RaftSemaphoreService.SERVICE_NAME, name);
     }
@@ -386,7 +380,9 @@ public class RaftSessionAwareSemaphoreBasicTest extends HazelcastRaftTestSupport
 
         assertTrue(semaphore.init(permits));
         semaphore.acquire(5);
+
         int drainedPermits = semaphore.drainPermits();
+
         assertEquals(drainedPermits, permits - 5);
         assertEquals(0, semaphore.availablePermits());
     }
@@ -495,26 +491,25 @@ public class RaftSessionAwareSemaphoreBasicTest extends HazelcastRaftTestSupport
         try {
             semaphore.release(1);
             fail();
-        } catch (SessionExpiredException e) {
+        } catch (SessionExpiredException expected) {
         }
     }
 
-    protected AbstractSessionManager getSessionManager(HazelcastInstance instance) {
+    private AbstractSessionManager getSessionManager(HazelcastInstance instance) {
         NodeEngineImpl nodeEngine = getNodeEngineImpl(instance);
         return nodeEngine.getService(SessionManagerService.SERVICE_NAME);
     }
 
-
-    protected RaftGroupId getGroupId(ISemaphore semaphore) {
+    private RaftGroupId getGroupId(ISemaphore semaphore) {
         return ((RaftSessionAwareSemaphoreProxy) semaphore).getGroupId();
     }
 
     @Override
     protected Config createConfig(int groupSize, int metadataGroupSize) {
         Config config = super.createConfig(groupSize, metadataGroupSize);
-        config.getRaftConfig().addGroupConfig(new RaftGroupConfig(groupName, groupSize));
+        config.getRaftConfig().addGroupConfig(new RaftGroupConfig(name, groupSize));
 
-        RaftSemaphoreConfig semaphoreConfig = new RaftSemaphoreConfig(name, groupName, true);
+        RaftSemaphoreConfig semaphoreConfig = new RaftSemaphoreConfig(name, name, true);
         config.addRaftSemaphoreConfig(semaphoreConfig);
         return config;
     }

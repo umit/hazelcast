@@ -35,8 +35,8 @@ public class RaftCountDownLatchDataSerializerHook implements DataSerializerHook 
 
     public static final int F_ID = FactoryIdHelper.getFactoryId(RAFT_COUNT_DOWN_LATCH_DS_FACTORY, RAFT_COUNT_DOWN_LATCH_DS_FACTORY_ID);
 
-    public static final int COUNT_DOWN_LATCH_REGISTRY_SNAPSHOT = 1;
-    public static final int COUNT_DOWN_LATCH_SNAPSHOT = 2;
+    public static final int COUNT_DOWN_LATCH_REGISTRY = 1;
+    public static final int COUNT_DOWN_LATCH = 2;
     public static final int COUNT_DOWN_LATCH_INVOCATION_KEY = 3;
     public static final int AWAIT_OP = 4;
     public static final int COUNT_DOWN_OP = 5;
@@ -56,10 +56,10 @@ public class RaftCountDownLatchDataSerializerHook implements DataSerializerHook 
             @Override
             public IdentifiedDataSerializable create(int typeId) {
                 switch (typeId) {
-                    case COUNT_DOWN_LATCH_REGISTRY_SNAPSHOT:
-                        return new CountDownLatchRegistrySnapshot();
-                    case COUNT_DOWN_LATCH_SNAPSHOT:
-                        return new RaftCountDownLatchSnapshot();
+                    case COUNT_DOWN_LATCH_REGISTRY:
+                        return new CountDownLatchRegistry();
+                    case COUNT_DOWN_LATCH:
+                        return new RaftCountDownLatch();
                     case COUNT_DOWN_LATCH_INVOCATION_KEY:
                         return new CountDownLatchInvocationKey();
                     case AWAIT_OP:

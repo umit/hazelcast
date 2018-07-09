@@ -17,11 +17,11 @@
 package com.hazelcast.raft.service.semaphore.operation;
 
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.service.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 
 /**
  * TODO: Javadoc Pending...
- *
  */
 public class DrainPermitsOp extends AbstractSemaphoreOp {
 
@@ -33,9 +33,13 @@ public class DrainPermitsOp extends AbstractSemaphoreOp {
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) throws Exception {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         RaftSemaphoreService service = getService();
         return service.drainPermits(groupId, name, sessionId);
     }
 
+    @Override
+    public int getId() {
+        return RaftSemaphoreDataSerializerHook.DRAIN_PERMITS_OP;
+    }
 }

@@ -21,15 +21,13 @@ import com.hazelcast.config.raft.RaftSemaphoreConfig;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
+import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.blocking.AbstractBlockingService;
 import com.hazelcast.raft.service.semaphore.proxy.RaftSessionAwareSemaphoreProxy;
 import com.hazelcast.raft.service.semaphore.proxy.RaftSessionlessSemaphoreProxy;
 import com.hazelcast.raft.service.session.SessionManagerService;
-import com.hazelcast.raft.service.spi.RaftRemoteService;
 import com.hazelcast.spi.NodeEngine;
-import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 import com.hazelcast.util.ExceptionUtil;
 
 import java.util.Collection;
@@ -37,37 +35,12 @@ import java.util.Collection;
 /**
  * TODO: Javadoc Pending...
  */
-public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvocationKey, RaftSemaphore, SemaphoreRegistry>
-        implements SnapshotAwareService<SemaphoreRegistrySnapshot>, RaftRemoteService {
+public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvocationKey, RaftSemaphore, SemaphoreRegistry> {
 
     public static final String SERVICE_NAME = "hz:raft:semaphoreService";
 
     public RaftSemaphoreService(NodeEngine nodeEngine) {
         super(nodeEngine);
-    }
-
-    @Override
-    public SemaphoreRegistrySnapshot takeSnapshot(RaftGroupId groupId, long commitIndex) {
-        return null;
-    }
-
-    @Override
-    public void restoreSnapshot(RaftGroupId groupId, long commitIndex, SemaphoreRegistrySnapshot snapshot) {
-    }
-
-    @Override
-    protected SemaphoreRegistry createNewRegistry(RaftGroupId groupId) {
-        return new SemaphoreRegistry(groupId);
-    }
-
-    @Override
-    protected Object invalidatedResult() {
-        return null;
-    }
-
-    @Override
-    protected String serviceName() {
-        return SERVICE_NAME;
     }
 
     @Override
@@ -86,10 +59,8 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
     }
 
     private ICompletableFuture<RaftGroupId> createRaftGroup(String name) {
-        String raftGroupRef = getRaftGroupRef(name);
-
-        RaftInvocationManager invocationManager = raftService.getInvocationManager();
-        return invocationManager.createRaftGroup(raftGroupRef);
+        String groupRef = getRaftGroupRef(name);
+        return raftService.getInvocationManager().createRaftGroup(groupRef);
     }
 
     private String getRaftGroupRef(String name) {
@@ -101,53 +72,56 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
         return nodeEngine.getConfig().findRaftSemaphoreConfig(name);
     }
 
-    @Override
-    public boolean destroyRaftObject(RaftGroupId groupId, String name) {
-        SemaphoreRegistry registry = getOrInitResourceRegistry(groupId);
-        Collection<Long> indices = registry.destroyResource(name);
-        if (indices == null) {
-            return false;
-        }
-        completeFutures(groupId, indices, new DistributedObjectDestroyedException("Semaphore[" + name + "] is destroyed"));
-        return true;
-    }
-
     public boolean initSemaphore(RaftGroupId groupId, String name, int permits) {
-        SemaphoreRegistry registry = getOrInitResourceRegistry(groupId);
-        return registry.init(name, permits);
+        return getOrInitRegistry(groupId).init(name, permits);
     }
 
     public int availablePermits(RaftGroupId groupId, String name) {
-        SemaphoreRegistry registry = getResourceRegistryOrNull(groupId);
-        if (registry == null) {
-            return 0;
-        }
-        return registry.availablePermits(name);
+        SemaphoreRegistry registry = getRegistryOrNull(groupId);
+        return registry != null ? registry.availablePermits(name) : 0;
     }
 
     public boolean acquirePermits(RaftGroupId groupId, long commitIndex, String name, long sessionId, int permits, long timeoutMs) {
         heartbeatSession(groupId, sessionId);
-        SemaphoreRegistry registry = getOrInitResourceRegistry(groupId);
-        return registry.acquire(commitIndex, name, sessionId, permits, timeoutMs);
+        boolean success = getOrInitRegistry(groupId).acquire(commitIndex, name, sessionId, permits, timeoutMs);
+        if (!success) {
+            scheduleTimeout(groupId, new SemaphoreInvocationKey(name, commitIndex, sessionId, permits), timeoutMs);
+        }
+
+        return success;
     }
 
     public void releasePermits(RaftGroupId groupId, String name, long sessionId, int permits) {
         heartbeatSession(groupId, sessionId);
-        SemaphoreRegistry registry = getOrInitResourceRegistry(groupId);
-        Collection<SemaphoreInvocationKey> keys = registry.release(name, sessionId, permits);
+        Collection<SemaphoreInvocationKey> keys = getOrInitRegistry(groupId).release(name, sessionId, permits);
         notifyWaitKeys(groupId, keys, true);
     }
 
     public int drainPermits(RaftGroupId groupId, String name, long sessionId) {
-        SemaphoreRegistry registry = getResourceRegistryOrNull(groupId);
-        if (registry == null) {
-            return 0;
-        }
-        return registry.drainPermits(name, sessionId);
+        SemaphoreRegistry registry = getRegistryOrNull(groupId);
+        return registry != null ? registry.drainPermits(name, sessionId) : 0;
     }
 
     public boolean changePermits(RaftGroupId groupId, String name, int permits) {
-        SemaphoreRegistry registry = getOrInitResourceRegistry(groupId);
-        return registry.changePermits(name, permits);
+        Tuple2<Boolean, Collection<SemaphoreInvocationKey>> t = getOrInitRegistry(groupId).changePermits(name, permits);
+        notifyWaitKeys(groupId, t.element2, true);
+
+        return t.element1;
     }
+
+    @Override
+    protected SemaphoreRegistry createNewRegistry(RaftGroupId groupId) {
+        return new SemaphoreRegistry(groupId);
+    }
+
+    @Override
+    protected Object invalidatedWaitKeyResponse() {
+        return false;
+    }
+
+    @Override
+    protected String serviceName() {
+        return SERVICE_NAME;
+    }
+
 }

@@ -10,6 +10,7 @@ import com.hazelcast.raft.service.lock.operation.LockOp;
 import com.hazelcast.raft.service.lock.operation.TryLockOp;
 import com.hazelcast.raft.service.lock.operation.UnlockOp;
 import com.hazelcast.raft.service.session.SessionManagerService;
+import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
 import com.hazelcast.spi.InternalCompletableFuture;
 
 import java.util.UUID;
@@ -62,4 +63,10 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
     private <T> InternalCompletableFuture<T> invoke(RaftOp op) {
         return invocationManager.invoke(groupId, op);
     }
+
+    @Override
+    public void destroy() {
+        invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
+    }
+
 }

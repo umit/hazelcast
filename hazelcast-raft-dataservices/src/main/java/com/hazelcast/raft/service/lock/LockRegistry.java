@@ -16,20 +16,21 @@
 
 package com.hazelcast.raft.service.lock;
 
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.service.blocking.ResourceRegistry;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.UUID;
 
 /**
  * TODO: Javadoc Pending...
  */
-class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> {
+class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> implements IdentifiedDataSerializable {
+
+    public LockRegistry() {
+    }
 
     LockRegistry(RaftGroupId groupId) {
         super(groupId);
@@ -48,8 +49,7 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> {
         boolean wait = (timeoutMs > 0);
         boolean acquired = getOrInitResource(name).acquire(endpoint, commitIndex, invocationUid, wait);
         if (wait && !acquired) {
-            LockInvocationKey key = new LockInvocationKey(name, endpoint, commitIndex, invocationUid);
-            scheduleWaitTimeout(key, timeoutMs);
+            addWaitKey(new LockInvocationKey(name, endpoint, commitIndex, invocationUid), timeoutMs);
         }
 
         return acquired;
@@ -61,12 +61,12 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> {
             return Collections.emptyList();
         }
 
-        Collection<LockInvocationKey> waitKeys = lock.release(endpoint, invocationUid);
-        for (LockInvocationKey waitKey : waitKeys) {
-            waitTimeouts.remove(waitKey);
+        Collection<LockInvocationKey> keys = lock.release(endpoint, invocationUid);
+        for (LockInvocationKey key : keys) {
+            removeWaitKey(key);
         }
 
-        return waitKeys;
+        return keys;
     }
 
     Collection<LockInvocationKey> forceRelease(String name, long expectedFence, UUID invocationUid) {
@@ -75,12 +75,12 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> {
             return Collections.emptyList();
         }
 
-        Collection<LockInvocationKey> waitKeys = lock.forceRelease(expectedFence, invocationUid);
-        for (LockInvocationKey waitKey : waitKeys) {
-            waitTimeouts.remove(waitKey);
+        Collection<LockInvocationKey> keys = lock.forceRelease(expectedFence, invocationUid);
+        for (LockInvocationKey key : keys) {
+            removeWaitKey(key);
         }
 
-        return waitKeys;
+        return keys;
     }
 
     int getLockCount(String name, LockEndpoint endpoint) {
@@ -111,27 +111,13 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> {
         return owner.commitIndex();
     }
 
-    LockRegistrySnapshot toSnapshot() {
-        return new LockRegistrySnapshot(resources.values(), waitTimeouts, destroyedNames);
+    @Override
+    public int getFactoryId() {
+        return RaftLockDataSerializerHook.F_ID;
     }
 
-    Map<LockInvocationKey, Long> restore(LockRegistrySnapshot snapshot) {
-        for (RaftLockSnapshot lockSnapshot : snapshot.getLocks()) {
-            resources.put(lockSnapshot.getName(), new RaftLock(lockSnapshot));
-        }
-
-        destroyedNames.addAll(snapshot.getDestroyedLockNames());
-
-        Map<LockInvocationKey, Long> added = new HashMap<LockInvocationKey, Long>();
-        for (Entry<LockInvocationKey, Long> e : snapshot.getTryLockTimeouts().entrySet()) {
-            LockInvocationKey key = e.getKey();
-            if (!waitTimeouts.containsKey(key)) {
-                long timeout = e.getValue();
-                scheduleWaitTimeout(key, timeout);
-                added.put(key, timeout);
-            }
-        }
-
-        return added;
+    @Override
+    public int getId() {
+        return RaftLockDataSerializerHook.LOCK_REGISTRY;
     }
 }

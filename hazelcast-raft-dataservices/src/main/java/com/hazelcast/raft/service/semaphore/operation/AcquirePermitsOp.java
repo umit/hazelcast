@@ -20,13 +20,13 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.util.PostponedResponse;
+import com.hazelcast.raft.service.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 
 import java.io.IOException;
 
 /**
  * TODO: Javadoc Pending...
- *
  */
 public class AcquirePermitsOp extends AbstractSemaphoreOp {
 
@@ -43,13 +43,18 @@ public class AcquirePermitsOp extends AbstractSemaphoreOp {
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) throws Exception {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         RaftSemaphoreService service = getService();
         boolean acquired = service.acquirePermits(groupId, commitIndex, name, sessionId, permits, timeoutMs);
         if (!acquired && timeoutMs != 0) {
             return PostponedResponse.INSTANCE;
         }
         return acquired;
+    }
+
+    @Override
+    public int getId() {
+        return RaftSemaphoreDataSerializerHook.ACQUIRE_PERMITS_OP;
     }
 
     @Override

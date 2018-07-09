@@ -16,15 +16,22 @@
 
 package com.hazelcast.raft.service.semaphore;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.blocking.BlockingResource;
 import com.hazelcast.util.collection.Long2LongHashMap;
 import com.hazelcast.util.collection.Long2ObjectHashMap;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
 import static com.hazelcast.util.Preconditions.checkPositive;
@@ -32,13 +39,16 @@ import static com.hazelcast.util.Preconditions.checkPositive;
 /**
  * TODO: Javadoc Pending...
  */
-public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> {
+public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> implements IdentifiedDataSerializable {
 
     private static final int MISSING_VALUE = NO_SESSION_ID;
 
     private boolean initialized;
     private int available;
     private final Long2LongHashMap acquires = new Long2LongHashMap(MISSING_VALUE);
+
+    public RaftSemaphore() {
+    }
 
     protected RaftSemaphore(RaftGroupId groupId, String name) {
         super(groupId, name);
@@ -53,15 +63,16 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> {
                 result.put(key.commitIndex(), Boolean.TRUE);
             }
         }
-
     }
 
     boolean init(int permits) {
         if (initialized || available != 0) {
             return false;
         }
+
         available = permits;
         initialized = true;
+
         return true;
     }
 
@@ -77,12 +88,13 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> {
     boolean acquire(long commitIndex, String name, long sessionId, int permits, boolean wait) {
         if (!isAvailable(permits)) {
             if (wait) {
-                waitKeys.add(new SemaphoreInvocationKey(commitIndex, name, sessionId, permits));
+                waitKeys.add(new SemaphoreInvocationKey(name, commitIndex, sessionId, permits));
             }
             return false;
         }
 
         doAcquire(sessionId, permits);
+
         return true;
     }
 
@@ -91,6 +103,7 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> {
         if (acquired == MISSING_VALUE) {
             acquired = 0;
         }
+
         return acquired;
     }
 
@@ -125,6 +138,10 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> {
             }
         }
 
+        return assingPermitsToWaitKeys();
+    }
+
+    private Collection<SemaphoreInvocationKey> assingPermitsToWaitKeys() {
         List<SemaphoreInvocationKey> keys = new ArrayList<SemaphoreInvocationKey>();
         Iterator<SemaphoreInvocationKey> iterator = waitKeys.iterator();
         while (iterator.hasNext()) {
@@ -133,10 +150,11 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> {
                 break;
             }
 
-            keys.add(key);
             iterator.remove();
+            keys.add(key);
             doAcquire(key.sessionId(), key.permits());
         }
+
         return keys;
     }
 
@@ -146,17 +164,59 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> {
             doAcquire(sessionId, drained);
         }
         available = 0;
+
         return drained;
     }
 
-    boolean change(int permits) {
+    Tuple2<Boolean, Collection<SemaphoreInvocationKey>> change(int permits) {
         if (permits == 0) {
-            return false;
+            Collection<SemaphoreInvocationKey> c = Collections.emptyList();
+            return Tuple2.of(false, c);
         }
 
         available += permits;
         initialized = true;
-        return true;
+
+        Collection<SemaphoreInvocationKey> keys =
+                permits > 0 ? assingPermitsToWaitKeys() : Collections.<SemaphoreInvocationKey>emptyList();
+
+        return Tuple2.of(true, keys);
     }
 
+    @Override
+    public int getFactoryId() {
+        return RaftSemaphoreDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftSemaphoreDataSerializerHook.RAFT_SEMAPHORE;
+    }
+
+    @Override
+    public void writeData(ObjectDataOutput out)
+            throws IOException {
+        super.writeData(out);
+        out.writeBoolean(initialized);
+        out.writeInt(available);
+        out.writeInt(acquires.size());
+        for (Map.Entry<Long, Long> e : acquires.entrySet()) {
+            out.writeLong(e.getKey());
+            out.writeLong(e.getValue());
+        }
+    }
+
+    @Override
+    public void readData(ObjectDataInput in)
+            throws IOException {
+        super.readData(in);
+        initialized = in.readBoolean();
+        available = in.readInt();
+        int count = in.readInt();
+        for (int i = 0; i < count; i++) {
+            long key = in.readLong();
+            long value = in.readLong();
+            acquires.put(key, value);
+        }
+    }
 }

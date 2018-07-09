@@ -16,12 +16,16 @@
 
 package com.hazelcast.raft.service.blocking;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.DataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 import com.hazelcast.util.Clock;
 import com.hazelcast.util.collection.Long2ObjectHashMap;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -33,43 +37,47 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.hazelcast.util.Preconditions.checkNotNull;
+import static java.util.Collections.unmodifiableMap;
 
 /**
  * TODO: Javadoc Pending...
  */
-public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingResource<W>> {
+public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingResource<W>> implements DataSerializable {
 
-    protected final RaftGroupId groupId;
-    protected final Map<String, R> resources = new HashMap<String, R>();
-    protected final Set<String> destroyedNames = new HashSet<String>();
-    // value.element1: timeout duration, value.element2: deadline (transient)
-    protected final Map<W, Tuple2<Long, Long>> waitTimeouts
-            = new ConcurrentHashMap<W, Tuple2<Long, Long>>();
+    private RaftGroupId groupId;
+    private final Map<String, R> resources = new HashMap<String, R>();
+    private final Set<String> destroyedNames = new HashSet<String>();
+    // value.element1: timeout duration, value.element2: deadline timestamp (transient)
+    private final Map<W, Tuple2<Long, Long>> waitTimeouts = new ConcurrentHashMap<W, Tuple2<Long, Long>>();
+
+    public ResourceRegistry() {
+    }
 
     protected ResourceRegistry(RaftGroupId groupId) {
         this.groupId = groupId;
     }
 
-    public RaftGroupId groupId() {
+    public final RaftGroupId getGroupId() {
         return groupId;
     }
 
-    protected R getOrInitResource(String name) {
+    protected final R getResourceOrNull(String name) {
+        checkNotDestroyed(name);
+        return resources.get(name);
+    }
+
+    protected final R getOrInitResource(String name) {
         checkNotDestroyed(name);
         R resource = resources.get(name);
         if (resource == null) {
             resource = createNewResource(groupId, name);
             resources.put(name, resource);
         }
+
         return resource;
     }
 
     protected abstract R createNewResource(RaftGroupId groupId, String name);
-
-    protected R getResourceOrNull(String name) {
-        checkNotDestroyed(name);
-        return resources.get(name);
-    }
 
     private void checkNotDestroyed(String name) {
         checkNotNull(name);
@@ -78,29 +86,26 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
         }
     }
 
-    protected void scheduleWaitTimeout(W key, long timeoutMs) {
+    protected final void addWaitKey(W key, long timeoutMs) {
         waitTimeouts.put(key, Tuple2.of(timeoutMs, Clock.currentTimeMillis() + timeoutMs));
     }
 
-    public Map<Long, Object> invalidateSession(long sessionId) {
-        Long2ObjectHashMap<Object> result = new Long2ObjectHashMap<Object>();
-        for (R resource : resources.values()) {
-            result.putAll(resource.invalidateSession(sessionId));
-        }
-        return result;
-    }
+    protected final boolean invalidateWaitKey(W key) {
+        removeWaitKey(key);
 
-    public boolean invalidateWaitKey(W key) {
         BlockingResource<W> resource = getResourceOrNull(key.name());
         if (resource == null) {
             return false;
         }
 
-        waitTimeouts.remove(key);
         return resource.invalidateWaitKey(key);
     }
 
-    public Collection<W> getExpiredWaitKeys(long now) {
+    protected final void removeWaitKey(W key) {
+        waitTimeouts.remove(key);
+    }
+
+    final Collection<W> getExpiredWaitKeys(long now) {
         List<W> expired = new ArrayList<W>();
         for (Entry<W, Tuple2<Long, Long>> e : waitTimeouts.entrySet()) {
             long deadline = e.getValue().element2;
@@ -112,12 +117,35 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
         return expired;
     }
 
-    // queried locally in tests
-    public Map<W, Tuple2<Long, Long>> getWaitTimeouts() {
-        return waitTimeouts;
+    final Map<W, Long> restoreWaitTimeouts(Collection<W> excludedKeys) {
+        Map<W, Long> newKeys = new HashMap<W, Long>();
+        for (Entry<W, Tuple2<Long, Long>> e : waitTimeouts.entrySet()) {
+            W key = e.getKey();
+            if (!excludedKeys.contains(key)) {
+                Long timeout = e.getValue().element1;
+                addWaitKey(key, timeout);
+                newKeys.put(key, timeout);
+            }
+        }
+
+        return newKeys;
     }
 
-    public Collection<Long> destroyResource(String name) {
+    final Map<Long, Object> invalidateSession(long sessionId) {
+        Long2ObjectHashMap<Object> result = new Long2ObjectHashMap<Object>();
+        for (R resource : resources.values()) {
+            result.putAll(resource.invalidateSession(sessionId));
+        }
+
+        return result;
+    }
+
+    // queried locally in tests
+    public final Map<W, Tuple2<Long, Long>> getWaitTimeouts() {
+        return unmodifiableMap(waitTimeouts);
+    }
+
+    public final Collection<Long> destroyResource(String name) {
         destroyedNames.add(name);
         BlockingResource<W> resource = resources.remove(name);
         if (resource == null) {
@@ -130,10 +158,11 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
             indices.add(key.commitIndex());
             waitTimeouts.remove(key);
         }
+
         return indices;
     }
 
-    public Collection<Long> destroy() {
+    public final Collection<Long> destroy() {
         destroyedNames.addAll(resources.keySet());
         Collection<Long> indices = new ArrayList<Long>();
         for (BlockingResource<W> raftLock : resources.values()) {
@@ -141,8 +170,53 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
                 indices.add(key.commitIndex());
             }
         }
+
         resources.clear();
         waitTimeouts.clear();
+
         return indices;
+    }
+
+    @Override
+    public void writeData(ObjectDataOutput out) throws IOException {
+        out.writeObject(groupId);
+        out.writeInt(resources.size());
+        for (Entry<String, R> e : resources.entrySet()) {
+            out.writeUTF(e.getKey());
+            out.writeObject(e.getValue());
+        }
+        out.writeInt(destroyedNames.size());
+        for (String name : destroyedNames) {
+            out.writeUTF(name);
+        }
+        out.writeInt(waitTimeouts.size());
+        for (Entry<W, Tuple2<Long, Long>> e : waitTimeouts.entrySet()) {
+            out.writeObject(e.getKey());
+            out.writeLong(e.getValue().element1);
+            out.writeLong(e.getValue().element2);
+        }
+    }
+
+    @Override
+    public void readData(ObjectDataInput in) throws IOException {
+        groupId = in.readObject();
+        int count = in.readInt();
+        for (int i = 0; i < count; i++) {
+            String name = in.readUTF();
+            R res = in.readObject();
+            resources.put(name, res);
+        }
+        count = in.readInt();
+        for (int i = 0; i < count; i++) {
+            String name = in.readUTF();
+            destroyedNames.add(name);
+        }
+        count = in.readInt();
+        for (int i = 0; i < count; i++) {
+            W key = in.readObject();
+            long l1 = in.readLong();
+            long l2 = in.readLong();
+            waitTimeouts.put(key, Tuple2.of(l1, l2));
+        }
     }
 }

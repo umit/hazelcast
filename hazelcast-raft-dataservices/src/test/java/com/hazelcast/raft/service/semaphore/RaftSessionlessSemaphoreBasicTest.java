@@ -21,21 +21,23 @@ import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.config.raft.RaftSemaphoreConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
+import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
+import com.hazelcast.raft.service.semaphore.proxy.RaftSessionlessSemaphoreProxy;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import com.hazelcast.util.RandomPicker;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.raft.service.spi.RaftProxyFactory.create;
 import static org.junit.Assert.assertEquals;
@@ -48,13 +50,9 @@ import static org.junit.Assert.fail;
 @Category({QuickTest.class, ParallelTest.class})
 public class RaftSessionlessSemaphoreBasicTest extends HazelcastRaftTestSupport {
 
-    @Rule
-    public ExpectedException exception = ExpectedException.none();
-
     private HazelcastInstance[] instances;
     private ISemaphore semaphore;
     private String name = "semaphore";
-    private String groupName = "semaphore";
     private int groupSize = 3;
     private HazelcastInstance semaphoreInstance;
 
@@ -70,7 +68,7 @@ public class RaftSessionlessSemaphoreBasicTest extends HazelcastRaftTestSupport 
         return newInstances(groupSize);
     }
 
-    protected ISemaphore createSemaphore(String name) {
+    private ISemaphore createSemaphore(String name) {
         semaphoreInstance = instances[RandomPicker.getInt(instances.length)];
         return create(semaphoreInstance, RaftSemaphoreService.SERVICE_NAME, name);
     }
@@ -208,7 +206,7 @@ public class RaftSessionlessSemaphoreBasicTest extends HazelcastRaftTestSupport 
     }
 
     @Test
-    public void testRelease_whenBlockedAcquireThread() throws InterruptedException {
+    public void testRelease_whenBlockedAcquireThread() {
         semaphore.init(0);
 
         new Thread() {
@@ -388,7 +386,7 @@ public class RaftSessionlessSemaphoreBasicTest extends HazelcastRaftTestSupport 
         assertTrue(semaphore.init(numberOfPermits));
         for (int i = 0; i < numberOfPermits; i++) {
             assertEquals(numberOfPermits - i, semaphore.availablePermits());
-            assertEquals(semaphore.tryAcquire(), true);
+            assertTrue(semaphore.tryAcquire());
         }
         assertFalse(semaphore.tryAcquire());
         assertEquals(semaphore.availablePermits(), 0);
@@ -401,7 +399,7 @@ public class RaftSessionlessSemaphoreBasicTest extends HazelcastRaftTestSupport 
         assertTrue(semaphore.init(numberOfPermits));
         for (int i = 0; i < numberOfPermits; i += 5) {
             assertEquals(numberOfPermits - i, semaphore.availablePermits());
-            assertEquals(semaphore.tryAcquire(5), true);
+            assertTrue(semaphore.tryAcquire(5));
         }
 
         assertEquals(semaphore.availablePermits(), 0);
@@ -449,12 +447,49 @@ public class RaftSessionlessSemaphoreBasicTest extends HazelcastRaftTestSupport 
         assertEquals(2, semaphore.availablePermits());
     }
 
+    @Test
+    public void testIncreasePermits_notifiesPendingAcquires() {
+        semaphore.init(1);
+
+        final CountDownLatch latch = new CountDownLatch(1);
+        spawn(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    semaphore.tryAcquire(2, 10, TimeUnit.MINUTES);
+                    latch.countDown();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                RaftGroupId groupId = getGroupId(semaphore);
+                HazelcastInstance leader = getLeaderInstance(instances, groupId);
+                RaftSemaphoreService service = getNodeEngineImpl(leader).getService(RaftSemaphoreService.SERVICE_NAME);
+                SemaphoreRegistry registry = service.getRegistryOrNull(groupId);
+                assertFalse(registry.getWaitTimeouts().isEmpty());
+            }
+        });
+
+        semaphore.increasePermits(1);
+
+        assertOpenEventually(latch);
+    }
+
+    private RaftGroupId getGroupId(ISemaphore semaphore) {
+        return ((RaftSessionlessSemaphoreProxy) semaphore).getGroupId();
+    }
+
     @Override
     protected Config createConfig(int groupSize, int metadataGroupSize) {
         Config config = super.createConfig(groupSize, metadataGroupSize);
-        config.getRaftConfig().addGroupConfig(new RaftGroupConfig(groupName, groupSize));
+        config.getRaftConfig().addGroupConfig(new RaftGroupConfig(name, groupSize));
 
-        RaftSemaphoreConfig semaphoreConfig = new RaftSemaphoreConfig(name, groupName, false);
+        RaftSemaphoreConfig semaphoreConfig = new RaftSemaphoreConfig(name, name, false);
         config.addRaftSemaphoreConfig(semaphoreConfig);
         return config;
     }

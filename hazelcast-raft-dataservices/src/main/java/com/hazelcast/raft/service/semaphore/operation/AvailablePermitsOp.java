@@ -18,17 +18,18 @@ package com.hazelcast.raft.service.semaphore.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
+import com.hazelcast.raft.service.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 
 import java.io.IOException;
 
 /**
  * TODO: Javadoc Pending...
- *
  */
-public class AvailablePermitsOp extends RaftOp {
+public class AvailablePermitsOp extends RaftOp implements IdentifiedDataSerializable {
 
     private String name;
 
@@ -40,7 +41,7 @@ public class AvailablePermitsOp extends RaftOp {
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) throws Exception {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         RaftSemaphoreService service = getService();
         return service.availablePermits(groupId, name);
     }
@@ -48,6 +49,16 @@ public class AvailablePermitsOp extends RaftOp {
     @Override
     protected String getServiceName() {
         return RaftSemaphoreService.SERVICE_NAME;
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftSemaphoreDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftSemaphoreDataSerializerHook.AVAILABLE_PERMITS_OP;
     }
 
     @Override
