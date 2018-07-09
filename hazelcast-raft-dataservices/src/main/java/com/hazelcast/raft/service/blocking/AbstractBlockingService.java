@@ -18,6 +18,7 @@ package com.hazelcast.raft.service.blocking;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftGroupLifecycleAwareService;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftNodeImpl;
@@ -25,7 +26,9 @@ import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.session.SessionAccessor;
 import com.hazelcast.raft.impl.session.SessionAwareService;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
+import com.hazelcast.raft.service.blocking.operation.InvalidateWaitKeysOp;
 import com.hazelcast.raft.service.session.AbstractSessionManager;
+import com.hazelcast.raft.service.spi.RaftRemoteService;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
@@ -51,7 +54,8 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * TODO: Javadoc Pending...
  */
 public abstract class AbstractBlockingService<W extends WaitKey, R extends BlockingResource<W>, RR extends ResourceRegistry<W, R>>
-        implements ManagedService, RaftGroupLifecycleAwareService, SessionAwareService {
+        implements ManagedService, RaftGroupLifecycleAwareService, RaftRemoteService, SessionAwareService,
+                   SnapshotAwareService<RR> {
 
     public static final long WAIT_TIMEOUT_TASK_UPPER_BOUND_MILLIS = 1500;
     private static final long WAIT_TIMEOUT_TASK_PERIOD_MILLIS = 500;
@@ -93,11 +97,32 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
     protected void shutdownImpl(boolean terminate) {
     }
 
-    protected abstract RR createNewRegistry(RaftGroupId groupId);
+    @Override
+    public boolean destroyRaftObject(RaftGroupId groupId, String name) {
+        Collection<Long> indices = getOrInitRegistry(groupId).destroyResource(name);
+        if (indices == null) {
+            return false;
+        }
 
-    protected abstract Object invalidatedResult();
+        completeFutures(groupId, indices, new DistributedObjectDestroyedException(name + " is destroyed"));
+        return true;
+    }
 
-    protected abstract String serviceName();
+    @Override
+    public final RR takeSnapshot(RaftGroupId groupId, long commitIndex) {
+        return getRegistryOrNull(groupId);
+    }
+
+    @Override
+    public final void restoreSnapshot(RaftGroupId groupId, long commitIndex, RR registry) {
+        RR prev = registries.put(registry.getGroupId(), registry);
+        Collection<W> existingKeys =
+                prev != null ? prev.getWaitTimeouts().keySet() : Collections.<W>emptySet();
+        Map<W, Long> newWaitKeys = registry.restoreWaitTimeouts(existingKeys);
+        for (Entry<W, Long> e : newWaitKeys.entrySet()) {
+            scheduleTimeout(groupId, e.getKey(), e.getValue());
+        }
+    }
 
     @Override
     public void setSessionAccessor(SessionAccessor accessor) {
@@ -105,7 +130,7 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
     }
 
     @Override
-    public void onSessionInvalidated(RaftGroupId groupId, long sessionId) {
+    public final void onSessionInvalidated(RaftGroupId groupId, long sessionId) {
         ResourceRegistry<W, R> registry = registries.get(groupId);
         if (registry == null) {
             logger.warning("Resource registry of " + groupId + " not found to handle invalidated Session[" + sessionId + "]");
@@ -120,7 +145,7 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
     }
 
     @Override
-    public void onGroupDestroy(final RaftGroupId groupId) {
+    public final void onGroupDestroy(final RaftGroupId groupId) {
         ResourceRegistry<W, R> registry = registries.get(groupId);
         if (registry != null) {
             Collection<Long> indices = registry.destroy();
@@ -128,55 +153,7 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
         }
     }
 
-    protected RR getOrInitResourceRegistry(RaftGroupId groupId) {
-        checkNotNull(groupId);
-        RR registry = registries.get(groupId);
-        if (registry == null) {
-            registry = createNewRegistry(groupId);
-            registries.put(groupId, registry);
-        }
-        return registry;
-    }
-
-    public RR getResourceRegistryOrNull(RaftGroupId groupId) {
-        return registries.get(groupId);
-    }
-
-    protected void scheduleWaitTimeout(RaftGroupId groupId, W waitEntry, long timeoutMs) {
-        if (timeoutMs > 0 && timeoutMs <= WAIT_TIMEOUT_TASK_UPPER_BOUND_MILLIS) {
-            Runnable task = new InvalidateExpiredWaitKeysTask(groupId, waitEntry);
-            ExecutionService executionService = nodeEngine.getExecutionService();
-            executionService.schedule(task, timeoutMs, MILLISECONDS);
-        }
-    }
-
-    protected void heartbeatSession(RaftGroupId groupId, long sessionId) {
-        if (sessionId == AbstractSessionManager.NO_SESSION_ID) {
-            return;
-        }
-
-        if (sessionAccessor.isValid(groupId, sessionId)) {
-            sessionAccessor.heartbeat(groupId, sessionId);
-            return;
-        }
-
-        throw new SessionExpiredException();
-    }
-
-    protected void notifyWaitKeys(RaftGroupId groupId, Collection<W> keys, Object result) {
-        if (keys.isEmpty()) {
-            return;
-        }
-
-        List<Long> indices = new ArrayList<Long>(keys.size());
-        for (W entry : keys) {
-            indices.add(entry.commitIndex());
-        }
-
-        completeFutures(groupId, indices, result);
-    }
-
-    protected void invalidateWaitKeys(RaftGroupId groupId, Collection<W> keys) {
+    public final void invalidateWaitKeys(RaftGroupId groupId, Collection<W> keys) {
         // no need to validate the session. if the session is invalid, the corresponding wait key is gone already
         ResourceRegistry<W, R> registry = registries.get(groupId);
         if (registry == null) {
@@ -194,10 +171,58 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
             }
         }
 
-        completeFutures(groupId, invalidated, invalidatedResult());
+        completeFutures(groupId, invalidated, invalidatedWaitKeyResponse());
     }
 
-    protected void completeFutures(RaftGroupId groupId, Collection<Long> indices, Object result) {
+    public final RR getRegistryOrNull(RaftGroupId groupId) {
+        return registries.get(groupId);
+    }
+
+    protected final RR getOrInitRegistry(RaftGroupId groupId) {
+        checkNotNull(groupId);
+        RR registry = registries.get(groupId);
+        if (registry == null) {
+            registry = createNewRegistry(groupId);
+            registries.put(groupId, registry);
+        }
+        return registry;
+    }
+
+    protected final void scheduleTimeout(RaftGroupId groupId, W waitEntry, long timeoutMs) {
+        if (timeoutMs > 0 && timeoutMs <= WAIT_TIMEOUT_TASK_UPPER_BOUND_MILLIS) {
+            Runnable task = new InvalidateExpiredWaitKeysTask(groupId, waitEntry);
+            ExecutionService executionService = nodeEngine.getExecutionService();
+            executionService.schedule(task, timeoutMs, MILLISECONDS);
+        }
+    }
+
+    protected final void heartbeatSession(RaftGroupId groupId, long sessionId) {
+        if (sessionId == AbstractSessionManager.NO_SESSION_ID) {
+            return;
+        }
+
+        if (sessionAccessor.isValid(groupId, sessionId)) {
+            sessionAccessor.heartbeat(groupId, sessionId);
+            return;
+        }
+
+        throw new SessionExpiredException();
+    }
+
+    protected final void notifyWaitKeys(RaftGroupId groupId, Collection<W> keys, Object result) {
+        if (keys.isEmpty()) {
+            return;
+        }
+
+        List<Long> indices = new ArrayList<Long>(keys.size());
+        for (W entry : keys) {
+            indices.add(entry.commitIndex());
+        }
+
+        completeFutures(groupId, indices, result);
+    }
+
+    protected final void completeFutures(RaftGroupId groupId, Collection<Long> indices, Object result) {
         if (!indices.isEmpty()) {
             RaftNodeImpl raftNode = (RaftNodeImpl) raftService.getRaftNode(groupId);
             for (Long index : indices) {
@@ -206,17 +231,24 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
         }
     }
 
-    // queried locally
-    private Map<RaftGroupId, Collection<W>> getExpiredWaitKeys() {
-        Map<RaftGroupId, Collection<W>> timeouts = new HashMap<RaftGroupId, Collection<W>>();
-        long now = Clock.currentTimeMillis();
-        for (ResourceRegistry<W, R> registry : registries.values()) {
-            Collection<W> t = registry.getExpiredWaitKeys(now);
-            if (t.size() > 0) {
-                timeouts.put(registry.groupId(), t);
+    protected abstract RR createNewRegistry(RaftGroupId groupId);
+
+    protected abstract Object invalidatedWaitKeyResponse();
+
+    protected abstract String serviceName();
+
+    private void invokeInvalidateWaitKeysOp(RaftGroupId groupId, Collection<W> keys) {
+        try {
+            RaftNode raftNode = raftService.getRaftNode(groupId);
+            if (raftNode != null) {
+                Future f = raftNode.replicate(new InvalidateWaitKeysOp<W>(serviceName(), keys));
+                f.get();
+            }
+        } catch (Exception e) {
+            if (logger.isFineEnabled()) {
+                logger.fine("Could not invalidate wait entries: " + keys + " in " + groupId, e);
             }
         }
-        return timeouts;
     }
 
     private class InvalidateExpiredWaitKeysTask implements Runnable {
@@ -228,24 +260,9 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
             this.keys = Collections.singleton(key);
         }
 
-        InvalidateExpiredWaitKeysTask(RaftGroupId groupId, Collection<W> keys) {
-            this.groupId = groupId;
-            this.keys = keys;
-        }
-
         @Override
         public void run() {
-            try {
-                RaftNode raftNode = raftService.getRaftNode(groupId);
-                if (raftNode != null) {
-                    Future f = raftNode.replicate(new InvalidateWaitKeysOp<W>(serviceName(), keys));
-                    f.get();
-                }
-            } catch (Exception e) {
-                if (logger.isFineEnabled()) {
-                    logger.fine("Could not invalidate wait entries: " + keys + " in " + groupId, e);
-                }
-            }
+            invokeInvalidateWaitKeysOp(groupId, keys);
         }
     }
 
@@ -253,8 +270,23 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
         @Override
         public void run() {
             for (Entry<RaftGroupId, Collection<W>> e : getExpiredWaitKeys().entrySet()) {
-                new InvalidateExpiredWaitKeysTask(e.getKey(), e.getValue()).run();
+                invokeInvalidateWaitKeysOp(e.getKey(), e.getValue());
             }
         }
+
+        // queried locally
+        private Map<RaftGroupId, Collection<W>> getExpiredWaitKeys() {
+            Map<RaftGroupId, Collection<W>> timeouts = new HashMap<RaftGroupId, Collection<W>>();
+            long now = Clock.currentTimeMillis();
+            for (ResourceRegistry<W, R> registry : registries.values()) {
+                Collection<W> t = registry.getExpiredWaitKeys(now);
+                if (t.size() > 0) {
+                    timeouts.put(registry.getGroupId(), t);
+                }
+            }
+
+            return timeouts;
+        }
+
     }
 }

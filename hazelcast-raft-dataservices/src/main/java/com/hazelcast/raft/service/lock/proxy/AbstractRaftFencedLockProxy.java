@@ -4,6 +4,7 @@ import com.hazelcast.core.OperationTimeoutException;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.raft.service.lock.FencedLock;
+import com.hazelcast.raft.service.lock.RaftLockService;
 import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.session.SessionAwareProxy;
 import com.hazelcast.spi.InternalCompletableFuture;
@@ -234,6 +235,16 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
     @Override
     public final String getName() {
         return name;
+    }
+
+    @Override
+    public String getPartitionKey() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public String getServiceName() {
+        return RaftLockService.SERVICE_NAME;
     }
 
     protected abstract InternalCompletableFuture<Long> doLock(RaftGroupId groupId, String name, long sessionId, long threadId,

@@ -16,11 +16,16 @@
 
 package com.hazelcast.raft.service.countdownlatch;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.blocking.BlockingResource;
 import com.hazelcast.util.collection.Long2ObjectHashMap;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -33,22 +38,17 @@ import static java.lang.Math.max;
 /**
  * TODO: Javadoc Pending...
  */
-public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocationKey> {
+public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocationKey> implements IdentifiedDataSerializable {
 
     private int round;
     private int countDownFrom;
     private final Set<UUID> countDownUids = new HashSet<UUID>();
 
-    RaftCountDownLatch(RaftGroupId groupId, String name) {
-        super(groupId, name);
+    public RaftCountDownLatch() {
     }
 
-    RaftCountDownLatch(RaftCountDownLatchSnapshot snapshot) {
-        super(snapshot.getGroupId(), snapshot.getName());
-        this.waitKeys.addAll(snapshot.getWaitKeys());
-        this.round = snapshot.getRound();
-        this.countDownFrom = snapshot.getCountDownFrom();
-        this.countDownUids.addAll(snapshot.getCountDownUids());
+    RaftCountDownLatch(RaftGroupId groupId, String name) {
+        super(groupId, name);
     }
 
     @Override
@@ -72,7 +72,10 @@ public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocatio
             return Tuple2.of(remaining, c);
         }
 
-        return Tuple2.of(0, getWaitKeys());
+        Collection<CountDownLatchInvocationKey> w = new ArrayList<CountDownLatchInvocationKey>(waitKeys);
+        waitKeys.clear();
+
+        return Tuple2.of(0, w);
     }
 
     boolean trySetCount(int count) {
@@ -82,16 +85,17 @@ public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocatio
 
         checkTrue(count > 0, "cannot set non-positive count: " + count);
 
-        this.countDownFrom = count;
+        countDownFrom = count;
         round++;
         countDownUids.clear();
+
         return true;
     }
 
     boolean await(long commitIndex, boolean wait) {
         boolean success = (getRemainingCount() == 0);
         if (!success && wait) {
-            waitKeys.add(new CountDownLatchInvocationKey(name, commitIndex));
+            waitKeys.add(new CountDownLatchInvocationKey(getName(), commitIndex));
         }
 
         return success;
@@ -105,8 +109,43 @@ public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocatio
         return max(0, countDownFrom - countDownUids.size());
     }
 
-    RaftCountDownLatchSnapshot toSnapshot() {
-        return new RaftCountDownLatchSnapshot(groupId, name, waitKeys, round, countDownFrom, countDownUids);
+    @Override
+    public int getFactoryId() {
+        return RaftCountDownLatchDataSerializerHook.F_ID;
     }
 
+    @Override
+    public int getId() {
+        return RaftCountDownLatchDataSerializerHook.COUNT_DOWN_LATCH;
+    }
+
+    @Override
+    public void writeData(ObjectDataOutput out)
+            throws IOException {
+        super.writeData(out);
+
+        out.writeInt(round);
+        out.writeInt(countDownFrom);
+        out.writeInt(countDownUids.size());
+        for (UUID uid : countDownUids) {
+            out.writeLong(uid.getLeastSignificantBits());
+            out.writeLong(uid.getMostSignificantBits());
+        }
+    }
+
+    @Override
+    public void readData(ObjectDataInput in)
+            throws IOException {
+        super.readData(in);
+
+        round = in.readInt();
+        countDownFrom = in.readInt();
+        int count = in.readInt();
+        for (int i = 0; i < count; i++) {
+            long least = in.readLong();
+            long most = in.readLong();
+            UUID uid = new UUID(most, least);
+            countDownUids.add(uid);
+        }
+    }
 }

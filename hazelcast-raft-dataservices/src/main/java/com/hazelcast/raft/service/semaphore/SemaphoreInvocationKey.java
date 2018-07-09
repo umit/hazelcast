@@ -16,21 +16,29 @@
 
 package com.hazelcast.raft.service.semaphore;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.service.blocking.WaitKey;
+
+import java.io.IOException;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class SemaphoreInvocationKey implements WaitKey {
+public class SemaphoreInvocationKey implements WaitKey, IdentifiedDataSerializable {
 
-    private final long commitIndex;
-    private final String name;
-    private final long sessionId;
-    private final int permits;
+    private String name;
+    private long commitIndex;
+    private long sessionId;
+    private int permits;
 
-    public SemaphoreInvocationKey(long commitIndex, String name, long sessionId, int permits) {
-        this.commitIndex = commitIndex;
+    public SemaphoreInvocationKey() {
+    }
+
+    public SemaphoreInvocationKey(String name, long commitIndex, long sessionId, int permits) {
         this.name = name;
+        this.commitIndex = commitIndex;
         this.sessionId = sessionId;
         this.permits = permits;
     }
@@ -41,13 +49,13 @@ public class SemaphoreInvocationKey implements WaitKey {
     }
 
     @Override
-    public long sessionId() {
-        return sessionId;
+    public long commitIndex() {
+        return commitIndex;
     }
 
     @Override
-    public long commitIndex() {
-        return commitIndex;
+    public long sessionId() {
+        return sessionId;
     }
 
     public int permits() {
@@ -55,11 +63,39 @@ public class SemaphoreInvocationKey implements WaitKey {
     }
 
     @Override
+    public int getFactoryId() {
+        return RaftSemaphoreDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftSemaphoreDataSerializerHook.SEMAPHORE_INVOCATION_KEY;
+    }
+
+    @Override
+    public void writeData(ObjectDataOutput out)
+            throws IOException {
+        out.writeUTF(name);
+        out.writeLong(commitIndex);
+        out.writeLong(sessionId);
+        out.writeInt(permits);
+    }
+
+    @Override
+    public void readData(ObjectDataInput in)
+            throws IOException {
+        name = in.readUTF();
+        commitIndex = in.readLong();
+        sessionId = in.readLong();
+        permits = in.readInt();
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof SemaphoreInvocationKey)) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
 
@@ -79,8 +115,8 @@ public class SemaphoreInvocationKey implements WaitKey {
 
     @Override
     public int hashCode() {
-        int result = (int) (commitIndex ^ (commitIndex >>> 32));
-        result = 31 * result + name.hashCode();
+        int result = name.hashCode();
+        result = 31 * result + (int) (commitIndex ^ (commitIndex >>> 32));
         result = 31 * result + (int) (sessionId ^ (sessionId >>> 32));
         result = 31 * result + permits;
         return result;

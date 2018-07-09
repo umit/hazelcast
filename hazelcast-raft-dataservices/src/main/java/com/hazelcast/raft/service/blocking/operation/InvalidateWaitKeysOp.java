@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.hazelcast.raft.service.blocking;
+package com.hazelcast.raft.service.blocking.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
@@ -22,6 +22,10 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.service.RaftDataServiceDataSerializerHook;
+import com.hazelcast.raft.service.blocking.AbstractBlockingService;
+import com.hazelcast.raft.service.blocking.BlockingResource;
+import com.hazelcast.raft.service.blocking.ResourceRegistry;
+import com.hazelcast.raft.service.blocking.WaitKey;
 
 import java.io.IOException;
 import java.util.ArrayList;

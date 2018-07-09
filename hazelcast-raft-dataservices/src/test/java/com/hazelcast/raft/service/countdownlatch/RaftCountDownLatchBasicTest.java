@@ -12,10 +12,8 @@ import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import com.hazelcast.util.RandomPicker;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 
 import java.util.concurrent.CountDownLatch;
@@ -31,14 +29,9 @@ import static org.junit.Assert.assertTrue;
 @Category({QuickTest.class, ParallelTest.class})
 public class RaftCountDownLatchBasicTest extends HazelcastRaftTestSupport {
 
-    @Rule
-    public ExpectedException exception = ExpectedException.none();
-
     private HazelcastInstance[] instances;
-    private HazelcastInstance lockInstance;
     private ICountDownLatch latch;
     private String name = "latch";
-    private String groupName = "latch";
     private int groupSize = 3;
 
     @Before
@@ -54,8 +47,7 @@ public class RaftCountDownLatchBasicTest extends HazelcastRaftTestSupport {
     }
 
     protected ICountDownLatch createLatch(String name) {
-        lockInstance = instances[RandomPicker.getInt(instances.length)];
-        return create(lockInstance, RaftCountDownLatchService.SERVICE_NAME, name);
+        return create(instances[RandomPicker.getInt(instances.length)], RaftCountDownLatchService.SERVICE_NAME, name);
     }
 
 
@@ -176,9 +168,9 @@ public class RaftCountDownLatchBasicTest extends HazelcastRaftTestSupport {
     @Override
     protected Config createConfig(int groupSize, int metadataGroupSize) {
         Config config = super.createConfig(groupSize, metadataGroupSize);
-        config.getRaftConfig().addGroupConfig(new RaftGroupConfig(groupName, groupSize));
+        config.getRaftConfig().addGroupConfig(new RaftGroupConfig(name, groupSize));
 
-        RaftCountDownLatchConfig latchConfig = new RaftCountDownLatchConfig(name, groupName);
+        RaftCountDownLatchConfig latchConfig = new RaftCountDownLatchConfig(name, name);
         config.addRaftCountDownLatchConfig(latchConfig);
         return config;
     }

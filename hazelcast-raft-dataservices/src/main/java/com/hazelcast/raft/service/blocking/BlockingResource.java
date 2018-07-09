@@ -16,32 +16,64 @@
 
 package com.hazelcast.raft.service.blocking;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.DataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.util.collection.Long2ObjectHashMap;
 
-import java.util.Collection;
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
-import static java.util.Collections.unmodifiableCollection;
+import static java.util.Collections.unmodifiableList;
 
 /**
  * TODO: Javadoc Pending...
  */
-public abstract class BlockingResource<W extends WaitKey> {
+public abstract class BlockingResource<W extends WaitKey> implements DataSerializable {
 
-    protected final RaftGroupId groupId;
-    protected final String name;
-    protected final LinkedList<W> waitKeys = new LinkedList<W>();
+    private RaftGroupId groupId;
+    private String name;
+    protected LinkedList<W> waitKeys = new LinkedList<W>();
+
+    public BlockingResource() {
+    }
 
     protected BlockingResource(RaftGroupId groupId, String name) {
         this.groupId = groupId;
         this.name = name;
     }
 
-    protected Map<Long, Object> invalidateSession(long sessionId) {
+    public final RaftGroupId getGroupId() {
+        return groupId;
+    }
+
+    public final String getName() {
+        return name;
+    }
+
+    public List<W> getWaitKeys() {
+        return unmodifiableList(waitKeys);
+    }
+
+    final boolean invalidateWaitKey(W key) {
+        Iterator<W> iter = waitKeys.iterator();
+        while (iter.hasNext()) {
+            W k = iter.next();
+            if (k.equals(key)) {
+                iter.remove();
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    final Map<Long, Object> invalidateSession(long sessionId) {
         Object expired = new SessionExpiredException();
         Long2ObjectHashMap<Object> result = new Long2ObjectHashMap<Object>();
 
@@ -61,20 +93,25 @@ public abstract class BlockingResource<W extends WaitKey> {
 
     protected abstract void onInvalidateSession(long sessionId, Long2ObjectHashMap<Object> result);
 
-    protected boolean invalidateWaitKey(W key) {
-        Iterator<W> iter = waitKeys.iterator();
-        while (iter.hasNext()) {
-            W waiter = iter.next();
-            if (waiter.equals(key)) {
-                iter.remove();
-                return true;
-            }
+    @Override
+    public void writeData(ObjectDataOutput out)
+            throws IOException {
+        out.writeObject(groupId);
+        out.writeUTF(name);
+        out.writeInt(waitKeys.size());
+        for (W key : waitKeys) {
+            out.writeObject(key);
         }
-
-        return false;
     }
 
-    protected Collection<W> getWaitKeys() {
-        return unmodifiableCollection(waitKeys);
+    @Override
+    public void readData(ObjectDataInput in) throws IOException {
+        groupId = in.readObject();
+        name = in.readUTF();
+        int count = in.readInt();
+        for (int i = 0; i < count; i++) {
+            W key = in.readObject();
+            waitKeys.add(key);
+        }
     }
 }

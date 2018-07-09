@@ -21,19 +21,14 @@ import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.ILock;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.blocking.AbstractBlockingService;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
 import com.hazelcast.raft.service.session.SessionManagerService;
-import com.hazelcast.raft.service.spi.RaftRemoteService;
 import com.hazelcast.spi.NodeEngine;
-import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 import com.hazelcast.util.ExceptionUtil;
 
 import java.util.Collection;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.UUID;
 
 import static com.hazelcast.util.Preconditions.checkNotNull;
@@ -41,33 +36,13 @@ import static com.hazelcast.util.Preconditions.checkNotNull;
 /**
  * TODO: Javadoc Pending...
  */
-public class RaftLockService extends AbstractBlockingService<LockInvocationKey, RaftLock, LockRegistry>
-        implements SnapshotAwareService<LockRegistrySnapshot>, RaftRemoteService {
+public class RaftLockService extends AbstractBlockingService<LockInvocationKey, RaftLock, LockRegistry> {
 
     public static final long INVALID_FENCE = 0L;
     public static final String SERVICE_NAME = "hz:raft:lockService";
 
     public RaftLockService(NodeEngine nodeEngine) {
         super(nodeEngine);
-    }
-
-    @Override
-    public LockRegistrySnapshot takeSnapshot(RaftGroupId groupId, long commitIndex) {
-        LockRegistry registry = getResourceRegistryOrNull(groupId);
-        return registry != null ? registry.toSnapshot() : null;
-    }
-
-    @Override
-    public void restoreSnapshot(RaftGroupId groupId, long commitIndex, LockRegistrySnapshot snapshot) {
-        if (snapshot != null) {
-            LockRegistry registry = getOrInitResourceRegistry(groupId);
-            Map<LockInvocationKey, Long> timeouts = registry.restore(snapshot);
-            for (Entry<LockInvocationKey, Long> e : timeouts.entrySet()) {
-                LockInvocationKey key = e.getKey();
-                long waitTimeMs = e.getValue();
-                scheduleWaitTimeout(groupId, key, waitTimeMs);
-            }
-        }
     }
 
     @Override
@@ -79,17 +54,6 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
-    }
-
-    @Override
-    public boolean destroyRaftObject(RaftGroupId groupId, String name) {
-        LockRegistry registry = getOrInitResourceRegistry(groupId);
-        Collection<Long> indices = registry.destroyResource(name);
-        if (indices == null) {
-            return false;
-        }
-        completeFutures(groupId, indices, new DistributedObjectDestroyedException("Lock[" + name + "] is destroyed"));
-        return true;
     }
 
     public ICompletableFuture<RaftGroupId> createRaftGroup(String name) {
@@ -108,14 +72,9 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         return nodeEngine.getConfig().findRaftLockConfig(name);
     }
 
-    @Override
-    protected LockRegistry createNewRegistry(RaftGroupId groupId) {
-        return new LockRegistry(groupId);
-    }
-
     public boolean acquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
         heartbeatSession(groupId, endpoint.sessionId());
-        boolean acquired = getOrInitResourceRegistry(groupId).acquire(name, endpoint, commitIndex, invocationUid);
+        boolean acquired = getOrInitRegistry(groupId).acquire(name, endpoint, commitIndex, invocationUid);
         if (logger.isFineEnabled()) {
             logger.fine("Lock[" + name + "] in " + groupId + " acquired: " + acquired + " by <" + endpoint + ", "
                     + invocationUid + ">");
@@ -126,16 +85,16 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
     public boolean tryAcquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid,
                           long timeoutMs) {
         heartbeatSession(groupId, endpoint.sessionId());
-        boolean acquired = getOrInitResourceRegistry(groupId).tryAcquire(name, endpoint, commitIndex, invocationUid, timeoutMs);
+        boolean acquired = getOrInitRegistry(groupId).tryAcquire(name, endpoint, commitIndex, invocationUid, timeoutMs);
         if (logger.isFineEnabled()) {
             logger.fine("Lock[" + name + "] in " + groupId + " acquired: " + acquired + " by <" + endpoint + ", "
                     + invocationUid + ">");
         }
 
         if (!acquired) {
-            LockInvocationKey key = new LockInvocationKey(name, endpoint, commitIndex, invocationUid);
-            scheduleWaitTimeout(groupId, key, timeoutMs);
+            scheduleTimeout(groupId, new LockInvocationKey(name, endpoint, commitIndex, invocationUid), timeoutMs);
         }
+
         return acquired;
     }
 
@@ -177,21 +136,11 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         notifyWaitKeys(groupId, waitEntries, waitKey.commitIndex());
     }
 
-    @Override
-    protected Object invalidatedResult() {
-        return INVALID_FENCE;
-    }
-
-    @Override
-    protected String serviceName() {
-        return SERVICE_NAME;
-    }
-
     public int getLockCount(RaftGroupId groupId, String name, LockEndpoint endpoint) {
         checkNotNull(groupId);
         checkNotNull(name);
 
-        LockRegistry registry = getResourceRegistryOrNull(groupId);
+        LockRegistry registry = getRegistryOrNull(groupId);
         return registry != null ? registry.getLockCount(name, endpoint) : 0;
     }
 
@@ -199,16 +148,31 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         checkNotNull(groupId);
         checkNotNull(name);
 
-        LockRegistry registry = getLockRegistryOrFail(groupId, name);
-        return registry.getLockFence(name);
+        return getLockRegistryOrFail(groupId, name).getLockFence(name);
     }
 
     private LockRegistry getLockRegistryOrFail(RaftGroupId groupId, String name) {
         checkNotNull(groupId);
-        LockRegistry registry = getResourceRegistryOrNull(groupId);
+        LockRegistry registry = getRegistryOrNull(groupId);
         if (registry == null) {
             throw new IllegalMonitorStateException("Lock registry of " + groupId + " not found for Lock[" + name + "]");
         }
+
         return registry;
+    }
+
+    @Override
+    protected LockRegistry createNewRegistry(RaftGroupId groupId) {
+        return new LockRegistry(groupId);
+    }
+
+    @Override
+    protected Object invalidatedWaitKeyResponse() {
+        return INVALID_FENCE;
+    }
+
+    @Override
+    protected String serviceName() {
+        return SERVICE_NAME;
     }
 }

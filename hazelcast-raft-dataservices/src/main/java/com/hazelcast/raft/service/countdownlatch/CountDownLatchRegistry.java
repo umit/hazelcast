@@ -16,19 +16,22 @@
 
 package com.hazelcast.raft.service.countdownlatch;
 
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.blocking.ResourceRegistry;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.UUID;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class CountDownLatchRegistry extends ResourceRegistry<CountDownLatchInvocationKey, RaftCountDownLatch> {
+public class CountDownLatchRegistry extends ResourceRegistry<CountDownLatchInvocationKey, RaftCountDownLatch>
+        implements IdentifiedDataSerializable {
+
+    public CountDownLatchRegistry() {
+    }
 
     CountDownLatchRegistry(RaftGroupId groupId) {
         super(groupId);
@@ -40,49 +43,43 @@ public class CountDownLatchRegistry extends ResourceRegistry<CountDownLatchInvoc
     }
 
     boolean trySetCount(String name, int count) {
-        RaftCountDownLatch latch = getOrInitResource(name);
-        return latch.trySetCount(count);
+        return getOrInitResource(name).trySetCount(count);
     }
 
     Tuple2<Integer, Collection<CountDownLatchInvocationKey>> countDown(String name, int expectedRound, UUID invocationUuid) {
         RaftCountDownLatch latch = getOrInitResource(name);
-        return latch.countDown(expectedRound, invocationUuid);
+        Tuple2<Integer, Collection<CountDownLatchInvocationKey>> t = latch.countDown(expectedRound, invocationUuid);
+        for (CountDownLatchInvocationKey key : t.element2) {
+            removeWaitKey(key);
+        }
+
+        return t;
     }
 
     boolean await(String name, long commitIndex, long timeoutMs) {
-        RaftCountDownLatch latch = getOrInitResource(name);
-        boolean success = latch.await(commitIndex, timeoutMs > 0);
+        boolean success = getOrInitResource(name).await(commitIndex, timeoutMs > 0);
         if (!success) {
-            scheduleWaitTimeout(new CountDownLatchInvocationKey(name, commitIndex), timeoutMs);
+            addWaitKey(new CountDownLatchInvocationKey(name, commitIndex), timeoutMs);
         }
 
         return success;
     }
 
     int getRemainingCount(String name) {
-        RaftCountDownLatch latch = getOrInitResource(name);
-        return latch.getRemainingCount();
+        return getOrInitResource(name).getRemainingCount();
     }
 
     int getRound(String name) {
-        RaftCountDownLatch latch = getOrInitResource(name);
-        return latch.getRound();
+        return getOrInitResource(name).getRound();
     }
 
-    CountDownLatchRegistrySnapshot toSnapshot() {
-        List<RaftCountDownLatchSnapshot> latchSnapshots = new ArrayList<RaftCountDownLatchSnapshot>();
-        for (RaftCountDownLatch latch : resources.values()) {
-            latchSnapshots.add(latch.toSnapshot());
-        }
-        return new CountDownLatchRegistrySnapshot(latchSnapshots, destroyedNames);
+    @Override
+    public int getFactoryId() {
+        return RaftCountDownLatchDataSerializerHook.F_ID;
     }
 
-    void restore(CountDownLatchRegistrySnapshot snapshot) {
-        for (RaftCountDownLatchSnapshot latchSnapshot : snapshot.getLatches()) {
-            resources.put(latchSnapshot.getName(), new RaftCountDownLatch(latchSnapshot));
-        }
-
-        destroyedNames.addAll(snapshot.getDestroyedLatchNames());
+    @Override
+    public int getId() {
+        return RaftCountDownLatchDataSerializerHook.COUNT_DOWN_LATCH_REGISTRY;
     }
-
 }

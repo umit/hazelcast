@@ -56,7 +56,6 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     private HazelcastInstance lockInstance;
     private ILock lock;
     private String name = "lock";
-    private String groupName = "lock";
     private int groupSize = 3;
 
     @Before
@@ -435,9 +434,9 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     @Override
     protected Config createConfig(int groupSize, int metadataGroupSize) {
         Config config = super.createConfig(groupSize, metadataGroupSize);
-        config.getRaftConfig().addGroupConfig(new RaftGroupConfig(groupName, groupSize));
+        config.getRaftConfig().addGroupConfig(new RaftGroupConfig(name, groupSize));
 
-        RaftLockConfig lockConfig = new RaftLockConfig(name, groupName);
+        RaftLockConfig lockConfig = new RaftLockConfig(name, name);
         config.addRaftLockConfig(lockConfig);
         return config;
     }

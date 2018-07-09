@@ -19,6 +19,7 @@ import java.util.UUID;
 
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.CREATE_TYPE;
+import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.DESTROY_TYPE;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.FORCE_UNLOCK;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.LOCK;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.LOCK_COUNT;
@@ -30,6 +31,7 @@ import static com.hazelcast.raft.service.lock.client.RaftLockProxy.INT_RESPONSE_
 import static com.hazelcast.raft.service.lock.client.RaftLockProxy.LONG_RESPONSE_DECODER;
 import static com.hazelcast.raft.service.lock.client.RaftLockProxy.encodeRequest;
 import static com.hazelcast.raft.service.lock.client.RaftLockProxy.invoke;
+import static com.hazelcast.raft.service.lock.client.RaftLockProxy.prepareClientMessage;
 import static com.hazelcast.raft.service.util.ClientAccessor.getClient;
 
 /**
@@ -104,4 +106,15 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
         ClientMessage message = encodeRequest(LOCK_COUNT, groupId, name, -1, -1);
         return invoke(client, INT_RESPONSE_DECODER, name, message);
     }
+
+    @Override
+    public void destroy() {
+        int dataSize = ClientMessage.HEADER_SIZE
+                + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(name);
+        ClientMessage message = prepareClientMessage(groupId, name, dataSize, DESTROY_TYPE);
+        message.updateFrameLength();
+
+        invoke(client, BOOLEAN_RESPONSE_DECODER, name, message);
+    }
+
 }

@@ -96,6 +96,10 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
         return RaftCountDownLatchService.SERVICE_NAME;
     }
 
+    public RaftGroupId getGroupId() {
+        return groupId;
+    }
+
     @Override
     public void destroy() {
         raftInvocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();

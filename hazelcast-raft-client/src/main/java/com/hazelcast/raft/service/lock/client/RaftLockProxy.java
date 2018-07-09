@@ -280,7 +280,7 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
     }
 
 
-    private static ClientMessage prepareClientMessage(RaftGroupId groupId, String name, int dataSize, int messageTypeId) {
+    static ClientMessage prepareClientMessage(RaftGroupId groupId, String name, int dataSize, int messageTypeId) {
         ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
         clientMessage.setMessageType(messageTypeId);
         clientMessage.setRetryable(false);

@@ -16,11 +16,15 @@
 
 package com.hazelcast.raft.service.lock;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.service.blocking.BlockingResource;
 import com.hazelcast.util.UuidUtil;
 import com.hazelcast.util.collection.Long2ObjectHashMap;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -31,22 +35,17 @@ import java.util.UUID;
 /**
  * TODO: Javadoc Pending...
  */
-class RaftLock extends BlockingResource<LockInvocationKey> {
+class RaftLock extends BlockingResource<LockInvocationKey> implements IdentifiedDataSerializable {
 
     private LockInvocationKey owner;
     private int lockCount;
     private UUID releaseRefUid;
 
-    RaftLock(RaftGroupId groupId, String name) {
-        super(groupId, name);
+    public RaftLock() {
     }
 
-    RaftLock(RaftLockSnapshot snapshot) {
-        super(snapshot.getGroupId(), snapshot.getName());
-        this.owner = snapshot.getOwner();
-        this.lockCount = snapshot.getLockCount();
-        this.releaseRefUid = snapshot.getRefUid();
-        this.waitKeys.addAll(snapshot.getWaitKeys());
+    RaftLock(RaftGroupId groupId, String name) {
+        super(groupId, name);
     }
 
     boolean acquire(LockEndpoint endpoint, long commitIndex, UUID invocationUid, boolean wait) {
@@ -55,7 +54,7 @@ class RaftLock extends BlockingResource<LockInvocationKey> {
             return true;
         }
 
-        LockInvocationKey key = new LockInvocationKey(name, endpoint, commitIndex, invocationUid);
+        LockInvocationKey key = new LockInvocationKey(getName(), endpoint, commitIndex, invocationUid);
         if (owner == null) {
             owner = key;
         }
@@ -66,7 +65,7 @@ class RaftLock extends BlockingResource<LockInvocationKey> {
         }
 
         if (wait) {
-            waitKeys.offer(key);
+            waitKeys.add(key);
         }
 
         return false;
@@ -143,10 +142,6 @@ class RaftLock extends BlockingResource<LockInvocationKey> {
         return owner;
     }
 
-    RaftLockSnapshot toSnapshot() {
-        return new RaftLockSnapshot(groupId, name, owner, lockCount, releaseRefUid, waitKeys);
-    }
-
     @Override
     protected void onInvalidateSession(long sessionId, Long2ObjectHashMap<Object> result) {
         if (owner != null && sessionId == owner.endpoint().sessionId()) {
@@ -158,6 +153,51 @@ class RaftLock extends BlockingResource<LockInvocationKey> {
             for (LockInvocationKey waitEntry : w) {
                 result.put(waitEntry.commitIndex(), newOwnerCommitIndex);
             }
+        }
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftLockDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftLockDataSerializerHook.RAFT_LOCK;
+    }
+
+    @Override
+    public void writeData(ObjectDataOutput out)
+            throws IOException {
+        super.writeData(out);
+        boolean hasOwner = (owner != null);
+        out.writeBoolean(hasOwner);
+        if (hasOwner) {
+            out.writeObject(owner);
+        }
+        out.writeInt(lockCount);
+        boolean hasRefUid = (releaseRefUid != null);
+        out.writeBoolean(hasRefUid);
+        if (hasRefUid) {
+            out.writeLong(releaseRefUid.getLeastSignificantBits());
+            out.writeLong(releaseRefUid.getMostSignificantBits());
+        }
+    }
+
+    @Override
+    public void readData(ObjectDataInput in)
+            throws IOException {
+        super.readData(in);
+        boolean hasOwner = in.readBoolean();
+        if (hasOwner) {
+            owner = in.readObject();
+        }
+        lockCount = in.readInt();
+        boolean hasRefUid = in.readBoolean();
+        if (hasRefUid) {
+            long least = in.readLong();
+            long most = in.readLong();
+            releaseRefUid = new UUID(most, least);
         }
     }
 }

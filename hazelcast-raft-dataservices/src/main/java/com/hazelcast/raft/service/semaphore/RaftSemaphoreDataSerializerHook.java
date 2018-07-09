@@ -20,16 +20,12 @@ import com.hazelcast.internal.serialization.DataSerializerHook;
 import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.service.lock.LockEndpoint;
-import com.hazelcast.raft.service.lock.LockInvocationKey;
-import com.hazelcast.raft.service.lock.LockRegistrySnapshot;
-import com.hazelcast.raft.service.lock.RaftLockSnapshot;
-import com.hazelcast.raft.service.lock.operation.ForceUnlockOp;
-import com.hazelcast.raft.service.lock.operation.GetLockCountOp;
-import com.hazelcast.raft.service.lock.operation.GetLockFenceOp;
-import com.hazelcast.raft.service.lock.operation.LockOp;
-import com.hazelcast.raft.service.lock.operation.TryLockOp;
-import com.hazelcast.raft.service.lock.operation.UnlockOp;
+import com.hazelcast.raft.service.semaphore.operation.AcquirePermitsOp;
+import com.hazelcast.raft.service.semaphore.operation.AvailablePermitsOp;
+import com.hazelcast.raft.service.semaphore.operation.ChangePermitsOp;
+import com.hazelcast.raft.service.semaphore.operation.DrainPermitsOp;
+import com.hazelcast.raft.service.semaphore.operation.InitSemaphoreOp;
+import com.hazelcast.raft.service.semaphore.operation.ReleasePermitsOp;
 
 public class RaftSemaphoreDataSerializerHook implements DataSerializerHook {
     private static final int DS_FACTORY_ID = -1013;
@@ -37,16 +33,15 @@ public class RaftSemaphoreDataSerializerHook implements DataSerializerHook {
 
     public static final int F_ID = FactoryIdHelper.getFactoryId(DS_FACTORY, DS_FACTORY_ID);
 
-    public static final int LOCK_REGISTRY_SNAPSHOT = 1;
-    public static final int RAFT_LOCK_SNAPSHOT = 2;
-    public static final int LOCK_ENDPOINT = 3;
-    public static final int LOCK_INVOCATION_KEY = 4;
-    public static final int LOCK_OP = 5;
-    public static final int TRY_LOCK_OP = 6;
-    public static final int UNLOCK_OP = 7;
-    public static final int FORCE_UNLOCK_OP = 8;
-    public static final int GET_LOCK_COUNT_OP = 9;
-    public static final int GET_LOCK_FENCE_OP = 10;
+    public static final int SEMAPHORE_REGISTRY = 1;
+    public static final int RAFT_SEMAPHORE = 2;
+    public static final int SEMAPHORE_INVOCATION_KEY = 3;
+    public static final int ACQUIRE_PERMITS_OP = 4;
+    public static final int AVAILABLE_PERMITS_OP = 5;
+    public static final int CHANGE_PERMITS_OP = 6;
+    public static final int DRAIN_PERMITS_OP = 7;
+    public static final int INIT_SEMAPHORE_OP = 8;
+    public static final int RELEASE_PERMITS_OP = 9;
 
     @Override
     public int getFactoryId() {
@@ -59,26 +54,24 @@ public class RaftSemaphoreDataSerializerHook implements DataSerializerHook {
             @Override
             public IdentifiedDataSerializable create(int typeId) {
                 switch (typeId) {
-                    case LOCK_REGISTRY_SNAPSHOT:
-                        return new LockRegistrySnapshot();
-                    case RAFT_LOCK_SNAPSHOT:
-                        return new RaftLockSnapshot();
-                    case LOCK_ENDPOINT:
-                        return new LockEndpoint();
-                    case LOCK_INVOCATION_KEY:
-                        return new LockInvocationKey();
-                    case LOCK_OP:
-                        return new LockOp();
-                    case TRY_LOCK_OP:
-                        return new TryLockOp();
-                    case UNLOCK_OP:
-                        return new UnlockOp();
-                    case FORCE_UNLOCK_OP:
-                        return new ForceUnlockOp();
-                    case GET_LOCK_COUNT_OP:
-                        return new GetLockCountOp();
-                    case GET_LOCK_FENCE_OP:
-                        return new GetLockFenceOp();
+                    case SEMAPHORE_REGISTRY:
+                        return new SemaphoreRegistry();
+                    case RAFT_SEMAPHORE:
+                        return new RaftSemaphore();
+                    case SEMAPHORE_INVOCATION_KEY:
+                        return new SemaphoreInvocationKey();
+                    case ACQUIRE_PERMITS_OP:
+                        return new AcquirePermitsOp();
+                    case AVAILABLE_PERMITS_OP:
+                        return new AvailablePermitsOp();
+                    case CHANGE_PERMITS_OP:
+                        return new ChangePermitsOp();
+                    case DRAIN_PERMITS_OP:
+                        return new DrainPermitsOp();
+                    case INIT_SEMAPHORE_OP:
+                        return new InitSemaphoreOp();
+                    case RELEASE_PERMITS_OP:
+                        return new ReleasePermitsOp();
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
             }

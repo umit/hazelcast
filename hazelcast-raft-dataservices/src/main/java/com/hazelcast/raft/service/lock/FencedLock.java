@@ -16,6 +16,7 @@
 
 package com.hazelcast.raft.service.lock;
 
+import com.hazelcast.core.DistributedObject;
 import com.hazelcast.raft.RaftGroupId;
 
 import java.util.concurrent.TimeUnit;
@@ -23,13 +24,13 @@ import java.util.concurrent.TimeUnit;
 /**
  * TODO: Javadoc Pending...
  */
-public interface FencedLock {
+public interface FencedLock extends DistributedObject {
 
     long lock();
 
     long tryLock();
 
-    long tryLock(long time, TimeUnit unit);
+    long tryLock(long time, TimeUnit unit) throws InterruptedException;
 
     void unlock();
 

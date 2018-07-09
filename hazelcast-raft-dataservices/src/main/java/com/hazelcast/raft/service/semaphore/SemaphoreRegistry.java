@@ -16,7 +16,9 @@
 
 package com.hazelcast.raft.service.semaphore;
 
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.blocking.ResourceRegistry;
 
 import java.util.Collection;
@@ -24,7 +26,11 @@ import java.util.Collection;
 /**
  * TODO: Javadoc Pending...
  */
-public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, RaftSemaphore> {
+public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, RaftSemaphore>
+        implements IdentifiedDataSerializable {
+
+    public SemaphoreRegistry() {
+    }
 
     protected SemaphoreRegistry(RaftGroupId groupId) {
         super(groupId);
@@ -36,32 +42,31 @@ public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, 
     }
 
     boolean init(String name, int permits) {
-        RaftSemaphore semaphore = getOrInitResource(name);
-        return semaphore.init(permits);
+        return getOrInitResource(name).init(permits);
     }
 
     int availablePermits(String name) {
         RaftSemaphore semaphore = getResourceOrNull(name);
-        if (semaphore == null) {
-            return 0;
-        }
-        return semaphore.getAvailable();
+        return semaphore != null ? semaphore.getAvailable() : 0;
     }
 
     boolean acquire(long commitIndex, String name, long sessionId, int permits, long timeoutMs) {
-        RaftSemaphore semaphore = getOrInitResource(name);
         boolean wait = (timeoutMs != 0);
-        boolean acquired = semaphore.acquire(commitIndex, name, sessionId, permits, wait);
+        boolean acquired = getOrInitResource(name).acquire(commitIndex, name, sessionId, permits, wait);
         if (!acquired && timeoutMs > 0) {
-            SemaphoreInvocationKey key = new SemaphoreInvocationKey(commitIndex, name, sessionId, permits);
-            scheduleWaitTimeout(key, timeoutMs);
+            addWaitKey(new SemaphoreInvocationKey(name, commitIndex, sessionId, permits), timeoutMs);
         }
+
         return acquired;
     }
 
     Collection<SemaphoreInvocationKey> release(String name, long sessionId, int permits) {
-        RaftSemaphore semaphore = getOrInitResource(name);
-        return semaphore.release(sessionId, permits);
+        Collection<SemaphoreInvocationKey> keys = getOrInitResource(name).release(sessionId, permits);
+        for (SemaphoreInvocationKey key : keys) {
+            removeWaitKey(key);
+        }
+
+        return keys;
     }
 
     int drainPermits(String name, long sessionId) {
@@ -69,11 +74,26 @@ public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, 
         if (semaphore == null) {
             return 0;
         }
+
         return semaphore.drain(sessionId);
     }
 
-    boolean changePermits(String name, int permits) {
-        RaftSemaphore semaphore = getOrInitResource(name);
-        return semaphore.change(permits);
+    Tuple2<Boolean, Collection<SemaphoreInvocationKey>> changePermits(String name, int permits) {
+        Tuple2<Boolean, Collection<SemaphoreInvocationKey>> t = getOrInitResource(name).change(permits);
+        for (SemaphoreInvocationKey key : t.element2) {
+            removeWaitKey(key);
+        }
+
+        return t;
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftSemaphoreDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftSemaphoreDataSerializerHook.SEMAPHORE_REGISTRY;
     }
 }
