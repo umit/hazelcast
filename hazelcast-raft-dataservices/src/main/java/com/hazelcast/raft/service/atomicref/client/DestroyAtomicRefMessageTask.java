@@ -17,7 +17,6 @@
 package com.hazelcast.raft.service.atomicref.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
@@ -34,8 +33,7 @@ public class DestroyAtomicRefMessageTask extends AbstractAtomicRefMessageTask {
 
     @Override
     protected void processMessage() {
-        RaftInvocationManager raftInvocationManager = getRaftInvocationManager();
-        ICompletableFuture<Object> future = raftInvocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name));
-        future.andThen(this);
+        RaftInvocationManager invocationManager = getRaftInvocationManager();
+        invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).andThen(this);
     }
 }

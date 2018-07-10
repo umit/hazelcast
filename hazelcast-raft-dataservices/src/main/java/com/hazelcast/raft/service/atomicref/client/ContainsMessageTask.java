@@ -36,8 +36,8 @@ public class ContainsMessageTask extends AbstractAtomicRefMessageTask {
 
     @Override
     protected void processMessage() {
-        RaftInvocationManager raftInvocationManager = getRaftInvocationManager();
-        raftInvocationManager.invoke(groupId, new ContainsOp(name, value)).andThen(this);
+        RaftInvocationManager invocationManager = getRaftInvocationManager();
+        invocationManager.invoke(groupId, new ContainsOp(name, value)).andThen(this);
     }
 
     @Override

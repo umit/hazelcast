@@ -26,9 +26,6 @@ import com.hazelcast.raft.service.atomicref.operation.ContainsOp;
 import com.hazelcast.raft.service.atomicref.operation.GetOp;
 import com.hazelcast.raft.service.atomicref.operation.SetOp;
 
-/**
- * TODO: Javadoc Pending...
- */
 public final class AtomicReferenceDataSerializerHook implements DataSerializerHook {
 
     private static final int RAFT_ATOMIC_REF_DS_FACTORY_ID = -1014;

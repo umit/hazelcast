@@ -20,7 +20,7 @@ import com.hazelcast.core.DistributedObject;
 import com.hazelcast.raft.RaftGroupId;
 
 /**
- * TODO:
+ * TODO: Javadoc pending
  */
 public interface RaftRemoteService {
 

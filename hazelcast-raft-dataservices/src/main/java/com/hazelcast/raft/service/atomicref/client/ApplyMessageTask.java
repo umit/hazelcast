@@ -39,8 +39,8 @@ public class ApplyMessageTask extends AbstractAtomicRefMessageTask {
 
     @Override
     protected void processMessage() {
-        RaftInvocationManager raftInvocationManager = getRaftInvocationManager();
-        raftInvocationManager.invoke(groupId, new ApplyOp(name, function, returnValueType, alter)).andThen(this);
+        RaftInvocationManager invocationManager = getRaftInvocationManager();
+        invocationManager.invoke(groupId, new ApplyOp(name, function, returnValueType, alter)).andThen(this);
     }
 
     @Override

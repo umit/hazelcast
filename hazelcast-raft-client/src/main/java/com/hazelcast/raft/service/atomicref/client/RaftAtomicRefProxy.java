@@ -24,7 +24,6 @@ import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicReference;
-import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.serialization.Data;
@@ -32,7 +31,7 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.service.atomicref.RaftAtomicRefService;
 import com.hazelcast.raft.service.atomicref.operation.ApplyOp.RETURN_VALUE_TYPE;
-import com.hazelcast.util.ExceptionUtil;
+import com.hazelcast.spi.InternalCompletableFuture;
 
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
 import static com.hazelcast.raft.service.atomicref.client.AtomicRefMessageTaskFactoryProvider.APPLY_TYPE;
@@ -58,25 +57,25 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
 
     public static <T> IAtomicReference<T> create(HazelcastInstance instance, String name) {
         int dataSize = ClientMessage.HEADER_SIZE + calculateDataSize(name);
-        ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
-        clientMessage.setMessageType(CREATE_TYPE);
-        clientMessage.setRetryable(false);
-        clientMessage.setOperationName("");
-        clientMessage.set(name);
-        clientMessage.updateFrameLength();
+        ClientMessage msg = ClientMessage.createForEncode(dataSize);
+        msg.setMessageType(CREATE_TYPE);
+        msg.setRetryable(false);
+        msg.setOperationName("");
+        msg.set(name);
+        msg.updateFrameLength();
 
         HazelcastClientInstanceImpl client = getClient(instance);
-        ClientInvocationFuture f = new ClientInvocation(client, clientMessage, name).invoke();
+        ClientInvocationFuture f = new ClientInvocation(client, msg, name).invoke();
 
-        ICompletableFuture<RaftGroupId> future = new ClientDelegatingFuture<RaftGroupId>(f, client.getSerializationService(),
+        InternalCompletableFuture<RaftGroupId> future = new ClientDelegatingFuture<RaftGroupId>(f, client.getSerializationService(),
                 new ClientMessageDecoder() {
                     @Override
-                    public RaftGroupId decodeClientMessage(ClientMessage clientMessage) {
-                        return RaftGroupIdImpl.readFrom(clientMessage);
+                    public RaftGroupId decodeClientMessage(ClientMessage msg) {
+                        return RaftGroupIdImpl.readFrom(msg);
                     }
                 });
 
-        RaftGroupId groupId = join(future);
+        RaftGroupId groupId = future.join();
         return new RaftAtomicRefProxy<T>(instance, groupId, name);
     }
 
@@ -93,67 +92,67 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
 
     @Override
     public boolean compareAndSet(T expect, T update) {
-        return join(compareAndSetAsync(expect, update));
+        return compareAndSetAsync(expect, update).join();
     }
 
     @Override
     public T get() {
-        return join(getAsync());
+        return getAsync().join();
     }
 
     @Override
     public void set(T newValue) {
-        join(setAsync(newValue));
+        setAsync(newValue).join();
     }
 
     @Override
     public T getAndSet(T newValue) {
-        return join(getAndSetAsync(newValue));
+        return getAndSetAsync(newValue).join();
     }
 
     @Override
     public T setAndGet(T update) {
-        join(setAsync(update));
+        setAsync(update).join();
         return update;
     }
 
     @Override
     public boolean isNull() {
-        return join(isNullAsync());
+        return isNullAsync().join();
     }
 
     @Override
     public void clear() {
-        join(clearAsync());
+        clearAsync().join();
     }
 
     @Override
     public boolean contains(T value) {
-        return join(containsAsync(value));
+        return containsAsync(value).join();
     }
 
     @Override
     public void alter(IFunction<T, T> function) {
-        join(alterAsync(function));
+        alterAsync(function).join();
     }
 
     @Override
     public T alterAndGet(IFunction<T, T> function) {
-        return join(alterAndGetAsync(function));
+        return alterAndGetAsync(function).join();
     }
 
     @Override
     public T getAndAlter(IFunction<T, T> function) {
-        return join(getAndAlterAsync(function));
+        return getAndAlterAsync(function).join();
     }
 
     @Override
     public <R> R apply(IFunction<T, R> function) {
-        return join(applyAsync(function));
+        return applyAsync(function).join();
     }
 
     @Override
-    public ICompletableFuture<Boolean> compareAndSetAsync(T expect, T update) {
+    public InternalCompletableFuture<Boolean> compareAndSetAsync(T expect, T update) {
         Data expectedData = client.getSerializationService().toData(expect);
         Data newData = client.getSerializationService().toData(update);
         int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(name)
@@ -167,7 +166,7 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
     }
 
     @Override
-    public ICompletableFuture<T> getAsync() {
+    public InternalCompletableFuture<T> getAsync() {
         int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(name);
         ClientMessage msg = prepareClientMessage(groupId, name, dataSize, GET_TYPE);
         msg.updateFrameLength();
@@ -176,7 +175,7 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
     }
 
     @Override
-    public ICompletableFuture<Void> setAsync(T newValue) {
+    public InternalCompletableFuture<Void> setAsync(T newValue) {
         Data data = client.getSerializationService().toData(newValue);
         int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(name)
                 + nullableSize(data) + Bits.BOOLEAN_SIZE_IN_BYTES;
@@ -189,7 +188,7 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
     }
 
     @Override
-    public ICompletableFuture<T> getAndSetAsync(T newValue) {
+    public InternalCompletableFuture<T> getAndSetAsync(T newValue) {
         Data data = client.getSerializationService().toData(newValue);
         int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(name)
                 + nullableSize(data) + Bits.BOOLEAN_SIZE_IN_BYTES;
@@ -202,17 +201,17 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
     }
 
     @Override
-    public ICompletableFuture<Boolean> isNullAsync() {
+    public InternalCompletableFuture<Boolean> isNullAsync() {
         return containsAsync(null);
     }
 
     @Override
-    public ICompletableFuture<Void> clearAsync() {
+    public InternalCompletableFuture<Void> clearAsync() {
         return setAsync(null);
     }
 
     @Override
-    public ICompletableFuture<Boolean> containsAsync(T expected) {
+    public InternalCompletableFuture<Boolean> containsAsync(T expected) {
         Data data = client.getSerializationService().toData(expected);
         int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(name)
                 + nullableSize(data) + Bits.BOOLEAN_SIZE_IN_BYTES;
@@ -225,22 +224,22 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
     }
 
     @Override
-    public ICompletableFuture<Void> alterAsync(IFunction<T, T> function) {
+    public InternalCompletableFuture<Void> alterAsync(IFunction<T, T> function) {
         return invokeApply(function, NO_RETURN_VALUE, true);
     }
 
     @Override
-    public ICompletableFuture<T> alterAndGetAsync(IFunction<T, T> function) {
+    public InternalCompletableFuture<T> alterAndGetAsync(IFunction<T, T> function) {
         return invokeApply(function, RETURN_NEW_VALUE, true);
     }
 
     @Override
-    public ICompletableFuture<T> getAndAlterAsync(IFunction<T, T> function) {
+    public InternalCompletableFuture<T> getAndAlterAsync(IFunction<T, T> function) {
         return invokeApply(function, RETURN_PREVIOUS_VALUE, true);
     }
 
     @Override
-    public <R> ICompletableFuture<R> applyAsync(IFunction<T, R> function) {
+    public <R> InternalCompletableFuture<R> applyAsync(IFunction<T, R> function) {
         return invokeApply(function, RETURN_NEW_VALUE, false);
     }
 
@@ -265,7 +264,7 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
         ClientMessage msg = prepareClientMessage(groupId, name, dataSize, DESTROY_TYPE);
         msg.updateFrameLength();
 
-        join(invoke(msg, BOOLEAN_RESPONSE_DECODER));
+        invoke(msg, BOOLEAN_RESPONSE_DECODER).join();
     }
 
     public RaftGroupId getGroupId() {
@@ -284,7 +283,7 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
         }
     }
 
-    private <T2, T3> ICompletableFuture<T3> invokeApply(IFunction<T, T2> function, RETURN_VALUE_TYPE returnValueType, boolean alter) {
+    private <T2, T3> InternalCompletableFuture<T3> invokeApply(IFunction<T, T2> function, RETURN_VALUE_TYPE returnValueType, boolean alter) {
         checkTrue(function != null, "Function cannot be null");
         Data data = client.getSerializationService().toData(function);
         int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(name)
@@ -298,17 +297,9 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
         return invoke(msg, DATA_RESPONSE_DECODER);
     }
 
-    private <T> ICompletableFuture<T> invoke(ClientMessage clientMessage, ClientMessageDecoder decoder) {
+    private <T> InternalCompletableFuture<T> invoke(ClientMessage clientMessage, ClientMessageDecoder decoder) {
         ClientInvocationFuture future = new ClientInvocation(client, clientMessage, getName()).invoke();
         return new ClientDelegatingFuture<T>(future, client.getSerializationService(), decoder);
-    }
-
-    private static <T> T join(ICompletableFuture<T> future) {
-        try {
-            return future.get();
-        } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
-        }
     }
 
     private static ClientMessage prepareClientMessage(RaftGroupId groupId, String name, int dataSize, int messageTypeId) {

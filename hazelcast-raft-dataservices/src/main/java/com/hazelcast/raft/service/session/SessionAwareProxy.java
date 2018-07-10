@@ -20,7 +20,6 @@ import com.hazelcast.raft.RaftGroupId;
 
 /**
  * TODO: Javadoc Pending...
- *
  */
 public abstract class SessionAwareProxy {
 

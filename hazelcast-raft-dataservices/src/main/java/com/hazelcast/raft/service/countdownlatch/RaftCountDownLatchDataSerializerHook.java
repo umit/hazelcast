@@ -26,9 +26,6 @@ import com.hazelcast.raft.service.countdownlatch.operation.GetRemainingCountOp;
 import com.hazelcast.raft.service.countdownlatch.operation.GetRoundOp;
 import com.hazelcast.raft.service.countdownlatch.operation.TrySetCountOp;
 
-/**
- * TODO: Javadoc Pending...
- */
 public class RaftCountDownLatchDataSerializerHook implements DataSerializerHook {
     private static final int RAFT_COUNT_DOWN_LATCH_DS_FACTORY_ID = -1015;
     private static final String RAFT_COUNT_DOWN_LATCH_DS_FACTORY = "hazelcast.serialization.ds.raft.countdownlatch";

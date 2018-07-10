@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.hazelcast.raft.service.atomicref.client;
+package com.hazelcast.raft.service.countdownlatch.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.MessageTaskFactory;
@@ -25,19 +25,19 @@ import com.hazelcast.nio.Connection;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 
-public class AtomicRefMessageTaskFactoryProvider implements MessageTaskFactoryProvider {
+public class CountDownLatchMessageTaskFactoryProvider implements MessageTaskFactoryProvider {
 
-    public static final int CREATE_TYPE = 11000;
-    public static final int DESTROY_TYPE = 11001;
-    public static final int APPLY_TYPE = 11002;
-    public static final int COMPARE_AND_SET_TYPE = 11003;
-    public static final int CONTAINS_TYPE = 11004;
-    public static final int GET_TYPE = 11005;
-    public static final int SET_TYPE = 11006;
+    public static final int CREATE_TYPE = 13000;
+    public static final int DESTROY_TYPE = 13001;
+    public static final int AWAIT_TYPE = 13002;
+    public static final int COUNT_DOWN_TYPE = 13003;
+    public static final int GET_REMAINING_COUNT_TYPE = 13004;
+    public static final int GET_ROUND_TYPE = 13005;
+    public static final int TRY_SET_COUNT_TYPE = 13006;
 
     private final Node node;
 
-    public AtomicRefMessageTaskFactoryProvider(NodeEngine nodeEngine) {
+    public CountDownLatchMessageTaskFactoryProvider(NodeEngine nodeEngine) {
         this.node = ((NodeEngineImpl) nodeEngine).getNode();
     }
 
@@ -48,49 +48,49 @@ public class AtomicRefMessageTaskFactoryProvider implements MessageTaskFactoryPr
         factories[CREATE_TYPE] = new MessageTaskFactory() {
             @Override
             public MessageTask create(ClientMessage clientMessage, Connection connection) {
-                return new CreateAtomicRefMessageTask(clientMessage, node, connection);
+                return new CreateCountDownLatchMessageTask(clientMessage, node, connection);
             }
         };
 
         factories[DESTROY_TYPE] = new MessageTaskFactory() {
             @Override
             public MessageTask create(ClientMessage clientMessage, Connection connection) {
-                return new DestroyAtomicRefMessageTask(clientMessage, node, connection);
+                return new DestroyCountDownLatchMessageTask(clientMessage, node, connection);
             }
         };
 
-        factories[APPLY_TYPE] = new MessageTaskFactory() {
+        factories[AWAIT_TYPE] = new MessageTaskFactory() {
             @Override
             public MessageTask create(ClientMessage clientMessage, Connection connection) {
-                return new ApplyMessageTask(clientMessage, node, connection);
+                return new AwaitMessageTask(clientMessage, node, connection);
             }
         };
 
-        factories[COMPARE_AND_SET_TYPE] = new MessageTaskFactory() {
+        factories[COUNT_DOWN_TYPE] = new MessageTaskFactory() {
             @Override
             public MessageTask create(ClientMessage clientMessage, Connection connection) {
-                return new CompareAndSetMessageTask(clientMessage, node, connection);
+                return new CountDownMessageTask(clientMessage, node, connection);
             }
         };
 
-        factories[CONTAINS_TYPE] = new MessageTaskFactory() {
+        factories[GET_REMAINING_COUNT_TYPE] = new MessageTaskFactory() {
             @Override
             public MessageTask create(ClientMessage clientMessage, Connection connection) {
-                return new ContainsMessageTask(clientMessage, node, connection);
+                return new GetRemainingCountMessageTask(clientMessage, node, connection);
             }
         };
 
-        factories[GET_TYPE] = new MessageTaskFactory() {
+        factories[GET_ROUND_TYPE] = new MessageTaskFactory() {
             @Override
             public MessageTask create(ClientMessage clientMessage, Connection connection) {
-                return new GetMessageTask(clientMessage, node, connection);
+                return new GetRoundMessageTask(clientMessage, node, connection);
             }
         };
 
-        factories[SET_TYPE] = new MessageTaskFactory() {
+        factories[TRY_SET_COUNT_TYPE] = new MessageTaskFactory() {
             @Override
             public MessageTask create(ClientMessage clientMessage, Connection connection) {
-                return new SetMessageTask(clientMessage, node, connection);
+                return new TrySetCountMessageTask(clientMessage, node, connection);
             }
         };
 

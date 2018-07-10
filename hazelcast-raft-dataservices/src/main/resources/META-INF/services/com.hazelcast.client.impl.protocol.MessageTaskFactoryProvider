@@ -2,3 +2,4 @@ com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvide
 com.hazelcast.raft.service.atomicref.client.AtomicRefMessageTaskFactoryProvider
 com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider
 com.hazelcast.raft.service.session.client.SessionMessageTaskFactoryProvider
+com.hazelcast.raft.service.countdownlatch.client.CountDownLatchMessageTaskFactoryProvider

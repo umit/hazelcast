@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.hazelcast.raft.service.atomicref.client;
+package com.hazelcast.raft.service.countdownlatch.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
@@ -24,24 +24,24 @@ import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
-import com.hazelcast.raft.service.atomicref.RaftAtomicRefService;
+import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchService;
 
 import java.security.Permission;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class CreateAtomicRefMessageTask extends AbstractMessageTask implements ExecutionCallback {
+public class CreateCountDownLatchMessageTask extends AbstractMessageTask implements ExecutionCallback {
 
     private String name;
 
-    protected CreateAtomicRefMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    protected CreateCountDownLatchMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
-        RaftAtomicRefService service = nodeEngine.getService(getServiceName());
+        RaftCountDownLatchService service = nodeEngine.getService(getServiceName());
         service.createRaftGroup(name).andThen(this);
     }
 
@@ -77,7 +77,7 @@ public class CreateAtomicRefMessageTask extends AbstractMessageTask implements E
 
     @Override
     public String getServiceName() {
-        return RaftAtomicRefService.SERVICE_NAME;
+        return RaftCountDownLatchService.SERVICE_NAME;
     }
 
     @Override
@@ -99,4 +99,5 @@ public class CreateAtomicRefMessageTask extends AbstractMessageTask implements E
     public Object[] getParameters() {
         return new Object[0];
     }
+
 }
