@@ -14,27 +14,27 @@
  * limitations under the License.
  */
 
-package com.hazelcast.raft.service.atomicref.client;
+package com.hazelcast.raft.service.countdownlatch.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
-import com.hazelcast.raft.service.atomicref.operation.GetOp;
+import com.hazelcast.raft.service.countdownlatch.operation.GetRoundOp;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class GetMessageTask extends AbstractAtomicRefMessageTask {
+public class GetRoundMessageTask extends AbstractCountDownLatchMessageTask {
 
-    protected GetMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    protected GetRoundMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
         RaftInvocationManager invocationManager = getRaftInvocationManager();
-        invocationManager.invoke(groupId, new GetOp(name)).andThen(this);
+        invocationManager.invoke(groupId, new GetRoundOp(name)).andThen(this);
     }
-
+    
 }

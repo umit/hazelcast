@@ -37,8 +37,8 @@ public class CompareAndSetMessageTask extends AbstractAtomicRefMessageTask {
 
     @Override
     protected void processMessage() {
-        RaftInvocationManager raftInvocationManager = getRaftInvocationManager();
-        raftInvocationManager.invoke(groupId, new CompareAndSetOp(name, expectedValue, newValue)).andThen(this);
+        RaftInvocationManager invocationManager = getRaftInvocationManager();
+        invocationManager.invoke(groupId, new CompareAndSetOp(name, expectedValue, newValue)).andThen(this);
     }
 
     @Override

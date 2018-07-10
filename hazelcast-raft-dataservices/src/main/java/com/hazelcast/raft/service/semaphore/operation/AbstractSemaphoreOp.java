@@ -27,7 +27,6 @@ import java.io.IOException;
 
 /**
  * TODO: Javadoc Pending...
- *
  */
 abstract class AbstractSemaphoreOp extends RaftOp implements IdentifiedDataSerializable {
 

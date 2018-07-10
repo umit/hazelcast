@@ -26,7 +26,6 @@ import java.io.IOException;
 
 /**
  * TODO: Javadoc Pending...
- *
  */
 public class DestroyRaftObjectOp extends RaftOp {
 

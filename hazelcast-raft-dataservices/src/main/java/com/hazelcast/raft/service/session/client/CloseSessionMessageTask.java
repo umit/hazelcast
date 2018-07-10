@@ -33,7 +33,6 @@ import java.security.Permission;
 
 /**
  * TODO: Javadoc Pending...
- *
  */
 public class CloseSessionMessageTask extends AbstractMessageTask implements ExecutionCallback {
 

@@ -25,7 +25,6 @@ import com.hazelcast.util.ExceptionUtil;
 
 /**
  * TODO: Javadoc Pending...
- *
  */
 public class RaftProxyFactory {
 
