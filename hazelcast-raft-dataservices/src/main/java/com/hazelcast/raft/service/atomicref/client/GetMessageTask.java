@@ -27,7 +27,7 @@ import com.hazelcast.raft.service.atomicref.operation.GetOp;
  */
 public class GetMessageTask extends AbstractAtomicRefMessageTask {
 
-    protected GetMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    GetMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

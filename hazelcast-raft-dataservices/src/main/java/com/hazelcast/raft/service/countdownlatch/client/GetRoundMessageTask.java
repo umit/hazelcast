@@ -27,7 +27,7 @@ import com.hazelcast.raft.service.countdownlatch.operation.GetRoundOp;
  */
 public class GetRoundMessageTask extends AbstractCountDownLatchMessageTask {
 
-    protected GetRoundMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    GetRoundMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

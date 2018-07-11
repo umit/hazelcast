@@ -35,7 +35,7 @@ public class CreateCountDownLatchMessageTask extends AbstractMessageTask impleme
 
     private String name;
 
-    protected CreateCountDownLatchMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    CreateCountDownLatchMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

@@ -31,7 +31,7 @@ public class SetMessageTask extends AbstractAtomicRefMessageTask {
     private Data newValue;
     private boolean returnOldValue;
 
-    protected SetMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    SetMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

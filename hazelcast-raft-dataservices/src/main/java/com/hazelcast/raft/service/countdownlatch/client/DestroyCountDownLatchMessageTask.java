@@ -27,7 +27,7 @@ import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
  */
 public class DestroyCountDownLatchMessageTask extends AbstractCountDownLatchMessageTask {
 
-    protected DestroyCountDownLatchMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    DestroyCountDownLatchMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

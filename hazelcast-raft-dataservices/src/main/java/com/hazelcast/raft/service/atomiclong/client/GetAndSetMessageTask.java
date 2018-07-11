@@ -30,7 +30,7 @@ public class GetAndSetMessageTask extends AbstractAtomicLongMessageTask {
 
     private long value;
 
-    protected GetAndSetMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    GetAndSetMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

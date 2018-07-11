@@ -27,8 +27,6 @@ import com.hazelcast.raft.service.semaphore.operation.ChangePermitsOp;
 import com.hazelcast.raft.service.semaphore.operation.DrainPermitsOp;
 import com.hazelcast.raft.service.semaphore.operation.InitSemaphoreOp;
 import com.hazelcast.raft.service.semaphore.operation.ReleasePermitsOp;
-import com.hazelcast.raft.service.session.SessionAwareProxy;
-import com.hazelcast.raft.service.session.SessionManagerService;
 import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
 
 import java.util.concurrent.TimeUnit;
@@ -41,16 +39,16 @@ import static java.lang.Math.max;
 /**
  * TODO: Javadoc Pending...
  */
-public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements ISemaphore {
+public class RaftSessionlessSemaphoreProxy implements ISemaphore {
 
-    private final String name;
     private final RaftInvocationManager raftInvocationManager;
+    private final RaftGroupId groupId;
+    private final String name;
 
-    public RaftSessionlessSemaphoreProxy(RaftInvocationManager invocationManager, SessionManagerService sessionManager,
-                                         RaftGroupId groupId, String name) {
-        super(sessionManager, groupId);
-        this.name = name;
+    public RaftSessionlessSemaphoreProxy(RaftInvocationManager invocationManager, RaftGroupId groupId, String name) {
         this.raftInvocationManager = invocationManager;
+        this.groupId = groupId;
+        this.name = name;
     }
 
     @Override
@@ -150,6 +148,10 @@ public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements 
     @Override
     public void destroy() {
         raftInvocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
+    }
+
+    public final RaftGroupId getGroupId() {
+        return groupId;
     }
 
 }

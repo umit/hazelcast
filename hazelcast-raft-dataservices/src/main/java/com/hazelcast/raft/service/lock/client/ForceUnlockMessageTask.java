@@ -33,7 +33,7 @@ public class ForceUnlockMessageTask extends AbstractLockMessageTask {
     private long expectedFence;
     private UUID invocationUid;
 
-    protected ForceUnlockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    ForceUnlockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

@@ -103,4 +103,10 @@ public class CountDownLatchInvocationKey implements WaitKey, IdentifiedDataSeria
         result = 31 * result + (int) (commitIndex ^ (commitIndex >>> 32));
         return result;
     }
+
+    @Override
+    public String toString() {
+        return "CountDownLatchInvocationKey{" + "name='" + name + '\'' + ", commitIndex=" + commitIndex + '}';
+    }
+
 }

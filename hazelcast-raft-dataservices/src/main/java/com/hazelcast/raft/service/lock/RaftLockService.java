@@ -101,28 +101,28 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
     public void release(RaftGroupId groupId, String name, LockEndpoint endpoint, UUID invocationUid) {
         heartbeatSession(groupId, endpoint.sessionId());
         LockRegistry registry = getLockRegistryOrFail(groupId, name);
-        Collection<LockInvocationKey> waitEntries = registry.release(name, endpoint, invocationUid);
+        Collection<LockInvocationKey> waitKeys = registry.release(name, endpoint, invocationUid);
 
         if (logger.isFineEnabled()) {
             logger.fine("Lock[" + name + "] in " + groupId + " is released by <" + endpoint + ", " + invocationUid + ">");
         }
 
-        notifyLockAcquiredWaitEntries(groupId, name, waitEntries);
+        notifyLockAcquiredWaitKeys(groupId, name, waitKeys);
     }
 
     public void forceRelease(RaftGroupId groupId, String name, long expectedFence, UUID invocationUid) {
         LockRegistry registry = getLockRegistryOrFail(groupId, name);
-        Collection<LockInvocationKey> waitEntries = registry.forceRelease(name, expectedFence, invocationUid);
+        Collection<LockInvocationKey> waitKeys = registry.forceRelease(name, expectedFence, invocationUid);
 
         if (logger.isFineEnabled()) {
             logger.fine("Lock[" + name + "] in " + groupId + " is force-released by " + invocationUid + " for fence: "
                     + expectedFence);
         }
 
-        notifyLockAcquiredWaitEntries(groupId, name, waitEntries);
+        notifyLockAcquiredWaitKeys(groupId, name, waitKeys);
     }
 
-    private void notifyLockAcquiredWaitEntries(RaftGroupId groupId, String name, Collection<LockInvocationKey> waitEntries) {
+    private void notifyLockAcquiredWaitKeys(RaftGroupId groupId, String name, Collection<LockInvocationKey> waitEntries) {
         if (waitEntries.isEmpty()) {
             return;
         }

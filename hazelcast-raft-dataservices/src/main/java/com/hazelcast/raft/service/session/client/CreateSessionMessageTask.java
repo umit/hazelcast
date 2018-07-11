@@ -39,7 +39,7 @@ public class CreateSessionMessageTask extends AbstractMessageTask implements Exe
 
     protected RaftGroupId groupId;
 
-    public CreateSessionMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    CreateSessionMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

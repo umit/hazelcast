@@ -27,7 +27,7 @@ import com.hazelcast.raft.service.countdownlatch.operation.GetRemainingCountOp;
  */
 public class GetRemainingCountMessageTask extends AbstractCountDownLatchMessageTask {
 
-    protected GetRemainingCountMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    GetRemainingCountMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

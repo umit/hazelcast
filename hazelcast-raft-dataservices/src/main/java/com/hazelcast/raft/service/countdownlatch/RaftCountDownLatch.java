@@ -95,7 +95,7 @@ public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocatio
     boolean await(long commitIndex, boolean wait) {
         boolean success = (getRemainingCount() == 0);
         if (!success && wait) {
-            waitKeys.add(new CountDownLatchInvocationKey(getName(), commitIndex));
+            waitKeys.add(new CountDownLatchInvocationKey(name, commitIndex));
         }
 
         return success;
@@ -147,5 +147,11 @@ public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocatio
             UUID uid = new UUID(most, least);
             countDownUids.add(uid);
         }
+    }
+
+    @Override
+    public String toString() {
+        return "RaftCountDownLatch{" + "groupId=" + groupId + ", name='" + name + '\'' + ", round=" + round
+                + ", countDownFrom=" + countDownFrom + ", countDownUids=" + countDownUids + ", waitKeys=" + waitKeys + '}';
     }
 }

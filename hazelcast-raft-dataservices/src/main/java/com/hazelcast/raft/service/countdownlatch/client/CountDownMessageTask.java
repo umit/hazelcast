@@ -32,7 +32,7 @@ public class CountDownMessageTask extends AbstractCountDownLatchMessageTask {
     private int expectedRound;
     private UUID invocationUid;
 
-    protected CountDownMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    CountDownMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

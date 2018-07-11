@@ -230,8 +230,7 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     @Override
     public void destroy() {
-        int dataSize = ClientMessage.HEADER_SIZE
-                + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(name);
+        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(name);
         ClientMessage msg = prepareClientMessage(groupId, name, dataSize, DESTROY_TYPE);
         msg.updateFrameLength();
 

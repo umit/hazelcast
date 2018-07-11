@@ -29,7 +29,7 @@ public class TrySetCountMessageTask extends AbstractCountDownLatchMessageTask {
 
     private int count;
 
-    protected TrySetCountMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    TrySetCountMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

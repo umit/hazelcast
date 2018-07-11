@@ -29,6 +29,10 @@ public class RestoreSnapshotOp extends RaftOp implements IdentifiedDataSerializa
         this.snapshot = snapshot;
     }
 
+    public Object getSnapshot() {
+        return snapshot;
+    }
+
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         SnapshotAwareService service = getService();
@@ -59,7 +63,7 @@ public class RestoreSnapshotOp extends RaftOp implements IdentifiedDataSerializa
     }
 
     @Override
-    protected String getServiceName() {
+    public String getServiceName() {
         return serviceName;
     }
 

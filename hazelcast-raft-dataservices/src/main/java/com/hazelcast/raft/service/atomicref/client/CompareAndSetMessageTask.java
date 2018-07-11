@@ -31,7 +31,7 @@ public class CompareAndSetMessageTask extends AbstractAtomicRefMessageTask {
     private Data expectedValue;
     private Data newValue;
 
-    protected CompareAndSetMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    CompareAndSetMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

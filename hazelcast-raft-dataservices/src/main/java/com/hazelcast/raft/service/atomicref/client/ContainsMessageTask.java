@@ -30,7 +30,7 @@ public class ContainsMessageTask extends AbstractAtomicRefMessageTask {
 
     private Data value;
 
-    protected ContainsMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    ContainsMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

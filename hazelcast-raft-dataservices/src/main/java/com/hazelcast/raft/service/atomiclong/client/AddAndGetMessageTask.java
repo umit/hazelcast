@@ -29,7 +29,7 @@ public class AddAndGetMessageTask extends AbstractAtomicLongMessageTask {
 
     private long delta;
 
-    protected AddAndGetMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    AddAndGetMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

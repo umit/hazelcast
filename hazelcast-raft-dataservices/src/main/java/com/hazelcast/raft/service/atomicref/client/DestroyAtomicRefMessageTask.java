@@ -27,7 +27,7 @@ import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
  */
 public class DestroyAtomicRefMessageTask extends AbstractAtomicRefMessageTask {
 
-    protected DestroyAtomicRefMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    DestroyAtomicRefMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

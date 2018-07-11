@@ -8,7 +8,10 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftNodeImpl;
+import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
+import com.hazelcast.raft.impl.service.operation.snapshot.RestoreSnapshotOp;
+import com.hazelcast.raft.service.blocking.ResourceRegistry;
 import com.hazelcast.raft.service.countdownlatch.proxy.RaftCountDownLatchProxy;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -21,6 +24,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -31,6 +35,7 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
@@ -156,12 +161,6 @@ public class RaftCountDownLatchAdvancedTest extends HazelcastRaftTestSupport {
 
     @Test
     public void testNewRaftGroupMemberSchedulesTimeoutsWithSnapshot() throws ExecutionException, InterruptedException {
-        for (int i = 0; i < LOG_ENTRY_COUNT_TO_SNAPSHOT; i++) {
-            latch.trySetCount(1);
-            latch.countDown();
-            latch.await(1, TimeUnit.SECONDS);
-        }
-
         latch.trySetCount(1);
 
         spawn(new Runnable() {
@@ -175,7 +174,21 @@ public class RaftCountDownLatchAdvancedTest extends HazelcastRaftTestSupport {
             }
         });
 
+        for (int i = 0; i < LOG_ENTRY_COUNT_TO_SNAPSHOT; i++) {
+            latch.trySetCount(1);
+        }
+
         final RaftGroupId groupId = getGroupId(latch);
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                HazelcastInstance leader = getLeaderInstance(instances, groupId);
+                RaftCountDownLatchService service = getNodeEngineImpl(leader).getService(RaftCountDownLatchService.SERVICE_NAME);
+                ResourceRegistry registry = service.getRegistryOrNull(groupId);
+                assertFalse(registry.getWaitTimeouts().isEmpty());
+            }
+        });
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -183,18 +196,18 @@ public class RaftCountDownLatchAdvancedTest extends HazelcastRaftTestSupport {
                 for (HazelcastInstance instance : instances) {
                     RaftNodeImpl raftNode = getRaftNode(instance, groupId);
                     assertNotNull(raftNode);
-                    assertTrue(getSnapshotEntry(raftNode).index() > 0);
+                    LogEntry snapshotEntry = getSnapshotEntry(raftNode);
+                    assertTrue(snapshotEntry.index() > 0);
+                    List<RestoreSnapshotOp> ops = (List<RestoreSnapshotOp>) snapshotEntry.operation();
+                    for (RestoreSnapshotOp op : ops) {
+                        if (op.getServiceName().equals(RaftCountDownLatchService.SERVICE_NAME)) {
+                            ResourceRegistry registry = (ResourceRegistry) op.getSnapshot();
+                            assertFalse(registry.getWaitTimeouts().isEmpty());
+                            return;
+                        }
+                    }
+                    fail();
                 }
-            }
-        });
-
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() {
-                HazelcastInstance leader = getLeaderInstance(instances, groupId);
-                RaftCountDownLatchService service = getNodeEngineImpl(leader).getService(RaftCountDownLatchService.SERVICE_NAME);
-                CountDownLatchRegistry registry = service.getRegistryOrNull(groupId);
-                assertFalse(registry.getWaitTimeouts().isEmpty());
             }
         });
 

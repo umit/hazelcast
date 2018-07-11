@@ -44,7 +44,7 @@ import static java.lang.Math.max;
  */
 public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements ISemaphore {
 
-    private static final int DRAIN_SESSION_ACQ_COUNT = 1024;
+    public static final int DRAIN_SESSION_ACQ_COUNT = 1024;
 
     private final String name;
     private final RaftInvocationManager raftInvocationManager;
@@ -76,7 +76,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
             InternalCompletableFuture<Long> f = raftInvocationManager.invoke(groupId, op);
             try {
                 f.join();
-                break;
+                return;
             } catch (SessionExpiredException e) {
                 invalidateSession(sessionId);
             }
@@ -148,8 +148,9 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
         for (;;) {
             long sessionId = acquireSession(DRAIN_SESSION_ACQ_COUNT);
             RaftOp op = new DrainPermitsOp(name, sessionId);
+            InternalCompletableFuture<Integer> future = raftInvocationManager.invoke(groupId, op);
             try {
-                int count = raftInvocationManager.<Integer>invoke(groupId, op).join();
+                int count = future.join();
                 releaseSession(sessionId, DRAIN_SESSION_ACQ_COUNT - count);
                 return count;
             } catch (SessionExpiredException e) {

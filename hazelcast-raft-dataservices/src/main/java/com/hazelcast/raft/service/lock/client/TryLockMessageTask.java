@@ -29,7 +29,7 @@ public class TryLockMessageTask extends LockMessageTask {
 
     private long timeoutMs;
 
-    protected TryLockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    TryLockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

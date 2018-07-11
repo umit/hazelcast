@@ -8,7 +8,10 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftNodeImpl;
+import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
+import com.hazelcast.raft.impl.service.operation.snapshot.RestoreSnapshotOp;
+import com.hazelcast.raft.service.blocking.ResourceRegistry;
 import com.hazelcast.raft.service.semaphore.proxy.RaftSessionlessSemaphoreProxy;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -20,6 +23,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -31,6 +35,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
@@ -169,15 +174,9 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
         assertTrue(registry.getWaitTimeouts().isEmpty());
     }
 
-
     @Test
     public void testNewRaftGroupMemberSchedulesTimeoutsWithSnapshot() throws ExecutionException, InterruptedException {
         semaphore.init(1);
-
-        for (int i = 0; i < LOG_ENTRY_COUNT_TO_SNAPSHOT; i++) {
-            semaphore.acquire();
-            semaphore.release();
-        }
 
         spawn(new Runnable() {
             @Override
@@ -190,18 +189,12 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
             }
         });
 
-        final RaftGroupId groupId = getGroupId(semaphore);
+        for (int i = 0; i < LOG_ENTRY_COUNT_TO_SNAPSHOT; i++) {
+            semaphore.acquire();
+            semaphore.release();
+        }
 
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() {
-                for (HazelcastInstance instance : instances) {
-                    RaftNodeImpl raftNode = getRaftNode(instance, groupId);
-                    assertNotNull(raftNode);
-                    assertTrue(getSnapshotEntry(raftNode).index() > 0);
-                }
-            }
-        });
+        final RaftGroupId groupId = getGroupId(semaphore);
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -210,6 +203,27 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
                 RaftSemaphoreService service = getNodeEngineImpl(leader).getService(RaftSemaphoreService.SERVICE_NAME);
                 SemaphoreRegistry registry = service.getRegistryOrNull(groupId);
                 assertFalse(registry.getWaitTimeouts().isEmpty());
+            }
+        });
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (HazelcastInstance instance : instances) {
+                    RaftNodeImpl raftNode = getRaftNode(instance, groupId);
+                    assertNotNull(raftNode);
+                    LogEntry snapshotEntry = getSnapshotEntry(raftNode);
+                    assertTrue(snapshotEntry.index() > 0);
+                    List<RestoreSnapshotOp> ops = (List<RestoreSnapshotOp>) snapshotEntry.operation();
+                    for (RestoreSnapshotOp op : ops) {
+                        if (op.getServiceName().equals(RaftSemaphoreService.SERVICE_NAME)) {
+                            ResourceRegistry registry = (ResourceRegistry) op.getSnapshot();
+                            assertFalse(registry.getWaitTimeouts().isEmpty());
+                            return;
+                        }
+                    }
+                    fail();
+                }
             }
         });
 

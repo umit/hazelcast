@@ -36,7 +36,7 @@ public class CreateLockMessageTask extends AbstractMessageTask implements Execut
 
     private String name;
 
-    protected CreateLockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    CreateLockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

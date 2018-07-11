@@ -40,7 +40,7 @@ public class HeartbeatSessionMessageTask extends AbstractMessageTask implements 
     private RaftGroupId groupId;
     private long sessionId;
 
-    public HeartbeatSessionMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    HeartbeatSessionMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

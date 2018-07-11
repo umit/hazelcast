@@ -35,7 +35,7 @@ public class CreateAtomicRefMessageTask extends AbstractMessageTask implements E
 
     private String name;
 
-    protected CreateAtomicRefMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    CreateAtomicRefMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

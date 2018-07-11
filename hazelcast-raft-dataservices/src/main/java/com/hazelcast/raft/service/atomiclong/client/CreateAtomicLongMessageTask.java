@@ -35,7 +35,7 @@ public class CreateAtomicLongMessageTask extends AbstractMessageTask implements 
 
     private String name;
 
-    protected CreateAtomicLongMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    CreateAtomicLongMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

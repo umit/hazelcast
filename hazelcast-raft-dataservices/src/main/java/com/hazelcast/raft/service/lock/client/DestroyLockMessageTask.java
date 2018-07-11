@@ -17,25 +17,94 @@
 package com.hazelcast.raft.service.lock.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
+import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.instance.Node;
+import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
+import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
+import com.hazelcast.raft.impl.service.RaftService;
+import com.hazelcast.raft.service.lock.RaftLockService;
 import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
+
+import java.security.Permission;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class DestroyLockMessageTask extends AbstractLockMessageTask {
+public class DestroyLockMessageTask extends AbstractMessageTask implements ExecutionCallback {
 
-    protected DestroyLockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    private RaftGroupId groupId;
+    private String name;
+
+    DestroyLockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
-        RaftInvocationManager invocationManager = getRaftInvocationManager();
+        RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
+        RaftInvocationManager invocationManager = raftService.getInvocationManager();
         ICompletableFuture<Object> future = invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name));
         future.andThen(this);
+    }
+
+    @Override
+    protected Object decodeClientMessage(ClientMessage clientMessage) {
+        groupId = RaftGroupIdImpl.readFrom(clientMessage);
+        name = clientMessage.getStringUtf8();
+        return null;
+    }
+
+    @Override
+    protected ClientMessage encodeResponse(Object response) {
+        if (response instanceof Boolean) {
+            int dataSize = ClientMessage.HEADER_SIZE + Bits.BOOLEAN_SIZE_IN_BYTES;
+            ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
+            clientMessage.setMessageType(1111);
+            clientMessage.set((Boolean) response);
+            clientMessage.updateFrameLength();
+            return clientMessage;
+        }
+
+        throw new IllegalArgumentException("Unknown response: " + response);
+    }
+
+    @Override
+    public void onResponse(Object response) {
+        sendResponse(response);
+    }
+
+    @Override
+    public void onFailure(Throwable t) {
+        handleProcessingFailure(t);
+    }
+
+    @Override
+    public String getServiceName() {
+        return RaftLockService.SERVICE_NAME;
+    }
+
+    @Override
+    public String getDistributedObjectName() {
+        return name;
+    }
+
+    @Override
+    public Permission getRequiredPermission() {
+        return null;
+    }
+
+    @Override
+    public String getMethodName() {
+        return null;
+    }
+
+    @Override
+    public Object[] getParameters() {
+        return new Object[0];
     }
 }

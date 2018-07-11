@@ -27,7 +27,7 @@ import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
  */
 public class DestroyAtomicLongMessageTask extends AbstractAtomicLongMessageTask {
 
-    protected DestroyAtomicLongMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    DestroyAtomicLongMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

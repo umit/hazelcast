@@ -29,7 +29,7 @@ public class AwaitMessageTask extends AbstractCountDownLatchMessageTask {
 
     private long timeoutMillis;
 
-    protected AwaitMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    AwaitMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

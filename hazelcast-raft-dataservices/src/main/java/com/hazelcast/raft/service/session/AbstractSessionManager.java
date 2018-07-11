@@ -45,7 +45,7 @@ import static com.hazelcast.util.Preconditions.checkState;
  */
 public abstract class AbstractSessionManager {
 
-    public static final int NO_SESSION_ID = -1;
+    public static final long NO_SESSION_ID = -1;
 
     private final ConcurrentMap<RaftGroupId, Object> mutexes = new ConcurrentHashMap<RaftGroupId, Object>();
     private final ConcurrentMap<RaftGroupId, ClientSession> sessions = new ConcurrentHashMap<RaftGroupId, ClientSession>();
