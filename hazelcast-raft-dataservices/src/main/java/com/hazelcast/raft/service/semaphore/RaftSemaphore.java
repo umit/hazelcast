@@ -138,10 +138,10 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
             }
         }
 
-        return assingPermitsToWaitKeys();
+        return assignPermitsToWaitKeys();
     }
 
-    private Collection<SemaphoreInvocationKey> assingPermitsToWaitKeys() {
+    private Collection<SemaphoreInvocationKey> assignPermitsToWaitKeys() {
         List<SemaphoreInvocationKey> keys = new ArrayList<SemaphoreInvocationKey>();
         Iterator<SemaphoreInvocationKey> iterator = waitKeys.iterator();
         while (iterator.hasNext()) {
@@ -178,7 +178,7 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
         initialized = true;
 
         Collection<SemaphoreInvocationKey> keys =
-                permits > 0 ? assingPermitsToWaitKeys() : Collections.<SemaphoreInvocationKey>emptyList();
+                permits > 0 ? assignPermitsToWaitKeys() : Collections.<SemaphoreInvocationKey>emptyList();
 
         return Tuple2.of(true, keys);
     }
