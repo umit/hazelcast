@@ -32,7 +32,7 @@ public class LockMessageTask extends AbstractLockMessageTask {
     protected long threadId;
     protected UUID invocationUid;
 
-    protected LockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    LockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

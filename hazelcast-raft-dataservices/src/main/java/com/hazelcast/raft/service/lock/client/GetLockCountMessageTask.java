@@ -29,7 +29,7 @@ public class GetLockCountMessageTask extends AbstractLockMessageTask {
 
     private long threadId;
 
-    protected GetLockCountMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    GetLockCountMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

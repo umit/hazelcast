@@ -30,7 +30,7 @@ public class CompareAndSetMessageTask extends AbstractAtomicLongMessageTask {
     private long expect;
     private long current;
 
-    protected CompareAndSetMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    CompareAndSetMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

@@ -39,7 +39,7 @@ public class CloseSessionMessageTask extends AbstractMessageTask implements Exec
     private RaftGroupId groupId;
     private long sessionId;
 
-    public CloseSessionMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    CloseSessionMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

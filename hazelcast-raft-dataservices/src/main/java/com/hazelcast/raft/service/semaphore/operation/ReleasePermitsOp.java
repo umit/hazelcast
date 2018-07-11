@@ -43,7 +43,7 @@ public class ReleasePermitsOp extends AbstractSemaphoreOp {
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftSemaphoreService service = getService();
         service.releasePermits(groupId, name, sessionId, permits);
-        return null;
+        return true;
     }
 
     @Override

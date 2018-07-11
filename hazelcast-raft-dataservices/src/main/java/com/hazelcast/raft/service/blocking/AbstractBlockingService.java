@@ -26,6 +26,7 @@ import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.session.SessionAccessor;
 import com.hazelcast.raft.impl.session.SessionAwareService;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
+import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.blocking.operation.InvalidateWaitKeysOp;
 import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.spi.RaftRemoteService;
@@ -116,9 +117,10 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
     @Override
     public final void restoreSnapshot(RaftGroupId groupId, long commitIndex, RR registry) {
         RR prev = registries.put(registry.getGroupId(), registry);
-        Collection<W> existingKeys =
-                prev != null ? prev.getWaitTimeouts().keySet() : Collections.<W>emptySet();
-        Map<W, Long> newWaitKeys = registry.restoreWaitTimeouts(existingKeys);
+        // do not shift the already existing wait timeouts...
+        Map<W, Tuple2<Long, Long>> existingWaitTimeouts =
+                prev != null ? prev.getWaitTimeouts() : Collections.<W, Tuple2<Long,Long>>emptyMap();
+        Map<W, Long> newWaitKeys = registry.overwriteWaitTimeouts(existingWaitTimeouts);
         for (Entry<W, Long> e : newWaitKeys.entrySet()) {
             scheduleTimeout(groupId, e.getKey(), e.getValue());
         }

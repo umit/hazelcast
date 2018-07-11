@@ -52,13 +52,13 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
             RaftInvocationManager invocationManager = raftService.getInvocationManager();
             return config != null && config.isStrictModeEnabled()
                     ? new RaftSessionAwareSemaphoreProxy(invocationManager, sessionManager, groupId, name)
-                    : new RaftSessionlessSemaphoreProxy(invocationManager, sessionManager, groupId, name);
+                    : new RaftSessionlessSemaphoreProxy(invocationManager, groupId, name);
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
     }
 
-    private ICompletableFuture<RaftGroupId> createRaftGroup(String name) {
+    public ICompletableFuture<RaftGroupId> createRaftGroup(String name) {
         String groupRef = getRaftGroupRef(name);
         return raftService.getInvocationManager().createRaftGroup(groupRef);
     }

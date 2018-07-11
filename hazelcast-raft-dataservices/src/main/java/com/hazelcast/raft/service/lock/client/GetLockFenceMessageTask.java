@@ -29,7 +29,7 @@ public class GetLockFenceMessageTask extends AbstractLockMessageTask {
 
     private long threadId;
 
-    protected GetLockFenceMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    GetLockFenceMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

@@ -33,7 +33,7 @@ public class ApplyMessageTask extends AbstractAtomicRefMessageTask {
     private RETURN_VALUE_TYPE returnValueType;
     private boolean alter;
 
-    protected ApplyMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    ApplyMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 

@@ -54,7 +54,7 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
             return true;
         }
 
-        LockInvocationKey key = new LockInvocationKey(getName(), endpoint, commitIndex, invocationUid);
+        LockInvocationKey key = new LockInvocationKey(name, endpoint, commitIndex, invocationUid);
         if (owner == null) {
             owner = key;
         }
@@ -199,5 +199,11 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
             long most = in.readLong();
             releaseRefUid = new UUID(most, least);
         }
+    }
+
+    @Override
+    public String toString() {
+        return "RaftLock{" + "groupId=" + groupId + ", name='" + name + '\'' + ", owner=" + owner + ", lockCount=" + lockCount
+                + ", releaseRefUid=" + releaseRefUid + ", waitKeys=" + waitKeys + '}';
     }
 }

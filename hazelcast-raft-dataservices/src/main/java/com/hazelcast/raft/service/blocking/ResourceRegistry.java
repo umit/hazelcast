@@ -117,13 +117,16 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
         return expired;
     }
 
-    final Map<W, Long> restoreWaitTimeouts(Collection<W> excludedKeys) {
+    final Map<W, Long> overwriteWaitTimeouts(Map<W, Tuple2<Long, Long>> existingWaitTimeouts) {
+        for (Entry<W, Tuple2<Long, Long>> e : existingWaitTimeouts.entrySet()) {
+            waitTimeouts.put(e.getKey(), e.getValue());
+        }
+
         Map<W, Long> newKeys = new HashMap<W, Long>();
         for (Entry<W, Tuple2<Long, Long>> e : waitTimeouts.entrySet()) {
             W key = e.getKey();
-            if (!excludedKeys.contains(key)) {
+            if (!existingWaitTimeouts.containsKey(key)) {
                 Long timeout = e.getValue().element1;
-                addWaitKey(key, timeout);
                 newKeys.put(key, timeout);
             }
         }
@@ -193,7 +196,6 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
         for (Entry<W, Tuple2<Long, Long>> e : waitTimeouts.entrySet()) {
             out.writeObject(e.getKey());
             out.writeLong(e.getValue().element1);
-            out.writeLong(e.getValue().element2);
         }
     }
 
@@ -211,12 +213,18 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
             String name = in.readUTF();
             destroyedNames.add(name);
         }
+        long now = Clock.currentTimeMillis();
         count = in.readInt();
         for (int i = 0; i < count; i++) {
             W key = in.readObject();
-            long l1 = in.readLong();
-            long l2 = in.readLong();
-            waitTimeouts.put(key, Tuple2.of(l1, l2));
+            long timeout = in.readLong();
+            waitTimeouts.put(key, Tuple2.of(timeout, now + timeout));
         }
+    }
+
+    @Override
+    public String toString() {
+        return "ResourceRegistry{" + "groupId=" + groupId + ", resources=" + resources + ", destroyedNames=" + destroyedNames
+                + ", waitTimeouts=" + waitTimeouts + '}';
     }
 }

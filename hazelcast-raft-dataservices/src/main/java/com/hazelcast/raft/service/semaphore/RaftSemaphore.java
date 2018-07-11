@@ -41,7 +41,7 @@ import static com.hazelcast.util.Preconditions.checkPositive;
  */
 public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> implements IdentifiedDataSerializable {
 
-    private static final int MISSING_VALUE = NO_SESSION_ID;
+    private static final long MISSING_VALUE = NO_SESSION_ID;
 
     private boolean initialized;
     private int available;
@@ -50,7 +50,7 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
     public RaftSemaphore() {
     }
 
-    protected RaftSemaphore(RaftGroupId groupId, String name) {
+    RaftSemaphore(RaftGroupId groupId, String name) {
         super(groupId, name);
     }
 
@@ -218,5 +218,11 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
             long value = in.readLong();
             acquires.put(key, value);
         }
+    }
+
+    @Override
+    public String toString() {
+        return "RaftSemaphore{" + "groupId=" + groupId + ", name='" + name + '\'' + ", initialized=" + initialized
+                + ", available=" + available + ", acquires=" + acquires + ", waitKeys=" + waitKeys + '}';
     }
 }

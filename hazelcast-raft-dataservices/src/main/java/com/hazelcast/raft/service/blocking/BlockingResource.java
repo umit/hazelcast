@@ -36,8 +36,8 @@ import static java.util.Collections.unmodifiableList;
  */
 public abstract class BlockingResource<W extends WaitKey> implements DataSerializable {
 
-    private RaftGroupId groupId;
-    private String name;
+    protected RaftGroupId groupId;
+    protected String name;
     protected LinkedList<W> waitKeys = new LinkedList<W>();
 
     public BlockingResource() {
@@ -113,5 +113,10 @@ public abstract class BlockingResource<W extends WaitKey> implements DataSeriali
             W key = in.readObject();
             waitKeys.add(key);
         }
+    }
+
+    @Override
+    public String toString() {
+        return "BlockingResource{" + "groupId=" + groupId + ", name='" + name + '\'' + ", waitKeys=" + waitKeys + '}';
     }
 }

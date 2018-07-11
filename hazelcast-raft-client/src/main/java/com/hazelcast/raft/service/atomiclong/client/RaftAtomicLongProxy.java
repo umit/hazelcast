@@ -42,7 +42,6 @@ import static com.hazelcast.raft.service.util.ClientAccessor.getClient;
 
 /**
  * TODO: Javadoc Pending...
- *
  */
 public class RaftAtomicLongProxy implements IAtomicLong {
 
@@ -235,8 +234,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public void destroy() {
-        int dataSize = ClientMessage.HEADER_SIZE
-                + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(name);
+        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(name);
         ClientMessage msg = prepareClientMessage(groupId, name, dataSize, DESTROY_TYPE);
         msg.updateFrameLength();
 

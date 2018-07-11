@@ -121,4 +121,11 @@ public class SemaphoreInvocationKey implements WaitKey, IdentifiedDataSerializab
         result = 31 * result + permits;
         return result;
     }
+
+    @Override
+    public String toString() {
+        return "SemaphoreInvocationKey{" + "name='" + name + '\'' + ", commitIndex=" + commitIndex + ", sessionId=" + sessionId
+                + ", permits=" + permits + '}';
+    }
+
 }
