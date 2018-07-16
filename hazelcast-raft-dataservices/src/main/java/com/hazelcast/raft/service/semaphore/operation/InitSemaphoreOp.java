@@ -74,4 +74,10 @@ public class InitSemaphoreOp extends RaftOp implements IdentifiedDataSerializabl
         name = in.readUTF();
         permits = in.readInt();
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", name=").append(name)
+          .append(", permits=").append(permits);
+    }
 }

@@ -26,7 +26,7 @@ public class VoteResponseOp extends AsyncRaftOp {
     }
 
     @Override
-    public void run() throws Exception {
+    public void run() {
         RaftService service = getService();
         service.handleVoteResponse(groupId, voteResponse);
     }

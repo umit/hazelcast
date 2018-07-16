@@ -83,4 +83,12 @@ public class ForceUnlockOp extends RaftOp implements IdentifiedDataSerializable 
         long most = in.readLong();
         invocationUid = new UUID(most, least);
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", name=").append(name)
+          .append(", expectedFence=").append(expectedFence)
+          .append(", invocationUid=").append(invocationUid);
+
+    }
 }

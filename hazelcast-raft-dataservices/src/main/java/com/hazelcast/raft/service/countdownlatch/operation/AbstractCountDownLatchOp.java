@@ -35,7 +35,7 @@ public abstract class AbstractCountDownLatchOp extends RaftOp implements Identif
     public AbstractCountDownLatchOp() {
     }
 
-    public AbstractCountDownLatchOp(String name) {
+    AbstractCountDownLatchOp(String name) {
         this.name = name;
     }
 

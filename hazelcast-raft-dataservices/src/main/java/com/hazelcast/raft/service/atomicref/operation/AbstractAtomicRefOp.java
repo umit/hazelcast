@@ -37,7 +37,7 @@ public abstract class AbstractAtomicRefOp extends RaftOp implements IdentifiedDa
     public AbstractAtomicRefOp() {
     }
 
-    public AbstractAtomicRefOp(String name) {
+    AbstractAtomicRefOp(String name) {
         this.name = name;
     }
 

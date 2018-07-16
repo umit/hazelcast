@@ -67,4 +67,9 @@ public class TriggerExpandRaftGroupsOp extends RaftOp implements IdentifiedDataS
             membersToAdd.put(groupId, member);
         }
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", membersToAdd=").append(membersToAdd);
+    }
 }

@@ -26,7 +26,7 @@ public abstract class RaftReplicateOp extends Operation implements IdentifiedDat
     public RaftReplicateOp() {
     }
 
-    public RaftReplicateOp(RaftGroupId groupId) {
+    RaftReplicateOp(RaftGroupId groupId) {
         this.groupId = groupId;
     }
 

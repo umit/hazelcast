@@ -33,8 +33,8 @@ import java.util.UUID;
 abstract class AbstractLockOp extends RaftOp implements IdentifiedDataSerializable {
 
     String name;
-    long sessionId;
-    long threadId;
+    private long sessionId;
+    private long threadId;
     UUID invocationUid;
 
     AbstractLockOp() {

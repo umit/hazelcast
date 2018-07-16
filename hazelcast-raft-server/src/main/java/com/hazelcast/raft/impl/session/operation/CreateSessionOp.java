@@ -72,4 +72,9 @@ public class CreateSessionOp extends RaftOp implements IdentifiedDataSerializabl
     public void readData(ObjectDataInput in) throws IOException {
         endpoint = in.readObject();
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", endpoint=").append(endpoint);
+    }
 }

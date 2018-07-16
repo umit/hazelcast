@@ -63,4 +63,10 @@ public class TrySetCountOp extends AbstractCountDownLatchOp {
         super.readData(in);
         count = in.readInt();
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        super.toString(sb);
+        sb.append(", count=").append(count);
+    }
 }

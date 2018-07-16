@@ -70,4 +70,9 @@ public class GetLockFenceOp extends RaftOp implements IdentifiedDataSerializable
     public void readData(ObjectDataInput in) throws IOException {
         name = in.readUTF();
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", name=").append(name);
+    }
 }

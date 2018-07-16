@@ -70,4 +70,9 @@ public class AvailablePermitsOp extends RaftOp implements IdentifiedDataSerializ
     public void readData(ObjectDataInput in) throws IOException {
         name = in.readUTF();
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", name=").append(name);
+    }
 }

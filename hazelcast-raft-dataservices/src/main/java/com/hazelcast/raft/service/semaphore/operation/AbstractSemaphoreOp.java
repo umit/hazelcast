@@ -38,7 +38,7 @@ abstract class AbstractSemaphoreOp extends RaftOp implements IdentifiedDataSeria
     public AbstractSemaphoreOp() {
     }
 
-    public AbstractSemaphoreOp(String name, long sessionId, UUID invocationUid) {
+    AbstractSemaphoreOp(String name, long sessionId, UUID invocationUid) {
         this.name = name;
         this.sessionId = sessionId;
         this.invocationUid = invocationUid;
@@ -69,5 +69,12 @@ abstract class AbstractSemaphoreOp extends RaftOp implements IdentifiedDataSeria
         long least = in.readLong();
         long most = in.readLong();
         invocationUid = new UUID(most, least);
+    }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", name=").append(name)
+          .append(", sessionId=").append(sessionId)
+          .append(", invocationUid=").append(invocationUid);
     }
 }

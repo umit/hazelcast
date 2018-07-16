@@ -77,6 +77,7 @@ public class CreateRaftNodeOp extends Operation implements IdentifiedDataSeriali
 
     @Override
     protected void toString(StringBuilder sb) {
-        sb.append(", groupId=").append(groupId).append(", initialMembers=").append(initialMembers);
+        sb.append(", groupId=").append(groupId)
+          .append(", initialMembers=").append(initialMembers);
     }
 }

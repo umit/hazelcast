@@ -71,4 +71,11 @@ public class CountDownOp extends AbstractCountDownLatchOp {
         long most = in.readLong();
         invocationUid = new UUID(most, least);
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        super.toString(sb);
+        sb.append(", expectedRound=").append(expectedRound)
+          .append(", invocationUid=").append(invocationUid);
+    }
 }

@@ -37,11 +37,11 @@ public abstract class AbstractAtomicLongOp extends RaftOp implements IdentifiedD
     public AbstractAtomicLongOp() {
     }
 
-    public AbstractAtomicLongOp(String name) {
+    AbstractAtomicLongOp(String name) {
         this.name = name;
     }
 
-    protected RaftAtomicLong getAtomicLong(RaftGroupId groupId) {
+    RaftAtomicLong getAtomicLong(RaftGroupId groupId) {
         RaftAtomicLongService service = getService();
         return service.getAtomicLong(groupId, name);
     }
