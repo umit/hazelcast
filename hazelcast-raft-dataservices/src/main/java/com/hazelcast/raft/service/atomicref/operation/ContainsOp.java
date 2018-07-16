@@ -42,8 +42,7 @@ public class ContainsOp extends AbstractAtomicRefOp implements IdentifiedDataSer
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex)
-            throws Exception {
+    public Object run(RaftGroupId groupId, long commitIndex) {
         RaftAtomicRef ref = getAtomicRef(groupId);
         return ref.contains(value);
     }

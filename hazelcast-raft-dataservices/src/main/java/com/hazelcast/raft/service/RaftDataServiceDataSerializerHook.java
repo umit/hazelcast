@@ -21,6 +21,7 @@ import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.service.blocking.operation.InvalidateWaitKeysOp;
+import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
 
 /**
  */
@@ -32,6 +33,7 @@ public class RaftDataServiceDataSerializerHook implements DataSerializerHook {
     public static final int F_ID = FactoryIdHelper.getFactoryId(RAFT_DS_FACTORY, FACTORY_ID);
 
     public static final int INVALIDATE_WAIT_KEYS_OP = 1;
+    public static final int DESTROY_RAFT_OBJECT_OP = 2;
 
     @Override
     public int getFactoryId() {
@@ -46,6 +48,8 @@ public class RaftDataServiceDataSerializerHook implements DataSerializerHook {
                 switch (typeId) {
                     case INVALIDATE_WAIT_KEYS_OP:
                         return new InvalidateWaitKeysOp();
+                    case DESTROY_RAFT_OBJECT_OP:
+                        return new DestroyRaftObjectOp();
                 }
                 throw new IllegalArgumentException("Undefined type: " + typeId);
             }

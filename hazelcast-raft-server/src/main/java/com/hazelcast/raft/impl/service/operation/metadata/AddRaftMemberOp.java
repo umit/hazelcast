@@ -73,4 +73,8 @@ public class AddRaftMemberOp extends RaftOp implements IdentifiedDataSerializabl
         return RaftServiceDataSerializerHook.ADD_RAFT_MEMBER_OP;
     }
 
+    @Override
+    protected void toString(StringBuilder sb) {
+        sb.append(", member=").append(member);
+    }
 }

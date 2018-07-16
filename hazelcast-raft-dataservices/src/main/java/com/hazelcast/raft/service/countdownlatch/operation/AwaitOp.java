@@ -68,4 +68,10 @@ public class AwaitOp extends AbstractCountDownLatchOp {
         super.readData(in);
         timeoutMillis = in.readLong();
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        super.toString(sb);
+        sb.append(", timeoutMillis=").append(timeoutMillis);
+    }
 }

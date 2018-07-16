@@ -70,4 +70,12 @@ public class ChangeRaftGroupMembershipOp extends RaftReplicateOp {
         member = in.readObject();
         changeType = MembershipChangeType.valueOf(in.readUTF());
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        super.toString(sb);
+        sb.append(", membersCommitIndex=").append(membersCommitIndex)
+          .append(", member=").append(member)
+          .append(", changeType=").append(changeType);
+    }
 }

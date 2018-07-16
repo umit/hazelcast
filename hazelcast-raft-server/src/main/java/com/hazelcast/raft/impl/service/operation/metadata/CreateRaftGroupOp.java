@@ -75,7 +75,7 @@ public class CreateRaftGroupOp extends RaftOp implements IdentifiedDataSerializa
 
     @Override
     protected void toString(StringBuilder sb) {
-        sb.append(", groupName=").append(groupName);
-        sb.append(", members=").append(members);
+        sb.append(", groupName=").append(groupName)
+          .append(", members=").append(members);
     }
 }

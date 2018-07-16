@@ -20,7 +20,6 @@ public class AlterOp extends AbstractAtomicLongOp {
     }
 
     private IFunction<Long, Long> function;
-
     private AlterResultType alterResultType;
 
     public AlterOp() {

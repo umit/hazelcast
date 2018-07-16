@@ -22,7 +22,7 @@ public class InstallSnapshotOp extends AsyncRaftOp {
     }
 
     @Override
-    public void run() throws Exception {
+    public void run() {
         RaftService service = getService();
         service.handleSnapshot(groupId, installSnapshot);
     }

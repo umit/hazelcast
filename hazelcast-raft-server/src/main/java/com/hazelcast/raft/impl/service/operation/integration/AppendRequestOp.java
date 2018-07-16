@@ -26,7 +26,7 @@ public class AppendRequestOp extends AsyncRaftOp {
     }
 
     @Override
-    public void run() throws Exception {
+    public void run() {
         RaftService service = getService();
         service.handleAppendEntries(groupId, appendRequest);
     }

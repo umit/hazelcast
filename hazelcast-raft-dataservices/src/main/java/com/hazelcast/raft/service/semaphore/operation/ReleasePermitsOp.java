@@ -63,4 +63,10 @@ public class ReleasePermitsOp extends AbstractSemaphoreOp {
         super.readData(in);
         permits = in.readInt();
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        super.toString(sb);
+        sb.append(", permits=").append(permits);
+    }
 }

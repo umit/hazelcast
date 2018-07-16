@@ -71,4 +71,11 @@ public class AcquirePermitsOp extends AbstractSemaphoreOp {
         permits = in.readInt();
         timeoutMs = in.readLong();
     }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        super.toString(sb);
+        sb.append(", permits=").append(permits)
+          .append(", timeoutMs=").append(timeoutMs);
+    }
 }

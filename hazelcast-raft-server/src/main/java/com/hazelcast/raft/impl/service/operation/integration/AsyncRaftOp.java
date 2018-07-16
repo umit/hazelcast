@@ -22,7 +22,7 @@ abstract class AsyncRaftOp extends Operation implements IdentifiedDataSerializab
     public AsyncRaftOp() {
     }
 
-    public AsyncRaftOp(RaftGroupId groupId) {
+    AsyncRaftOp(RaftGroupId groupId) {
         this.groupId = groupId;
     }
 
