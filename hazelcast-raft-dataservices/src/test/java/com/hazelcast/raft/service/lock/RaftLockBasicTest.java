@@ -8,6 +8,7 @@ import com.hazelcast.core.ILock;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.RaftGroupDestroyedException;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
+import com.hazelcast.raft.impl.session.operation.CloseSessionOp;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
 import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.session.SessionManagerService;
@@ -37,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 import static com.hazelcast.concurrent.lock.LockTestUtils.lockByOtherThread;
 import static com.hazelcast.raft.service.lock.RaftLockService.SERVICE_NAME;
 import static com.hazelcast.raft.service.lock.RaftLockService.WAIT_TIMEOUT_TASK_UPPER_BOUND_MILLIS;
+import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
 import static com.hazelcast.raft.service.spi.RaftProxyFactory.create;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -188,6 +190,39 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
         assertEquals(1, lock.getLockCount());
     }
 
+    @Test
+    public void testUnlock_whenSessionExpired() throws ExecutionException, InterruptedException {
+        lock.lock();
+
+        AbstractSessionManager sessionManager = getSessionManager();
+        RaftGroupId groupId = getGroupId(lock);
+        long sessionId = sessionManager.getSession(groupId);
+        assertNotEquals(sessionId, NO_SESSION_ID);
+
+        getRaftInvocationManager(instances[0]).invoke(groupId, new CloseSessionOp(sessionId)).get();
+
+        exception.expect(IllegalMonitorStateException.class);
+        lock.unlock();
+    }
+
+    @Test
+    public void testReentrantUnlock_whenSessionExpired() throws ExecutionException, InterruptedException {
+        lock.lock();
+
+        AbstractSessionManager sessionManager = getSessionManager();
+        RaftGroupId groupId = getGroupId(lock);
+        long sessionId = sessionManager.getSession(groupId);
+        assertNotEquals(sessionId, NO_SESSION_ID);
+
+        getRaftInvocationManager(instances[0]).invoke(groupId, new CloseSessionOp(sessionId)).get();
+
+        lock.lock();
+        lock.unlock();
+
+        exception.expect(IllegalMonitorStateException.class);
+        lock.unlock();
+    }
+
     @Test(timeout = 60000)
     public void testTryLock_whenNotLocked() {
         boolean result = lock.tryLock();
@@ -308,7 +343,7 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
         final AbstractSessionManager sessionManager = getSessionManager();
         final RaftGroupId groupId = getGroupId(lock);
         final long sessionId = sessionManager.getSession(groupId);
-        assertNotEquals(AbstractSessionManager.NO_SESSION_ID, sessionId);
+        assertNotEquals(NO_SESSION_ID, sessionId);
         assertEquals(1, sessionManager.getSessionUsageCount(groupId, sessionId));
 
         boolean locked = lock.tryLock();
@@ -331,7 +366,7 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testWaitEntries_afterDestroy() throws Exception {
+    public void testWaitKeys_afterDestroy() throws Exception {
         lock.lock();
 
         Collection<Future> futures = new ArrayList<Future>();
@@ -388,7 +423,7 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testWaitEntries_afterGroupDestroy() throws Exception {
+    public void testWaitKeys_afterGroupDestroy() throws Exception {
         lock.lock();
 
         Collection<Future> futures = new ArrayList<Future>();
@@ -425,6 +460,19 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
                 throw ExceptionUtil.rethrow(e);
             }
         }
+    }
+
+    @Test
+    public void testForceUnlock_when_locked() {
+        lock.lock();
+        lock.forceUnlock();
+        assertFalse(lock.isLocked());
+    }
+
+    @Test
+    public void testForceUnlock_when_notLocked() {
+        exception.expect(IllegalMonitorStateException.class);
+        lock.forceUnlock();
     }
 
     protected RaftGroupId getGroupId(ILock lock) {
