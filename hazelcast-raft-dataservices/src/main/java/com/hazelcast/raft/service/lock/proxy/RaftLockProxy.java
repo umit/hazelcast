@@ -23,7 +23,9 @@ import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.raft.service.lock.RaftLockService;
+import com.hazelcast.raft.service.lock.operation.ForceUnlockOp;
 import com.hazelcast.raft.service.lock.operation.GetLockCountOp;
+import com.hazelcast.raft.service.lock.operation.GetLockFenceOp;
 import com.hazelcast.raft.service.lock.operation.LockOp;
 import com.hazelcast.raft.service.lock.operation.TryLockOp;
 import com.hazelcast.raft.service.lock.operation.UnlockOp;
@@ -99,13 +101,15 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     @Override
     public void unlock() {
-        final long sessionId = getSession();
+        long sessionId = getSession();
         if (sessionId < 0) {
             throw new IllegalMonitorStateException();
         }
         UUID invUid = UuidUtil.newUnsecureUUID();
         try {
             raftInvocationManager.invoke(groupId, new UnlockOp(name, sessionId, getThreadId(), invUid)).join();
+        } catch (SessionExpiredException e) {
+            throw new IllegalMonitorStateException("Current thread is not owner of the lock!");
         } finally {
             releaseSession(sessionId);
         }
@@ -123,7 +127,9 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     @Override
     public void forceUnlock() {
-        throw new UnsupportedOperationException();
+        long fence = raftInvocationManager.<Long>invoke(groupId, new GetLockFenceOp(name)).join();
+        UUID invUid = UuidUtil.newUnsecureUUID();
+        raftInvocationManager.invoke(groupId, new ForceUnlockOp(name, fence, invUid)).join();
     }
 
     @Override

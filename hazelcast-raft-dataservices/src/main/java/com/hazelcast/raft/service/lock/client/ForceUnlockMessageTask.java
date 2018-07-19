@@ -30,8 +30,8 @@ import java.util.UUID;
 public class ForceUnlockMessageTask extends AbstractLockMessageTask {
 
     private long threadId;
-    private long expectedFence;
     private UUID invocationUid;
+    private long expectedFence;
 
     ForceUnlockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
