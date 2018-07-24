@@ -189,7 +189,6 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     }
 
     @Override
-    // TODO: close sessions & release resources/locks
     public boolean onShutdown(long timeout, TimeUnit unit) {
         RaftMemberImpl localMember = getLocalMember();
         if (localMember == null) {

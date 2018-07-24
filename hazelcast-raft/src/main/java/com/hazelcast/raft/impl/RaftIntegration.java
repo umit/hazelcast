@@ -30,7 +30,7 @@ public interface RaftIntegration {
     ILogger getLogger(String name);
 
     /**
-     * Returns true if underlying platform is ready to operatate, false otherwise.
+     * Returns true if underlying platform is ready to operate, false otherwise.
      *
      * @return true if ready, false otherwise
      */

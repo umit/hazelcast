@@ -36,7 +36,9 @@ public class RaftMetadataGroupConfig {
      */
     private int metadataGroupSize;
 
-
+    /**
+     * Flag to mark a member as initial Raft member.
+     */
     private boolean initialRaftMember;
 
     public RaftMetadataGroupConfig() {
