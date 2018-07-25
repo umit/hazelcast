@@ -24,6 +24,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.UUID;
 
+import static com.hazelcast.raft.service.lock.RaftLockService.INVALID_FENCE;
+
 /**
  * TODO: Javadoc Pending...
  */
@@ -41,18 +43,18 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> impleme
         return new RaftLock(groupId, name);
     }
 
-    boolean acquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
+    long acquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
         return getOrInitResource(name).acquire(endpoint, commitIndex, invocationUid, true);
     }
 
-    boolean tryAcquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid, long timeoutMs) {
+    long tryAcquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid, long timeoutMs) {
         boolean wait = (timeoutMs > 0);
-        boolean acquired = getOrInitResource(name).acquire(endpoint, commitIndex, invocationUid, wait);
-        if (wait && !acquired) {
+        long fence = getOrInitResource(name).acquire(endpoint, commitIndex, invocationUid, wait);
+        if (wait && fence == INVALID_FENCE) {
             addWaitKey(new LockInvocationKey(name, endpoint, commitIndex, invocationUid), timeoutMs);
         }
 
-        return acquired;
+        return fence;
     }
 
     Collection<LockInvocationKey> release(String name, LockEndpoint endpoint, UUID invocationUid) {

@@ -24,6 +24,8 @@ import com.hazelcast.raft.service.lock.RaftLockService;
 
 import java.util.UUID;
 
+import static com.hazelcast.raft.service.lock.RaftLockService.INVALID_FENCE;
+
 /**
  * TODO: Javadoc Pending...
  */
@@ -40,8 +42,9 @@ public class LockOp extends AbstractLockOp {
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
         LockEndpoint endpoint = getLockEndpoint();
-        if (service.acquire(groupId, name, endpoint, commitIndex, invocationUid)) {
-            return commitIndex;
+        long fence = service.acquire(groupId, name, endpoint, commitIndex, invocationUid);
+        if (fence != INVALID_FENCE) {
+            return fence;
         }
         return PostponedResponse.INSTANCE;
     }
