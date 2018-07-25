@@ -26,6 +26,8 @@ import com.hazelcast.raft.service.lock.RaftLockService;
 import java.io.IOException;
 import java.util.UUID;
 
+import static com.hazelcast.raft.service.lock.RaftLockService.INVALID_FENCE;
+
 /**
  * TODO: Javadoc Pending...
  */
@@ -44,11 +46,12 @@ public class TryLockOp extends AbstractLockOp {
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
-        if (service.tryAcquire(groupId, name, getLockEndpoint(), commitIndex, invocationUid, timeoutMs)) {
-            return commitIndex;
+        long fence = service.tryAcquire(groupId, name, getLockEndpoint(), commitIndex, invocationUid, timeoutMs);
+        if (fence != INVALID_FENCE) {
+            return fence;
         }
 
-        return timeoutMs > 0 ? PostponedResponse.INSTANCE : RaftLockService.INVALID_FENCE;
+        return timeoutMs > 0 ? PostponedResponse.INSTANCE : INVALID_FENCE;
     }
 
     @Override

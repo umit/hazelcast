@@ -72,30 +72,30 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         return nodeEngine.getConfig().findRaftLockConfig(name);
     }
 
-    public boolean acquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
+    public long acquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
         heartbeatSession(groupId, endpoint.sessionId());
-        boolean acquired = getOrInitRegistry(groupId).acquire(name, endpoint, commitIndex, invocationUid);
+        long fence = getOrInitRegistry(groupId).acquire(name, endpoint, commitIndex, invocationUid);
         if (logger.isFineEnabled()) {
-            logger.fine("Lock[" + name + "] in " + groupId + " acquired: " + acquired + " by <" + endpoint + ", "
+            logger.fine("Lock[" + name + "] in " + groupId + " acquired: " + (fence != INVALID_FENCE) + " by <" + endpoint + ", "
                     + invocationUid + ">");
         }
-        return acquired;
+        return fence;
     }
 
-    public boolean tryAcquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid,
+    public long tryAcquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid,
                           long timeoutMs) {
         heartbeatSession(groupId, endpoint.sessionId());
-        boolean acquired = getOrInitRegistry(groupId).tryAcquire(name, endpoint, commitIndex, invocationUid, timeoutMs);
+        long fence = getOrInitRegistry(groupId).tryAcquire(name, endpoint, commitIndex, invocationUid, timeoutMs);
         if (logger.isFineEnabled()) {
-            logger.fine("Lock[" + name + "] in " + groupId + " acquired: " + acquired + " by <" + endpoint + ", "
+            logger.fine("Lock[" + name + "] in " + groupId + " acquired: " + (fence != INVALID_FENCE) + " by <" + endpoint + ", "
                     + invocationUid + ">");
         }
 
-        if (!acquired) {
+        if (fence == INVALID_FENCE) {
             scheduleTimeout(groupId, new LockInvocationKey(name, endpoint, commitIndex, invocationUid), timeoutMs);
         }
 
-        return acquired;
+        return fence;
     }
 
     public void release(RaftGroupId groupId, String name, LockEndpoint endpoint, UUID invocationUid) {

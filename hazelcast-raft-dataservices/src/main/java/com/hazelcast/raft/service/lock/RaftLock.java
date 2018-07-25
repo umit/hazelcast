@@ -32,6 +32,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
+import static com.hazelcast.raft.service.lock.RaftLockService.INVALID_FENCE;
+
 /**
  * TODO: Javadoc Pending...
  */
@@ -48,10 +50,10 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
         super(groupId, name);
     }
 
-    boolean acquire(LockEndpoint endpoint, long commitIndex, UUID invocationUid, boolean wait) {
+    long acquire(LockEndpoint endpoint, long commitIndex, UUID invocationUid, boolean wait) {
         // if acquire() is being retried
         if (owner != null && owner.invocationUid().equals(invocationUid)) {
-            return true;
+            return owner.commitIndex();
         }
 
         LockInvocationKey key = new LockInvocationKey(name, endpoint, commitIndex, invocationUid);
@@ -61,14 +63,14 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
 
         if (endpoint.equals(owner.endpoint())) {
             lockCount++;
-            return true;
+            return owner.commitIndex();
         }
 
         if (wait) {
             waitKeys.add(key);
         }
 
-        return false;
+        return INVALID_FENCE;
     }
 
     Collection<LockInvocationKey> release(LockEndpoint endpoint, UUID invocationUuid) {
