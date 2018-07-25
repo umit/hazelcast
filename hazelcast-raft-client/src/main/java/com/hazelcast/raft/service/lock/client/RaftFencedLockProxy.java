@@ -128,7 +128,7 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
         ClientMessage msg = prepareClientMessage(groupId, name, dataSize, DESTROY_TYPE);
         msg.updateFrameLength();
 
-        invoke(client, name, msg, BOOLEAN_RESPONSE_DECODER);
+        invoke(client, name, msg, BOOLEAN_RESPONSE_DECODER).join();
     }
 
 }
