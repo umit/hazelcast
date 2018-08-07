@@ -206,7 +206,6 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
             }
         });
 
-        sleepSeconds(3);
         lock.unlock();
 
         assertTrueEventually(new AssertTask() {
@@ -449,11 +448,10 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
             }
         }).get();
 
-        long fence2 = lock.lock();
+        lock.lock();
 
-        assertTrue(fence2 > fence1);
         assertTrue(lock.isLockedByCurrentThread());
-        assertEquals(1, lock.getLockCount());
+        assertEquals(2, lock.getLockCount());
     }
 
     @Test(timeout = 60000)
