@@ -17,7 +17,6 @@
 package com.hazelcast.raft.service.countdownlatch.proxy;
 
 import com.hazelcast.core.ICountDownLatch;
-import com.hazelcast.core.OperationTimeoutException;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchService;
@@ -27,12 +26,11 @@ import com.hazelcast.raft.service.countdownlatch.operation.GetRemainingCountOp;
 import com.hazelcast.raft.service.countdownlatch.operation.GetRoundOp;
 import com.hazelcast.raft.service.countdownlatch.operation.TrySetCountOp;
 import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
-import com.hazelcast.util.UuidUtil;
 
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.util.Preconditions.checkNotNull;
+import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 
 /**
  * TODO: Javadoc Pending...
@@ -60,15 +58,7 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
     @Override
     public void countDown() {
         int round = raftInvocationManager.<Integer>invoke(groupId, new GetRoundOp(name)).join();
-        UUID invocationUid = UuidUtil.newUnsecureUUID();
-        for (;;) {
-            try {
-                raftInvocationManager.invoke(groupId, new CountDownOp(name, round, invocationUid)).join();
-                return;
-            } catch (OperationTimeoutException ignored) {
-                // I can retry safely because my retry would be idempotent...
-            }
-        }
+        raftInvocationManager.invoke(groupId, new CountDownOp(name, round, newUnsecureUUID())).join();
     }
 
     @Override
