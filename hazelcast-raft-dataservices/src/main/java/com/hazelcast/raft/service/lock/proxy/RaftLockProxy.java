@@ -32,7 +32,6 @@ import com.hazelcast.raft.service.session.SessionAwareProxy;
 import com.hazelcast.raft.service.session.SessionManagerService;
 import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
 import com.hazelcast.spi.InternalCompletableFuture;
-import com.hazelcast.util.UuidUtil;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -43,6 +42,7 @@ import static com.hazelcast.raft.service.lock.RaftLockService.SERVICE_NAME;
 import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static com.hazelcast.util.ThreadUtil.getThreadId;
+import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 
 /**
  * TODO: Javadoc Pending...
@@ -62,7 +62,7 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
     @Override
     public void lock() {
         long threadId = getThreadId();
-        UUID invUid = UuidUtil.newUnsecureUUID();
+        UUID invUid = newUnsecureUUID();
         for (;;) {
             long sessionId = acquireSession();
             try {
@@ -83,7 +83,7 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
     public boolean tryLock(long time, TimeUnit unit) {
         checkNotNull(unit);
         long threadId = getThreadId();
-        UUID invUid = UuidUtil.newUnsecureUUID();
+        UUID invUid = newUnsecureUUID();
         long timeoutMs = Math.max(0, unit.toMillis(time));
         for (;;) {
             long sessionId = acquireSession();
@@ -107,9 +107,8 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
         if (sessionId == NO_SESSION_ID) {
             throw new IllegalMonitorStateException();
         }
-        UUID invUid = UuidUtil.newUnsecureUUID();
         try {
-            raftInvocationManager.invoke(groupId, new UnlockOp(name, sessionId, getThreadId(), invUid)).join();
+            raftInvocationManager.invoke(groupId, new UnlockOp(name, sessionId, getThreadId(), newUnsecureUUID())).join();
         } catch (SessionExpiredException e) {
             invalidateSession(sessionId);
             throw new IllegalMonitorStateException("Current thread is not owner of the lock!");
@@ -131,8 +130,7 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
     @Override
     public void forceUnlock() {
         long fence = raftInvocationManager.<Long>invoke(groupId, new GetLockFenceOp(name, NO_SESSION_ID, 0)).join();
-        UUID invUid = UuidUtil.newUnsecureUUID();
-        raftInvocationManager.invoke(groupId, new ForceUnlockOp(name, fence, invUid)).join();
+        raftInvocationManager.invoke(groupId, new ForceUnlockOp(name, fence, newUnsecureUUID())).join();
     }
 
     @Override
