@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,9 @@ import java.io.IOException;
 
 import static com.hazelcast.raft.impl.service.RaftMetadataManager.METADATA_GROUP_ID;
 
+/**
+ * TODO: Javadoc Pending...
+ */
 public class AddRaftMemberOp extends RaftOp implements IdentifiedDataSerializable {
 
     private RaftMemberImpl member;

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import com.hazelcast.raft.service.semaphore.operation.DrainPermitsOp;
 import com.hazelcast.raft.service.semaphore.operation.InitSemaphoreOp;
 import com.hazelcast.raft.service.semaphore.operation.ReleasePermitsOp;
 
+@SuppressWarnings("checkstyle:declarationorder")
 public class RaftSemaphoreDataSerializerHook implements DataSerializerHook {
     private static final int DS_FACTORY_ID = -1013;
     private static final String DS_FACTORY = "hazelcast.serialization.ds.raft.sema";
@@ -72,8 +73,9 @@ public class RaftSemaphoreDataSerializerHook implements DataSerializerHook {
                         return new InitSemaphoreOp();
                     case RELEASE_PERMITS_OP:
                         return new ReleasePermitsOp();
+                    default:
+                        throw new IllegalArgumentException("Undefined type: " + typeId);
                 }
-                throw new IllegalArgumentException("Undefined type: " + typeId);
             }
         };
     }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,9 +41,9 @@ import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
  */
 public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy implements FencedLock {
 
+    protected final String name;
     // thread id -> lock state
     private final ConcurrentMap<Long, LockState> lockStates = new ConcurrentHashMap<Long, LockState>();
-    protected final String name;
 
     public AbstractRaftFencedLockProxy(AbstractSessionManager sessionManager, RaftGroupId groupId, String name) {
         super(sessionManager, groupId);

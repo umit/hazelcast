@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,11 +53,11 @@ public abstract class AbstractSessionManager {
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private boolean running = true;
 
-    public final long acquireSession(RaftGroupId groupId) {
+    final long acquireSession(RaftGroupId groupId) {
         return getOrCreateSession(groupId).acquire(1);
     }
 
-    public final long acquireSession(RaftGroupId groupId, int count) {
+    final long acquireSession(RaftGroupId groupId, int count) {
         return getOrCreateSession(groupId).acquire(count);
     }
 
@@ -108,11 +108,11 @@ public abstract class AbstractSessionManager {
         }
     }
 
-    public final void releaseSession(RaftGroupId groupId, long id) {
+    final void releaseSession(RaftGroupId groupId, long id) {
         releaseSession(groupId, id, 1);
     }
 
-    public final void releaseSession(RaftGroupId groupId, long id, int count) {
+    final void releaseSession(RaftGroupId groupId, long id, int count) {
         ClientSession session = sessions.get(groupId);
         if (session != null && session.id == id) {
             session.release(count);

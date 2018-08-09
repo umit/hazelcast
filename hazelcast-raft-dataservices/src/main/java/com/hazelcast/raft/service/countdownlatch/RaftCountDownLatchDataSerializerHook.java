@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,11 +26,13 @@ import com.hazelcast.raft.service.countdownlatch.operation.GetRemainingCountOp;
 import com.hazelcast.raft.service.countdownlatch.operation.GetRoundOp;
 import com.hazelcast.raft.service.countdownlatch.operation.TrySetCountOp;
 
+@SuppressWarnings("checkstyle:declarationorder")
 public class RaftCountDownLatchDataSerializerHook implements DataSerializerHook {
     private static final int RAFT_COUNT_DOWN_LATCH_DS_FACTORY_ID = -1015;
     private static final String RAFT_COUNT_DOWN_LATCH_DS_FACTORY = "hazelcast.serialization.ds.raft.countdownlatch";
 
-    public static final int F_ID = FactoryIdHelper.getFactoryId(RAFT_COUNT_DOWN_LATCH_DS_FACTORY, RAFT_COUNT_DOWN_LATCH_DS_FACTORY_ID);
+    public static final int F_ID = FactoryIdHelper.getFactoryId(RAFT_COUNT_DOWN_LATCH_DS_FACTORY,
+            RAFT_COUNT_DOWN_LATCH_DS_FACTORY_ID);
 
     public static final int COUNT_DOWN_LATCH_REGISTRY = 1;
     public static final int COUNT_DOWN_LATCH = 2;
@@ -69,9 +71,9 @@ public class RaftCountDownLatchDataSerializerHook implements DataSerializerHook 
                         return new GetRoundOp();
                     case TRY_SET_COUNT_OP:
                         return new TrySetCountOp();
+                    default:
+                        throw new IllegalArgumentException("Undefined type: " + typeId);
                 }
-
-                throw new IllegalArgumentException("Undefined type: " + typeId);
             }
         };
     }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ public abstract class AbstractLockMessageTask extends AbstractMessageTask implem
     protected String name;
     protected long sessionId;
 
-    protected AbstractLockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    AbstractLockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
@@ -73,7 +73,6 @@ public abstract class AbstractLockMessageTask extends AbstractMessageTask implem
     private ClientMessage encodeLongResponse(long response) {
         int dataSize = ClientMessage.HEADER_SIZE + Bits.LONG_SIZE_IN_BYTES;
         ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
-        clientMessage.setMessageType(1111);
         clientMessage.set(response);
         clientMessage.updateFrameLength();
         return clientMessage;
@@ -82,7 +81,6 @@ public abstract class AbstractLockMessageTask extends AbstractMessageTask implem
     private ClientMessage encodeBooleanResponse(boolean response) {
         int dataSize = ClientMessage.HEADER_SIZE + Bits.BOOLEAN_SIZE_IN_BYTES;
         ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
-        clientMessage.setMessageType(1111);
         clientMessage.set(response);
         clientMessage.updateFrameLength();
         return clientMessage;

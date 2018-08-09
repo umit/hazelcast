@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.config.raft.RaftGroupConfig;
@@ -35,9 +51,13 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Executor;
 
+import static com.hazelcast.raft.QueryPolicy.LEADER_LOCAL;
 import static com.hazelcast.raft.impl.service.RaftMetadataManager.METADATA_GROUP_ID;
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 
+/**
+ * TODO: Javadoc Pending...
+ */
 @SuppressWarnings("unchecked")
 public class RaftInvocationManager {
 
@@ -81,7 +101,7 @@ public class RaftInvocationManager {
 
     private void invokeGetMembersToCreateRaftGroup(final String groupName, final int groupSize,
                                                    final SimpleCompletableFuture<RaftGroupId> resultFuture) {
-        ICompletableFuture<List<RaftMemberImpl>> f = query(METADATA_GROUP_ID, new GetActiveRaftMembersOp(), QueryPolicy.LEADER_LOCAL);
+        ICompletableFuture<List<RaftMemberImpl>> f = query(METADATA_GROUP_ID, new GetActiveRaftMembersOp(), LEADER_LOCAL);
 
         f.andThen(new ExecutionCallback<List<RaftMemberImpl>>() {
             @Override
@@ -137,8 +157,8 @@ public class RaftInvocationManager {
         return invoke(METADATA_GROUP_ID, new TriggerDestroyRaftGroupOp(groupId));
     }
 
-    <T> InternalCompletableFuture<T> changeRaftGroupMembership(RaftGroupId groupId, long membersCommitIndex, RaftMemberImpl member,
-                                                        MembershipChangeType changeType) {
+    <T> InternalCompletableFuture<T> changeRaftGroupMembership(RaftGroupId groupId, long membersCommitIndex,
+                                                               RaftMemberImpl member, MembershipChangeType changeType) {
         Operation operation = new ChangeRaftGroupMembershipOp(groupId, membersCommitIndex, member, changeType);
         Invocation invocation = new RaftInvocation(operationService.getInvocationContext(), raftInvocationContext,
                 groupId, operation, true);

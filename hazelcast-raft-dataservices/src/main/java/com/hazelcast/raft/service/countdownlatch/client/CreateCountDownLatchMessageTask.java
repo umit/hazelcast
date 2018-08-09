@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,7 +57,6 @@ public class CreateCountDownLatchMessageTask extends AbstractMessageTask impleme
             RaftGroupId groupId = (RaftGroupId) response;
             int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
             ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
-            clientMessage.setMessageType(1111);
             RaftGroupIdImpl.writeTo(groupId, clientMessage);
             clientMessage.updateFrameLength();
             return clientMessage;

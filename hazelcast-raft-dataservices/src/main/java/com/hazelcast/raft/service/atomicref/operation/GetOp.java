@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package com.hazelcast.raft.service.atomicref.operation;
 
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.service.atomicref.AtomicReferenceDataSerializerHook;
+import com.hazelcast.raft.service.atomicref.RaftAtomicReferenceDataSerializerHook;
 
 /**
  * TODO: Javadoc Pending...
@@ -39,6 +39,6 @@ public class GetOp extends AbstractAtomicRefOp implements IdentifiedDataSerializ
 
     @Override
     public int getId() {
-        return AtomicReferenceDataSerializerHook.GET_OP;
+        return RaftAtomicReferenceDataSerializerHook.GET_OP;
     }
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,9 +41,10 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  */
 public class SessionManagerService extends AbstractSessionManager implements GracefulShutdownAwareService {
 
+    public static final String SERVICE_NAME = "hz:raft:sessionManager";
+
     private static final long SHUTDOWN_TASK_PERIOD_IN_MILLIS = SECONDS.toMillis(1);
 
-    public static String SERVICE_NAME = "hz:raft:sessionManager";
 
     private final NodeEngine nodeEngine;
 

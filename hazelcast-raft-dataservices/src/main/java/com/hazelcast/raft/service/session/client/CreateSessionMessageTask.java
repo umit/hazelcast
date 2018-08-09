@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,6 @@ public class CreateSessionMessageTask extends AbstractMessageTask implements Exe
             SessionResponse session = (SessionResponse) response;
             int dataSize = ClientMessage.HEADER_SIZE + Bits.LONG_SIZE_IN_BYTES * 3;
             ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
-            clientMessage.setMessageType(1111);
             clientMessage.set(session.getSessionId());
             clientMessage.set(session.getTtlMillis());
             clientMessage.set(session.getHeartbeatMillis());

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,12 +33,14 @@ import java.util.concurrent.ConcurrentMap;
  * @author mdogan 30.05.2018
  */
 public class RaftInvocationContext {
+
+
     private final ILogger logger;
 
     private final RaftService raftService;
     private final ConcurrentMap<RaftGroupId, RaftMemberImpl> knownLeaders =
             new ConcurrentHashMap<RaftGroupId, RaftMemberImpl>();
-    final boolean failOnIndeterminateOperationState;
+    private final boolean failOnIndeterminateOperationState;
 
     private volatile RaftMemberImpl[] allMembers = {};
 
@@ -84,6 +86,10 @@ public class RaftInvocationContext {
         }
     }
 
+    boolean shouldFailOnIndeterminateOperationState() {
+        return failOnIndeterminateOperationState;
+    }
+
     private void resetKnownLeader(RaftGroupId groupId) {
         logger.fine("Resetting known leader for raft: " + groupId);
         knownLeaders.remove(groupId);
@@ -93,22 +99,5 @@ public class RaftInvocationContext {
         RaftGroupInfo group = raftService.getRaftGroup(groupId);
         RaftMemberImpl[] endpoints = group != null ? group.membersArray() : allMembers;
         return new MemberCursor(endpoints);
-    }
-
-    static class MemberCursor {
-        private final RaftMemberImpl[] members;
-        private int index = -1;
-
-        private MemberCursor(RaftMemberImpl[] members) {
-            this.members = members;
-        }
-
-        boolean advance() {
-            return ++index < members.length;
-        }
-
-        RaftMemberImpl get() {
-            return members[index];
-        }
     }
 }

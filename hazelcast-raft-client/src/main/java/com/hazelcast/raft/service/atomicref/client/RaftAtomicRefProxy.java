@@ -30,7 +30,7 @@ import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.service.atomicref.RaftAtomicRefService;
-import com.hazelcast.raft.service.atomicref.operation.ApplyOp.RETURN_VALUE_TYPE;
+import com.hazelcast.raft.service.atomicref.operation.ApplyOp.ReturnValueType;
 import com.hazelcast.spi.InternalCompletableFuture;
 
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
@@ -41,9 +41,9 @@ import static com.hazelcast.raft.service.atomicref.client.AtomicRefMessageTaskFa
 import static com.hazelcast.raft.service.atomicref.client.AtomicRefMessageTaskFactoryProvider.DESTROY_TYPE;
 import static com.hazelcast.raft.service.atomicref.client.AtomicRefMessageTaskFactoryProvider.GET_TYPE;
 import static com.hazelcast.raft.service.atomicref.client.AtomicRefMessageTaskFactoryProvider.SET_TYPE;
-import static com.hazelcast.raft.service.atomicref.operation.ApplyOp.RETURN_VALUE_TYPE.NO_RETURN_VALUE;
-import static com.hazelcast.raft.service.atomicref.operation.ApplyOp.RETURN_VALUE_TYPE.RETURN_NEW_VALUE;
-import static com.hazelcast.raft.service.atomicref.operation.ApplyOp.RETURN_VALUE_TYPE.RETURN_PREVIOUS_VALUE;
+import static com.hazelcast.raft.service.atomicref.operation.ApplyOp.ReturnValueType.NO_RETURN_VALUE;
+import static com.hazelcast.raft.service.atomicref.operation.ApplyOp.ReturnValueType.RETURN_NEW_VALUE;
+import static com.hazelcast.raft.service.atomicref.operation.ApplyOp.ReturnValueType.RETURN_OLD_VALUE;
 import static com.hazelcast.raft.service.util.ClientAccessor.getClient;
 import static com.hazelcast.util.Preconditions.checkTrue;
 
@@ -235,7 +235,7 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
 
     @Override
     public InternalCompletableFuture<T> getAndAlterAsync(IFunction<T, T> function) {
-        return invokeApply(function, RETURN_PREVIOUS_VALUE, true);
+        return invokeApply(function, RETURN_OLD_VALUE, true);
     }
 
     @Override
@@ -283,7 +283,7 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
         }
     }
 
-    private <T2, T3> InternalCompletableFuture<T3> invokeApply(IFunction<T, T2> function, RETURN_VALUE_TYPE returnValueType, boolean alter) {
+    private <T2, T3> InternalCompletableFuture<T3> invokeApply(IFunction<T, T2> function, ReturnValueType returnValueType, boolean alter) {
         checkTrue(function != null, "Function cannot be null");
         Data data = client.getSerializationService().toData(function);
         int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(name)

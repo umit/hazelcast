@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@ import com.hazelcast.spi.ExceptionAction;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.exception.CallerNotMemberException;
 import com.hazelcast.spi.exception.TargetNotMemberException;
-import com.hazelcast.spi.impl.operationservice.impl.RaftInvocationContext.MemberCursor;
 
 import static com.hazelcast.spi.ExceptionAction.RETRY_INVOCATION;
 import static com.hazelcast.spi.ExceptionAction.THROW_EXCEPTION;
@@ -107,6 +106,6 @@ public class RaftInvocation extends Invocation {
 
     @Override
     protected boolean shouldFailOnIndeterminateOperationState() {
-        return canFailOnIndeterminateOperationState && raftInvocationContext.failOnIndeterminateOperationState;
+        return canFailOnIndeterminateOperationState && raftInvocationContext.shouldFailOnIndeterminateOperationState();
     }
 }

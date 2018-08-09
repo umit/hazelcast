@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.service.atomicref.AtomicReferenceDataSerializerHook;
+import com.hazelcast.raft.service.atomicref.RaftAtomicReferenceDataSerializerHook;
 import com.hazelcast.raft.service.atomicref.RaftAtomicRef;
 
 import java.io.IOException;
@@ -55,7 +55,7 @@ public class CompareAndSetOp extends AbstractAtomicRefOp implements IdentifiedDa
 
     @Override
     public int getId() {
-        return AtomicReferenceDataSerializerHook.COMPARE_AND_SET_OP;
+        return RaftAtomicReferenceDataSerializerHook.COMPARE_AND_SET_OP;
     }
 
     @Override

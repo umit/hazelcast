@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.core.ExecutionCallback;
@@ -30,6 +46,7 @@ import com.hazelcast.spi.OperationService;
 import com.hazelcast.util.RandomPicker;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -50,7 +67,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 /**
  * TODO: Javadoc Pending...
  */
-public class RaftCleanupHandler {
+class RaftCleanupHandler {
 
     static final long CLEANUP_TASK_PERIOD_IN_MILLIS = SECONDS.toMillis(1);
     private static final long CHECK_LOCAL_RAFT_NODES_TASK_PERIOD_IN_MILLIS = SECONDS.toMillis(10);
@@ -134,9 +151,31 @@ public class RaftCleanupHandler {
                 return;
             }
 
+            Set<RaftGroupId> destroyedGroupIds = destroyRaftGroups();
+            if (destroyedGroupIds.isEmpty()) {
+                return;
+            }
+
+            if (!commitDestroyedRaftGroups(destroyedGroupIds)) {
+                return;
+            }
+
+            for (RaftGroupId groupId : destroyedGroupIds) {
+                raftService.destroyRaftNode(groupId);
+            }
+
+            OperationService operationService = nodeEngine.getOperationService();
+            for (RaftMemberImpl member : raftService.getMetadataManager().getActiveMembers()) {
+                if (!member.equals(raftService.getLocalMember())) {
+                    operationService.send(new DestroyRaftNodesOp(destroyedGroupIds), member.getAddress());
+                }
+            }
+        }
+
+        private Set<RaftGroupId> destroyRaftGroups() {
             Collection<RaftGroupId> destroyingRaftGroupIds = getDestroyingRaftGroupIds();
             if (destroyingRaftGroupIds.isEmpty()) {
-                return;
+                return Collections.emptySet();
             }
 
             Map<RaftGroupId, Future<Object>> futures = new HashMap<RaftGroupId, Future<Object>>();
@@ -145,29 +184,14 @@ public class RaftCleanupHandler {
                 futures.put(groupId, future);
             }
 
-            Set<RaftGroupId> terminatedGroupIds = new HashSet<RaftGroupId>();
+            Set<RaftGroupId> destroyedGroupIds = new HashSet<RaftGroupId>();
             for (Entry<RaftGroupId, Future<Object>> e : futures.entrySet()) {
-                if (isRaftGroupTerminated(e.getKey(), e.getValue())) {
-                    terminatedGroupIds.add(e.getKey());
+                if (isRaftGroupDestroyed(e.getKey(), e.getValue())) {
+                    destroyedGroupIds.add(e.getKey());
                 }
             }
 
-            if (terminatedGroupIds.isEmpty()) {
-                return;
-            }
-
-            commitDestroyedRaftGroups(terminatedGroupIds);
-
-            for (RaftGroupId groupId : terminatedGroupIds) {
-                raftService.destroyRaftNode(groupId);
-            }
-
-            OperationService operationService = nodeEngine.getOperationService();
-            for (RaftMemberImpl member : raftService.getMetadataManager().getActiveMembers()) {
-                if (!member.equals(raftService.getLocalMember())) {
-                    operationService.send(new DestroyRaftNodesOp(terminatedGroupIds), member.getAddress());
-                }
-            }
+            return destroyedGroupIds;
         }
 
         private Collection<RaftGroupId> getDestroyingRaftGroupIds() {
@@ -175,7 +199,7 @@ public class RaftCleanupHandler {
             return f.join();
         }
 
-        private boolean isRaftGroupTerminated(RaftGroupId groupId, Future<Object> future) {
+        private boolean isRaftGroupDestroyed(RaftGroupId groupId, Future<Object> future) {
             try {
                 future.get();
                 return true;
@@ -193,15 +217,17 @@ public class RaftCleanupHandler {
             }
         }
 
-        private void commitDestroyedRaftGroups(Set<RaftGroupId> destroyedGroupIds) {
+        private boolean commitDestroyedRaftGroups(Set<RaftGroupId> destroyedGroupIds) {
             RaftOp op = new CompleteDestroyRaftGroupsOp(destroyedGroupIds);
             Future<Collection<RaftGroupId>> f = invocationManager.invoke(METADATA_GROUP_ID, op);
 
             try {
                 f.get();
                 logger.info("Terminated raft groups: " + destroyedGroupIds + " are committed.");
+                return true;
             } catch (Exception e) {
                 logger.severe("Cannot commit terminated raft groups: " + destroyedGroupIds, e);
+                return false;
             }
         }
     }

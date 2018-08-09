@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,8 @@ import com.hazelcast.raft.service.atomicref.operation.ContainsOp;
 import com.hazelcast.raft.service.atomicref.operation.GetOp;
 import com.hazelcast.raft.service.atomicref.operation.SetOp;
 
-public final class AtomicReferenceDataSerializerHook implements DataSerializerHook {
+@SuppressWarnings("checkstyle:declarationorder")
+public final class RaftAtomicReferenceDataSerializerHook implements DataSerializerHook {
 
     private static final int RAFT_ATOMIC_REF_DS_FACTORY_ID = -1014;
     private static final String RAFT_ATOMIC_REF_DS_FACTORY = "hazelcast.serialization.ds.raft.atomicref";
@@ -64,8 +65,9 @@ public final class AtomicReferenceDataSerializerHook implements DataSerializerHo
                         return new GetOp();
                     case SET_OP:
                         return new SetOp();
+                    default:
+                        throw new IllegalArgumentException("Undefined type: " + typeId);
                 }
-                throw new IllegalArgumentException("Undefined type: " + typeId);
             }
         };
     }

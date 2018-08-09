@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,5 +27,15 @@ public class RaftAtomicReferenceConfig extends AbstractRaftObjectConfig {
 
     public RaftAtomicReferenceConfig(String name, String raftGroupRef) {
         super(name, raftGroupRef);
+    }
+
+    public RaftAtomicReferenceConfig setName(String name) {
+        this.name = name;
+        return this;
+    }
+
+    public RaftAtomicReferenceConfig setRaftGroupRef(String raftGroupRef) {
+        this.raftGroupRef = raftGroupRef;
+        return this;
     }
 }
