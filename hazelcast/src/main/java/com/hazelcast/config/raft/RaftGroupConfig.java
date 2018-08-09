@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,10 +22,22 @@ package com.hazelcast.config.raft;
  */
 public class RaftGroupConfig {
 
+    /**
+     * Name of the default group if no group name is specified by Raft data structures.
+     */
     public static final String DEFAULT_GROUP = "default";
 
+    /**
+     * Name of the Raft group
+     */
     private String name;
 
+    /**
+     * Size of the raft group.
+     * Raft groups are recommended to have odd-number of nodes in order to get a bigger degree of fault tolerance.
+     * For instance, majority of a 5-node Raft group is 3 and this group can tolerate concurrent failures of 2 nodes.
+     * However, majority of a 4-node Raft group is also 3 but this group can tolerate failure of a single node.
+     */
     private int size;
 
     public RaftGroupConfig() {

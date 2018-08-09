@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.service.atomicref.AtomicReferenceDataSerializerHook;
+import com.hazelcast.raft.service.atomicref.RaftAtomicReferenceDataSerializerHook;
 import com.hazelcast.raft.service.atomicref.RaftAtomicRef;
 import com.hazelcast.spi.NodeEngine;
 
@@ -35,20 +35,32 @@ import static com.hazelcast.util.Preconditions.checkNotNull;
  */
 public class ApplyOp extends AbstractAtomicRefOp implements IdentifiedDataSerializable {
 
-    public enum RETURN_VALUE_TYPE {
+    /**
+     * Used for specifying return value of the operation
+     */
+    public enum ReturnValueType {
+        /**
+         * Returns no value after applying the given function
+         */
         NO_RETURN_VALUE,
-        RETURN_PREVIOUS_VALUE,
+        /**
+         * Returns the value which resides before the given function is applied
+         */
+        RETURN_OLD_VALUE,
+        /**
+         * Returns the value after the given function is applied
+         */
         RETURN_NEW_VALUE
     }
 
     private Data function;
-    private RETURN_VALUE_TYPE returnValueType;
+    private ReturnValueType returnValueType;
     private boolean alter;
 
     public ApplyOp() {
     }
 
-    public ApplyOp(String name, Data function, RETURN_VALUE_TYPE returnValueType, boolean alter) {
+    public ApplyOp(String name, Data function, ReturnValueType returnValueType, boolean alter) {
         super(name);
         checkNotNull(function);
         checkNotNull(returnValueType);
@@ -67,11 +79,11 @@ public class ApplyOp extends AbstractAtomicRefOp implements IdentifiedDataSerial
             ref.set(newData);
         }
 
-        if (returnValueType == RETURN_VALUE_TYPE.NO_RETURN_VALUE) {
+        if (returnValueType == ReturnValueType.NO_RETURN_VALUE) {
             return null;
         }
 
-        return returnValueType == RETURN_VALUE_TYPE.RETURN_PREVIOUS_VALUE ? currentData : newData;
+        return returnValueType == ReturnValueType.RETURN_OLD_VALUE ? currentData : newData;
     }
 
     private Data callFunction(Data currentData) {
@@ -85,7 +97,7 @@ public class ApplyOp extends AbstractAtomicRefOp implements IdentifiedDataSerial
 
     @Override
     public int getId() {
-        return AtomicReferenceDataSerializerHook.APPLY_OP;
+        return RaftAtomicReferenceDataSerializerHook.APPLY_OP;
     }
 
     @Override
@@ -102,7 +114,7 @@ public class ApplyOp extends AbstractAtomicRefOp implements IdentifiedDataSerial
             throws IOException {
         super.readData(in);
         function = in.readData();
-        returnValueType = RETURN_VALUE_TYPE.valueOf(in.readUTF());
+        returnValueType = ReturnValueType.valueOf(in.readUTF());
         alter = in.readBoolean();
     }
 }

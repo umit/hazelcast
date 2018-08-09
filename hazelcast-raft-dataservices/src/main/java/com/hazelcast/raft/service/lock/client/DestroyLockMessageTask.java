@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,6 @@ public class DestroyLockMessageTask extends AbstractMessageTask implements Execu
         if (response instanceof Boolean) {
             int dataSize = ClientMessage.HEADER_SIZE + Bits.BOOLEAN_SIZE_IN_BYTES;
             ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
-            clientMessage.setMessageType(1111);
             clientMessage.set((Boolean) response);
             clientMessage.updateFrameLength();
             return clientMessage;

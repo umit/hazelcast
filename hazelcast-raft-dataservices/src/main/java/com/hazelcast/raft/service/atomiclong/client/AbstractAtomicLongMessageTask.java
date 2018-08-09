@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ public abstract class AbstractAtomicLongMessageTask extends AbstractMessageTask 
     protected RaftGroupId groupId;
     protected String name;
 
-    protected AbstractAtomicLongMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    AbstractAtomicLongMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
@@ -68,7 +68,6 @@ public abstract class AbstractAtomicLongMessageTask extends AbstractMessageTask 
     private ClientMessage encodeLongResponse(long response) {
         int dataSize = ClientMessage.HEADER_SIZE + Bits.LONG_SIZE_IN_BYTES;
         ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
-        clientMessage.setMessageType(1111);
         clientMessage.set(response);
         clientMessage.updateFrameLength();
         return clientMessage;
@@ -77,7 +76,6 @@ public abstract class AbstractAtomicLongMessageTask extends AbstractMessageTask 
     private ClientMessage encodeBooleanResponse(boolean response) {
         int dataSize = ClientMessage.HEADER_SIZE + Bits.BOOLEAN_SIZE_IN_BYTES;
         ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
-        clientMessage.setMessageType(1111);
         clientMessage.set(response);
         clientMessage.updateFrameLength();
         return clientMessage;

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,12 +47,15 @@ import static java.util.Collections.newSetFromMap;
 /**
  * TODO: Javadoc Pending...
  */
-public class RaftAtomicLongService implements ManagedService, RaftRemoteService, RaftGroupLifecycleAwareService, SnapshotAwareService<RaftAtomicLongSnapshot> {
+public class RaftAtomicLongService implements ManagedService, RaftRemoteService, RaftGroupLifecycleAwareService,
+                                              SnapshotAwareService<RaftAtomicLongSnapshot> {
 
     public static final String SERVICE_NAME = "hz:raft:atomicLongService";
 
-    private final Map<Tuple2<RaftGroupId, String>, RaftAtomicLong> atomicLongs = new ConcurrentHashMap<Tuple2<RaftGroupId, String>, RaftAtomicLong>();
-    private final Set<Tuple2<RaftGroupId, String>> destroyedLongs = newSetFromMap(new ConcurrentHashMap<Tuple2<RaftGroupId, String>, Boolean>());
+    private final Map<Tuple2<RaftGroupId, String>, RaftAtomicLong> atomicLongs =
+            new ConcurrentHashMap<Tuple2<RaftGroupId, String>, RaftAtomicLong>();
+    private final Set<Tuple2<RaftGroupId, String>> destroyedLongs =
+            newSetFromMap(new ConcurrentHashMap<Tuple2<RaftGroupId, String>, Boolean>());
     private final NodeEngine nodeEngine;
     private volatile RaftService raftService;
 

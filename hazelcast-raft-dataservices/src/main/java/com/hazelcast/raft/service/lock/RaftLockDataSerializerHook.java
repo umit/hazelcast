@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import com.hazelcast.raft.service.lock.operation.LockOp;
 import com.hazelcast.raft.service.lock.operation.TryLockOp;
 import com.hazelcast.raft.service.lock.operation.UnlockOp;
 
+@SuppressWarnings("checkstyle:declarationorder")
 public class RaftLockDataSerializerHook implements DataSerializerHook {
     private static final int RAFT_LOCK_DS_FACTORY_ID = -1012;
     private static final String RAFT_LOCK_DS_FACTORY = "hazelcast.serialization.ds.raft.lock";
@@ -75,8 +76,9 @@ public class RaftLockDataSerializerHook implements DataSerializerHook {
                         return new GetLockCountOp();
                     case GET_LOCK_FENCE_OP:
                         return new GetLockFenceOp();
+                    default:
+                        throw new IllegalArgumentException("Undefined type: " + typeId);
                 }
-                throw new IllegalArgumentException("Undefined type: " + typeId);
             }
         };
     }

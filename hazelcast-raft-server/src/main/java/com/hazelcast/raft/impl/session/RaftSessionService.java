@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,7 +50,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 
 import static java.util.Collections.emptySet;
 import static java.util.Collections.unmodifiableCollection;
@@ -64,10 +63,11 @@ public class RaftSessionService
         implements ManagedService, SnapshotAwareService<SessionRegistrySnapshot>, SessionAccessor,
         TermChangeAwareService, RaftGroupLifecycleAwareService, RaftSessionManagementService {
 
-    public static String SERVICE_NAME = "hz:core:raftSession";
-    private static final long CHECK_EXPIRED_SESSIONS_TASK_PERIOD_IN_MILLIS = SECONDS.toMillis(1);
+    public static final String SERVICE_NAME = "hz:core:raftSession";
 
+    private static final long CHECK_EXPIRED_SESSIONS_TASK_PERIOD_IN_MILLIS = SECONDS.toMillis(1);
     private static final long CHECK_INACTIVE_SESSIONS_TASK_PERIOD_IN_MILLIS = SECONDS.toMillis(30);
+    private static final long COLLECT_INACTIVE_SESSIONS_TASK_TIMEOUT_SECONDS = 5;
 
     private final NodeEngine nodeEngine;
     private final ILogger logger;
@@ -306,7 +306,7 @@ public class RaftSessionService
         }
 
         try {
-            semaphore.tryAcquire(registries.size(), 5, TimeUnit.SECONDS);
+            semaphore.tryAcquire(registries.size(), COLLECT_INACTIVE_SESSIONS_TASK_TIMEOUT_SECONDS, SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package com.hazelcast.raft.service.atomiclong.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.service.atomiclong.AtomicLongDataSerializerHook;
+import com.hazelcast.raft.service.atomiclong.RaftAtomicLongDataSerializerHook;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLong;
 
 import java.io.IOException;
@@ -59,7 +59,7 @@ public class AddAndGetOp extends AbstractAtomicLongOp {
 
     @Override
     public int getId() {
-        return AtomicLongDataSerializerHook.ADD_AND_GET_OP;
+        return RaftAtomicLongDataSerializerHook.ADD_AND_GET_OP;
     }
 
     @Override

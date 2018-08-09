@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.service.atomicref.AtomicReferenceDataSerializerHook;
+import com.hazelcast.raft.service.atomicref.RaftAtomicReferenceDataSerializerHook;
 import com.hazelcast.raft.service.atomicref.RaftAtomicRef;
 import com.hazelcast.raft.service.atomicref.RaftAtomicRefService;
 
@@ -53,7 +53,7 @@ public abstract class AbstractAtomicRefOp extends RaftOp implements IdentifiedDa
 
     @Override
     public final int getFactoryId() {
-        return AtomicReferenceDataSerializerHook.F_ID;
+        return RaftAtomicReferenceDataSerializerHook.F_ID;
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,9 +31,9 @@ import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.serialization.SerializationService;
 
-import static com.hazelcast.raft.service.atomicref.operation.ApplyOp.RETURN_VALUE_TYPE.NO_RETURN_VALUE;
-import static com.hazelcast.raft.service.atomicref.operation.ApplyOp.RETURN_VALUE_TYPE.RETURN_NEW_VALUE;
-import static com.hazelcast.raft.service.atomicref.operation.ApplyOp.RETURN_VALUE_TYPE.RETURN_PREVIOUS_VALUE;
+import static com.hazelcast.raft.service.atomicref.operation.ApplyOp.ReturnValueType.NO_RETURN_VALUE;
+import static com.hazelcast.raft.service.atomicref.operation.ApplyOp.ReturnValueType.RETURN_NEW_VALUE;
+import static com.hazelcast.raft.service.atomicref.operation.ApplyOp.ReturnValueType.RETURN_OLD_VALUE;
 import static com.hazelcast.util.Preconditions.checkTrue;
 
 /**
@@ -165,7 +165,7 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
     @Override
     public InternalCompletableFuture<T> getAndAlterAsync(IFunction<T, T> function) {
         checkTrue(function != null, "Function cannot be null");
-        return raftInvocationManager.invoke(groupId, new ApplyOp(name, toData(function), RETURN_PREVIOUS_VALUE, true));
+        return raftInvocationManager.invoke(groupId, new ApplyOp(name, toData(function), RETURN_OLD_VALUE, true));
     }
 
     @Override

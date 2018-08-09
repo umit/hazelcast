@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,10 +61,11 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
     public static final long WAIT_TIMEOUT_TASK_UPPER_BOUND_MILLIS = 1500;
     private static final long WAIT_TIMEOUT_TASK_PERIOD_MILLIS = 500;
 
-    private final ConcurrentMap<RaftGroupId, RR> registries = new ConcurrentHashMap<RaftGroupId, RR>();
     protected final NodeEngine nodeEngine;
     protected final ILogger logger;
     protected volatile RaftService raftService;
+
+    private final ConcurrentMap<RaftGroupId, RR> registries = new ConcurrentHashMap<RaftGroupId, RR>();
     private volatile SessionAccessor sessionAccessor;
 
     protected AbstractBlockingService(NodeEngine nodeEngine) {
@@ -119,7 +120,7 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
         RR prev = registries.put(registry.getGroupId(), registry);
         // do not shift the already existing wait timeouts...
         Map<W, Tuple2<Long, Long>> existingWaitTimeouts =
-                prev != null ? prev.getWaitTimeouts() : Collections.<W, Tuple2<Long,Long>>emptyMap();
+                prev != null ? prev.getWaitTimeouts() : Collections.<W, Tuple2<Long, Long>>emptyMap();
         Map<W, Long> newWaitKeys = registry.overwriteWaitTimeouts(existingWaitTimeouts);
         for (Entry<W, Long> e : newWaitKeys.entrySet()) {
             scheduleTimeout(groupId, e.getKey(), e.getValue());

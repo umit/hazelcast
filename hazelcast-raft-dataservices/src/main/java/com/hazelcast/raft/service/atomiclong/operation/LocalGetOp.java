@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package com.hazelcast.raft.service.atomiclong.operation;
 
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.service.atomiclong.AtomicLongDataSerializerHook;
+import com.hazelcast.raft.service.atomiclong.RaftAtomicLongDataSerializerHook;
 
 /**
  * TODO: Javadoc Pending...
@@ -39,6 +39,6 @@ public class LocalGetOp extends AbstractAtomicLongOp {
 
     @Override
     public int getId() {
-        return AtomicLongDataSerializerHook.LOCAL_GET_OP;
+        return RaftAtomicLongDataSerializerHook.LOCAL_GET_OP;
     }
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import com.hazelcast.nio.Connection;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.atomicref.operation.ApplyOp;
-import com.hazelcast.raft.service.atomicref.operation.ApplyOp.RETURN_VALUE_TYPE;
+import com.hazelcast.raft.service.atomicref.operation.ApplyOp.ReturnValueType;
 
 /**
  * TODO: Javadoc Pending...
@@ -30,7 +30,7 @@ import com.hazelcast.raft.service.atomicref.operation.ApplyOp.RETURN_VALUE_TYPE;
 public class ApplyMessageTask extends AbstractAtomicRefMessageTask {
 
     private Data function;
-    private RETURN_VALUE_TYPE returnValueType;
+    private ReturnValueType returnValueType;
     private boolean alter;
 
     ApplyMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
@@ -47,7 +47,7 @@ public class ApplyMessageTask extends AbstractAtomicRefMessageTask {
     protected Object decodeClientMessage(ClientMessage clientMessage) {
         super.decodeClientMessage(clientMessage);
         function = decodeNullableData(clientMessage);
-        returnValueType = RETURN_VALUE_TYPE.valueOf(clientMessage.getStringUtf8());
+        returnValueType = ReturnValueType.valueOf(clientMessage.getStringUtf8());
         alter = clientMessage.getBoolean();
 
         return null;

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,8 +54,10 @@ public class RaftAtomicRefService implements ManagedService, RaftRemoteService, 
 
     public static final String SERVICE_NAME = "hz:raft:atomicRefService";
 
-    private final Map<Tuple2<RaftGroupId, String>, RaftAtomicRef> atomicRefs = new ConcurrentHashMap<Tuple2<RaftGroupId, String>, RaftAtomicRef>();
-    private final Set<Tuple2<RaftGroupId, String>> destroyedRefs = newSetFromMap(new ConcurrentHashMap<Tuple2<RaftGroupId, String>, Boolean>());
+    private final Map<Tuple2<RaftGroupId, String>, RaftAtomicRef> atomicRefs =
+            new ConcurrentHashMap<Tuple2<RaftGroupId, String>, RaftAtomicRef>();
+    private final Set<Tuple2<RaftGroupId, String>> destroyedRefs =
+            newSetFromMap(new ConcurrentHashMap<Tuple2<RaftGroupId, String>, Boolean>());
     private final NodeEngine nodeEngine;
     private volatile RaftService raftService;
 

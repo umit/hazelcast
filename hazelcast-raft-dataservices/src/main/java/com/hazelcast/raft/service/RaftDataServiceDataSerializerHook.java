@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
 
 /**
  */
+@SuppressWarnings("checkstyle:declarationorder")
 public class RaftDataServiceDataSerializerHook implements DataSerializerHook {
 
     private static final int FACTORY_ID = -1010;
@@ -50,8 +51,9 @@ public class RaftDataServiceDataSerializerHook implements DataSerializerHook {
                         return new InvalidateWaitKeysOp();
                     case DESTROY_RAFT_OBJECT_OP:
                         return new DestroyRaftObjectOp();
+                    default:
+                        throw new IllegalArgumentException("Undefined type: " + typeId);
                 }
-                throw new IllegalArgumentException("Undefined type: " + typeId);
             }
         };
     }
