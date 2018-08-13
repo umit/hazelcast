@@ -299,19 +299,25 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
     public void testRaftInvocationsAfterMetadataGroupReinitialization() throws ExecutionException, InterruptedException {
         HazelcastInstance[] instances = newInstances(3, 3, 1);
 
-        RaftInvocationManager invocationManager = getRaftInvocationManager(instances[3]);
+        HazelcastInstance instance = instances[3];
+        RaftInvocationManager invocationManager = getRaftInvocationManager(instance);
         invocationManager.invoke(METADATA_GROUP_ID, new GetActiveRaftMembersOp()).get();
 
         instances[0].getLifecycleService().terminate();
         instances[1].getLifecycleService().terminate();
         instances[2].getLifecycleService().terminate();
-        assertClusterSizeEventually(1, instances[3]);
+        assertClusterSizeEventually(1, instance);
+
+        instances = new HazelcastInstance[3];
+        instances[0] = instance;
 
         Config config = createConfig(3, 3);
-        factory.newHazelcastInstance(config);
-        factory.newHazelcastInstance(config);
-        factory.newHazelcastInstance(config);
-        getRaftService(instances[3]).resetAndInitRaftState();
+        instances[1] = factory.newHazelcastInstance(config);
+        instances[2] = factory.newHazelcastInstance(config);
+
+        for (HazelcastInstance hz : instances) {
+            getRaftService(hz).resetAndInitRaftState();
+        }
 
         List<RaftMember> newEndpoints = invocationManager.<List<RaftMember>>invoke(METADATA_GROUP_ID, new GetActiveRaftMembersOp()).get();
         assertEquals(3, newEndpoints.size());
@@ -481,10 +487,11 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         instances[2].getLifecycleService().terminate();
 
-        Config config = createConfig(3, 3);
-
         try {
+            Config config = createConfig(3, 3);
             final HazelcastInstance instance = factory.newHazelcastInstance(config);
+            getRaftService(instance).resetAndInitRaftState();
+
             assertTrueEventually(new AssertTask() {
                 @Override
                 public void run() {
