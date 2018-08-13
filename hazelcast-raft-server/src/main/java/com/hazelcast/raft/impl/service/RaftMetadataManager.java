@@ -745,7 +745,7 @@ public class RaftMetadataManager implements SnapshotAwareService<MetadataSnapsho
     }
 
     public void disableDiscovery() {
-        logger.severe("Initial discovery is already completed. Disabling discovery...");
+        logger.info("Initial discovery is already completed. Disabling discovery...");
         localMember.set(null);
         discoveryCompleted = true;
     }
