@@ -358,7 +358,6 @@ public class MetadataRaftClusterTest extends HazelcastRaftTestSupport {
         int nodeCount = 3;
         int commitCountToSnapshot = 5;
         Config config = createConfig(nodeCount, nodeCount);
-        config.getRaftConfig().getMetadataGroupConfig().setInitialRaftMember(true);
         config.getRaftConfig().getRaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(commitCountToSnapshot);
 
         final HazelcastInstance[] instances = new HazelcastInstance[nodeCount];

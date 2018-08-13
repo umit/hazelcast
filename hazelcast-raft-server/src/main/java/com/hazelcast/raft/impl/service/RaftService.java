@@ -45,6 +45,7 @@ import com.hazelcast.raft.impl.service.operation.metadata.CheckRemovedRaftMember
 import com.hazelcast.raft.impl.service.operation.metadata.ForceDestroyRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetInitialRaftGroupMembersIfCurrentGroupMemberOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
+import com.hazelcast.raft.impl.service.operation.metadata.RaftServicePreJoinOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRebalanceRaftGroupsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveRaftMemberOp;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
@@ -55,6 +56,8 @@ import com.hazelcast.spi.MemberAttributeServiceEvent;
 import com.hazelcast.spi.MembershipAwareService;
 import com.hazelcast.spi.MembershipServiceEvent;
 import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.Operation;
+import com.hazelcast.spi.PreJoinAwareService;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.util.ExceptionUtil;
 
@@ -80,7 +83,7 @@ import static java.util.Collections.newSetFromMap;
  */
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:classfanoutcomplexity", "checkstyle:classdataabstractioncoupling"})
 public class RaftService implements ManagedService, SnapshotAwareService<MetadataSnapshot>, GracefulShutdownAwareService,
-                                    MembershipAwareService, RaftManagementService {
+                                    MembershipAwareService, RaftManagementService, PreJoinAwareService {
 
     public static final String SERVICE_NAME = "hz:core:raft";
 
@@ -107,7 +110,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public void init(NodeEngine nodeEngine, Properties properties) {
         ClientExceptionFactory clientExceptionFactory = this.nodeEngine.getNode().clientEngine.getClientExceptionFactory();
         SessionExpiredException.register(clientExceptionFactory);
-        metadataManager.initIfInitialRaftMember();
+        metadataManager.initInitialRaftMember();
     }
 
     @Override
@@ -265,6 +268,12 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
                 throw ExceptionUtil.rethrow(e);
             }
         }
+    }
+
+    @Override
+    public Operation getPreJoinOperation() {
+        boolean master = nodeEngine.getClusterService().isMaster();
+        return master ? new RaftServicePreJoinOp(metadataManager.isDiscoveryCompleted()) : null;
     }
 
     @Override
