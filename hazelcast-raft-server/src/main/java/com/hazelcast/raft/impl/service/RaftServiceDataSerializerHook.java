@@ -45,6 +45,7 @@ import com.hazelcast.raft.impl.service.operation.metadata.GetDestroyingRaftGroup
 import com.hazelcast.raft.impl.service.operation.metadata.GetInitialRaftGroupMembersIfCurrentGroupMemberOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetMembershipChangeContextOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
+import com.hazelcast.raft.impl.service.operation.metadata.RaftServicePreJoinOp;
 import com.hazelcast.raft.impl.service.operation.metadata.SendActiveRaftMembersOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerExpandRaftGroupsOp;
@@ -102,6 +103,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int CREATE_METADATA_RAFT_GROUP_OP = 36;
     public static final int FORCE_DESTROY_RAFT_GROUP_OP = 37;
     public static final int GET_INITIAL_RAFT_GROUP_MEMBERS_IF_CURRENT_GROUP_MEMBER_OP = 38;
+    public static final int RAFT_PREJOIN_OP = 39;
 
     @Override
     public int getFactoryId() {
@@ -190,6 +192,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new ForceDestroyRaftGroupOp();
                     case GET_INITIAL_RAFT_GROUP_MEMBERS_IF_CURRENT_GROUP_MEMBER_OP:
                         return new GetInitialRaftGroupMembersIfCurrentGroupMemberOp();
+                    case RAFT_PREJOIN_OP:
+                        return new RaftServicePreJoinOp();
                     default:
                         throw new IllegalArgumentException("Undefined type: " + typeId);
                 }

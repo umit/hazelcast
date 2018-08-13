@@ -88,7 +88,6 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         for (int i = 0; i < nodeCount; i++) {
             Config config = createConfig(raftGroupSize, metadataGroupSize);
             if (i < raftGroupSize) {
-                config.getRaftConfig().getMetadataGroupConfig().setInitialRaftMember(true);
                 instances[i] = factory.newHazelcastInstance(config);
             } else {
                 instances[i] = factory.newHazelcastInstance(config);

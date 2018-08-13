@@ -50,12 +50,10 @@ import java.util.concurrent.Future;
 
 import static com.hazelcast.raft.impl.RaftUtil.getLastLogOrSnapshotEntry;
 import static com.hazelcast.raft.impl.service.RaftMetadataManager.METADATA_GROUP_ID;
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(HazelcastSerialClassRunner.class)
@@ -277,7 +275,6 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         getRaftService(newInstances[1]).resetAndInitRaftState();
 
         Config config = createConfig(3, 3);
-        config.getRaftConfig().getMetadataGroupConfig().setInitialRaftMember(true);
         newInstances[2] = factory.newHazelcastInstance(config);
 
         waitAllForLeaderElection(newInstances, METADATA_GROUP_ID);
@@ -311,39 +308,58 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertClusterSizeEventually(1, instances[3]);
 
         Config config = createConfig(3, 3);
-        config.getRaftConfig().getMetadataGroupConfig().setInitialRaftMember(true);
         factory.newHazelcastInstance(config);
         factory.newHazelcastInstance(config);
         factory.newHazelcastInstance(config);
+        getRaftService(instances[3]).resetAndInitRaftState();
 
-        invocationManager.invoke(METADATA_GROUP_ID, new GetActiveRaftMembersOp()).get();
+        List<RaftMember> newEndpoints = invocationManager.<List<RaftMember>>invoke(METADATA_GROUP_ID, new GetActiveRaftMembersOp()).get();
+        assertEquals(3, newEndpoints.size());
     }
 
     @Test
     public void testResetRaftStateWhileMajorityIsReachable() throws ExecutionException, InterruptedException {
-        HazelcastInstance[] instances = newInstances(3, 3, 1);
+        HazelcastInstance[] instances = newInstances(3);
 
         waitAllForLeaderElection(Arrays.copyOf(instances, 3), METADATA_GROUP_ID);
 
-        RaftInvocationManager invocationManager = getRaftInvocationManager(instances[3]);
+        RaftInvocationManager invocationManager = getRaftInvocationManager(instances[2]);
 
         instances[0].getLifecycleService().terminate();
-        assertClusterSizeEventually(3, instances[1], instances[2], instances[3]);
+        assertClusterSizeEventually(2, instances[1], instances[2]);
 
         getRaftService(instances[1]).resetAndInitRaftState();
         getRaftService(instances[2]).resetAndInitRaftState();
 
         Config config = createConfig(3, 3);
-        config.getRaftConfig().getMetadataGroupConfig().setInitialRaftMember(true);
-        HazelcastInstance newInstance = factory.newHazelcastInstance(config);
+        instances[0] = factory.newHazelcastInstance(config);
 
         List<RaftMember> newEndpoints = invocationManager.<List<RaftMember>>invoke(METADATA_GROUP_ID, new GetActiveRaftMembersOp()).get();
+        for (HazelcastInstance instance : instances) {
+            assertTrue(newEndpoints.contains(new RaftMemberImpl(instance.getCluster().getLocalMember())));
+        }
+    }
 
-        assertTrue(newEndpoints.contains(new RaftMemberImpl(instances[1].getCluster().getLocalMember())));
-        assertTrue(newEndpoints.contains(new RaftMemberImpl(instances[2].getCluster().getLocalMember())));
-        assertTrue(newEndpoints.contains(new RaftMemberImpl(newInstance.getCluster().getLocalMember())));
+    @Test
+    public void testStartNewAPMember_afterDiscoveryIsCompleted() throws ExecutionException, InterruptedException {
+        final HazelcastInstance[] instances = newInstances(3);
 
+        RaftInvocationManager invocationManager = getRaftInvocationManager(instances[1]);
         invocationManager.invoke(METADATA_GROUP_ID, new GetActiveRaftMembersOp()).get();
+
+        instances[2].getLifecycleService().terminate();
+        assertClusterSizeEventually(2, instances[1]);
+
+        Config config = createConfig(3, 3);
+        instances[2] = factory.newHazelcastInstance(config);
+
+        assertClusterSizeEventually(3, instances[1]);
+        assertTrueAllTheTime(new AssertTask() {
+            @Override
+            public void run() {
+                assertTrue(instances[2].getLifecycleService().isRunning());
+            }
+        }, 5);
     }
 
     @Test
@@ -442,24 +458,21 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testNodeTerminates_whenInitialRaftMemberCount_isBiggerThanConfiguredNumber() {
+    public void testNodeBecomesAP_whenInitialRaftMemberCount_isBiggerThanConfiguredNumber() {
         int groupSize = 3;
         HazelcastInstance[] instances = newInstances(groupSize);
 
         Config config = createConfig(groupSize, groupSize);
-        config.getRaftConfig().getMetadataGroupConfig().setInitialRaftMember(true);
-        try {
-            final HazelcastInstance instance = factory.newHazelcastInstance(config);
-            assertTrueEventually(new AssertTask() {
-                @Override
-                public void run() {
-                    assertFalse(instance.getLifecycleService().isRunning());
-                }
-            });
-        } catch (IllegalStateException ignored) {
-        }
+        final HazelcastInstance instance = factory.newHazelcastInstance(config);
 
         waitAllForLeaderElection(instances, METADATA_GROUP_ID);
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertNull(getRaftService(instance).getLocalMember());
+            }
+        });
     }
 
     @Test
@@ -469,7 +482,6 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         instances[2].getLifecycleService().terminate();
 
         Config config = createConfig(3, 3);
-        config.getRaftConfig().getMetadataGroupConfig().setInitialRaftMember(true);
 
         try {
             final HazelcastInstance instance = factory.newHazelcastInstance(config);
@@ -487,8 +499,7 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
 
     @Test
     public void testNodesTerminate_whenMoreThanInitialRaftMembers_areStartedConcurrently() throws Exception {
-        final Config config = createConfig(3, 3);
-        config.getRaftConfig().getMetadataGroupConfig().setInitialRaftMember(true);
+        final Config config = createConfig(3, 2);
 
         final Set<HazelcastInstance> instances = Collections.newSetFromMap(new ConcurrentHashMap<HazelcastInstance, Boolean>());
         Collection<Future> futures = new ArrayList<Future>();
@@ -497,11 +508,8 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
             Future future = spawn(new Runnable() {
                 @Override
                 public void run() {
-                    try {
-                        HazelcastInstance instance = factory.newHazelcastInstance(config);
-                        instances.add(instance);
-                    } catch (IllegalStateException ignored) {
-                    }
+                    HazelcastInstance instance = factory.newHazelcastInstance(config);
+                    instances.add(instance);
                 }
             });
             futures.add(future);
@@ -514,13 +522,21 @@ public class MemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                int aliveCount = 0;
+                assertEquals(8, instances.size());
+
+                int cpCount = 0;
+                int metadataCount = 0;
                 for (HazelcastInstance instance : instances) {
-                    if (instance.getLifecycleService().isRunning()) {
-                        aliveCount++;
+                    assertTrue(instance.getLifecycleService().isRunning());
+                    if (getRaftService(instance).getLocalMember() != null) {
+                        cpCount++;
+                    }
+                    if (getRaftGroupLocally(instance, METADATA_GROUP_ID) != null) {
+                        metadataCount++;
                     }
                 }
-                assertThat(aliveCount, lessThanOrEqualTo(3));
+                assertEquals(3, cpCount);
+                assertEquals(2, metadataCount);
             }
         });
     }

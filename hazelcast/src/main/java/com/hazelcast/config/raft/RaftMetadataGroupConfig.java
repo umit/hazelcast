@@ -25,11 +25,6 @@ import static com.hazelcast.util.Preconditions.checkTrue;
 public class RaftMetadataGroupConfig {
 
     /**
-     * Name of the internal Member attribute to denote Raft nodes
-     */
-    public static final String RAFT_MEMBER_ATTRIBUTE_NAME = "_INITIAL_RAFT_MEMBER_";
-
-    /**
      * Size of the Raft members group.
      */
     private int groupSize;
@@ -39,18 +34,12 @@ public class RaftMetadataGroupConfig {
      */
     private int metadataGroupSize;
 
-    /**
-     * Flag to mark a member as initial Raft member.
-     */
-    private boolean initialRaftMember;
-
     public RaftMetadataGroupConfig() {
     }
 
     public RaftMetadataGroupConfig(RaftMetadataGroupConfig config) {
         this.groupSize = config.groupSize;
         this.metadataGroupSize = config.metadataGroupSize;
-        this.initialRaftMember = config.initialRaftMember;
     }
 
     public int getGroupSize() {
@@ -74,15 +63,6 @@ public class RaftMetadataGroupConfig {
         checkTrue(metadataGroupSize <= groupSize,
                 "The metadata group cannot be bigger than the number of raft members");
         this.metadataGroupSize = metadataGroupSize;
-        return this;
-    }
-
-    public boolean isInitialRaftMember() {
-        return initialRaftMember;
-    }
-
-    public RaftMetadataGroupConfig setInitialRaftMember(boolean initialRaftMember) {
-        this.initialRaftMember = initialRaftMember;
         return this;
     }
 }
