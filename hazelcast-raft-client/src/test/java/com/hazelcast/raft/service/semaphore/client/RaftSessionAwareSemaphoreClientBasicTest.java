@@ -5,6 +5,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
+import com.hazelcast.raft.service.lock.exception.LockRequestCancelledException;
 import com.hazelcast.raft.service.semaphore.RaftSessionAwareSemaphoreBasicTest;
 import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.session.SessionManagerProvider;
@@ -33,6 +34,7 @@ public class RaftSessionAwareSemaphoreClientBasicTest extends RaftSessionAwareSe
         TestHazelcastFactory f = (TestHazelcastFactory) factory;
         semaphoreInstance = f.newHazelcastClient();
         SessionExpiredException.register(getClient(semaphoreInstance).getClientExceptionFactory());
+        LockRequestCancelledException.register(getClient(semaphoreInstance).getClientExceptionFactory());
         return instances;
     }
 

@@ -28,7 +28,6 @@ import com.hazelcast.raft.impl.session.operation.CloseSessionOp;
 import com.hazelcast.raft.service.semaphore.proxy.RaftSessionAwareSemaphoreProxy;
 import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.session.SessionManagerService;
-import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -500,8 +499,7 @@ public class RaftSessionAwareSemaphoreBasicTest extends HazelcastRaftTestSupport
     }
 
     protected AbstractSessionManager getSessionManager(HazelcastInstance instance) {
-        NodeEngineImpl nodeEngine = getNodeEngineImpl(instance);
-        return nodeEngine.getService(SessionManagerService.SERVICE_NAME);
+        return getNodeEngineImpl(instance).getService(SessionManagerService.SERVICE_NAME);
     }
 
     protected RaftGroupId getGroupId(ISemaphore semaphore) {

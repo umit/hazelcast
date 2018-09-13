@@ -30,6 +30,7 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.raft.service.lock.RaftLockService;
+import com.hazelcast.raft.service.lock.exception.LockRequestCancelledException;
 import com.hazelcast.raft.service.session.SessionAwareProxy;
 import com.hazelcast.raft.service.session.SessionManagerProvider;
 import com.hazelcast.spi.InternalCompletableFuture;
@@ -132,6 +133,8 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
                     releaseSession(sessionId);
                 }
                 return locked;
+            } catch (LockRequestCancelledException e) {
+                return false;
             } catch (SessionExpiredException e) {
                 invalidateSession(sessionId);
             }

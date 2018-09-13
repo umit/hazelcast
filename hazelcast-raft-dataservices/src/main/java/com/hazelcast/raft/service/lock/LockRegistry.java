@@ -19,9 +19,9 @@ package com.hazelcast.raft.service.lock;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.service.blocking.ResourceRegistry;
+import com.hazelcast.raft.service.lock.RaftLock.AcquireResult;
+import com.hazelcast.raft.service.lock.RaftLock.ReleaseResult;
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.UUID;
 
 import static com.hazelcast.raft.service.lock.RaftLockService.INVALID_FENCE;
@@ -43,46 +43,58 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> impleme
         return new RaftLock(groupId, name);
     }
 
-    long acquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
-        return getOrInitResource(name).acquire(endpoint, commitIndex, invocationUid, true);
+    AcquireResult acquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
+        AcquireResult result = getOrInitResource(name).acquire(endpoint, commitIndex, invocationUid, true);
+
+        for (LockInvocationKey waitKey : result.notifications) {
+            removeWaitKey(waitKey);
+        }
+
+        return result;
     }
 
-    long tryAcquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid, long timeoutMs) {
+    AcquireResult tryAcquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid, long timeoutMs) {
         boolean wait = (timeoutMs > 0);
-        long fence = getOrInitResource(name).acquire(endpoint, commitIndex, invocationUid, wait);
+        AcquireResult result = getOrInitResource(name).acquire(endpoint, commitIndex, invocationUid, wait);
+        long fence = result.fence;
+
+        for (LockInvocationKey waitKey : result.notifications) {
+            removeWaitKey(waitKey);
+        }
+
         if (wait && fence == INVALID_FENCE) {
             addWaitKey(new LockInvocationKey(name, endpoint, commitIndex, invocationUid), timeoutMs);
         }
 
-        return fence;
+        return result;
     }
 
-    Collection<LockInvocationKey> release(String name, LockEndpoint endpoint, UUID invocationUid) {
+    ReleaseResult release(String name, LockEndpoint endpoint, UUID invocationUid) {
         RaftLock lock = getResourceOrNull(name);
         if (lock == null) {
-            return Collections.emptyList();
+            return ReleaseResult.NOT_RELEASED;
         }
 
-        Collection<LockInvocationKey> keys = lock.release(endpoint, invocationUid);
-        for (LockInvocationKey key : keys) {
+        ReleaseResult result = lock.release(endpoint, invocationUid);
+        for (LockInvocationKey key : result.notifications) {
             removeWaitKey(key);
         }
 
-        return keys;
+        return result;
     }
 
-    Collection<LockInvocationKey> forceRelease(String name, long expectedFence, UUID invocationUid) {
+    ReleaseResult forceRelease(String name, long expectedFence, UUID invocationUid) {
         RaftLock lock = getResourceOrNull(name);
         if (lock == null) {
-            return Collections.emptyList();
+            return ReleaseResult.NOT_RELEASED;
         }
 
-        Collection<LockInvocationKey> keys = lock.forceRelease(expectedFence, invocationUid);
-        for (LockInvocationKey key : keys) {
+        ReleaseResult result = lock.forceRelease(expectedFence, invocationUid);
+        for (LockInvocationKey key : result.notifications) {
             removeWaitKey(key);
         }
 
-        return keys;
+        return result;
     }
 
     int getLockCount(String name, LockEndpoint endpoint) {

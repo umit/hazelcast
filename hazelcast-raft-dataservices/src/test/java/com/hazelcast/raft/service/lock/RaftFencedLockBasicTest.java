@@ -84,8 +84,7 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
     }
 
     protected AbstractSessionManager getSessionManager(HazelcastInstance instance) {
-        NodeEngineImpl nodeEngine = getNodeEngineImpl(instance);
-        return nodeEngine.getService(SessionManagerService.SERVICE_NAME);
+        return getNodeEngineImpl(instance).getService(SessionManagerService.SERVICE_NAME);
     }
 
     @Test

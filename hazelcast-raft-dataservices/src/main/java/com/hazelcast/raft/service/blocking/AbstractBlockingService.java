@@ -34,6 +34,7 @@ import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
+import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.util.Clock;
 
 import java.util.ArrayList;
@@ -61,7 +62,7 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
     public static final long WAIT_TIMEOUT_TASK_UPPER_BOUND_MILLIS = 1500;
     private static final long WAIT_TIMEOUT_TASK_PERIOD_MILLIS = 500;
 
-    protected final NodeEngine nodeEngine;
+    protected final NodeEngineImpl nodeEngine;
     protected final ILogger logger;
     protected volatile RaftService raftService;
 
@@ -69,7 +70,7 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
     private volatile SessionAccessor sessionAccessor;
 
     protected AbstractBlockingService(NodeEngine nodeEngine) {
-        this.nodeEngine = nodeEngine;
+        this.nodeEngine = (NodeEngineImpl) nodeEngine;
         this.logger = nodeEngine.getLogger(getClass());
     }
 

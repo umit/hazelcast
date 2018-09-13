@@ -16,6 +16,7 @@
 
 package com.hazelcast.raft.service.lock;
 
+import com.hazelcast.client.impl.protocol.ClientExceptionFactory;
 import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.core.ICompletableFuture;
@@ -23,6 +24,9 @@ import com.hazelcast.core.ILock;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.blocking.AbstractBlockingService;
+import com.hazelcast.raft.service.lock.RaftLock.AcquireResult;
+import com.hazelcast.raft.service.lock.RaftLock.ReleaseResult;
+import com.hazelcast.raft.service.lock.exception.LockRequestCancelledException;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
 import com.hazelcast.raft.service.session.SessionManagerService;
 import com.hazelcast.spi.NodeEngine;
@@ -43,6 +47,14 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
 
     public RaftLockService(NodeEngine nodeEngine) {
         super(nodeEngine);
+    }
+
+    @Override
+    protected void initImpl() {
+        super.initImpl();
+
+        ClientExceptionFactory clientExceptionFactory = this.nodeEngine.getNode().clientEngine.getClientExceptionFactory();
+        LockRequestCancelledException.register(clientExceptionFactory);
     }
 
     @Override
@@ -74,25 +86,37 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
 
     public long acquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
         heartbeatSession(groupId, endpoint.sessionId());
-        long fence = getOrInitRegistry(groupId).acquire(name, endpoint, commitIndex, invocationUid);
+        AcquireResult result = getOrInitRegistry(groupId).acquire(name, endpoint, commitIndex, invocationUid);
+        long fence = result.fence;
+        boolean acquired = (fence != INVALID_FENCE);
+
         if (logger.isFineEnabled()) {
-            logger.fine("Lock[" + name + "] in " + groupId + " acquired: " + (fence != INVALID_FENCE) + " by <" + endpoint + ", "
+            logger.fine("Lock[" + name + "] in " + groupId + " acquired: " + acquired + " by <" + endpoint + ", "
                     + invocationUid + ">");
         }
+
+        if (!acquired) {
+            notifyCancelledWaitKeys(groupId, name, result.notifications);
+        }
+
         return fence;
     }
 
     public long tryAcquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid,
                           long timeoutMs) {
         heartbeatSession(groupId, endpoint.sessionId());
-        long fence = getOrInitRegistry(groupId).tryAcquire(name, endpoint, commitIndex, invocationUid, timeoutMs);
+        AcquireResult result = getOrInitRegistry(groupId).tryAcquire(name, endpoint, commitIndex, invocationUid, timeoutMs);
+        long fence = result.fence;
+        boolean acquired = (fence != INVALID_FENCE);
+
         if (logger.isFineEnabled()) {
-            logger.fine("Lock[" + name + "] in " + groupId + " acquired: " + (fence != INVALID_FENCE) + " by <" + endpoint + ", "
+            logger.fine("Lock[" + name + "] in " + groupId + " acquired: " + acquired + " by <" + endpoint + ", "
                     + invocationUid + ">");
         }
 
-        if (fence == INVALID_FENCE) {
+        if (!acquired) {
             scheduleTimeout(groupId, new LockInvocationKey(name, endpoint, commitIndex, invocationUid), timeoutMs);
+            notifyCancelledWaitKeys(groupId, name, result.notifications);
         }
 
         return fence;
@@ -101,39 +125,59 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
     public void release(RaftGroupId groupId, String name, LockEndpoint endpoint, UUID invocationUid) {
         heartbeatSession(groupId, endpoint.sessionId());
         LockRegistry registry = getLockRegistryOrFail(groupId, name);
-        Collection<LockInvocationKey> waitKeys = registry.release(name, endpoint, invocationUid);
+        ReleaseResult result = registry.release(name, endpoint, invocationUid);
 
-        if (logger.isFineEnabled()) {
-            logger.fine("Lock[" + name + "] in " + groupId + " is released by <" + endpoint + ", " + invocationUid + ">");
+        if (result.success) {
+            if (logger.isFineEnabled()) {
+                logger.fine("Lock[" + name + "] in " + groupId + " is released by <" + endpoint + ", " + invocationUid + ">");
+            }
+
+            notifySucceededWaitKeys(groupId, name, result.notifications);
+        } else {
+            notifyCancelledWaitKeys(groupId, name, result.notifications);
+            throw new IllegalMonitorStateException("Current thread is not owner of the lock!");
         }
-
-        notifyLockAcquiredWaitKeys(groupId, name, waitKeys);
     }
 
     public void forceRelease(RaftGroupId groupId, String name, long expectedFence, UUID invocationUid) {
         LockRegistry registry = getLockRegistryOrFail(groupId, name);
-        Collection<LockInvocationKey> waitKeys = registry.forceRelease(name, expectedFence, invocationUid);
+        ReleaseResult result = registry.forceRelease(name, expectedFence, invocationUid);
 
-        if (logger.isFineEnabled()) {
-            logger.fine("Lock[" + name + "] in " + groupId + " is force-released by " + invocationUid + " for fence: "
-                    + expectedFence);
+        if (result.success) {
+            if (logger.isFineEnabled()) {
+                logger.fine("Lock[" + name + "] in " + groupId + " is force-released by " + invocationUid + " for fence: "
+                        + expectedFence);
+            }
+
+            notifySucceededWaitKeys(groupId, name, result.notifications);
+        } else {
+            notifyCancelledWaitKeys(groupId, name, result.notifications);
+            throw new IllegalMonitorStateException("Current thread is not owner of the lock!");
         }
-
-        notifyLockAcquiredWaitKeys(groupId, name, waitKeys);
     }
 
-    private void notifyLockAcquiredWaitKeys(RaftGroupId groupId, String name, Collection<LockInvocationKey> waitEntries) {
-        if (waitEntries.isEmpty()) {
+    private void notifySucceededWaitKeys(RaftGroupId groupId, String name, Collection<LockInvocationKey> waitKeys) {
+        if (waitKeys.isEmpty()) {
             return;
         }
 
-        LockInvocationKey waitKey = waitEntries.iterator().next();
+        LockInvocationKey waitKey = waitKeys.iterator().next();
         if (logger.isFineEnabled()) {
             logger.fine("Lock[" + name + "] in " + groupId + " is acquired by <" + waitKey.endpoint() + ", "
                     + waitKey.invocationUid() + ">");
         }
 
-        notifyWaitKeys(groupId, waitEntries, waitKey.commitIndex());
+        notifyWaitKeys(groupId, waitKeys, waitKey.commitIndex());
+    }
+
+    private void notifyCancelledWaitKeys(RaftGroupId groupId, String name, Collection<LockInvocationKey> waitKeys) {
+        if (waitKeys.isEmpty()) {
+            return;
+        }
+
+        logger.warning("Wait keys: " + waitKeys +  " for Lock[" + name + "] in " + groupId + " are cancelled.");
+
+        notifyWaitKeys(groupId, waitKeys, new LockRequestCancelledException());
     }
 
     public int getLockCount(RaftGroupId groupId, String name, LockEndpoint endpoint) {
