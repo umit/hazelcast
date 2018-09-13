@@ -13,7 +13,6 @@ import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
 import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.session.SessionManagerService;
 import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
-import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -490,7 +489,6 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     }
 
     protected AbstractSessionManager getSessionManager() {
-        NodeEngineImpl nodeEngine = getNodeEngineImpl(lockInstance);
-        return nodeEngine.getService(SessionManagerService.SERVICE_NAME);
+        return getNodeEngineImpl(lockInstance).getService(SessionManagerService.SERVICE_NAME);
     }
 }

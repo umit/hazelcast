@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static com.hazelcast.raft.service.lock.RaftLockService.INVALID_FENCE;
+import static java.util.Collections.unmodifiableCollection;
 
 /**
  * TODO: Javadoc Pending...
@@ -55,10 +56,10 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
         return owner != null ? Collections.singleton(owner.sessionId()) : Collections.<Long>emptyList();
     }
 
-    long acquire(LockEndpoint endpoint, long commitIndex, UUID invocationUid, boolean wait) {
+    AcquireResult acquire(LockEndpoint endpoint, long commitIndex, UUID invocationUid, boolean wait) {
         // if acquire() is being retried
         if (owner != null && owner.invocationUid().equals(invocationUid)) {
-            return owner.commitIndex();
+            return AcquireResult.locked(owner.commitIndex());
         }
 
         LockInvocationKey key = new LockInvocationKey(name, endpoint, commitIndex, invocationUid);
@@ -68,24 +69,36 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
 
         if (endpoint.equals(owner.endpoint())) {
             lockCount++;
-            return owner.commitIndex();
+            return AcquireResult.locked(owner.commitIndex());
         }
 
         if (wait) {
+            List<LockInvocationKey> cancelledWaitKeys = new ArrayList<LockInvocationKey>();
+            Iterator<LockInvocationKey> it = waitKeys.iterator();
+            while (it.hasNext()) {
+                LockInvocationKey waitKey = it.next();
+                if (waitKey.endpoint().equals(endpoint) && !waitKey.invocationUid().equals(invocationUid)) {
+                    cancelledWaitKeys.add(waitKey);
+                    it.remove();
+                }
+            }
+
             waitKeys.add(key);
+
+            return AcquireResult.waitKeysInvalidated(cancelledWaitKeys);
         }
 
-        return INVALID_FENCE;
+        return AcquireResult.NO_ACQUIRE_NO_WAIT;
     }
 
-    Collection<LockInvocationKey> release(LockEndpoint endpoint, UUID invocationUuid) {
+    ReleaseResult release(LockEndpoint endpoint, UUID invocationUuid) {
         return release(endpoint, 1, invocationUuid);
     }
 
-    private Collection<LockInvocationKey> release(LockEndpoint endpoint, int releaseCount, UUID invocationUid) {
+    private ReleaseResult release(LockEndpoint endpoint, int releaseCount, UUID invocationUid) {
         // if release() is being retried
         if (invocationUid.equals(releaseRefUid)) {
-            return Collections.emptyList();
+            return ReleaseResult.RELEASED_NO_NOTIFICATION;
         }
 
         if (owner != null && endpoint.equals(owner.endpoint())) {
@@ -93,52 +106,63 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
 
             lockCount -= Math.min(releaseCount, lockCount);
             if (lockCount > 0) {
-                return Collections.emptyList();
+                return ReleaseResult.RELEASED_NO_NOTIFICATION;
             }
 
-            LockInvocationKey nextOwner = waitKeys.poll();
-            if (nextOwner != null) {
-                List<LockInvocationKey> entries = new ArrayList<LockInvocationKey>();
-                entries.add(nextOwner);
+            LockInvocationKey newOwner = waitKeys.poll();
+            if (newOwner != null) {
+                List<LockInvocationKey> keys = new ArrayList<LockInvocationKey>();
+                keys.add(newOwner);
 
                 Iterator<LockInvocationKey> iter = waitKeys.iterator();
                 while (iter.hasNext()) {
-                    LockInvocationKey n = iter.next();
-                    if (nextOwner.invocationUid().equals(n.invocationUid())) {
+                    LockInvocationKey key = iter.next();
+                    if (newOwner.invocationUid().equals(key.invocationUid())) {
+                        assert newOwner.endpoint().equals(key.endpoint());
+                        keys.add(key);
                         iter.remove();
-                        assert nextOwner.endpoint().equals(n.endpoint());
-                        entries.add(n);
                     }
                 }
 
-                owner = nextOwner;
+                owner = newOwner;
                 lockCount = 1;
-                return entries;
+
+                return ReleaseResult.released(keys);
             } else {
                 owner = null;
             }
 
-            return Collections.emptyList();
+            return ReleaseResult.RELEASED_NO_NOTIFICATION;
         }
 
-        throw new IllegalMonitorStateException("Current thread is not owner of the lock!");
+        List<LockInvocationKey> keys = new ArrayList<LockInvocationKey>();
+        Iterator<LockInvocationKey> iter = waitKeys.iterator();
+        while (iter.hasNext()) {
+            LockInvocationKey key = iter.next();
+            if (key.endpoint().equals(endpoint)) {
+                keys.add(key);
+                iter.remove();
+            }
+        }
+
+        return ReleaseResult.waitKeysInvalidated(keys);
     }
 
-    Collection<LockInvocationKey> forceRelease(long expectedFence, UUID invocationUid) {
+    ReleaseResult forceRelease(long expectedFence, UUID invocationUid) {
         // if forceRelease() is being retried
         if (invocationUid.equals(releaseRefUid)) {
-            return Collections.emptyList();
+            return ReleaseResult.RELEASED_NO_NOTIFICATION;
         }
 
         if (owner == null) {
-            throw new IllegalMonitorStateException();
+            return ReleaseResult.NOT_RELEASED;
         }
 
         if (owner.commitIndex() == expectedFence) {
             return release(owner.endpoint(), lockCount, invocationUid);
         }
 
-        throw new IllegalMonitorStateException();
+        return ReleaseResult.NOT_RELEASED;
     }
 
     int lockCount() {
@@ -150,15 +174,21 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
     }
 
     @Override
-    protected void onInvalidateSession(long sessionId, Long2ObjectHashMap<Object> result) {
+    protected void onInvalidateSession(long sessionId, Long2ObjectHashMap<Object> responses) {
         if (owner != null && sessionId == owner.endpoint().sessionId()) {
-            Collection<LockInvocationKey> w = release(owner.endpoint(), Integer.MAX_VALUE, UuidUtil.newUnsecureUUID());
-            if (w.isEmpty()) {
+            ReleaseResult result = release(owner.endpoint(), Integer.MAX_VALUE, UuidUtil.newUnsecureUUID());
+
+            if (!result.success) {
+                assert result.notifications.isEmpty();
                 return;
             }
-            Object newOwnerCommitIndex = w.iterator().next().commitIndex();
-            for (LockInvocationKey waitEntry : w) {
-                result.put(waitEntry.commitIndex(), newOwnerCommitIndex);
+
+            Collection<LockInvocationKey> notifications = result.notifications;
+            if (notifications.size() > 0) {
+                Object newOwnerCommitIndex = notifications.iterator().next().commitIndex();
+                for (LockInvocationKey waitKey : notifications) {
+                    responses.put(waitKey.commitIndex(), newOwnerCommitIndex);
+                }
             }
         }
     }
@@ -213,4 +243,53 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
         return "RaftLock{" + "groupId=" + groupId + ", name='" + name + '\'' + ", owner=" + owner + ", lockCount=" + lockCount
                 + ", releaseRefUid=" + releaseRefUid + ", waitKeys=" + waitKeys + '}';
     }
+
+    static class AcquireResult {
+
+        private static final AcquireResult NO_ACQUIRE_NO_WAIT
+                = new AcquireResult(INVALID_FENCE, Collections.<LockInvocationKey>emptyList());
+
+        final long fence;
+        final Collection<LockInvocationKey> notifications;
+
+        private static AcquireResult locked(long fence) {
+            return new AcquireResult(fence, Collections.<LockInvocationKey>emptyList());
+        }
+
+        private static AcquireResult waitKeysInvalidated(Collection<LockInvocationKey> notifications) {
+            return new AcquireResult(INVALID_FENCE, notifications);
+        }
+
+        private AcquireResult(long fence, Collection<LockInvocationKey> notifications) {
+            this.fence = fence;
+            this.notifications = unmodifiableCollection(notifications);
+        }
+
+    }
+
+    static class ReleaseResult {
+
+        static final ReleaseResult NOT_RELEASED
+                = new ReleaseResult(false, Collections.<LockInvocationKey>emptyList());
+
+        private static final ReleaseResult RELEASED_NO_NOTIFICATION
+                = new ReleaseResult(true, Collections.<LockInvocationKey>emptyList());
+
+        final boolean success;
+        final Collection<LockInvocationKey> notifications;
+
+        private static ReleaseResult released(Collection<LockInvocationKey> notifications) {
+            return new ReleaseResult(true, notifications);
+        }
+
+        private static ReleaseResult waitKeysInvalidated(Collection<LockInvocationKey> notifications) {
+            return new ReleaseResult(false, notifications);
+        }
+
+        private ReleaseResult(boolean success, Collection<LockInvocationKey> notifications) {
+            this.success = success;
+            this.notifications = unmodifiableCollection(notifications);
+        }
+    }
+
 }
