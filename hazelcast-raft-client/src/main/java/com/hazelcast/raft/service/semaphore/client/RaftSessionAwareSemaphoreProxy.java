@@ -52,6 +52,7 @@ import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSI
 import static com.hazelcast.raft.service.util.ClientAccessor.getClient;
 import static com.hazelcast.util.Preconditions.checkNotNegative;
 import static com.hazelcast.util.Preconditions.checkPositive;
+import static com.hazelcast.util.ThreadUtil.getThreadId;
 import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.lang.Math.max;
 
@@ -118,12 +119,14 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
     @Override
     public void acquire(int permits) {
         checkPositive(permits, "Permits must be positive!");
+        long threadId = getThreadId();
         UUID invocationUid = newUnsecureUUID();
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 5
                 + Bits.INT_SIZE_IN_BYTES;
         for (;;) {
             long sessionId = acquireSession(permits);
             ClientMessage msg = prepareClientMessage(groupId, name, sessionId, dataSize, ACQUIRE_PERMITS_TYPE);
+            msg.set(threadId);
             msg.set(invocationUid.getLeastSignificantBits());
             msg.set(invocationUid.getMostSignificantBits());
             msg.set(permits);
@@ -158,14 +161,16 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
     public boolean tryAcquire(int permits, long timeout, TimeUnit unit) {
         checkPositive(permits, "Permits must be positive!");
         long timeoutMs = max(0, unit.toMillis(timeout));
+        long threadId = getThreadId();
         UUID invocationUid = newUnsecureUUID();
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 5
                 + Bits.INT_SIZE_IN_BYTES;
         long start;
         for (;;) {
             start = Clock.currentTimeMillis();
             long sessionId = acquireSession(permits);
             ClientMessage msg = prepareClientMessage(groupId, name, sessionId, dataSize, ACQUIRE_PERMITS_TYPE);
+            msg.set(threadId);
             msg.set(invocationUid.getLeastSignificantBits());
             msg.set(invocationUid.getMostSignificantBits());
             msg.set(permits);
@@ -202,10 +207,12 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
             throw new IllegalStateException("No valid session!");
         }
 
+        long threadId = getThreadId();
         UUID invocationUid = newUnsecureUUID();
         int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) +
-                Bits.LONG_SIZE_IN_BYTES * 3 + Bits.INT_SIZE_IN_BYTES;
+                Bits.LONG_SIZE_IN_BYTES * 4 + Bits.INT_SIZE_IN_BYTES;
         ClientMessage msg = prepareClientMessage(groupId, name, sessionId, dataSize, RELEASE_PERMITS_TYPE);
+        msg.set(threadId);
         msg.set(invocationUid.getLeastSignificantBits());
         msg.set(invocationUid.getMostSignificantBits());
         msg.set(permits);
@@ -232,11 +239,13 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
 
     @Override
     public int drainPermits() {
+        long threadId = getThreadId();
         UUID invocationUid = newUnsecureUUID();
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 3;
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4;
         for (;;) {
             long sessionId = acquireSession(DRAIN_SESSION_ACQ_COUNT);
             ClientMessage msg = prepareClientMessage(groupId, name, sessionId, dataSize, DRAIN_PERMITS_TYPE);
+            msg.set(threadId);
             msg.set(invocationUid.getLeastSignificantBits());
             msg.set(invocationUid.getMostSignificantBits());
             msg.updateFrameLength();

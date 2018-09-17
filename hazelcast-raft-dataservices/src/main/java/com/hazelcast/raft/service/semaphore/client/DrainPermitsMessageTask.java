@@ -29,6 +29,7 @@ import java.util.UUID;
  */
 public class DrainPermitsMessageTask extends AbstractSemaphoreMessageTask {
 
+    private long threadId;
     private UUID invocationUid;
 
     DrainPermitsMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
@@ -38,12 +39,13 @@ public class DrainPermitsMessageTask extends AbstractSemaphoreMessageTask {
     @Override
     protected void processMessage() {
         RaftInvocationManager invocationManager = getRaftInvocationManager();
-        invocationManager.invoke(groupId, new DrainPermitsOp(name, sessionId, invocationUid)).andThen(this);
+        invocationManager.invoke(groupId, new DrainPermitsOp(name, sessionId, threadId, invocationUid)).andThen(this);
     }
 
     @Override
     protected Object decodeClientMessage(ClientMessage clientMessage) {
         super.decodeClientMessage(clientMessage);
+        threadId = clientMessage.getLong();
         long least = clientMessage.getLong();
         long most = clientMessage.getLong();
         invocationUid = new UUID(most, least);

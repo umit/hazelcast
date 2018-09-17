@@ -56,15 +56,16 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
     }
 
     @Override
-    protected void onInvalidateSession(long sessionId, Long2ObjectHashMap<Object> result) {
+    protected void onInvalidateSession(long sessionId, Long2ObjectHashMap<Object> responses) {
         SessionState state = sessionStates.get(sessionId);
         if (state != null) {
             for (Entry<UUID, Integer> e : state.acquires.entrySet()) {
                 UUID invocationUid = e.getKey();
                 if (!state.releases.containsKey(invocationUid)) {
-                    Collection<SemaphoreInvocationKey> keys = release(sessionId, invocationUid, e.getValue());
-                    for (SemaphoreInvocationKey key : keys) {
-                        result.put(key.commitIndex(), Boolean.TRUE);
+                    ReleaseResult result = release(sessionId, -1, invocationUid, e.getValue());
+                    assert result.cancelled.isEmpty();
+                    for (SemaphoreInvocationKey key : result.acquired) {
+                        responses.put(key.commitIndex(), Boolean.TRUE);
                     }
                 }
             }
@@ -91,21 +92,22 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
         return available >= permits;
     }
 
-    boolean acquire(SemaphoreInvocationKey key, int permits, boolean wait) {
-        if (!isAvailable(permits)) {
+    AcquireResult acquire(SemaphoreInvocationKey key, boolean wait) {
+        Collection<SemaphoreInvocationKey> cancelled = cancelWaitKeys(key.sessionId(), key.threadId(), key.invocationUid());
+        if (!isAvailable(key.permits())) {
             if (wait) {
                 waitKeys.add(key);
             }
 
-            return false;
+            return new AcquireResult(0, cancelled);
         }
 
-        doAcquire(key.sessionId(), key.invocationUid(), permits);
+        assignPermitsToInvocation(key.sessionId(), key.invocationUid(), key.permits());
 
-        return true;
+        return new AcquireResult(key.permits(), cancelled);
     }
 
-    private void doAcquire(long sessionId, UUID invocationUid, int permits) {
+    private void assignPermitsToInvocation(long sessionId, UUID invocationUid, int permits) {
         if (sessionId == NO_SESSION_ID) {
             available -= permits;
             return;
@@ -122,25 +124,24 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
         }
     }
 
-    Collection<SemaphoreInvocationKey> release(long sessionId, UUID invocationUid, int permits) {
+    ReleaseResult release(long sessionId, long threadId, UUID invocationUid, int permits) {
         checkPositive(permits, "Permits should be positive!");
 
         if (sessionId != NO_SESSION_ID) {
             SessionState state = sessionStates.get(sessionId);
             if (state == null) {
-                throw new IllegalArgumentException("Cannot release " + permits
-                        + " permits. Session has acquired no permits!");
+                return ReleaseResult.failed(cancelWaitKeys(sessionId, threadId, invocationUid));
             }
 
             if (state.releases.containsKey(invocationUid)) {
-                return Collections.emptyList();
+                return ReleaseResult.successful(Collections.<SemaphoreInvocationKey>emptyList(),
+                        Collections.<SemaphoreInvocationKey>emptyList());
             }
 
             long acquired = state.getEffectivePermitCount();
 
             if (acquired < permits) {
-                throw new IllegalArgumentException("Cannot release " + permits
-                        + " permits. Session has acquired only " + acquired + " permits!");
+                return ReleaseResult.failed(cancelWaitKeys(sessionId, threadId, invocationUid));
             }
 
             state.releases.put(invocationUid, permits);
@@ -151,11 +152,30 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
 
         available += permits;
 
-        return assignPermitsToWaitKeys();
+        // order is important...
+        Collection<SemaphoreInvocationKey> cancelled = cancelWaitKeys(sessionId, threadId, invocationUid);
+        Collection<SemaphoreInvocationKey> acquired = assignPermitsToWaitKeys();
+
+        return ReleaseResult.successful(acquired, cancelled);
+    }
+
+    private Collection<SemaphoreInvocationKey> cancelWaitKeys(long sessionId, long threadId, UUID invocationUid) {
+        List<SemaphoreInvocationKey> cancelled = new ArrayList<SemaphoreInvocationKey>(0);
+        Iterator<SemaphoreInvocationKey> iter = waitKeys.iterator();
+        while (iter.hasNext()) {
+            SemaphoreInvocationKey waitKey = iter.next();
+            if (waitKey.sessionId() == sessionId && waitKey.threadId() == threadId
+                    && !waitKey.invocationUid().equals(invocationUid)) {
+                cancelled.add(waitKey);
+                iter.remove();
+            }
+        }
+
+        return cancelled;
     }
 
     private Collection<SemaphoreInvocationKey> assignPermitsToWaitKeys() {
-        List<SemaphoreInvocationKey> keys = new ArrayList<SemaphoreInvocationKey>();
+        List<SemaphoreInvocationKey> assigned = new ArrayList<SemaphoreInvocationKey>();
         Iterator<SemaphoreInvocationKey> iterator = waitKeys.iterator();
         while (iterator.hasNext()) {
             SemaphoreInvocationKey key = iterator.next();
@@ -164,29 +184,31 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
             }
 
             iterator.remove();
-            keys.add(key);
-            doAcquire(key.sessionId(), key.invocationUid(), key.permits());
+            assigned.add(key);
+            assignPermitsToInvocation(key.sessionId(), key.invocationUid(), key.permits());
         }
 
-        return keys;
+        return assigned;
     }
 
-    int drain(long sessionId, UUID invocationUid) {
+    AcquireResult drain(long sessionId, long threadId, UUID invocationUid) {
         SessionState state = sessionStates.get(sessionId);
         if (state != null) {
             Integer permits = state.acquires.get(invocationUid);
             if (permits != null) {
-                return permits;
+                return new AcquireResult(permits, Collections.<SemaphoreInvocationKey>emptyList());
             }
         }
 
+        Collection<SemaphoreInvocationKey> cancelled = cancelWaitKeys(sessionId, threadId, invocationUid);
+
         int drained = available;
         if (drained > 0) {
-            doAcquire(sessionId, invocationUid, drained);
+            assignPermitsToInvocation(sessionId, invocationUid, drained);
         }
         available = 0;
 
-        return drained;
+        return new AcquireResult(drained, cancelled);
     }
 
     @Override
@@ -281,6 +303,40 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
     public String toString() {
         return "RaftSemaphore{" + "groupId=" + groupId + ", name='" + name + '\'' + ", initialized=" + initialized
                 + ", available=" + available + ", sessionStates=" + sessionStates + ", waitKeys=" + waitKeys + '}';
+    }
+
+    static class AcquireResult {
+
+        final int acquired;
+
+        final Collection<SemaphoreInvocationKey> cancelled; // can be populated when both acquired and not acquired
+
+        private AcquireResult(int acquired, Collection<SemaphoreInvocationKey> cancelled) {
+            this.acquired = acquired;
+            this.cancelled = unmodifiableCollection(cancelled);
+        }
+    }
+
+    static class ReleaseResult {
+
+        private static ReleaseResult failed(Collection<SemaphoreInvocationKey> cancelled) {
+            return new ReleaseResult(false, Collections.<SemaphoreInvocationKey>emptyList(), cancelled);
+        }
+
+        private static ReleaseResult successful(Collection<SemaphoreInvocationKey> acquired, Collection<SemaphoreInvocationKey> cancelled) {
+            return new ReleaseResult(true, acquired, cancelled);
+        }
+
+        final boolean success;
+        final Collection<SemaphoreInvocationKey> acquired;
+        final Collection<SemaphoreInvocationKey> cancelled;
+
+        private ReleaseResult(boolean success,
+                              Collection<SemaphoreInvocationKey> acquired, Collection<SemaphoreInvocationKey> cancelled) {
+            this.success = success;
+            this.acquired = unmodifiableCollection(acquired);
+            this.cancelled = unmodifiableCollection(cancelled);
+        }
     }
 
     private static class SessionState {

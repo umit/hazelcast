@@ -35,15 +35,15 @@ public class ReleasePermitsOp extends AbstractSemaphoreOp {
     public ReleasePermitsOp() {
     }
 
-    public ReleasePermitsOp(String name, long sessionId, UUID invocationUid,  int permits) {
-        super(name, sessionId, invocationUid);
+    public ReleasePermitsOp(String name, long sessionId, long threadId, UUID invocationUid,  int permits) {
+        super(name, sessionId, threadId, invocationUid);
         this.permits = permits;
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftSemaphoreService service = getService();
-        service.releasePermits(groupId, name, sessionId, invocationUid, permits);
+        service.releasePermits(groupId, name, sessionId, threadId, invocationUid, permits);
         return true;
     }
 

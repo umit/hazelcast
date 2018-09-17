@@ -20,6 +20,8 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.blocking.ResourceRegistry;
+import com.hazelcast.raft.service.semaphore.RaftSemaphore.AcquireResult;
+import com.hazelcast.raft.service.semaphore.RaftSemaphore.ReleaseResult;
 
 import java.util.Collection;
 import java.util.UUID;
@@ -51,27 +53,40 @@ public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, 
         return semaphore != null ? semaphore.getAvailable() : 0;
     }
 
-    boolean acquire(String name, SemaphoreInvocationKey key, int permits, long timeoutMs) {
-        boolean acquired = getOrInitResource(name).acquire(key, permits, (timeoutMs != 0));
-        if (!acquired && timeoutMs > 0) {
+    AcquireResult acquire(String name, SemaphoreInvocationKey key, long timeoutMs) {
+        AcquireResult result = getOrInitResource(name).acquire(key, (timeoutMs != 0));
+
+        for (SemaphoreInvocationKey waitKey : result.cancelled) {
+            removeWaitKey(waitKey);
+        }
+
+        if (result.acquired == 0 && timeoutMs > 0) {
             addWaitKey(key, timeoutMs);
         }
 
-        return acquired;
+        return result;
     }
 
-    Collection<SemaphoreInvocationKey> release(String name, long sessionId, UUID invocationUid, int permits) {
-        Collection<SemaphoreInvocationKey> keys = getOrInitResource(name).release(sessionId, invocationUid, permits);
-        for (SemaphoreInvocationKey key : keys) {
+    ReleaseResult release(String name, long sessionId, long threadId, UUID invocationUid, int permits) {
+        ReleaseResult result = getOrInitResource(name).release(sessionId, threadId, invocationUid, permits);
+        for (SemaphoreInvocationKey key : result.acquired) {
             removeWaitKey(key);
         }
 
-        return keys;
+        for (SemaphoreInvocationKey key : result.cancelled) {
+            removeWaitKey(key);
+        }
+
+        return result;
     }
 
-    int drainPermits(String name, long sessionId, UUID invocationUid) {
-        RaftSemaphore semaphore = getResourceOrNull(name);
-        return semaphore != null ? semaphore.drain(sessionId, invocationUid) : 0;
+    AcquireResult drainPermits(String name, long sessionId, long threadId, UUID invocationUid) {
+        AcquireResult result = getOrInitResource(name).drain(sessionId, threadId, invocationUid);
+        for (SemaphoreInvocationKey waitKey : result.cancelled) {
+            removeWaitKey(waitKey);
+        }
+
+        return result;
     }
 
     Tuple2<Boolean, Collection<SemaphoreInvocationKey>> changePermits(String name, int permits) {

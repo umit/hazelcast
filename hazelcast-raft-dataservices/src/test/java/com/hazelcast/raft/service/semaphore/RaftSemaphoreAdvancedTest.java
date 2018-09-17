@@ -15,6 +15,7 @@ import com.hazelcast.raft.impl.session.RaftSessionService;
 import com.hazelcast.raft.service.blocking.ResourceRegistry;
 import com.hazelcast.raft.service.semaphore.operation.ReleasePermitsOp;
 import com.hazelcast.raft.service.semaphore.proxy.RaftSessionAwareSemaphoreProxy;
+import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.session.SessionManagerService;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.test.AssertTask;
@@ -35,6 +36,7 @@ import java.util.concurrent.TimeUnit;
 import static com.hazelcast.raft.impl.RaftUtil.getSnapshotEntry;
 import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
 import static com.hazelcast.raft.service.spi.RaftProxyFactory.create;
+import static com.hazelcast.util.ThreadUtil.getThreadId;
 import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -261,9 +263,8 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
 
         assertNotEquals(NO_SESSION_ID, sessionId);
 
-        RaftOp op = new ReleasePermitsOp(name, sessionId, newUnsecureUUID(), 1);
+        RaftOp op = new ReleasePermitsOp(name, sessionId, getThreadId(), newUnsecureUUID(), 1);
         getRaftInvocationManager(semaphoreInstance).invoke(groupId, op).get();
-
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -341,6 +342,10 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
     private RaftSessionAwareSemaphoreProxy createSemaphore(String name) {
         semaphoreInstance = instances[RandomPicker.getInt(instances.length)];
         return create(semaphoreInstance, RaftSemaphoreService.SERVICE_NAME, name);
+    }
+
+    private AbstractSessionManager getSessionManager() {
+        return getNodeEngineImpl(semaphoreInstance).getService(SessionManagerService.SERVICE_NAME);
     }
 
     @Override

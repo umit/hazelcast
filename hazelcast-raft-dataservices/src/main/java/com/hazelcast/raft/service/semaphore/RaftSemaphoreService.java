@@ -24,6 +24,9 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.blocking.AbstractBlockingService;
+import com.hazelcast.raft.service.exception.WaitKeyCancelledException;
+import com.hazelcast.raft.service.semaphore.RaftSemaphore.AcquireResult;
+import com.hazelcast.raft.service.semaphore.RaftSemaphore.ReleaseResult;
 import com.hazelcast.raft.service.semaphore.proxy.RaftSessionAwareSemaphoreProxy;
 import com.hazelcast.raft.service.semaphore.proxy.RaftSessionlessSemaphoreProxy;
 import com.hazelcast.raft.service.session.SessionManagerService;
@@ -82,27 +85,42 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
         return registry != null ? registry.availablePermits(name) : 0;
     }
 
-    public boolean acquirePermits(RaftGroupId groupId, long commitIndex, String name, long sessionId, UUID invocationUid,
-                                  int permits, long timeoutMs) {
+    public boolean acquirePermits(RaftGroupId groupId, long commitIndex, String name, long sessionId, long threadId,
+                                  UUID invocationUid, int permits, long timeoutMs) {
         heartbeatSession(groupId, sessionId);
-        SemaphoreInvocationKey key = new SemaphoreInvocationKey(name, commitIndex, sessionId, invocationUid, permits);
-        boolean success = getOrInitRegistry(groupId).acquire(name, key, permits, timeoutMs);
-        if (!success) {
+        SemaphoreInvocationKey key = new SemaphoreInvocationKey(name, commitIndex, sessionId, threadId, invocationUid, permits);
+        AcquireResult result = getOrInitRegistry(groupId).acquire(name, key, timeoutMs);
+
+        if (logger.isFineEnabled()) {
+            logger.fine("Semaphore[" + name + "] in " + groupId + " acquired permits: " + result.acquired
+                    + " by <" + sessionId + "," + threadId + ", " + invocationUid + ">");
+        }
+
+        notifyCancelledWaitKeys(groupId, name, result.cancelled);
+
+        if (result.acquired == 0) {
             scheduleTimeout(groupId, key, timeoutMs);
         }
 
-        return success;
+        return (result.acquired != 0);
     }
 
-    public void releasePermits(RaftGroupId groupId, String name, long sessionId, UUID invocationUid, int permits) {
+    public void releasePermits(RaftGroupId groupId, String name, long sessionId, long threadId, UUID invocationUid, int permits) {
         heartbeatSession(groupId, sessionId);
-        Collection<SemaphoreInvocationKey> keys = getOrInitRegistry(groupId).release(name, sessionId, invocationUid, permits);
-        notifyWaitKeys(groupId, keys, true);
+        ReleaseResult result = getOrInitRegistry(groupId).release(name, sessionId, threadId, invocationUid, permits);
+        notifyCancelledWaitKeys(groupId, name, result.cancelled);
+        notifyWaitKeys(groupId, result.acquired, true);
+
+        if (!result.success) {
+            throw new IllegalArgumentException();
+        }
     }
 
-    public int drainPermits(RaftGroupId groupId, String name, long sessionId, UUID invocationUid) {
-        SemaphoreRegistry registry = getRegistryOrNull(groupId);
-        return registry != null ? registry.drainPermits(name, sessionId, invocationUid) : 0;
+    public int drainPermits(RaftGroupId groupId, String name, long sessionId, long threadId, UUID invocationUid) {
+        AcquireResult result = getOrInitRegistry(groupId).drainPermits(name, sessionId, threadId, invocationUid);
+        notifyCancelledWaitKeys(groupId, name, result.cancelled);
+
+        return result.acquired;
     }
 
     public boolean changePermits(RaftGroupId groupId, String name, int permits) {
@@ -110,6 +128,16 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
         notifyWaitKeys(groupId, t.element2, true);
 
         return t.element1;
+    }
+
+    private void notifyCancelledWaitKeys(RaftGroupId groupId, String name, Collection<SemaphoreInvocationKey> waitKeys) {
+        if (waitKeys.isEmpty()) {
+            return;
+        }
+
+        logger.warning("Wait keys: " + waitKeys +  " for Semaphore[" + name + "] in " + groupId + " are cancelled.");
+
+        notifyWaitKeys(groupId, waitKeys, new WaitKeyCancelledException());
     }
 
     @Override

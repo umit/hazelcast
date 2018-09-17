@@ -40,6 +40,7 @@ import java.util.concurrent.TimeUnit;
 import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
 import static com.hazelcast.util.Preconditions.checkNotNegative;
 import static com.hazelcast.util.Preconditions.checkPositive;
+import static com.hazelcast.util.ThreadUtil.getThreadId;
 import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.lang.Math.max;
 
@@ -51,19 +52,19 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
     public static final int DRAIN_SESSION_ACQ_COUNT = 1024;
 
     private final String name;
-    private final RaftInvocationManager raftInvocationManager;
+    private final RaftInvocationManager invocationManager;
 
     public RaftSessionAwareSemaphoreProxy(RaftInvocationManager invocationManager, SessionManagerService sessionManager,
                                           RaftGroupId groupId, String name) {
         super(sessionManager, groupId);
         this.name = name;
-        this.raftInvocationManager = invocationManager;
+        this.invocationManager = invocationManager;
     }
 
     @Override
     public boolean init(int permits) {
         checkNotNegative(permits, "Permits must be non-negative!");
-        return raftInvocationManager.<Boolean>invoke(groupId, new InitSemaphoreOp(name, permits)).join();
+        return invocationManager.<Boolean>invoke(groupId, new InitSemaphoreOp(name, permits)).join();
     }
 
     @Override
@@ -74,12 +75,13 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
     @Override
     public void acquire(int permits) {
         checkPositive(permits, "Permits must be positive!");
+        long threadId = getThreadId();
         UUID invocationUid = newUnsecureUUID();
         for (;;) {
             long sessionId = acquireSession(permits);
-            RaftOp op = new AcquirePermitsOp(name, sessionId, invocationUid, permits, -1L);
+            RaftOp op = new AcquirePermitsOp(name, sessionId, threadId, invocationUid, permits, -1L);
             try {
-                raftInvocationManager.invoke(groupId, op).join();
+                invocationManager.invoke(groupId, op).join();
                 return;
             } catch (SessionExpiredException e) {
                 invalidateSession(sessionId);
@@ -106,14 +108,15 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
     public boolean tryAcquire(int permits, long timeout, TimeUnit unit) {
         checkPositive(permits, "Permits must be positive!");
         long timeoutMs = max(0, unit.toMillis(timeout));
+        long threadId = getThreadId();
         UUID invocationUid = newUnsecureUUID();
         long start;
         for (;;) {
             start = Clock.currentTimeMillis();
             long sessionId = acquireSession(permits);
-            RaftOp op = new AcquirePermitsOp(name, sessionId, invocationUid, permits, timeoutMs);
+            RaftOp op = new AcquirePermitsOp(name, sessionId, threadId, invocationUid, permits, timeoutMs);
             try {
-                InternalCompletableFuture<Boolean> f = raftInvocationManager.invoke(groupId, op);
+                InternalCompletableFuture<Boolean> f = invocationManager.invoke(groupId, op);
                 boolean acquired = f.join();
                 if (!acquired) {
                     releaseSession(sessionId, permits);
@@ -142,10 +145,11 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
             throw new IllegalStateException("No valid session!");
         }
 
+        long threadId = getThreadId();
         UUID invocationUid = newUnsecureUUID();
-        RaftOp op = new ReleasePermitsOp(name, sessionId, invocationUid, permits);
+        RaftOp op = new ReleasePermitsOp(name, sessionId, threadId, invocationUid, permits);
         try {
-            raftInvocationManager.invoke(groupId, op).join();
+            invocationManager.invoke(groupId, op).join();
         } catch (SessionExpiredException e) {
             invalidateSession(sessionId);
             throw e;
@@ -156,17 +160,18 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
 
     @Override
     public int availablePermits() {
-        return raftInvocationManager.<Integer>invoke(groupId, new AvailablePermitsOp(name)).join();
+        return invocationManager.<Integer>invoke(groupId, new AvailablePermitsOp(name)).join();
     }
 
     @Override
     public int drainPermits() {
+        long threadId = getThreadId();
         UUID invocationUid = newUnsecureUUID();
         for (;;) {
             long sessionId = acquireSession(DRAIN_SESSION_ACQ_COUNT);
-            RaftOp op = new DrainPermitsOp(name, sessionId, invocationUid);
+            RaftOp op = new DrainPermitsOp(name, sessionId, threadId, invocationUid);
             try {
-                InternalCompletableFuture<Integer> future = raftInvocationManager.invoke(groupId, op);
+                InternalCompletableFuture<Integer> future = invocationManager.invoke(groupId, op);
                 int count = future.join();
                 releaseSession(sessionId, DRAIN_SESSION_ACQ_COUNT - count);
                 return count;
@@ -182,7 +187,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
         if (reduction == 0) {
             return;
         }
-        raftInvocationManager.invoke(groupId, new ChangePermitsOp(name, -reduction)).join();
+        invocationManager.invoke(groupId, new ChangePermitsOp(name, -reduction)).join();
     }
 
     @Override
@@ -191,7 +196,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
         if (increase == 0) {
             return;
         }
-        raftInvocationManager.invoke(groupId, new ChangePermitsOp(name, increase)).join();
+        invocationManager.invoke(groupId, new ChangePermitsOp(name, increase)).join();
     }
 
     @Override
@@ -211,7 +216,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
 
     @Override
     public void destroy() {
-        raftInvocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
+        invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
     }
 
 }

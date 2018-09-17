@@ -37,8 +37,8 @@ public class AcquirePermitsOp extends AbstractSemaphoreOp {
     public AcquirePermitsOp() {
     }
 
-    public AcquirePermitsOp(String name, long sessionId, UUID invocationUid, int permits, long timeoutMs) {
-        super(name, sessionId, invocationUid);
+    public AcquirePermitsOp(String name, long sessionId, long threadId, UUID invocationUid, int permits, long timeoutMs) {
+        super(name, sessionId, threadId, invocationUid);
         this.permits = permits;
         this.timeoutMs = timeoutMs;
     }
@@ -46,7 +46,8 @@ public class AcquirePermitsOp extends AbstractSemaphoreOp {
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftSemaphoreService service = getService();
-        boolean acquired = service.acquirePermits(groupId, commitIndex, name, sessionId, invocationUid, permits, timeoutMs);
+        boolean acquired = service.acquirePermits(groupId, commitIndex, name, sessionId, threadId,
+                invocationUid, permits, timeoutMs);
         if (!acquired && timeoutMs != 0) {
             return PostponedResponse.INSTANCE;
         }

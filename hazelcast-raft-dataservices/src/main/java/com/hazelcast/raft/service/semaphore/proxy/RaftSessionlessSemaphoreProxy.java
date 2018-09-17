@@ -20,6 +20,7 @@ import com.hazelcast.core.ISemaphore;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
+import com.hazelcast.raft.service.atomiclong.operation.AddAndGetOp;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 import com.hazelcast.raft.service.semaphore.operation.AcquirePermitsOp;
 import com.hazelcast.raft.service.semaphore.operation.AvailablePermitsOp;
@@ -28,9 +29,13 @@ import com.hazelcast.raft.service.semaphore.operation.DrainPermitsOp;
 import com.hazelcast.raft.service.semaphore.operation.InitSemaphoreOp;
 import com.hazelcast.raft.service.semaphore.operation.ReleasePermitsOp;
 import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
+import com.hazelcast.spi.InternalCompletableFuture;
+import com.hazelcast.util.ConstructorFunction;
 
 import java.util.concurrent.TimeUnit;
 
+import static com.hazelcast.raft.service.semaphore.proxy.GloballyUniqueThreadIdUtil.GLOBAL_THREAD_ID_GENERATOR_NAME;
+import static com.hazelcast.raft.service.semaphore.proxy.GloballyUniqueThreadIdUtil.getGlobalThreadId;
 import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
 import static com.hazelcast.util.Preconditions.checkNotNegative;
 import static com.hazelcast.util.Preconditions.checkPositive;
@@ -42,20 +47,29 @@ import static java.lang.Math.max;
  */
 public class RaftSessionlessSemaphoreProxy implements ISemaphore {
 
-    private final RaftInvocationManager raftInvocationManager;
+    private final RaftInvocationManager invocationManager;
     private final RaftGroupId groupId;
     private final String name;
+    private final ConstructorFunction<RaftGroupId, Long> globallyUniqueThreadIdCtor;
 
-    public RaftSessionlessSemaphoreProxy(RaftInvocationManager invocationManager, RaftGroupId groupId, String name) {
-        this.raftInvocationManager = invocationManager;
+    public RaftSessionlessSemaphoreProxy(final RaftInvocationManager invocationManager, RaftGroupId groupId, String name) {
+        this.invocationManager = invocationManager;
         this.groupId = groupId;
         this.name = name;
+        this.globallyUniqueThreadIdCtor = new ConstructorFunction<RaftGroupId, Long>() {
+            @Override
+            public Long createNew(RaftGroupId groupId) {
+                InternalCompletableFuture<Long> f = invocationManager
+                        .invoke(groupId, new AddAndGetOp(GLOBAL_THREAD_ID_GENERATOR_NAME, 1));
+                return f.join();
+            }
+        };
     }
 
     @Override
     public boolean init(int permits) {
         checkNotNegative(permits, "Permits must be non-negative!");
-        return raftInvocationManager.<Boolean>invoke(groupId, new InitSemaphoreOp(name, permits)).join();
+        return invocationManager.<Boolean>invoke(groupId, new InitSemaphoreOp(name, permits)).join();
     }
 
     @Override
@@ -66,8 +80,9 @@ public class RaftSessionlessSemaphoreProxy implements ISemaphore {
     @Override
     public void acquire(int permits) {
         checkPositive(permits, "Permits must be positive!");
-        RaftOp op = new AcquirePermitsOp(name, NO_SESSION_ID, newUnsecureUUID(), permits, -1L);
-        raftInvocationManager.invoke(groupId, op).join();
+        long globalThreadId = getGlobalThreadId(groupId, globallyUniqueThreadIdCtor);
+        RaftOp op = new AcquirePermitsOp(name, NO_SESSION_ID, globalThreadId, newUnsecureUUID(), permits, -1L);
+        invocationManager.invoke(groupId, op).join();
     }
 
     @Override
@@ -88,9 +103,10 @@ public class RaftSessionlessSemaphoreProxy implements ISemaphore {
     @Override
     public boolean tryAcquire(int permits, long timeout, TimeUnit unit) {
         checkPositive(permits, "Permits must be positive!");
+        long globalThreadId = getGlobalThreadId(groupId, globallyUniqueThreadIdCtor);
         long timeoutMs = max(0, unit.toMillis(timeout));
-        RaftOp op = new AcquirePermitsOp(name, NO_SESSION_ID, newUnsecureUUID(), permits, timeoutMs);
-        return raftInvocationManager.<Boolean>invoke(groupId, op).join();
+        RaftOp op = new AcquirePermitsOp(name, NO_SESSION_ID, globalThreadId, newUnsecureUUID(), permits, timeoutMs);
+        return invocationManager.<Boolean>invoke(groupId, op).join();
     }
 
     @Override
@@ -101,17 +117,21 @@ public class RaftSessionlessSemaphoreProxy implements ISemaphore {
     @Override
     public void release(int permits) {
         checkPositive(permits, "Permits must be positive!");
-        raftInvocationManager.invoke(groupId, new ReleasePermitsOp(name, NO_SESSION_ID, newUnsecureUUID(), permits)).join();
+        long globalThreadId = getGlobalThreadId(groupId, globallyUniqueThreadIdCtor);
+        RaftOp op = new ReleasePermitsOp(name, NO_SESSION_ID, globalThreadId, newUnsecureUUID(), permits);
+        invocationManager.invoke(groupId, op).join();
     }
 
     @Override
     public int availablePermits() {
-        return raftInvocationManager.<Integer>invoke(groupId, new AvailablePermitsOp(name)).join();
+        return invocationManager.<Integer>invoke(groupId, new AvailablePermitsOp(name)).join();
     }
 
     @Override
     public int drainPermits() {
-        return raftInvocationManager.<Integer>invoke(groupId, new DrainPermitsOp(name, NO_SESSION_ID, newUnsecureUUID())).join();
+        long globalThreadId = getGlobalThreadId(groupId, globallyUniqueThreadIdCtor);
+        RaftOp op = new DrainPermitsOp(name, NO_SESSION_ID, globalThreadId, newUnsecureUUID());
+        return invocationManager.<Integer>invoke(groupId, op).join();
     }
 
     @Override
@@ -120,7 +140,7 @@ public class RaftSessionlessSemaphoreProxy implements ISemaphore {
         if (reduction == 0) {
             return;
         }
-        raftInvocationManager.invoke(groupId, new ChangePermitsOp(name, -reduction)).join();
+        invocationManager.invoke(groupId, new ChangePermitsOp(name, -reduction)).join();
     }
 
     @Override
@@ -129,7 +149,7 @@ public class RaftSessionlessSemaphoreProxy implements ISemaphore {
         if (increase == 0) {
             return;
         }
-        raftInvocationManager.invoke(groupId, new ChangePermitsOp(name, increase)).join();
+        invocationManager.invoke(groupId, new ChangePermitsOp(name, increase)).join();
     }
 
     @Override
@@ -149,7 +169,7 @@ public class RaftSessionlessSemaphoreProxy implements ISemaphore {
 
     @Override
     public void destroy() {
-        raftInvocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
+        invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
     }
 
     public final RaftGroupId getGroupId() {
