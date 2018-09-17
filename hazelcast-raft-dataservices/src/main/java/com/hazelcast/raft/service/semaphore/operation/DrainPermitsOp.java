@@ -30,14 +30,14 @@ public class DrainPermitsOp extends AbstractSemaphoreOp {
     public DrainPermitsOp() {
     }
 
-    public DrainPermitsOp(String name, long sessionId, UUID invocationUid) {
-        super(name, sessionId, invocationUid);
+    public DrainPermitsOp(String name, long sessionId, long threadId, UUID invocationUid) {
+        super(name, sessionId, threadId, invocationUid);
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftSemaphoreService service = getService();
-        return service.drainPermits(groupId, name, sessionId, invocationUid);
+        return service.drainPermits(groupId, name, sessionId, threadId, invocationUid);
     }
 
     @Override

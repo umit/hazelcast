@@ -19,6 +19,7 @@ package com.hazelcast.raft.service.semaphore.client;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
+import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.semaphore.operation.ReleasePermitsOp;
 
@@ -29,6 +30,7 @@ import java.util.UUID;
  */
 public class ReleasePermitsMessageTask extends AbstractSemaphoreMessageTask {
 
+    private long threadId;
     private UUID invocationUid;
     private int permits;
 
@@ -39,12 +41,14 @@ public class ReleasePermitsMessageTask extends AbstractSemaphoreMessageTask {
     @Override
     protected void processMessage() {
         RaftInvocationManager invocationManager = getRaftInvocationManager();
-        invocationManager.invoke(groupId, new ReleasePermitsOp(name, sessionId, invocationUid, permits)).andThen(this);
+        RaftOp op = new ReleasePermitsOp(name, sessionId, threadId, invocationUid, permits);
+        invocationManager.invoke(groupId, op).andThen(this);
     }
 
     @Override
     protected Object decodeClientMessage(ClientMessage clientMessage) {
         super.decodeClientMessage(clientMessage);
+        threadId = clientMessage.getLong();
         long least = clientMessage.getLong();
         long most = clientMessage.getLong();
         invocationUid = new UUID(most, least);
