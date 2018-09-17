@@ -50,12 +50,12 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     private final String name;
     private final RaftGroupId groupId;
-    private final RaftInvocationManager raftInvocationManager;
+    private final RaftInvocationManager invocationManager;
 
     public RaftAtomicLongProxy(RaftInvocationManager invocationManager, RaftGroupId groupId, String name) {
         this.name = name;
         this.groupId = groupId;
-        this.raftInvocationManager = invocationManager;
+        this.invocationManager = invocationManager;
     }
 
     @Override
@@ -105,7 +105,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public InternalCompletableFuture<Long> addAndGetAsync(final long delta) {
-        return raftInvocationManager.invoke(groupId, new AddAndGetOp(name, delta));
+        return invocationManager.invoke(groupId, new AddAndGetOp(name, delta));
     }
 
     @Override
@@ -120,12 +120,12 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public InternalCompletableFuture<Boolean> compareAndSetAsync(final long expect, final long update) {
-        return raftInvocationManager.invoke(groupId, new CompareAndSetOp(name, expect, update));
+        return invocationManager.invoke(groupId, new CompareAndSetOp(name, expect, update));
     }
 
     @Override
     public InternalCompletableFuture<Long> getAndAddAsync(final long delta) {
-        return raftInvocationManager.invoke(groupId, new GetAndAddOp(name, delta));
+        return invocationManager.invoke(groupId, new GetAndAddOp(name, delta));
     }
 
     @Override
@@ -140,7 +140,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public InternalCompletableFuture<Long> getAndSetAsync(final long newValue) {
-        return raftInvocationManager.invoke(groupId, new GetAndSetOp(name, newValue));
+        return invocationManager.invoke(groupId, new GetAndSetOp(name, newValue));
     }
 
     @Override
@@ -169,7 +169,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
     }
 
     private InternalCompletableFuture<Long> doAlterAsync(IFunction<Long, Long> function, AlterResultType alterResultType) {
-        return raftInvocationManager.invoke(groupId, new AlterOp(name, function, alterResultType));
+        return invocationManager.invoke(groupId, new AlterOp(name, function, alterResultType));
     }
 
     @Override
@@ -195,7 +195,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public <R> InternalCompletableFuture<R> applyAsync(final IFunction<Long, R> function) {
-        return raftInvocationManager.invoke(groupId, new ApplyOp<R>(name, function));
+        return invocationManager.invoke(groupId, new ApplyOp<R>(name, function));
     }
 
     public long localGet(QueryPolicy queryPolicy) {
@@ -210,7 +210,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
     public ICompletableFuture<Long> localGetAsync(final QueryPolicy queryPolicy) {
         final SimpleCompletableFuture<Long> resultFuture = new SimpleCompletableFuture<Long>(null, null);
         ICompletableFuture<Long> localFuture =
-                raftInvocationManager.queryOnLocal(groupId, new LocalGetOp(name), queryPolicy);
+                invocationManager.queryOnLocal(groupId, new LocalGetOp(name), queryPolicy);
 
         localFuture.andThen(new ExecutionCallback<Long>() {
             @Override
@@ -220,7 +220,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
             @Override
             public void onFailure(Throwable t) {
-                ICompletableFuture<Long> future = raftInvocationManager.query(groupId, new LocalGetOp(name), queryPolicy);
+                ICompletableFuture<Long> future = invocationManager.query(groupId, new LocalGetOp(name), queryPolicy);
                 future.andThen(new ExecutionCallback<Long>() {
                     @Override
                     public void onResponse(Long response) {
@@ -255,7 +255,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public void destroy() {
-        raftInvocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
+        invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
     }
 
     public RaftGroupId getGroupId() {

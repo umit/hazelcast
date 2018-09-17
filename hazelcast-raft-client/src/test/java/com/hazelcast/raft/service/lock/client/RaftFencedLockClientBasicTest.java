@@ -6,7 +6,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.raft.service.lock.FencedLock;
 import com.hazelcast.raft.service.lock.RaftFencedLockBasicTest;
-import com.hazelcast.raft.service.lock.exception.LockRequestCancelledException;
+import com.hazelcast.raft.service.exception.WaitKeyCancelledException;
 import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.session.SessionManagerProvider;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -34,7 +34,7 @@ public class RaftFencedLockClientBasicTest extends RaftFencedLockBasicTest {
         lockInstance = f.newHazelcastClient();
         HazelcastClientInstanceImpl client = getClient(lockInstance);
         SessionExpiredException.register(client.getClientExceptionFactory());
-        LockRequestCancelledException.register(client.getClientExceptionFactory());
+        WaitKeyCancelledException.register(client.getClientExceptionFactory());
         return instances;
     }
 

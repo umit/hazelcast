@@ -22,7 +22,7 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
-import com.hazelcast.raft.service.lock.exception.LockRequestCancelledException;
+import com.hazelcast.raft.service.exception.WaitKeyCancelledException;
 import com.hazelcast.raft.service.lock.operation.ForceUnlockOp;
 import com.hazelcast.raft.service.lock.operation.GetLockCountOp;
 import com.hazelcast.raft.service.lock.operation.GetLockFenceOp;
@@ -51,13 +51,13 @@ import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     private final String name;
-    private final RaftInvocationManager raftInvocationManager;
+    private final RaftInvocationManager invocationManager;
 
     public RaftLockProxy(RaftInvocationManager invocationManager, SessionManagerService sessionManager, RaftGroupId groupId,
                          String name) {
         super(sessionManager, groupId);
         this.name = name;
-        this.raftInvocationManager = invocationManager;
+        this.invocationManager = invocationManager;
     }
 
     @Override
@@ -67,7 +67,7 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
         for (;;) {
             long sessionId = acquireSession();
             try {
-                raftInvocationManager.invoke(groupId, new LockOp(name, sessionId, threadId, invUid)).join();
+                invocationManager.invoke(groupId, new LockOp(name, sessionId, threadId, invUid)).join();
                 break;
             } catch (SessionExpiredException e) {
                 invalidateSession(sessionId);
@@ -90,13 +90,13 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
             long sessionId = acquireSession();
             RaftOp op = new TryLockOp(name, sessionId, threadId, invUid, timeoutMs);
             try {
-                InternalCompletableFuture<Long> f = raftInvocationManager.invoke(groupId, op);
+                InternalCompletableFuture<Long> f = invocationManager.invoke(groupId, op);
                 boolean locked = (f.join() != INVALID_FENCE);
                 if (!locked) {
                     releaseSession(sessionId);
                 }
                 return locked;
-            } catch (LockRequestCancelledException e) {
+            } catch (WaitKeyCancelledException e) {
                 return false;
             } catch (SessionExpiredException e) {
                 invalidateSession(sessionId);
@@ -111,7 +111,7 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
             throw new IllegalMonitorStateException();
         }
         try {
-            raftInvocationManager.invoke(groupId, new UnlockOp(name, sessionId, getThreadId(), newUnsecureUUID())).join();
+            invocationManager.invoke(groupId, new UnlockOp(name, sessionId, getThreadId(), newUnsecureUUID())).join();
         } catch (SessionExpiredException e) {
             invalidateSession(sessionId);
             throw new IllegalMonitorStateException("Current thread is not owner of the lock!");
@@ -132,8 +132,8 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     @Override
     public void forceUnlock() {
-        long fence = raftInvocationManager.<Long>invoke(groupId, new GetLockFenceOp(name, NO_SESSION_ID, 0)).join();
-        raftInvocationManager.invoke(groupId, new ForceUnlockOp(name, fence, newUnsecureUUID())).join();
+        long fence = invocationManager.<Long>invoke(groupId, new GetLockFenceOp(name, NO_SESSION_ID, 0)).join();
+        invocationManager.invoke(groupId, new ForceUnlockOp(name, fence, newUnsecureUUID())).join();
     }
 
     @Override
@@ -158,12 +158,12 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
             return false;
         }
 
-        return raftInvocationManager.<Integer>invoke(groupId, new GetLockCountOp(name, sessionId, getThreadId())).join() > 0;
+        return invocationManager.<Integer>invoke(groupId, new GetLockCountOp(name, sessionId, getThreadId())).join() > 0;
     }
 
     @Override
     public int getLockCount() {
-        return raftInvocationManager.<Integer>invoke(groupId, new GetLockCountOp(name, NO_SESSION_ID, 0)).join();
+        return invocationManager.<Integer>invoke(groupId, new GetLockCountOp(name, NO_SESSION_ID, 0)).join();
     }
 
     @Override
@@ -198,6 +198,6 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     @Override
     public void destroy() {
-        raftInvocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
+        invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
     }
 }

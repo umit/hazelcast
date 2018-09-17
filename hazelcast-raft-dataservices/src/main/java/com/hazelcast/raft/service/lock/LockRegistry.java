@@ -46,7 +46,7 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> impleme
     AcquireResult acquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
         AcquireResult result = getOrInitResource(name).acquire(endpoint, commitIndex, invocationUid, true);
 
-        for (LockInvocationKey waitKey : result.notifications) {
+        for (LockInvocationKey waitKey : result.cancelled) {
             removeWaitKey(waitKey);
         }
 
@@ -58,7 +58,7 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> impleme
         AcquireResult result = getOrInitResource(name).acquire(endpoint, commitIndex, invocationUid, wait);
         long fence = result.fence;
 
-        for (LockInvocationKey waitKey : result.notifications) {
+        for (LockInvocationKey waitKey : result.cancelled) {
             removeWaitKey(waitKey);
         }
 
@@ -72,7 +72,7 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> impleme
     ReleaseResult release(String name, LockEndpoint endpoint, UUID invocationUid) {
         RaftLock lock = getResourceOrNull(name);
         if (lock == null) {
-            return ReleaseResult.NOT_RELEASED;
+            return ReleaseResult.FAILED;
         }
 
         ReleaseResult result = lock.release(endpoint, invocationUid);
@@ -86,7 +86,7 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> impleme
     ReleaseResult forceRelease(String name, long expectedFence, UUID invocationUid) {
         RaftLock lock = getResourceOrNull(name);
         if (lock == null) {
-            return ReleaseResult.NOT_RELEASED;
+            return ReleaseResult.FAILED;
         }
 
         ReleaseResult result = lock.forceRelease(expectedFence, invocationUid);
