@@ -43,14 +43,14 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
 
     private final String name;
     private final RaftGroupId groupId;
-    private final RaftInvocationManager raftInvocationManager;
+    private final RaftInvocationManager invocationManager;
     private final SerializationService serializationService;
 
     public RaftAtomicRefProxy(RaftInvocationManager invocationManager, SerializationService serializationService,
                               RaftGroupId groupId, String name) {
         this.name = name;
         this.groupId = groupId;
-        this.raftInvocationManager = invocationManager;
+        this.invocationManager = invocationManager;
         this.serializationService = serializationService;
     }
 
@@ -117,22 +117,22 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
 
     @Override
     public InternalCompletableFuture<Boolean> compareAndSetAsync(T expect, T update) {
-        return raftInvocationManager.invoke(groupId, new CompareAndSetOp(name, toData(expect), toData(update)));
+        return invocationManager.invoke(groupId, new CompareAndSetOp(name, toData(expect), toData(update)));
     }
 
     @Override
     public InternalCompletableFuture<T> getAsync() {
-        return raftInvocationManager.invoke(groupId, new GetOp(name));
+        return invocationManager.invoke(groupId, new GetOp(name));
     }
 
     @Override
     public InternalCompletableFuture<Void> setAsync(T newValue) {
-        return raftInvocationManager.invoke(groupId, new SetOp(name, toData(newValue), false));
+        return invocationManager.invoke(groupId, new SetOp(name, toData(newValue), false));
     }
 
     @Override
     public InternalCompletableFuture<T> getAndSetAsync(T newValue) {
-        return raftInvocationManager.invoke(groupId, new SetOp(name, toData(newValue), true));
+        return invocationManager.invoke(groupId, new SetOp(name, toData(newValue), true));
     }
 
     @Override
@@ -147,31 +147,31 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
 
     @Override
     public InternalCompletableFuture<Boolean> containsAsync(T expected) {
-        return raftInvocationManager.invoke(groupId, new ContainsOp(name, toData(expected)));
+        return invocationManager.invoke(groupId, new ContainsOp(name, toData(expected)));
     }
 
     @Override
     public InternalCompletableFuture<Void> alterAsync(IFunction<T, T> function) {
         checkTrue(function != null, "Function cannot be null");
-        return raftInvocationManager.invoke(groupId, new ApplyOp(name, toData(function), NO_RETURN_VALUE, true));
+        return invocationManager.invoke(groupId, new ApplyOp(name, toData(function), NO_RETURN_VALUE, true));
     }
 
     @Override
     public InternalCompletableFuture<T> alterAndGetAsync(IFunction<T, T> function) {
         checkTrue(function != null, "Function cannot be null");
-        return raftInvocationManager.invoke(groupId, new ApplyOp(name, toData(function), RETURN_NEW_VALUE, true));
+        return invocationManager.invoke(groupId, new ApplyOp(name, toData(function), RETURN_NEW_VALUE, true));
     }
 
     @Override
     public InternalCompletableFuture<T> getAndAlterAsync(IFunction<T, T> function) {
         checkTrue(function != null, "Function cannot be null");
-        return raftInvocationManager.invoke(groupId, new ApplyOp(name, toData(function), RETURN_OLD_VALUE, true));
+        return invocationManager.invoke(groupId, new ApplyOp(name, toData(function), RETURN_OLD_VALUE, true));
     }
 
     @Override
     public <R> InternalCompletableFuture<R> applyAsync(IFunction<T, R> function) {
         checkTrue(function != null, "Function cannot be null");
-        return raftInvocationManager.invoke(groupId, new ApplyOp(name, toData(function), RETURN_NEW_VALUE, false));
+        return invocationManager.invoke(groupId, new ApplyOp(name, toData(function), RETURN_NEW_VALUE, false));
     }
 
     @Override
@@ -191,7 +191,7 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
 
     @Override
     public void destroy() {
-        raftInvocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
+        invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
     }
 
     public RaftGroupId getGroupId() {

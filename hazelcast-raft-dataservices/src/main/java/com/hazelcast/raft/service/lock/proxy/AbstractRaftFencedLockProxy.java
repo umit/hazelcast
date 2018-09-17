@@ -20,7 +20,7 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.raft.service.lock.FencedLock;
 import com.hazelcast.raft.service.lock.RaftLockService;
-import com.hazelcast.raft.service.lock.exception.LockRequestCancelledException;
+import com.hazelcast.raft.service.exception.WaitKeyCancelledException;
 import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.session.SessionAwareProxy;
 import com.hazelcast.spi.InternalCompletableFuture;
@@ -101,7 +101,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
                     releaseSession(sessionId);
                 }
                 return fence;
-            } catch (LockRequestCancelledException e) {
+            } catch (WaitKeyCancelledException e) {
                 return INVALID_FENCE;
             } catch (SessionExpiredException e) {
                 invalidateSession(sessionId);

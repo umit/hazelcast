@@ -26,7 +26,7 @@ import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.blocking.AbstractBlockingService;
 import com.hazelcast.raft.service.lock.RaftLock.AcquireResult;
 import com.hazelcast.raft.service.lock.RaftLock.ReleaseResult;
-import com.hazelcast.raft.service.lock.exception.LockRequestCancelledException;
+import com.hazelcast.raft.service.exception.WaitKeyCancelledException;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
 import com.hazelcast.raft.service.session.SessionManagerService;
 import com.hazelcast.spi.NodeEngine;
@@ -54,7 +54,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         super.initImpl();
 
         ClientExceptionFactory clientExceptionFactory = this.nodeEngine.getNode().clientEngine.getClientExceptionFactory();
-        LockRequestCancelledException.register(clientExceptionFactory);
+        WaitKeyCancelledException.register(clientExceptionFactory);
     }
 
     @Override
@@ -96,7 +96,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         }
 
         if (!acquired) {
-            notifyCancelledWaitKeys(groupId, name, result.notifications);
+            notifyCancelledWaitKeys(groupId, name, result.cancelled);
         }
 
         return fence;
@@ -116,7 +116,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
 
         if (!acquired) {
             scheduleTimeout(groupId, new LockInvocationKey(name, endpoint, commitIndex, invocationUid), timeoutMs);
-            notifyCancelledWaitKeys(groupId, name, result.notifications);
+            notifyCancelledWaitKeys(groupId, name, result.cancelled);
         }
 
         return fence;
@@ -175,9 +175,9 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
             return;
         }
 
-        logger.warning("Wait keys: " + waitKeys +  " for Lock[" + name + "] in " + groupId + " are cancelled.");
+        logger.warning("Wait keys: " + waitKeys +  " for Lock[" + name + "] in " + groupId + " are notifications.");
 
-        notifyWaitKeys(groupId, waitKeys, new LockRequestCancelledException());
+        notifyWaitKeys(groupId, waitKeys, new WaitKeyCancelledException());
     }
 
     public int getLockCount(RaftGroupId groupId, String name, LockEndpoint endpoint) {

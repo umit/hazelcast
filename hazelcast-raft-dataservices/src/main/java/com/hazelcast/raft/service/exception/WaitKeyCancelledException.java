@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.hazelcast.raft.service.lock.exception;
+package com.hazelcast.raft.service.exception;
 
 import com.hazelcast.client.impl.protocol.ClientExceptionFactory;
 import com.hazelcast.core.HazelcastException;
@@ -22,28 +22,28 @@ import com.hazelcast.core.HazelcastException;
 /**
  * TODO: Javadoc Pending...
  */
-public class LockRequestCancelledException extends HazelcastException {
+public class WaitKeyCancelledException extends HazelcastException {
 
     // TODO [basri] fixit
     public static final int ERROR_CODE = 6768;
 
 
-    public LockRequestCancelledException() {
+    public WaitKeyCancelledException() {
     }
 
-    public LockRequestCancelledException(String message) {
+    public WaitKeyCancelledException(String message) {
         super(message);
     }
 
-    public LockRequestCancelledException(String message, Throwable cause) {
+    public WaitKeyCancelledException(String message, Throwable cause) {
         super(message, cause);
     }
 
     public static void register(ClientExceptionFactory factory) {
-        factory.register(ERROR_CODE, LockRequestCancelledException.class, new ClientExceptionFactory.ExceptionFactory() {
+        factory.register(ERROR_CODE, WaitKeyCancelledException.class, new ClientExceptionFactory.ExceptionFactory() {
             @Override
             public Throwable createException(String message, Throwable cause) {
-                return new LockRequestCancelledException(message, cause);
+                return new WaitKeyCancelledException(message, cause);
             }
         });
     }

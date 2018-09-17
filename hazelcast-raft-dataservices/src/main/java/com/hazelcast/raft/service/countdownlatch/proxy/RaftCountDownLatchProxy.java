@@ -39,10 +39,10 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
 
     private final RaftGroupId groupId;
     private final String name;
-    private final RaftInvocationManager raftInvocationManager;
+    private final RaftInvocationManager invocationManager;
 
     public RaftCountDownLatchProxy(RaftInvocationManager invocationManager, RaftGroupId groupId, String name) {
-        this.raftInvocationManager = invocationManager;
+        this.invocationManager = invocationManager;
         this.groupId = groupId;
         this.name = name;
     }
@@ -52,23 +52,23 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
         checkNotNull(unit);
 
         long timeoutMillis = Math.max(0, unit.toMillis(timeout));
-        return raftInvocationManager.<Boolean>invoke(groupId, new AwaitOp(name, timeoutMillis)).join();
+        return invocationManager.<Boolean>invoke(groupId, new AwaitOp(name, timeoutMillis)).join();
     }
 
     @Override
     public void countDown() {
-        int round = raftInvocationManager.<Integer>invoke(groupId, new GetRoundOp(name)).join();
-        raftInvocationManager.invoke(groupId, new CountDownOp(name, round, newUnsecureUUID())).join();
+        int round = invocationManager.<Integer>invoke(groupId, new GetRoundOp(name)).join();
+        invocationManager.invoke(groupId, new CountDownOp(name, round, newUnsecureUUID())).join();
     }
 
     @Override
     public int getCount() {
-        return raftInvocationManager.<Integer>invoke(groupId, new GetRemainingCountOp(name)).join();
+        return invocationManager.<Integer>invoke(groupId, new GetRemainingCountOp(name)).join();
     }
 
     @Override
     public boolean trySetCount(int count) {
-        return raftInvocationManager.<Boolean>invoke(groupId, new TrySetCountOp(name, count)).join();
+        return invocationManager.<Boolean>invoke(groupId, new TrySetCountOp(name, count)).join();
     }
 
     @Override
@@ -92,7 +92,7 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
 
     @Override
     public void destroy() {
-        raftInvocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
+        invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
     }
 
 }
