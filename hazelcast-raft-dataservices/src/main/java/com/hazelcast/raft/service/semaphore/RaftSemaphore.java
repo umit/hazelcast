@@ -93,7 +93,13 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
     }
 
     AcquireResult acquire(SemaphoreInvocationKey key, boolean wait) {
+        SessionState state = sessionStates.get(key.sessionId());
+        if (state != null && state.acquires.containsKey(key.invocationUid())) {
+            return new AcquireResult(key.permits(), Collections.<SemaphoreInvocationKey>emptyList());
+        }
+
         Collection<SemaphoreInvocationKey> cancelled = cancelWaitKeys(key.sessionId(), key.threadId(), key.invocationUid());
+
         if (!isAvailable(key.permits())) {
             if (wait) {
                 waitKeys.add(key);
