@@ -72,15 +72,15 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
         }
     }
 
-    boolean init(int permits) {
+    Collection<SemaphoreInvocationKey> init(int permits) {
         if (initialized || available != 0) {
-            return false;
+            throw new IllegalStateException();
         }
 
         available = permits;
         initialized = true;
 
-        return true;
+        return assignPermitsToWaitKeys();
     }
 
     int getAvailable() {
