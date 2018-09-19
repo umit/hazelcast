@@ -77,7 +77,19 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
     }
 
     public boolean initSemaphore(RaftGroupId groupId, String name, int permits) {
-        return getOrInitRegistry(groupId).init(name, permits);
+        try {
+            Collection<SemaphoreInvocationKey> acquired = getOrInitRegistry(groupId).init(name, permits);
+            notifyWaitKeys(groupId, acquired, true);
+
+            if (acquired.size() > 0 && logger.isFineEnabled()) {
+                logger.fine("Semaphore[" + name + "] in " + groupId + " acquired permits: " + acquired
+                        + " after initialized with " + permits + " permits");
+            }
+
+            return true;
+        } catch (IllegalStateException ignored) {
+            return false;
+        }
     }
 
     public int availablePermits(RaftGroupId groupId, String name) {

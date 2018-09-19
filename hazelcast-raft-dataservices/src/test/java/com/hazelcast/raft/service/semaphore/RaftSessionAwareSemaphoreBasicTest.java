@@ -44,6 +44,7 @@ import java.util.concurrent.Future;
 
 import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
 import static com.hazelcast.raft.service.spi.RaftProxyFactory.create;
+import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -496,6 +497,46 @@ public class RaftSessionAwareSemaphoreBasicTest extends HazelcastRaftTestSupport
             fail();
         } catch (SessionExpiredException expected) {
         }
+    }
+
+    @Test
+    public void testInitNotifiesWaitingAcquires() {
+        final CountDownLatch latch = new CountDownLatch(1);
+        spawn(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    semaphore.tryAcquire(30, MINUTES);
+                    latch.countDown();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
+                SemaphoreRegistry registry = service.getRegistryOrNull(getGroupId(semaphore));
+                assertNotNull(registry);
+                assertFalse(registry.getWaitTimeouts().isEmpty());
+            }
+        });
+
+        boolean success = semaphore.init(1);
+        assertTrue(success);
+
+        assertOpenEventually(latch);
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
+                SemaphoreRegistry registry = service.getRegistryOrNull(getGroupId(semaphore));
+                assertTrue(registry.getWaitTimeouts().isEmpty());
+            }
+        });
     }
 
     protected AbstractSessionManager getSessionManager(HazelcastInstance instance) {
