@@ -22,7 +22,6 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
-import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.blocking.AbstractBlockingService;
 import com.hazelcast.raft.service.exception.WaitKeyCancelledException;
 import com.hazelcast.raft.service.semaphore.RaftSemaphore.AcquireResult;
@@ -81,11 +80,6 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
             Collection<SemaphoreInvocationKey> acquired = getOrInitRegistry(groupId).init(name, permits);
             notifyWaitKeys(groupId, acquired, true);
 
-            if (acquired.size() > 0 && logger.isFineEnabled()) {
-                logger.fine("Semaphore[" + name + "] in " + groupId + " acquired permits: " + acquired
-                        + " after initialized with " + permits + " permits");
-            }
-
             return true;
         } catch (IllegalStateException ignored) {
             return false;
@@ -103,15 +97,10 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
         SemaphoreInvocationKey key = new SemaphoreInvocationKey(name, commitIndex, sessionId, threadId, invocationUid, permits);
         AcquireResult result = getOrInitRegistry(groupId).acquire(name, key, timeoutMs);
 
-//        if (logger.isFineEnabled()) {
-        if (result.acquired > 0) {
-            logger.warning("Semaphore[" + name + "] in " + groupId + " acquired permits: " + result.acquired
+        if (logger.isFineEnabled()) {
+            logger.fine("Semaphore[" + name + "] in " + groupId + " acquired permits: " + result.acquired
                     + " by <" + sessionId + ", " + threadId + ", " + invocationUid + ">");
-        } else {
-            logger.warning("Semaphore[" + name + "] in " + groupId + " NOT acquired permits by <" + sessionId + ", " + threadId
-                    + ", " + invocationUid + ">");
         }
-//        }
 
         notifyCancelledWaitKeys(groupId, name, result.cancelled);
 
@@ -129,28 +118,26 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
         notifyWaitKeys(groupId, result.acquired, true);
 
         if (!result.success) {
-            logger.warning("Semaphore[" + name + "] in " + groupId + " NOT released permits: " + permits
-                    + " by <" + sessionId + ", " + threadId + ", " + invocationUid + ">");
             throw new IllegalArgumentException();
-        } else {
-            logger.warning("Semaphore[" + name + "] in " + groupId + " released permits: " + permits
-                    + " by <" + sessionId + ", " + threadId + ", " + invocationUid + ">");
-            logger.warning("Semaphore[" + name + "] in " + groupId + " acquired permits: " + result.acquired);
         }
     }
 
     public int drainPermits(RaftGroupId groupId, String name, long sessionId, long threadId, UUID invocationUid) {
+        heartbeatSession(groupId, sessionId);
         AcquireResult result = getOrInitRegistry(groupId).drainPermits(name, sessionId, threadId, invocationUid);
         notifyCancelledWaitKeys(groupId, name, result.cancelled);
 
         return result.acquired;
     }
 
-    public boolean changePermits(RaftGroupId groupId, String name, int permits) {
-        Tuple2<Boolean, Collection<SemaphoreInvocationKey>> t = getOrInitRegistry(groupId).changePermits(name, permits);
-        notifyWaitKeys(groupId, t.element2, true);
+    public boolean changePermits(RaftGroupId groupId, String name, long sessionId, long threadId, UUID invocationUid,
+                                 int permits) {
+        heartbeatSession(groupId, sessionId);
+        ReleaseResult result = getOrInitRegistry(groupId).changePermits(name, sessionId, threadId, invocationUid, permits);
+        notifyCancelledWaitKeys(groupId, name, result.cancelled);
+        notifyWaitKeys(groupId, result.acquired, true);
 
-        return t.element1;
+        return result.success;
     }
 
     private void notifyCancelledWaitKeys(RaftGroupId groupId, String name, Collection<SemaphoreInvocationKey> waitKeys) {

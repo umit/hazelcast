@@ -20,32 +20,31 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 
 import java.io.IOException;
+import java.util.UUID;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class ChangePermitsOp extends RaftOp implements IdentifiedDataSerializable {
+public class ChangePermitsOp extends AbstractSemaphoreOp implements IdentifiedDataSerializable {
 
-    private String name;
     private int permits;
 
     public ChangePermitsOp() {
     }
 
-    public ChangePermitsOp(String name, int permits) {
-        this.name = name;
+    public ChangePermitsOp(String name, long sessionId, long threadId, UUID invocationUid, int permits) {
+        super(name, sessionId, threadId, invocationUid);
         this.permits = permits;
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftSemaphoreService service = getService();
-        return service.changePermits(groupId, name, permits);
+        return service.changePermits(groupId, name, sessionId, threadId, invocationUid, permits);
     }
 
     @Override
@@ -65,19 +64,19 @@ public class ChangePermitsOp extends RaftOp implements IdentifiedDataSerializabl
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeUTF(name);
+        super.writeData(out);
         out.writeInt(permits);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
-        name = in.readUTF();
+        super.readData(in);
         permits = in.readInt();
     }
 
     @Override
     protected void toString(StringBuilder sb) {
-        sb.append(", name=").append(name)
-          .append(", permits=").append(permits);
+        super.toString(sb);
+        sb.append(", permits=").append(permits);
     }
 }

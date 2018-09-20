@@ -140,7 +140,9 @@ public class RaftSessionlessSemaphoreProxy implements ISemaphore {
         if (reduction == 0) {
             return;
         }
-        invocationManager.invoke(groupId, new ChangePermitsOp(name, -reduction)).join();
+        long globalThreadId = getGlobalThreadId(groupId, globallyUniqueThreadIdCtor);
+        RaftOp op = new ChangePermitsOp(name, NO_SESSION_ID, globalThreadId, newUnsecureUUID(), -reduction);
+        invocationManager.invoke(groupId, op).join();
     }
 
     @Override
@@ -149,7 +151,9 @@ public class RaftSessionlessSemaphoreProxy implements ISemaphore {
         if (increase == 0) {
             return;
         }
-        invocationManager.invoke(groupId, new ChangePermitsOp(name, increase)).join();
+        long globalThreadId = getGlobalThreadId(groupId, globallyUniqueThreadIdCtor);
+        RaftOp op = new ChangePermitsOp(name, NO_SESSION_ID, globalThreadId, newUnsecureUUID(), increase);
+        invocationManager.invoke(groupId, op).join();
     }
 
     @Override

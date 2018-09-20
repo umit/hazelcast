@@ -517,10 +517,12 @@ public class RaftSessionAwareSemaphoreBasicTest extends HazelcastRaftTestSupport
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
-                SemaphoreRegistry registry = service.getRegistryOrNull(getGroupId(semaphore));
-                assertNotNull(registry);
-                assertFalse(registry.getWaitTimeouts().isEmpty());
+                for (HazelcastInstance instance : instances) {
+                    RaftSemaphoreService service = getNodeEngineImpl(instance).getService(RaftSemaphoreService.SERVICE_NAME);
+                    SemaphoreRegistry registry = service.getRegistryOrNull(getGroupId(semaphore));
+                    assertNotNull(registry);
+                    assertFalse(registry.getWaitTimeouts().isEmpty());
+                }
             }
         });
 
@@ -532,9 +534,11 @@ public class RaftSessionAwareSemaphoreBasicTest extends HazelcastRaftTestSupport
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
-                SemaphoreRegistry registry = service.getRegistryOrNull(getGroupId(semaphore));
-                assertTrue(registry.getWaitTimeouts().isEmpty());
+                for (HazelcastInstance instance : instances) {
+                    RaftSemaphoreService service = getNodeEngineImpl(instance).getService(RaftSemaphoreService.SERVICE_NAME);
+                    SemaphoreRegistry registry = service.getRegistryOrNull(getGroupId(semaphore));
+                    assertTrue(registry.getWaitTimeouts().isEmpty());
+                }
             }
         });
     }

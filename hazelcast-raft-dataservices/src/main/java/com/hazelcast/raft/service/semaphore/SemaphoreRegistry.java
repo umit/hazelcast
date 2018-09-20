@@ -18,7 +18,6 @@ package com.hazelcast.raft.service.semaphore;
 
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.blocking.ResourceRegistry;
 import com.hazelcast.raft.service.semaphore.RaftSemaphore.AcquireResult;
 import com.hazelcast.raft.service.semaphore.RaftSemaphore.ReleaseResult;
@@ -95,13 +94,17 @@ public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, 
         return result;
     }
 
-    Tuple2<Boolean, Collection<SemaphoreInvocationKey>> changePermits(String name, int permits) {
-        Tuple2<Boolean, Collection<SemaphoreInvocationKey>> t = getOrInitResource(name).change(permits);
-        for (SemaphoreInvocationKey key : t.element2) {
+    ReleaseResult changePermits(String name, long sessionId, long threadId, UUID invocationUid, int permits) {
+        ReleaseResult result = getOrInitResource(name).change(sessionId, threadId, invocationUid, permits);
+        for (SemaphoreInvocationKey key : result.acquired) {
             removeWaitKey(key);
         }
 
-        return t;
+        for (SemaphoreInvocationKey key : result.cancelled) {
+            removeWaitKey(key);
+        }
+
+        return result;
     }
 
     @Override

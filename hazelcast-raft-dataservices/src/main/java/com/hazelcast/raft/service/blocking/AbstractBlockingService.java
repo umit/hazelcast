@@ -28,7 +28,6 @@ import com.hazelcast.raft.impl.session.SessionAwareService;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.blocking.operation.InvalidateWaitKeysOp;
-import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.spi.RaftRemoteService;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.ManagedService;
@@ -49,6 +48,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 
+import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -207,7 +207,7 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
     }
 
     protected final void heartbeatSession(RaftGroupId groupId, long sessionId) {
-        if (sessionId == AbstractSessionManager.NO_SESSION_ID) {
+        if (sessionId == NO_SESSION_ID) {
             return;
         }
 

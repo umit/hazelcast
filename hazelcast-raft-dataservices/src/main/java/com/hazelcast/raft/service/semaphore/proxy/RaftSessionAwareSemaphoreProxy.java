@@ -187,7 +187,21 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
         if (reduction == 0) {
             return;
         }
-        invocationManager.invoke(groupId, new ChangePermitsOp(name, -reduction)).join();
+        long sessionId = acquireSession();
+        if (sessionId == NO_SESSION_ID) {
+            throw new IllegalStateException("No valid session!");
+        }
+
+        long threadId = getThreadId();
+        UUID invocationUid = newUnsecureUUID();
+        try {
+            invocationManager.invoke(groupId, new ChangePermitsOp(name, sessionId, threadId, invocationUid, -reduction)).join();
+        } catch (SessionExpiredException e) {
+            invalidateSession(sessionId);
+            throw e;
+        } finally {
+            releaseSession(sessionId);
+        }
     }
 
     @Override
@@ -196,7 +210,21 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
         if (increase == 0) {
             return;
         }
-        invocationManager.invoke(groupId, new ChangePermitsOp(name, increase)).join();
+        long sessionId = acquireSession();
+        if (sessionId == NO_SESSION_ID) {
+            throw new IllegalStateException("No valid session!");
+        }
+
+        long threadId = getThreadId();
+        UUID invocationUid = newUnsecureUUID();
+        try {
+            invocationManager.invoke(groupId, new ChangePermitsOp(name, sessionId, threadId, invocationUid, increase)).join();
+        } catch (SessionExpiredException e) {
+            invalidateSession(sessionId);
+            throw e;
+        } finally {
+            releaseSession(sessionId);
+        }
     }
 
     @Override
