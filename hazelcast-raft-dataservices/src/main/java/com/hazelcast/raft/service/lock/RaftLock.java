@@ -53,11 +53,6 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
         super(groupId, name);
     }
 
-    @Override
-    public Collection<Long> getActiveSessions() {
-        return owner != null ? Collections.singleton(owner.sessionId()) : Collections.<Long>emptyList();
-    }
-
     AcquireResult acquire(LockEndpoint endpoint, long commitIndex, UUID invocationUid, boolean wait) {
         // if acquire() is being retried
         if (invocationUid.equals(invocationRefUids.get(endpoint))
@@ -180,6 +175,11 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
                 }
             }
         }
+    }
+
+    @Override
+    protected Collection<Long> getOwnerSessions() {
+        return owner != null ? Collections.singleton(owner.sessionId()) : Collections.<Long>emptyList();
     }
 
     @Override
