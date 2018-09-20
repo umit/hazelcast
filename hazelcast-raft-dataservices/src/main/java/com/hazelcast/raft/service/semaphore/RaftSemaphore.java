@@ -58,20 +58,6 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
         super(groupId, name);
     }
 
-    @Override
-    protected void onInvalidateSession(long sessionId, Long2ObjectHashMap<Object> responses) {
-        SessionState state = sessionStates.get(sessionId);
-        if (state != null && state.acquiredPermits > 0) {
-            // remove the session after release() because release() checks existence of the session
-            ReleaseResult result = release(sessionId, 0, newUnsecureUUID(), state.acquiredPermits);
-            sessionStates.remove(sessionId);
-            assert result.cancelled.isEmpty();
-            for (SemaphoreInvocationKey key : result.acquired) {
-                responses.put(key.commitIndex(), Boolean.TRUE);
-            }
-        }
-    }
-
     Collection<SemaphoreInvocationKey> init(int permits) {
         if (initialized || available != 0) {
             throw new IllegalStateException();
@@ -213,18 +199,6 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
         return new AcquireResult(drained, cancelled);
     }
 
-    @Override
-    public Collection<Long> getActiveSessions() {
-        Set<Long> activeSessionIds = new HashSet<Long>();
-        for (Map.Entry<Long, SessionState> e : sessionStates.entrySet()) {
-            if (e.getValue().acquiredPermits > 0) {
-                activeSessionIds.add(e.getKey());
-            }
-        }
-
-        return activeSessionIds;
-    }
-
     Tuple2<Boolean, Collection<SemaphoreInvocationKey>> change(int permits) {
         if (permits == 0) {
             Collection<SemaphoreInvocationKey> c = Collections.emptyList();
@@ -238,6 +212,32 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
                 permits > 0 ? assignPermitsToWaitKeys() : Collections.<SemaphoreInvocationKey>emptyList();
 
         return Tuple2.of(true, keys);
+    }
+
+    @Override
+    protected void onInvalidateSession(long sessionId, Long2ObjectHashMap<Object> responses) {
+        SessionState state = sessionStates.get(sessionId);
+        if (state != null && state.acquiredPermits > 0) {
+            // remove the session after release() because release() checks existence of the session
+            ReleaseResult result = release(sessionId, 0, newUnsecureUUID(), state.acquiredPermits);
+            sessionStates.remove(sessionId);
+            assert result.cancelled.isEmpty();
+            for (SemaphoreInvocationKey key : result.acquired) {
+                responses.put(key.commitIndex(), Boolean.TRUE);
+            }
+        }
+    }
+
+    @Override
+    protected Collection<Long> getOwnerSessions() {
+        Set<Long> activeSessionIds = new HashSet<Long>();
+        for (Map.Entry<Long, SessionState> e : sessionStates.entrySet()) {
+            if (e.getValue().acquiredPermits > 0) {
+                activeSessionIds.add(e.getKey());
+            }
+        }
+
+        return activeSessionIds;
     }
 
     @Override

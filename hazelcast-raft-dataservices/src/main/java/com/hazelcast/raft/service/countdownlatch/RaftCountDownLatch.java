@@ -51,15 +51,6 @@ public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocatio
         super(groupId, name);
     }
 
-    @Override
-    public Collection<Long> getActiveSessions() {
-        return Collections.emptyList();
-    }
-
-    @Override
-    protected void onInvalidateSession(long sessionId, Long2ObjectHashMap<Object> result) {
-    }
-
     Tuple2<Integer, Collection<CountDownLatchInvocationKey>> countDown(int expectedRound, UUID invocationUuid) {
         if (expectedRound > round) {
             throw new IllegalArgumentException();
@@ -112,6 +103,15 @@ public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocatio
 
     int getRemainingCount() {
         return max(0, countDownFrom - countDownUids.size());
+    }
+
+    @Override
+    protected void onInvalidateSession(long sessionId, Long2ObjectHashMap<Object> result) {
+    }
+
+    @Override
+    protected Collection<Long> getOwnerSessions() {
+        return Collections.emptyList();
     }
 
     @Override

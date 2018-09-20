@@ -65,7 +65,11 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
 
     private FencedLock createLock(String name) {
         lockInstance = instances[RandomPicker.getInt(instances.length)];
-        NodeEngineImpl nodeEngine = getNodeEngineImpl(lockInstance);
+        return createLock(lockInstance);
+    }
+
+    private FencedLock createLock(HazelcastInstance instance) {
+        NodeEngineImpl nodeEngine = getNodeEngineImpl(instance);
         RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
         RaftLockService lockService = nodeEngine.getService(RaftLockService.SERVICE_NAME);
 
@@ -294,7 +298,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testActiveSessionIsNotClosed() {
+    public void testActiveSessionIsNotClosedWhenLockIsHeld() {
         lock.lock();
 
         assertTrueEventually(new AssertTask() {
@@ -313,6 +317,53 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
                 for (HazelcastInstance instance : instances) {
                     RaftSessionService sessionService = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
                     assertFalse(sessionService.getSessions(lock.getGroupId()).isEmpty());
+                }
+            }
+        }, 20);
+    }
+
+    @Test
+    public void testActiveSessionIsNotClosedWhenPendingWaitKey() {
+        FencedLock other = null;
+        for (HazelcastInstance instance : instances) {
+            if (instance != lockInstance) {
+                other = createLock(instance);
+                break;
+            }
+        }
+
+        assertNotNull(other);
+
+        // lock from another instance
+        other.lock();
+
+        spawn(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    lock.tryLock(30, TimeUnit.MINUTES);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (HazelcastInstance instance : instances) {
+                    RaftSessionService sessionService = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
+                    assertEquals(2, sessionService.getSessions(lock.getGroupId()).size());
+                }
+            }
+        });
+
+        assertTrueAllTheTime(new AssertTask() {
+            @Override
+            public void run() {
+                for (HazelcastInstance instance : instances) {
+                    RaftSessionService sessionService = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
+                    assertEquals(2, sessionService.getSessions(lock.getGroupId()).size());
                 }
             }
         }, 20);

@@ -41,15 +41,13 @@ public abstract class BlockingResource<W extends WaitKey> implements DataSeriali
     protected String name;
     protected LinkedList<W> waitKeys = new LinkedList<W>();
 
-    public BlockingResource() {
+    protected BlockingResource() {
     }
 
     protected BlockingResource(RaftGroupId groupId, String name) {
         this.groupId = groupId;
         this.name = name;
     }
-
-    public abstract Collection<Long> getActiveSessions();
 
     public final RaftGroupId getGroupId() {
         return groupId;
@@ -59,7 +57,7 @@ public abstract class BlockingResource<W extends WaitKey> implements DataSeriali
         return name;
     }
 
-    public List<W> getWaitKeys() {
+    List<W> getWaitKeys() {
         return unmodifiableList(waitKeys);
     }
 
@@ -94,7 +92,16 @@ public abstract class BlockingResource<W extends WaitKey> implements DataSeriali
         return result;
     }
 
+    final void reportActiveSessions(Collection<Long> sessions) {
+        sessions.addAll(getOwnerSessions());
+        for (WaitKey key : waitKeys) {
+            sessions.add(key.sessionId());
+        }
+    }
+
     protected abstract void onInvalidateSession(long sessionId, Long2ObjectHashMap<Object> result);
+
+    protected abstract Collection<Long> getOwnerSessions();
 
     @Override
     public void writeData(ObjectDataOutput out)
