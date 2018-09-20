@@ -10,6 +10,7 @@ import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
+import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.operation.snapshot.RestoreSnapshotOp;
 import com.hazelcast.raft.impl.session.RaftSessionService;
 import com.hazelcast.raft.service.blocking.ResourceRegistry;
@@ -29,6 +30,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -333,6 +335,28 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
                 }
             }
         }, 20);
+    }
+
+    @Test
+    public void testRetriedReleaseIsSuccessfulAfterAcquiredByAnotherEndpoint() {
+        semaphore.init(1);
+        semaphore.acquire();
+
+        final RaftGroupId groupId = semaphore.getGroupId();
+        long sessionId = getSessionManager().getSession(groupId);
+        RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
+        UUID invUid = newUnsecureUUID();
+
+        invocationManager.invoke(groupId, new ReleasePermitsOp(name, sessionId, getThreadId(), invUid, 1)).join();
+
+        spawn(new Runnable() {
+            @Override
+            public void run() {
+                semaphore.acquire();
+            }
+        });
+
+        invocationManager.invoke(groupId, new ReleasePermitsOp(name, sessionId, getThreadId(), invUid, 1)).join();
     }
 
     protected HazelcastInstance[] createInstances() {

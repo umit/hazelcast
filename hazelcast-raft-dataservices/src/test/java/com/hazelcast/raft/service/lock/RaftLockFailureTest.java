@@ -7,6 +7,7 @@ import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.exception.WaitKeyCancelledException;
 import com.hazelcast.raft.service.lock.operation.LockOp;
 import com.hazelcast.raft.service.lock.operation.TryLockOp;
+import com.hazelcast.raft.service.lock.operation.UnlockOp;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
 import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.session.SessionManagerService;
@@ -34,8 +35,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
-public class RaftLockAdvancedTest
-        extends HazelcastRaftTestSupport {
+public class RaftLockFailureTest extends HazelcastRaftTestSupport {
 
     private HazelcastInstance[] instances;
     private HazelcastInstance lockInstance;
@@ -60,7 +60,7 @@ public class RaftLockAdvancedTest
     }
 
     @Test
-    public void testLockCancelsPendingLockRequests() {
+    public void testLockCancelsPendingLockRequest() {
         lockByOtherThread(lock);
 
         // there is a session id now
@@ -68,13 +68,10 @@ public class RaftLockAdvancedTest
         final RaftGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
-        UUID invUid1 = newUnsecureUUID();
-        UUID invUid2 = newUnsecureUUID();
+        UUID invUid = newUnsecureUUID();
 
-        InternalCompletableFuture<Object> f1 = invocationManager
-                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid1, MINUTES.toMillis(5)));
-        InternalCompletableFuture<Object> f2 = invocationManager
-                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid1, MINUTES.toMillis(5)));
+        InternalCompletableFuture<Object> f = invocationManager
+                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -82,27 +79,21 @@ public class RaftLockAdvancedTest
                 RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
                 LockRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
-                assertEquals(2, registry.getWaitTimeouts().size());
+                assertEquals(1, registry.getWaitTimeouts().size());
             }
         });
 
-        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), invUid2));
+        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), invUid));
 
         try {
-            f1.join();
-            fail();
-        } catch (WaitKeyCancelledException ignored) {
-        }
-
-        try {
-            f2.join();
+            f.join();
             fail();
         } catch (WaitKeyCancelledException ignored) {
         }
     }
 
     @Test
-    public void testTryLockWithTimeoutCancelsPendingLockRequests() {
+    public void testTryLockWithTimeoutCancelsPendingLockRequest() {
         lockByOtherThread(lock);
 
         // there is a session id now
@@ -110,13 +101,11 @@ public class RaftLockAdvancedTest
         final RaftGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
-        UUID invUid1 = newUnsecureUUID();
-        UUID invUid2 = newUnsecureUUID();
+        UUID invUid = newUnsecureUUID();
 
-        InternalCompletableFuture<Object> f1 = invocationManager
-                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid1, MINUTES.toMillis(5)));
-        InternalCompletableFuture<Object> f2 = invocationManager
-                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid1, MINUTES.toMillis(5)));
+        InternalCompletableFuture<Object> f = invocationManager
+                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
+
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -124,27 +113,21 @@ public class RaftLockAdvancedTest
                 RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
                 LockRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
-                assertEquals(2, registry.getWaitTimeouts().size());
+                assertEquals(1, registry.getWaitTimeouts().size());
             }
         });
 
-        invocationManager.invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid2, 30));
+        invocationManager.invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
 
         try {
-            f1.join();
-            fail();
-        } catch (WaitKeyCancelledException ignored) {
-        }
-
-        try {
-            f2.join();
+            f.join();
             fail();
         } catch (WaitKeyCancelledException ignored) {
         }
     }
 
     @Test
-    public void testTryLockWithoutTimeoutCancelsPendingLockRequests() {
+    public void testTryLockWithoutTimeoutCancelsPendingLockRequest() {
         lockByOtherThread(lock);
 
         // there is a session id now
@@ -152,13 +135,10 @@ public class RaftLockAdvancedTest
         final RaftGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
-        UUID invUid1 = newUnsecureUUID();
-        UUID invUid2 = newUnsecureUUID();
+        UUID invUid = newUnsecureUUID();
 
-        InternalCompletableFuture<Object> f1 = invocationManager
-                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid1, MINUTES.toMillis(5)));
-        InternalCompletableFuture<Object> f2 = invocationManager
-                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid1, MINUTES.toMillis(5)));
+        InternalCompletableFuture<Object> f = invocationManager
+                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -166,27 +146,21 @@ public class RaftLockAdvancedTest
                 RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
                 LockRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
-                assertEquals(2, registry.getWaitTimeouts().size());
+                assertEquals(1, registry.getWaitTimeouts().size());
             }
         });
 
-        invocationManager.invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid2, 0));
+        invocationManager.invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, 0));
 
         try {
-            f1.join();
-            fail();
-        } catch (WaitKeyCancelledException ignored) {
-        }
-
-        try {
-            f2.join();
+            f.join();
             fail();
         } catch (WaitKeyCancelledException ignored) {
         }
     }
 
     @Test
-    public void testUnlockCancelsPendingLockRequests() {
+    public void testUnlockCancelsPendingLockRequest() {
         lockByOtherThread(lock);
 
         // there is a session id now
@@ -194,10 +168,10 @@ public class RaftLockAdvancedTest
         final RaftGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
-        UUID invUid1 = newUnsecureUUID();
+        UUID invUid = newUnsecureUUID();
 
-        InternalCompletableFuture<Object> f1 = invocationManager
-                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid1, MINUTES.toMillis(5)));
+        InternalCompletableFuture<Object> f = invocationManager
+                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -216,10 +190,54 @@ public class RaftLockAdvancedTest
         }
 
         try {
-            f1.join();
+            f.join();
             fail();
         } catch (WaitKeyCancelledException ignored) {
         }
+    }
+
+    @Test
+    public void testLockAcquireRetry() {
+        final RaftGroupId groupId = lock.getGroupId();
+        long sessionId = getSessionManager().getSession(groupId);
+        RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
+        UUID invUid = newUnsecureUUID();
+
+        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), invUid)).join();
+        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), invUid)).join();
+
+        assertEquals(1, lock.getLockCount());
+    }
+
+    @Test
+    public void testLockReentrantAcquireRetry() {
+        final RaftGroupId groupId = lock.getGroupId();
+        long sessionId = getSessionManager().getSession(groupId);
+        RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
+        UUID invUid1 = newUnsecureUUID();
+        UUID invUid2 = newUnsecureUUID();
+
+        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), invUid1)).join();
+        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), invUid2)).join();
+        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), invUid2)).join();
+
+        assertEquals(2, lock.getLockCount());
+    }
+
+    @Test
+    public void testRetriedUnlockIsSuccessfulAfterLockedByAnotherEndpoint() {
+        lock.lock();
+
+        final RaftGroupId groupId = lock.getGroupId();
+        long sessionId = getSessionManager().getSession(groupId);
+        RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
+        UUID invUid = newUnsecureUUID();
+
+        invocationManager.invoke(groupId, new UnlockOp(name, sessionId, getThreadId(), invUid)).join();
+
+        lockByOtherThread(lock);
+
+        invocationManager.invoke(groupId, new UnlockOp(name, sessionId, getThreadId(), invUid)).join();
     }
 
 }

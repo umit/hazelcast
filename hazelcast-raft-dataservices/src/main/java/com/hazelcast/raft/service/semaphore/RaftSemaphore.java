@@ -29,14 +29,17 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.UUID;
 
 import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
 import static com.hazelcast.util.Preconditions.checkPositive;
+import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.util.Collections.unmodifiableCollection;
 
 /**
@@ -48,7 +51,7 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
     private int available;
     private final Map<Long, SessionState> sessionStates = new HashMap<Long, SessionState>();
 
-    public RaftSemaphore() {
+    RaftSemaphore() {
     }
 
     RaftSemaphore(RaftGroupId groupId, String name) {
@@ -58,16 +61,13 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
     @Override
     protected void onInvalidateSession(long sessionId, Long2ObjectHashMap<Object> responses) {
         SessionState state = sessionStates.get(sessionId);
-        if (state != null) {
-            for (Entry<UUID, Integer> e : state.acquires.entrySet()) {
-                UUID invocationUid = e.getKey();
-                if (!state.releases.containsKey(invocationUid)) {
-                    ReleaseResult result = release(sessionId, -1, invocationUid, e.getValue());
-                    assert result.cancelled.isEmpty();
-                    for (SemaphoreInvocationKey key : result.acquired) {
-                        responses.put(key.commitIndex(), Boolean.TRUE);
-                    }
-                }
+        if (state != null && state.acquiredPermits > 0) {
+            // remove the session after release() because release() checks existence of the session
+            ReleaseResult result = release(sessionId, 0, newUnsecureUUID(), state.acquiredPermits);
+            sessionStates.remove(sessionId);
+            assert result.cancelled.isEmpty();
+            for (SemaphoreInvocationKey key : result.acquired) {
+                responses.put(key.commitIndex(), Boolean.TRUE);
             }
         }
     }
@@ -94,11 +94,11 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
 
     AcquireResult acquire(SemaphoreInvocationKey key, boolean wait) {
         SessionState state = sessionStates.get(key.sessionId());
-        if (state != null && state.acquires.containsKey(key.invocationUid())) {
+        if (state != null && state.invocationRefUids.containsKey(Tuple2.of(key.threadId(), key.invocationUid()))) {
             return new AcquireResult(key.permits(), Collections.<SemaphoreInvocationKey>emptyList());
         }
 
-        Collection<SemaphoreInvocationKey> cancelled = cancelWaitKeys(key.sessionId(), key.threadId(), key.invocationUid());
+        Collection<SemaphoreInvocationKey> cancelled = cancelWaitKeys(key.sessionId(), key.threadId());
 
         if (!isAvailable(key.permits())) {
             if (wait) {
@@ -108,12 +108,12 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
             return new AcquireResult(0, cancelled);
         }
 
-        assignPermitsToInvocation(key.sessionId(), key.invocationUid(), key.permits());
+        assignPermitsToInvocation(key.sessionId(), key.threadId(), key.invocationUid(), key.permits());
 
         return new AcquireResult(key.permits(), cancelled);
     }
 
-    private void assignPermitsToInvocation(long sessionId, UUID invocationUid, int permits) {
+    private void assignPermitsToInvocation(long sessionId, long threadId, UUID invocationUid, int permits) {
         if (sessionId == NO_SESSION_ID) {
             available -= permits;
             return;
@@ -125,7 +125,8 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
             sessionStates.put(sessionId, state);
         }
 
-        if (state.acquires.put(invocationUid, permits) == null) {
+        if (state.invocationRefUids.put(Tuple2.of(threadId, invocationUid), permits) == null) {
+            state.acquiredPermits += permits;
             available -= permits;
         }
     }
@@ -136,42 +137,37 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
         if (sessionId != NO_SESSION_ID) {
             SessionState state = sessionStates.get(sessionId);
             if (state == null) {
-                return ReleaseResult.failed(cancelWaitKeys(sessionId, threadId, invocationUid));
+                return ReleaseResult.failed(cancelWaitKeys(sessionId, threadId));
             }
 
-            if (state.releases.containsKey(invocationUid)) {
+            if (state.invocationRefUids.containsKey(Tuple2.of(threadId, invocationUid))) {
                 return ReleaseResult.successful(Collections.<SemaphoreInvocationKey>emptyList(),
                         Collections.<SemaphoreInvocationKey>emptyList());
             }
 
-            long acquired = state.getEffectivePermitCount();
-
-            if (acquired < permits) {
-                return ReleaseResult.failed(cancelWaitKeys(sessionId, threadId, invocationUid));
+            if (state.acquiredPermits < permits) {
+                return ReleaseResult.failed(cancelWaitKeys(sessionId, threadId));
             }
 
-            state.releases.put(invocationUid, permits);
-            if (state.getEffectivePermitCount() == 0) {
-                sessionStates.remove(sessionId);
-            }
+            state.acquiredPermits -= permits;
+            state.invocationRefUids.put(Tuple2.of(threadId, invocationUid), permits);
         }
 
         available += permits;
 
         // order is important...
-        Collection<SemaphoreInvocationKey> cancelled = cancelWaitKeys(sessionId, threadId, invocationUid);
+        Collection<SemaphoreInvocationKey> cancelled = cancelWaitKeys(sessionId, threadId);
         Collection<SemaphoreInvocationKey> acquired = assignPermitsToWaitKeys();
 
         return ReleaseResult.successful(acquired, cancelled);
     }
 
-    private Collection<SemaphoreInvocationKey> cancelWaitKeys(long sessionId, long threadId, UUID invocationUid) {
+    private Collection<SemaphoreInvocationKey> cancelWaitKeys(long sessionId, long threadId) {
         List<SemaphoreInvocationKey> cancelled = new ArrayList<SemaphoreInvocationKey>(0);
         Iterator<SemaphoreInvocationKey> iter = waitKeys.iterator();
         while (iter.hasNext()) {
             SemaphoreInvocationKey waitKey = iter.next();
-            if (waitKey.sessionId() == sessionId && waitKey.threadId() == threadId
-                    && !waitKey.invocationUid().equals(invocationUid)) {
+            if (waitKey.sessionId() == sessionId && waitKey.threadId() == threadId) {
                 cancelled.add(waitKey);
                 iter.remove();
             }
@@ -191,7 +187,7 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
 
             iterator.remove();
             assigned.add(key);
-            assignPermitsToInvocation(key.sessionId(), key.invocationUid(), key.permits());
+            assignPermitsToInvocation(key.sessionId(), key.threadId(), key.invocationUid(), key.permits());
         }
 
         return assigned;
@@ -200,17 +196,17 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
     AcquireResult drain(long sessionId, long threadId, UUID invocationUid) {
         SessionState state = sessionStates.get(sessionId);
         if (state != null) {
-            Integer permits = state.acquires.get(invocationUid);
+            Integer permits = state.invocationRefUids.get(Tuple2.of(threadId, invocationUid));
             if (permits != null) {
                 return new AcquireResult(permits, Collections.<SemaphoreInvocationKey>emptyList());
             }
         }
 
-        Collection<SemaphoreInvocationKey> cancelled = cancelWaitKeys(sessionId, threadId, invocationUid);
+        Collection<SemaphoreInvocationKey> cancelled = cancelWaitKeys(sessionId, threadId);
 
         int drained = available;
         if (drained > 0) {
-            assignPermitsToInvocation(sessionId, invocationUid, drained);
+            assignPermitsToInvocation(sessionId, threadId, invocationUid, drained);
         }
         available = 0;
 
@@ -218,8 +214,15 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
     }
 
     @Override
-    public Collection<Long> getOwnerSessionIds() {
-        return unmodifiableCollection(sessionStates.keySet());
+    public Collection<Long> getActiveSessions() {
+        Set<Long> activeSessionIds = new HashSet<Long>();
+        for (Map.Entry<Long, SessionState> e : sessionStates.entrySet()) {
+            if (e.getValue().acquiredPermits > 0) {
+                activeSessionIds.add(e.getKey());
+            }
+        }
+
+        return activeSessionIds;
     }
 
     Tuple2<Boolean, Collection<SemaphoreInvocationKey>> change(int permits) {
@@ -257,22 +260,17 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
         for (Entry<Long, SessionState> e1 : sessionStates.entrySet()) {
             out.writeLong(e1.getKey());
             SessionState state = e1.getValue();
-            out.writeInt(state.acquires.size());
-            for (Entry<UUID, Integer> e2 : state.acquires.entrySet()) {
-                UUID invocationUid = e2.getKey();
+            out.writeInt(state.invocationRefUids.size());
+            for (Entry<Tuple2<Long, UUID>, Integer> e2 : state.invocationRefUids.entrySet()) {
+                Tuple2<Long, UUID> t = e2.getKey();
+                UUID invocationUid = t.element2;
                 int permits = e2.getValue();
+                out.writeLong(t.element1);
                 out.writeLong(invocationUid.getLeastSignificantBits());
                 out.writeLong(invocationUid.getMostSignificantBits());
                 out.writeInt(permits);
             }
-            out.writeInt(state.releases.size());
-            for (Entry<UUID, Integer> e2 : state.releases.entrySet()) {
-                UUID invocationUid = e2.getKey();
-                int permits = e2.getValue();
-                out.writeLong(invocationUid.getLeastSignificantBits());
-                out.writeLong(invocationUid.getMostSignificantBits());
-                out.writeInt(permits);
-            }
+            out.writeInt(state.acquiredPermits);
         }
     }
 
@@ -286,20 +284,16 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
         for (int i = 0; i < count; i++) {
             long sessionId = in.readLong();
             SessionState state = new SessionState();
-            int acquireCount = in.readInt();
-            for (int j = 0; j < acquireCount; j++) {
+            int refUidCount = in.readInt();
+            for (int j = 0; j < refUidCount; j++) {
+                long threadId = in.readLong();
                 long least = in.readLong();
                 long most = in.readLong();
                 int permits = in.readInt();
-                state.acquires.put(new UUID(most, least), permits);
+                state.invocationRefUids.put(Tuple2.of(threadId, new UUID(most, least)), permits);
             }
-            int releaseCount = in.readInt();
-            for (int j = 0; j < releaseCount; j++) {
-                long least = in.readLong();
-                long most = in.readLong();
-                int permits = in.readInt();
-                state.releases.put(new UUID(most, least), permits);
-            }
+
+            state.acquiredPermits = in.readInt();
 
             sessionStates.put(sessionId, state);
         }
@@ -346,25 +340,12 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
     }
 
     private static class SessionState {
-        private final Map<UUID, Integer> acquires = new HashMap<UUID, Integer>();
-        private final Map<UUID, Integer> releases = new HashMap<UUID, Integer>();
-
-        int getEffectivePermitCount() {
-            int count = 0;
-            for (int p : acquires.values()) {
-                count += p;
-            }
-
-            for (int p : releases.values()) {
-                count -= p;
-            }
-
-            return count;
-        }
+        private final Map<Tuple2<Long, UUID>, Integer> invocationRefUids = new HashMap<Tuple2<Long, UUID>, Integer>();
+        private int acquiredPermits;
 
         @Override
         public String toString() {
-            return "SemaphoreState{" + "acquires=" + acquires + ", releases=" + releases + '}';
+            return "SessionState{" + "invocationRefUids=" + invocationRefUids + ", acquiredPermits=" + acquiredPermits + '}';
         }
     }
 

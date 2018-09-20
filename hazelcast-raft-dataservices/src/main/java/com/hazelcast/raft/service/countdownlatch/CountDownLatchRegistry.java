@@ -30,7 +30,7 @@ import java.util.UUID;
 public class CountDownLatchRegistry extends ResourceRegistry<CountDownLatchInvocationKey, RaftCountDownLatch>
         implements IdentifiedDataSerializable {
 
-    public CountDownLatchRegistry() {
+    CountDownLatchRegistry() {
     }
 
     CountDownLatchRegistry(RaftGroupId groupId) {

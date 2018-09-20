@@ -49,7 +49,7 @@ public abstract class BlockingResource<W extends WaitKey> implements DataSeriali
         this.name = name;
     }
 
-    public abstract Collection<Long> getOwnerSessionIds();
+    public abstract Collection<Long> getActiveSessions();
 
     public final RaftGroupId getGroupId() {
         return groupId;

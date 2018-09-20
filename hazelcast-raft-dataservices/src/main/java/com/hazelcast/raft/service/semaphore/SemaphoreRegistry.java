@@ -32,10 +32,10 @@ import java.util.UUID;
 public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, RaftSemaphore>
         implements IdentifiedDataSerializable {
 
-    public SemaphoreRegistry() {
+    SemaphoreRegistry() {
     }
 
-    protected SemaphoreRegistry(RaftGroupId groupId) {
+    SemaphoreRegistry(RaftGroupId groupId) {
         super(groupId);
     }
 
@@ -44,8 +44,14 @@ public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, 
         return new RaftSemaphore(groupId, name);
     }
 
-    boolean init(String name, int permits) {
-        return getOrInitResource(name).init(permits);
+    Collection<SemaphoreInvocationKey> init(String name, int permits) {
+        Collection<SemaphoreInvocationKey> acquired = getOrInitResource(name).init(permits);
+
+        for (SemaphoreInvocationKey waitKey : acquired) {
+            removeWaitKey(waitKey);
+        }
+
+        return acquired;
     }
 
     int availablePermits(String name) {

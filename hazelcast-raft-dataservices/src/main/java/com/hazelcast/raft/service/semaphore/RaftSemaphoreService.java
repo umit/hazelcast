@@ -103,10 +103,15 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
         SemaphoreInvocationKey key = new SemaphoreInvocationKey(name, commitIndex, sessionId, threadId, invocationUid, permits);
         AcquireResult result = getOrInitRegistry(groupId).acquire(name, key, timeoutMs);
 
-        if (logger.isFineEnabled()) {
-            logger.fine("Semaphore[" + name + "] in " + groupId + " acquired permits: " + result.acquired
-                    + " by <" + sessionId + "," + threadId + ", " + invocationUid + ">");
+//        if (logger.isFineEnabled()) {
+        if (result.acquired > 0) {
+            logger.warning("Semaphore[" + name + "] in " + groupId + " acquired permits: " + result.acquired
+                    + " by <" + sessionId + ", " + threadId + ", " + invocationUid + ">");
+        } else {
+            logger.warning("Semaphore[" + name + "] in " + groupId + " NOT acquired permits by <" + sessionId + ", " + threadId
+                    + ", " + invocationUid + ">");
         }
+//        }
 
         notifyCancelledWaitKeys(groupId, name, result.cancelled);
 
@@ -124,7 +129,13 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
         notifyWaitKeys(groupId, result.acquired, true);
 
         if (!result.success) {
+            logger.warning("Semaphore[" + name + "] in " + groupId + " NOT released permits: " + permits
+                    + " by <" + sessionId + ", " + threadId + ", " + invocationUid + ">");
             throw new IllegalArgumentException();
+        } else {
+            logger.warning("Semaphore[" + name + "] in " + groupId + " released permits: " + permits
+                    + " by <" + sessionId + ", " + threadId + ", " + invocationUid + ">");
+            logger.warning("Semaphore[" + name + "] in " + groupId + " acquired permits: " + result.acquired);
         }
     }
 

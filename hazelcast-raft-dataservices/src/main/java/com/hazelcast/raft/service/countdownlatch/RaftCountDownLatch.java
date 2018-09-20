@@ -44,7 +44,7 @@ public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocatio
     private int countDownFrom;
     private final Set<UUID> countDownUids = new HashSet<UUID>();
 
-    public RaftCountDownLatch() {
+    RaftCountDownLatch() {
     }
 
     RaftCountDownLatch(RaftGroupId groupId, String name) {
@@ -52,7 +52,7 @@ public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocatio
     }
 
     @Override
-    public Collection<Long> getOwnerSessionIds() {
+    public Collection<Long> getActiveSessions() {
         return Collections.emptyList();
     }
 
