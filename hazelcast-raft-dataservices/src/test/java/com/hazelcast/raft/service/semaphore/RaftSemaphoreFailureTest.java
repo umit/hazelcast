@@ -18,6 +18,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 import static com.hazelcast.raft.service.spi.RaftProxyFactory.create;
 import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
@@ -384,7 +385,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
     }
 
     @Test
-    public void testRetriedAcquireReceivesPermitsOnlyOnce() throws InterruptedException {
+    public void testRetriedAcquireReceivesPermitsOnlyOnce() throws InterruptedException, ExecutionException {
         semaphore.init(1);
         semaphore.acquire();
         semaphore.release();
@@ -401,7 +402,12 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
         InternalCompletableFuture<Object> f2 = invocationManager
                 .invoke(groupId, new AcquirePermitsOp(name, sessionId, threadId, invUid1, 2, MINUTES.toMillis(5)));
 
-        semaphore.increasePermits(3);
+        spawn(new Runnable() {
+            @Override
+            public void run() {
+                semaphore.increasePermits(3);
+            }
+        }).get();
 
         try {
             f1.join();

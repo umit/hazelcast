@@ -246,9 +246,15 @@ public class RaftSessionlessSemaphoreProxy implements ISemaphore {
             return;
         }
 
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES
+        long globalThreadId = getGlobalThreadId(groupId, globallyUniqueThreadIdCtor);
+        UUID invocationUid = newUnsecureUUID();
+
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4
                 + Bits.INT_SIZE_IN_BYTES;
         ClientMessage msg = prepareClientMessage(groupId, name, dataSize, CHANGE_PERMITS_TYPE);
+        msg.set(globalThreadId);
+        msg.set(invocationUid.getLeastSignificantBits());
+        msg.set(invocationUid.getMostSignificantBits());
         msg.set(-reduction);
         msg.updateFrameLength();
 
@@ -262,9 +268,15 @@ public class RaftSessionlessSemaphoreProxy implements ISemaphore {
             return;
         }
 
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES
+        long globalThreadId = getGlobalThreadId(groupId, globallyUniqueThreadIdCtor);
+        UUID invocationUid = newUnsecureUUID();
+
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4
                 + Bits.INT_SIZE_IN_BYTES;
         ClientMessage msg = prepareClientMessage(groupId, name, dataSize, CHANGE_PERMITS_TYPE);
+        msg.set(globalThreadId);
+        msg.set(invocationUid.getLeastSignificantBits());
+        msg.set(invocationUid.getMostSignificantBits());
         msg.set(increase);
         msg.updateFrameLength();
 

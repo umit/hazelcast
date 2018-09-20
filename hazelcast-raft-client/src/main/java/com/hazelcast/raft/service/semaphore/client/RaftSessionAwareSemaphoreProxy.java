@@ -268,13 +268,31 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
             return;
         }
 
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES
+        long sessionId = acquireSession();
+        if (sessionId == NO_SESSION_ID) {
+            throw new IllegalStateException("No valid session!");
+        }
+
+        long threadId = getThreadId();
+        UUID invocationUid = newUnsecureUUID();
+
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4
                 + Bits.INT_SIZE_IN_BYTES;
-        ClientMessage msg = prepareClientMessage(groupId, name, NO_SESSION_ID, dataSize, CHANGE_PERMITS_TYPE);
+        ClientMessage msg = prepareClientMessage(groupId, name, sessionId, dataSize, CHANGE_PERMITS_TYPE);
+        msg.set(threadId);
+        msg.set(invocationUid.getLeastSignificantBits());
+        msg.set(invocationUid.getMostSignificantBits());
         msg.set(-reduction);
         msg.updateFrameLength();
 
-        invoke(msg, BOOLEAN_RESPONSE_DECODER).join();
+        try {
+            invoke(msg, BOOLEAN_RESPONSE_DECODER).join();
+        } catch (SessionExpiredException e) {
+            invalidateSession(sessionId);
+            throw e;
+        } finally {
+            releaseSession(sessionId);
+        }
     }
 
     @Override
@@ -284,13 +302,31 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
             return;
         }
 
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES
+        long sessionId = acquireSession();
+        if (sessionId == NO_SESSION_ID) {
+            throw new IllegalStateException("No valid session!");
+        }
+
+        long threadId = getThreadId();
+        UUID invocationUid = newUnsecureUUID();
+
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4
                 + Bits.INT_SIZE_IN_BYTES;
-        ClientMessage msg = prepareClientMessage(groupId, name, NO_SESSION_ID, dataSize, CHANGE_PERMITS_TYPE);
+        ClientMessage msg = prepareClientMessage(groupId, name, sessionId, dataSize, CHANGE_PERMITS_TYPE);
+        msg.set(threadId);
+        msg.set(invocationUid.getLeastSignificantBits());
+        msg.set(invocationUid.getMostSignificantBits());
         msg.set(increase);
         msg.updateFrameLength();
 
-        invoke(msg, BOOLEAN_RESPONSE_DECODER).join();
+        try {
+            invoke(msg, BOOLEAN_RESPONSE_DECODER).join();
+        } catch (SessionExpiredException e) {
+            invalidateSession(sessionId);
+            throw e;
+        } finally {
+            releaseSession(sessionId);
+        }
     }
 
     @Override

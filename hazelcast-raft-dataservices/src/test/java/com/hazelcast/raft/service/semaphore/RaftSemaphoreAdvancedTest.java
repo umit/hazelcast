@@ -14,6 +14,8 @@ import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.operation.snapshot.RestoreSnapshotOp;
 import com.hazelcast.raft.impl.session.RaftSessionService;
 import com.hazelcast.raft.service.blocking.ResourceRegistry;
+import com.hazelcast.raft.service.semaphore.operation.ChangePermitsOp;
+import com.hazelcast.raft.service.semaphore.operation.DrainPermitsOp;
 import com.hazelcast.raft.service.semaphore.operation.ReleasePermitsOp;
 import com.hazelcast.raft.service.semaphore.proxy.RaftSessionAwareSemaphoreProxy;
 import com.hazelcast.raft.service.session.AbstractSessionManager;
@@ -344,8 +346,8 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
 
         final RaftGroupId groupId = semaphore.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
-        RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
         UUID invUid = newUnsecureUUID();
+        RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
 
         invocationManager.invoke(groupId, new ReleasePermitsOp(name, sessionId, getThreadId(), invUid, 1)).join();
 
@@ -357,6 +359,72 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
         });
 
         invocationManager.invoke(groupId, new ReleasePermitsOp(name, sessionId, getThreadId(), invUid, 1)).join();
+    }
+
+    @Test
+    public void testRetriedIncreasePermitsAppliedOnlyOnce() {
+        semaphore.init(1);
+        semaphore.acquire();
+        semaphore.release();
+        // we guarantee that there is a session id now...
+
+        final RaftGroupId groupId = semaphore.getGroupId();
+        long sessionId = getSessionManager().getSession(groupId);
+        assertNotEquals(NO_SESSION_ID, sessionId);
+        UUID invUid = newUnsecureUUID();
+        RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
+
+        invocationManager.invoke(groupId, new ChangePermitsOp(name, sessionId, getThreadId(), invUid, 1)).join();
+        invocationManager.invoke(groupId, new ChangePermitsOp(name, sessionId, getThreadId(), invUid, 1)).join();
+
+        assertEquals(2, semaphore.availablePermits());
+    }
+
+    @Test
+    public void testRetriedDecreasePermitsAppliedOnlyOnce() {
+        semaphore.init(2);
+        semaphore.acquire();
+        semaphore.release();
+        // we guarantee that there is a session id now...
+
+        final RaftGroupId groupId = semaphore.getGroupId();
+        long sessionId = getSessionManager().getSession(groupId);
+        assertNotEquals(NO_SESSION_ID, sessionId);
+        UUID invUid = newUnsecureUUID();
+        RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
+
+        invocationManager.invoke(groupId, new ChangePermitsOp(name, sessionId, getThreadId(), invUid, -1)).join();
+        invocationManager.invoke(groupId, new ChangePermitsOp(name, sessionId, getThreadId(), invUid, -1)).join();
+
+        assertEquals(1, semaphore.availablePermits());
+    }
+
+    @Test
+    public void testRetriedDrainPermitsAppliedOnlyOnce() throws ExecutionException, InterruptedException {
+        semaphore.increasePermits(3);
+
+        final RaftGroupId groupId = semaphore.getGroupId();
+        long sessionId = getSessionManager().getSession(groupId);
+        assertNotEquals(NO_SESSION_ID, sessionId);
+        UUID invUid = newUnsecureUUID();
+        RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
+
+        int drained1 = invocationManager.<Integer>invoke(groupId, new DrainPermitsOp(name, sessionId, getThreadId(), invUid)).join();
+
+        assertEquals(3, drained1);
+        assertEquals(0, semaphore.availablePermits());
+
+        spawn(new Runnable() {
+            @Override
+            public void run() {
+                semaphore.increasePermits(1);
+            }
+        }).get();
+
+        int drained2 = invocationManager.<Integer>invoke(groupId, new DrainPermitsOp(name, sessionId, getThreadId(), invUid)).join();
+
+        assertEquals(3, drained2);
+        assertEquals(1, semaphore.availablePermits());
     }
 
     protected HazelcastInstance[] createInstances() {
