@@ -28,8 +28,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static com.hazelcast.raft.service.lock.RaftLockService.INVALID_FENCE;
@@ -42,9 +44,9 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
 
     private LockInvocationKey owner;
     private int lockCount;
-    private UUID releaseRefUid;
+    private Map<LockEndpoint, UUID> invocationRefUids = new HashMap<LockEndpoint, UUID>();
 
-    public RaftLock() {
+    RaftLock() {
     }
 
     RaftLock(RaftGroupId groupId, String name) {
@@ -52,15 +54,18 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
     }
 
     @Override
-    public Collection<Long> getOwnerSessionIds() {
+    public Collection<Long> getActiveSessions() {
         return owner != null ? Collections.singleton(owner.sessionId()) : Collections.<Long>emptyList();
     }
 
     AcquireResult acquire(LockEndpoint endpoint, long commitIndex, UUID invocationUid, boolean wait) {
         // if acquire() is being retried
-        if (owner != null && owner.invocationUid().equals(invocationUid)) {
+        if (invocationUid.equals(invocationRefUids.get(endpoint))
+                || (owner != null && owner.invocationUid().equals(invocationUid))) {
             return AcquireResult.successful(owner.commitIndex());
         }
+
+        invocationRefUids.remove(endpoint);
 
         LockInvocationKey key = new LockInvocationKey(name, endpoint, commitIndex, invocationUid);
         if (owner == null) {
@@ -68,11 +73,12 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
         }
 
         if (endpoint.equals(owner.endpoint())) {
+            invocationRefUids.put(endpoint, invocationUid);
             lockCount++;
             return AcquireResult.successful(owner.commitIndex());
         }
 
-        Collection<LockInvocationKey> cancelledWaitKeys = cancelWaitKeys(endpoint, invocationUid);
+        Collection<LockInvocationKey> cancelledWaitKeys = cancelWaitKeys(endpoint);
 
         if (wait) {
             waitKeys.add(key);
@@ -81,12 +87,12 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
         return AcquireResult.failed(cancelledWaitKeys);
     }
 
-    private Collection<LockInvocationKey> cancelWaitKeys(LockEndpoint endpoint, UUID invocationUid) {
+    private Collection<LockInvocationKey> cancelWaitKeys(LockEndpoint endpoint) {
         List<LockInvocationKey> cancelled = new ArrayList<LockInvocationKey>(0);
         Iterator<LockInvocationKey> it = waitKeys.iterator();
         while (it.hasNext()) {
             LockInvocationKey waitKey = it.next();
-            if (waitKey.endpoint().equals(endpoint) && !waitKey.invocationUid().equals(invocationUid)) {
+            if (waitKey.endpoint().equals(endpoint)) {
                 cancelled.add(waitKey);
                 it.remove();
             }
@@ -101,12 +107,12 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
 
     private ReleaseResult release(LockEndpoint endpoint, int releaseCount, UUID invocationUid) {
         // if release() is being retried
-        if (invocationUid.equals(releaseRefUid)) {
+        if (invocationUid.equals(invocationRefUids.get(endpoint))) {
             return ReleaseResult.SUCCESSFUL;
         }
 
         if (owner != null && endpoint.equals(owner.endpoint())) {
-            releaseRefUid = invocationUid;
+            invocationRefUids.put(endpoint, invocationUid);
 
             lockCount -= Math.min(releaseCount, lockCount);
             if (lockCount > 0) {
@@ -115,23 +121,10 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
 
             LockInvocationKey newOwner = waitKeys.poll();
             if (newOwner != null) {
-                List<LockInvocationKey> keys = new ArrayList<LockInvocationKey>();
-                keys.add(newOwner);
-
-                Iterator<LockInvocationKey> iter = waitKeys.iterator();
-                while (iter.hasNext()) {
-                    LockInvocationKey key = iter.next();
-                    if (newOwner.invocationUid().equals(key.invocationUid())) {
-                        assert newOwner.endpoint().equals(key.endpoint());
-                        keys.add(key);
-                        iter.remove();
-                    }
-                }
-
                 owner = newOwner;
                 lockCount = 1;
 
-                return ReleaseResult.successful(keys);
+                return ReleaseResult.successful(Collections.singleton(newOwner));
             } else {
                 owner = null;
             }
@@ -139,15 +132,10 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
             return ReleaseResult.SUCCESSFUL;
         }
 
-        return ReleaseResult.failed(cancelWaitKeys(endpoint, invocationUid));
+        return ReleaseResult.failed(cancelWaitKeys(endpoint));
     }
 
     ReleaseResult forceRelease(long expectedFence, UUID invocationUid) {
-        // if forceRelease() is being retried
-        if (invocationUid.equals(releaseRefUid)) {
-            return ReleaseResult.SUCCESSFUL;
-        }
-
         if (owner == null) {
             return ReleaseResult.FAILED;
         }
@@ -170,6 +158,13 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
     @Override
     protected void onInvalidateSession(long sessionId, Long2ObjectHashMap<Object> responses) {
         if (owner != null && sessionId == owner.endpoint().sessionId()) {
+            Iterator<LockEndpoint> it = invocationRefUids.keySet().iterator();
+            while (it.hasNext()) {
+                if (it.next().sessionId() == sessionId) {
+                    it.remove();
+                }
+            }
+
             ReleaseResult result = release(owner.endpoint(), Integer.MAX_VALUE, UuidUtil.newUnsecureUUID());
 
             if (!result.success) {
@@ -207,11 +202,12 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
             out.writeObject(owner);
         }
         out.writeInt(lockCount);
-        boolean hasRefUid = (releaseRefUid != null);
-        out.writeBoolean(hasRefUid);
-        if (hasRefUid) {
-            out.writeLong(releaseRefUid.getLeastSignificantBits());
-            out.writeLong(releaseRefUid.getMostSignificantBits());
+        out.writeInt(invocationRefUids.size());
+        for (Map.Entry<LockEndpoint, UUID> e : invocationRefUids.entrySet()) {
+            out.writeObject(e.getKey());
+            UUID releaseUid = e.getValue();
+            out.writeLong(releaseUid.getLeastSignificantBits());
+            out.writeLong(releaseUid.getMostSignificantBits());
         }
     }
 
@@ -224,18 +220,19 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
             owner = in.readObject();
         }
         lockCount = in.readInt();
-        boolean hasRefUid = in.readBoolean();
-        if (hasRefUid) {
+        int releaseRefUidCount = in.readInt();
+        for (int i = 0; i < releaseRefUidCount; i++) {
+            LockEndpoint endpoint = in.readObject();
             long least = in.readLong();
             long most = in.readLong();
-            releaseRefUid = new UUID(most, least);
+            invocationRefUids.put(endpoint, new UUID(most, least));
         }
     }
 
     @Override
     public String toString() {
         return "RaftLock{" + "groupId=" + groupId + ", name='" + name + '\'' + ", owner=" + owner + ", lockCount=" + lockCount
-                + ", releaseRefUid=" + releaseRefUid + ", waitKeys=" + waitKeys + '}';
+                + ", invocationRefUids=" + invocationRefUids + ", waitKeys=" + waitKeys + '}';
     }
 
     static class AcquireResult {

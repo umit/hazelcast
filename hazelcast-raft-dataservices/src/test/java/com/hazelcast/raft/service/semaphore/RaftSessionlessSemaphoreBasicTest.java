@@ -53,8 +53,8 @@ public class RaftSessionlessSemaphoreBasicTest extends HazelcastRaftTestSupport 
     private HazelcastInstance[] instances;
     private String name = "semaphore";
     private int groupSize = 3;
-    protected HazelcastInstance semaphoreInstance;
-    protected ISemaphore semaphore;
+    private HazelcastInstance semaphoreInstance;
+    private ISemaphore semaphore;
 
     @Before
     public void setup() {

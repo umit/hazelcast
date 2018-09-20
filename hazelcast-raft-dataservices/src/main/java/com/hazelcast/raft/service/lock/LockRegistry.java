@@ -31,7 +31,7 @@ import static com.hazelcast.raft.service.lock.RaftLockService.INVALID_FENCE;
  */
 class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> implements IdentifiedDataSerializable {
 
-    public LockRegistry() {
+    LockRegistry() {
     }
 
     LockRegistry(RaftGroupId groupId) {

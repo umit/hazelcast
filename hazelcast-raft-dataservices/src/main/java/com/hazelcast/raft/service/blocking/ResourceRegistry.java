@@ -151,7 +151,7 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
     public final Collection<Long> getActiveSessions() {
         Set<Long> sessions = new HashSet<Long>();
         for (R res : resources.values()) {
-            sessions.addAll(res.getOwnerSessionIds());
+            sessions.addAll(res.getActiveSessions());
             for (WaitKey key : res.getWaitKeys()) {
                 sessions.add(key.sessionId());
             }
