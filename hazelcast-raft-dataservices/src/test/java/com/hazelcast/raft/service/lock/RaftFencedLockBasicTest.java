@@ -450,7 +450,7 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
         lock.lock();
 
         assertTrue(lock.isLockedByCurrentThread());
-        assertEquals(2, lock.getLockCount());
+        assertEquals(1, lock.getLockCount());
     }
 
     @Test(timeout = 60000)
