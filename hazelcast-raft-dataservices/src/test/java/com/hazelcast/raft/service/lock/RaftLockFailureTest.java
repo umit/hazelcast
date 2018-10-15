@@ -60,7 +60,7 @@ public class RaftLockFailureTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testLockCancelsPendingLockRequest() {
+    public void testRetriedLockDoesNotCancelPendingLockRequest() {
         lockByOtherThread(lock);
 
         // there is a session id now
@@ -70,8 +70,7 @@ public class RaftLockFailureTest extends HazelcastRaftTestSupport {
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid = newUnsecureUUID();
 
-        InternalCompletableFuture<Object> f = invocationManager
-                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
+        invocationManager.invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -85,6 +84,43 @@ public class RaftLockFailureTest extends HazelcastRaftTestSupport {
 
         invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), invUid));
 
+        assertTrueAllTheTime(new AssertTask() {
+            @Override
+            public void run() {
+                RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
+                LockRegistry registry = service.getRegistryOrNull(groupId);
+                assertEquals(1, registry.getWaitTimeouts().size());
+            }
+        }, 10);
+    }
+
+    @Test(timeout = 30000)
+    public void testNewLockCancelsPendingLockRequest() {
+        lockByOtherThread(lock);
+
+        // there is a session id now
+
+        final RaftGroupId groupId = lock.getGroupId();
+        long sessionId = getSessionManager().getSession(groupId);
+        RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
+        UUID invUid1 = newUnsecureUUID();
+        UUID invUid2 = newUnsecureUUID();
+
+        InternalCompletableFuture<Object> f = invocationManager
+                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid1, MINUTES.toMillis(5)));
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
+                LockRegistry registry = service.getRegistryOrNull(groupId);
+                assertNotNull(registry);
+                assertEquals(1, registry.getWaitTimeouts().size());
+            }
+        });
+
+        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), invUid2));
+
         try {
             f.join();
             fail();
@@ -93,7 +129,7 @@ public class RaftLockFailureTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testTryLockWithTimeoutCancelsPendingLockRequest() {
+    public void testRetriedTryLockWithTimeoutDoesNotCancelPendingLockRequest() {
         lockByOtherThread(lock);
 
         // there is a session id now
@@ -103,8 +139,7 @@ public class RaftLockFailureTest extends HazelcastRaftTestSupport {
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid = newUnsecureUUID();
 
-        InternalCompletableFuture<Object> f = invocationManager
-                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
+        invocationManager.invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
 
 
         assertTrueEventually(new AssertTask() {
@@ -119,6 +154,43 @@ public class RaftLockFailureTest extends HazelcastRaftTestSupport {
 
         invocationManager.invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
 
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
+                LockRegistry registry = service.getRegistryOrNull(groupId);
+                assertEquals(2, registry.getWaitTimeouts().size());
+            }
+        });
+    }
+
+    @Test(timeout = 30000)
+    public void testNewTryLockWithTimeoutCancelsPendingLockRequest() {
+        lockByOtherThread(lock);
+
+        // there is a session id now
+
+        final RaftGroupId groupId = lock.getGroupId();
+        long sessionId = getSessionManager().getSession(groupId);
+        RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
+        UUID invUid1 = newUnsecureUUID();
+        UUID invUid2 = newUnsecureUUID();
+
+        InternalCompletableFuture<Object> f = invocationManager
+                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid1, MINUTES.toMillis(5)));
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
+                LockRegistry registry = service.getRegistryOrNull(groupId);
+                assertNotNull(registry);
+                assertEquals(1, registry.getWaitTimeouts().size());
+            }
+        });
+
+        invocationManager.invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid2, MINUTES.toMillis(5)));
+
         try {
             f.join();
             fail();
@@ -127,7 +199,7 @@ public class RaftLockFailureTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testTryLockWithoutTimeoutCancelsPendingLockRequest() {
+    public void testRetriedTryLockWithoutTimeoutDoesNotCancelPendingLockRequest() {
         lockByOtherThread(lock);
 
         // there is a session id now
@@ -137,8 +209,7 @@ public class RaftLockFailureTest extends HazelcastRaftTestSupport {
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid = newUnsecureUUID();
 
-        InternalCompletableFuture<Object> f = invocationManager
-                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
+        invocationManager.invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -152,15 +223,18 @@ public class RaftLockFailureTest extends HazelcastRaftTestSupport {
 
         invocationManager.invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, 0));
 
-        try {
-            f.join();
-            fail();
-        } catch (WaitKeyCancelledException ignored) {
-        }
+        assertTrueAllTheTime(new AssertTask() {
+            @Override
+            public void run() {
+                RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
+                LockRegistry registry = service.getRegistryOrNull(groupId);
+                assertEquals(1, registry.getWaitTimeouts().size());
+            }
+        }, 10);
     }
 
-    @Test
-    public void testUnlockCancelsPendingLockRequest() {
+    @Test(timeout = 30000)
+    public void testNewUnlockCancelsPendingLockRequest() {
         lockByOtherThread(lock);
 
         // there is a session id now

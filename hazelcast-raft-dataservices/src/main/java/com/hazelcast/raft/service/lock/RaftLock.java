@@ -57,7 +57,7 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
         // if acquire() is being retried
         if (invocationUid.equals(invocationRefUids.get(endpoint))
                 || (owner != null && owner.invocationUid().equals(invocationUid))) {
-            return AcquireResult.successful(owner.commitIndex());
+            return AcquireResult.acquired(owner.commitIndex());
         }
 
         invocationRefUids.remove(endpoint);
@@ -70,24 +70,24 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
         if (endpoint.equals(owner.endpoint())) {
             invocationRefUids.put(endpoint, invocationUid);
             lockCount++;
-            return AcquireResult.successful(owner.commitIndex());
+            return AcquireResult.acquired(owner.commitIndex());
         }
 
-        Collection<LockInvocationKey> cancelledWaitKeys = cancelWaitKeys(endpoint);
+        Collection<LockInvocationKey> cancelledWaitKeys = cancelWaitKeys(endpoint, invocationUid);
 
         if (wait) {
             waitKeys.add(key);
         }
 
-        return AcquireResult.failed(cancelledWaitKeys);
+        return AcquireResult.notAcquired(cancelledWaitKeys);
     }
 
-    private Collection<LockInvocationKey> cancelWaitKeys(LockEndpoint endpoint) {
+    private Collection<LockInvocationKey> cancelWaitKeys(LockEndpoint endpoint, UUID invocationUid) {
         List<LockInvocationKey> cancelled = new ArrayList<LockInvocationKey>(0);
         Iterator<LockInvocationKey> it = waitKeys.iterator();
         while (it.hasNext()) {
             LockInvocationKey waitKey = it.next();
-            if (waitKey.endpoint().equals(endpoint)) {
+            if (waitKey.endpoint().equals(endpoint) && !waitKey.invocationUid().equals(invocationUid)) {
                 cancelled.add(waitKey);
                 it.remove();
             }
@@ -116,10 +116,23 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
 
             LockInvocationKey newOwner = waitKeys.poll();
             if (newOwner != null) {
+                List<LockInvocationKey> keys = new ArrayList<LockInvocationKey>();
+                keys.add(newOwner);
+
+                Iterator<LockInvocationKey> iter = waitKeys.iterator();
+                while (iter.hasNext()) {
+                    LockInvocationKey key = iter.next();
+                    if (newOwner.invocationUid().equals(key.invocationUid())) {
+                        assert newOwner.endpoint().equals(key.endpoint());
+                        keys.add(key);
+                        iter.remove();
+                    }
+                }
+
                 owner = newOwner;
                 lockCount = 1;
 
-                return ReleaseResult.successful(Collections.singleton(newOwner));
+                return ReleaseResult.successful(keys);
             } else {
                 owner = null;
             }
@@ -127,7 +140,7 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
             return ReleaseResult.SUCCESSFUL;
         }
 
-        return ReleaseResult.failed(cancelWaitKeys(endpoint));
+        return ReleaseResult.failed(cancelWaitKeys(endpoint, invocationUid));
     }
 
     ReleaseResult forceRelease(long expectedFence, UUID invocationUid) {
@@ -237,11 +250,11 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
 
     static class AcquireResult {
 
-        private static AcquireResult successful(long fence) {
+        private static AcquireResult acquired(long fence) {
             return new AcquireResult(fence, Collections.<LockInvocationKey>emptyList());
         }
 
-        private static AcquireResult failed(Collection<LockInvocationKey> cancelled) {
+        private static AcquireResult notAcquired(Collection<LockInvocationKey> cancelled) {
             return new AcquireResult(INVALID_FENCE, cancelled);
         }
 
