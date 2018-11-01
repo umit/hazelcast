@@ -29,6 +29,7 @@ import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.logging.LoggingService;
 import com.hazelcast.nio.tcp.TcpIpConnection;
 import com.hazelcast.spi.EventService;
+import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.annotation.PrivateApi;
 import com.hazelcast.spi.properties.HazelcastProperties;
 
@@ -73,6 +74,8 @@ public interface IOService {
     MemcacheProtocolConfig getMemcacheProtocolConfig();
 
     SSLConfig getSSLConfig(EndpointQualifier endpointQualifier);
+
+    NodeEngine getNodeEngine();
 
     ClientEngine getClientEngine();
 

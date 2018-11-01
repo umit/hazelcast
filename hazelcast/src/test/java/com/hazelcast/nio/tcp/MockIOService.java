@@ -38,6 +38,7 @@ import com.hazelcast.nio.Packet;
 import com.hazelcast.spi.EventFilter;
 import com.hazelcast.spi.EventRegistration;
 import com.hazelcast.spi.EventService;
+import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.properties.HazelcastProperties;
 import com.hazelcast.util.function.Consumer;
 
@@ -131,6 +132,11 @@ public class MockIOService implements IOService {
 
     @Override
     public SSLConfig getSSLConfig(EndpointQualifier endpointQualifier) {
+        return null;
+    }
+
+    @Override
+    public NodeEngine getNodeEngine() {
         return null;
     }
 

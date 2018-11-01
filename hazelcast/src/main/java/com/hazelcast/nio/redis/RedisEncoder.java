@@ -16,84 +16,52 @@
 
 package com.hazelcast.nio.redis;
 
-import com.hazelcast.internal.ascii.TextCommand;
 import com.hazelcast.internal.networking.HandlerStatus;
 import com.hazelcast.internal.networking.OutboundHandler;
-import com.hazelcast.nio.tcp.TcpIpConnection;
+import com.hazelcast.redis.RESPReply;
 import com.hazelcast.spi.annotation.PrivateApi;
 import com.hazelcast.util.function.Supplier;
 
 import java.nio.ByteBuffer;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static com.hazelcast.internal.networking.HandlerStatus.CLEAN;
 import static com.hazelcast.internal.networking.HandlerStatus.DIRTY;
 import static com.hazelcast.nio.IOUtil.compactOrClear;
 
 @PrivateApi
-public class RedisEncoder extends OutboundHandler<Supplier<TextCommand>, ByteBuffer> {
-    public static final String ENCODER = "textencoder";
+public class RedisEncoder extends OutboundHandler<Supplier<RESPReply>, ByteBuffer> {
 
-    private final TcpIpConnection connection;
-    private final Map<Long, TextCommand> responses = new ConcurrentHashMap<Long, TextCommand>(100);
-    private long currentRequestId;
-    private TextCommand command;
-
-    public RedisEncoder(TcpIpConnection connection) {
-        this.connection = connection;
-    }
+    private RESPReply reply;
 
     @Override
     public void handlerAdded() {
         initDstBuffer();
     }
 
-    public void enqueue(TextCommand response) {
-        long requestId = response.getRequestId();
-        if (requestId == -1) {
-            connection.write(response);
-        } else {
-            if (currentRequestId == requestId) {
-                connection.write(response);
-                currentRequestId++;
-                processWaitingResponses();
-            } else {
-                responses.put(requestId, response);
-            }
-        }
-    }
-
-    private void processWaitingResponses() {
-        TextCommand response = responses.remove(currentRequestId);
-        while (response != null) {
-            connection.write(response);
-            currentRequestId++;
-            response = responses.remove(currentRequestId);
-        }
-    }
-
     @Override
     public HandlerStatus onWrite() {
-        // the buffer is in reading mode
-
         compactOrClear(dst);
         try {
             for (; ; ) {
-                if (command == null) {
-                    command = src.get();
-
-                    if (command == null) {
+                if (reply == null) {
+                    reply = src.get();
+                    if (reply == null) {
                         // everything is processed, so we are done
                         return CLEAN;
                     }
                 }
 
-                if (command.writeTo(dst)) {
-                    // command got written, lets see if another command can be written
-                    command = null;
+                ByteBuffer message = reply.getMessage();
+                if (dst.remaining() >= message.remaining()) {
+                    dst.put(message);
+                    reply = null;
                 } else {
-                    // the command didn't get written completely
+                    int limit = message.limit();
+                    message.limit(limit - (message.remaining() - dst.remaining()));
+                    dst.put(message);
+                    message.limit(limit);
+
+                    // the message didn't get written completely, so we are done.
                     return DIRTY;
                 }
             }

@@ -22,7 +22,9 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.memory.MemoryUnit;
 import com.hazelcast.nio.IOService;
 import com.hazelcast.nio.tcp.TcpIpConnection;
+import com.hazelcast.redis.RedisCommandHandler;
 import com.hazelcast.spi.annotation.PrivateApi;
+import com.hazelcast.util.function.Consumer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -31,25 +33,18 @@ import static com.hazelcast.internal.networking.HandlerStatus.CLEAN;
 import static com.hazelcast.nio.IOUtil.compactOrClear;
 
 @PrivateApi
-public class RedisDecoder extends InboundHandler<ByteBuffer, Void> {
+public class RedisDecoder extends InboundHandler<ByteBuffer, Consumer<byte[][]>> {
 
     private static final int CAPACITY = (int) MemoryUnit.KILOBYTES.toBytes(1);
     private static final int MAX_CAPACITY = (int) MemoryUnit.MEGABYTES.toBytes(1);
 
-    private final boolean sslEnabled;
-    private final RedisEncoder encoder;
-    private final TcpIpConnection connection;
     private final ILogger logger;
-
     private ByteBuffer commandBuffer = ByteBuffer.allocate(CAPACITY);
-    private Object[] args;
 
-    public RedisDecoder(TcpIpConnection connection, RedisEncoder encoder) {
-        IOService ioService = connection.getConnectionManager().getIoService();
-        this.sslEnabled = ioService.getSSLConfig() == null ? false : ioService.getSSLConfig().isEnabled();
-        this.encoder = encoder;
-        this.connection = connection;
+    public RedisDecoder(TcpIpConnection connection) {
+        IOService ioService = connection.getEndpointManager().getNetworkingService().getIoService();
         this.logger = ioService.getLoggingService().getLogger(getClass());
+        dst(new RedisCommandHandler(ioService.getNodeEngine(), connection));
     }
 
     @Override
@@ -109,9 +104,7 @@ public class RedisDecoder extends InboundHandler<ByteBuffer, Void> {
             }
             complete = true;
 
-            for (byte[] arg : args) {
-                logger.severe(new String(arg));
-            }
+            dst.accept(args);
 
         } finally {
             if (complete) {

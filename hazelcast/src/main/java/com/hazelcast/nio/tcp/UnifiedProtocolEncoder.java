@@ -166,7 +166,7 @@ public class UnifiedProtocolEncoder
         channel.options()
                 .setOption(SO_SNDBUF, clientSndBuf());
 
-        RedisEncoder encoder = (RedisEncoder) channel.attributeMap().remove(RedisEncoder.ENCODER);
+        RedisEncoder encoder = new RedisEncoder();
         channel.outboundPipeline().replace(this, encoder);
     }
 

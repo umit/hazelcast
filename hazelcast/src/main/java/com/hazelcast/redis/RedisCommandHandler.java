@@ -1,101 +1,152 @@
 package com.hazelcast.redis;
 
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.internal.networking.OutboundFrame;
 import com.hazelcast.map.impl.MapService;
 import com.hazelcast.map.impl.MapServiceContext;
 import com.hazelcast.map.impl.operation.MapOperationProvider;
+import com.hazelcast.nio.Connection;
 import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.spi.ExecutionService;
+import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
-import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.util.function.Consumer;
+
+import java.util.concurrent.Executor;
 
 import static com.hazelcast.redis.RESPReply.error;
 
-public class RedisCommandHandler {
+public class RedisCommandHandler implements Consumer<byte[][]>{
 
     private static final String REDIS_MAP_NAME = "redis";
 
-    private final NodeEngineImpl nodeEngine;
+    private final NodeEngine nodeEngine;
+    private final Connection connection;
+    private final Executor executor;
 
-    public RedisCommandHandler(NodeEngineImpl nodeEngine) {
+    public RedisCommandHandler(NodeEngine nodeEngine, Connection connection) {
         this.nodeEngine = nodeEngine;
+        this.connection = connection;
+        this.executor = nodeEngine.getExecutionService().getExecutor(ExecutionService.ASYNC_EXECUTOR);
     }
 
-    public void execute(Object[] args, Consumer<OutboundFrame> connection) {
-        String cmd = new String((byte[]) args[0]);
-        if (cmd.equals("SET")) { // map.set
-            doSet(args, connection);
-        } else if (cmd.equals("GETSET")) { // map.put
-            doPut(args, connection);
-        } else if (cmd.equals("GET")) { // map.get
-            doGet(args, connection);
-        } else {
-            throw new IllegalArgumentException();
+    @Override
+    public void accept(byte[][] args) {
+        executor.execute(new RedisTask(args));
+    }
+
+    private class RedisTask implements Runnable {
+        private final byte[][] args;
+
+        RedisTask(byte[][] args) {
+            this.args = args;
+        }
+
+        @Override
+        public void run() {
+            String cmd = new String(args[0]);
+            if (cmd.equals("SET")) { // map.set
+                doSet(args);
+            } else if (cmd.equals("GETSET")) { // map.put
+                doPut(args);
+            } else if (cmd.equals("GET")) { // map.get
+                doGet(args);
+            } else if (cmd.equals("DEL")) {
+                doDel(args);
+            } else {
+                connection.write(RESPReply.error("Not implemented!"));
+            }
         }
     }
 
-    private void doSet(Object[] args, final Consumer<OutboundFrame> outputHandler) {
+    private void doSet(byte[][] args) {
         Data key = nodeEngine.toData(args[1]);
         int partitionId = nodeEngine.getPartitionService().getPartitionId(key);
         Data value = nodeEngine.toData(args[2]);
 
         Operation op = getMapOperationProvider(REDIS_MAP_NAME).createSetOperation(REDIS_MAP_NAME, key, value, -1, -1);
-        op.setCallerUuid(nodeEngine.getNode().getThisUuid());
-        nodeEngine.getOperationService().createInvocationBuilder(MapService.SERVICE_NAME, op, partitionId)
-                  .setResultDeserialized(false).invoke().andThen(new ExecutionCallback<Object>() {
+        nodeEngine.getOperationService().invokeOnPartition(MapService.SERVICE_NAME, op, partitionId)
+                  .andThen(new ExecutionCallback<Object>() {
             @Override
             public void onResponse(Object response) {
-                outputHandler.accept(RESPReply.ok());
+                connection.write(RESPReply.ok());
             }
 
             @Override
             public void onFailure(Throwable t) {
-                outputHandler.accept(RESPReply.error(t.getMessage()));
+                connection.write(RESPReply.error(t.getMessage()));
             }
         });
     }
 
-    private void doPut(Object[] args, final Consumer<OutboundFrame> outputHandler) {
+    private void doDel(byte[][] args) {
+        Data key = nodeEngine.toData(args[1]);
+        int partitionId = nodeEngine.getPartitionService().getPartitionId(key);
+
+        Operation op = getMapOperationProvider(REDIS_MAP_NAME).createRemoveOperation(REDIS_MAP_NAME, key, false);
+        nodeEngine.getOperationService().invokeOnPartition(MapService.SERVICE_NAME, op, partitionId)
+                .andThen(new ExecutionCallback<Object>() {
+                    @Override
+                    public void onResponse(Object response) {
+                        if (response != null) {
+                            connection.write(RESPReply.integer(1));
+                        } else {
+                            connection.write(RESPReply.integer(0));
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Throwable t) {
+                        connection.write(RESPReply.error(t.getMessage()));
+                    }
+                });
+    }
+
+    private void doPut(byte[][] args) {
         Data key = nodeEngine.toData(args[1]);
         int partitionId = nodeEngine.getPartitionService().getPartitionId(key);
         Data value = nodeEngine.toData(args[2]);
 
         Operation op = getMapOperationProvider(REDIS_MAP_NAME).createPutOperation(REDIS_MAP_NAME, key, value, -1, -1);
-        op.setCallerUuid(nodeEngine.getNode().getThisUuid());
-        nodeEngine.getOperationService().createInvocationBuilder(MapService.SERVICE_NAME, op, partitionId)
-                  .setResultDeserialized(false).invoke().andThen(new ExecutionCallback<Object>() {
+        nodeEngine.getOperationService().invokeOnPartition(MapService.SERVICE_NAME, op, partitionId)
+                  .andThen(new ExecutionCallback<Object>() {
             @Override
             public void onResponse(Object response) {
-                String str = new String(((Data) response).toByteArray());
-                outputHandler.accept(RESPReply.string(str));
+                if (response != null) {
+                    byte[] str = nodeEngine.toObject(response);
+                    connection.write(RESPReply.string(new String(str)));
+                } else {
+                    connection.write(RESPReply.nil());
+                }
             }
 
             @Override
             public void onFailure(Throwable t) {
-                outputHandler.accept(error(t.getMessage()));
+                connection.write(error(t.getMessage()));
             }
         });
 
     }
 
-    private void doGet(Object[] args, final Consumer<OutboundFrame> outputHandler) {
+    private void doGet(byte[][] args) {
         Data key = nodeEngine.toData(args[1]);
         int partitionId = nodeEngine.getPartitionService().getPartitionId(key);
 
         Operation op = getMapOperationProvider(REDIS_MAP_NAME).createGetOperation(REDIS_MAP_NAME, key);
-        op.setCallerUuid(nodeEngine.getNode().getThisUuid());
-        nodeEngine.getOperationService().createInvocationBuilder(MapService.SERVICE_NAME, op, partitionId)
-                  .setResultDeserialized(false).invoke().andThen(new ExecutionCallback<Object>() {
+        nodeEngine.getOperationService().invokeOnPartition(MapService.SERVICE_NAME, op, partitionId)
+                  .andThen(new ExecutionCallback<Object>() {
             @Override
             public void onResponse(Object response) {
-                String str = new String(((Data) response).toByteArray());
-                outputHandler.accept(RESPReply.string(str));
+                if (response != null) {
+                    byte[] str = nodeEngine.toObject(response);
+                    connection.write(RESPReply.string(new String(str)));
+                } else {
+                    connection.write(RESPReply.nil());
+                }
             }
 
             @Override
             public void onFailure(Throwable t) {
-                outputHandler.accept(error(t.getMessage()));
+                connection.write(error(t.getMessage()));
             }
         });
     }
