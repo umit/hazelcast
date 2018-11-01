@@ -29,9 +29,12 @@ import com.hazelcast.nio.ascii.MemcacheTextDecoder;
 import com.hazelcast.nio.ascii.RestApiTextDecoder;
 import com.hazelcast.nio.ascii.TextDecoder;
 import com.hazelcast.nio.ascii.TextEncoder;
+import com.hazelcast.nio.redis.RedisDecoder;
+import com.hazelcast.nio.redis.RedisEncoder;
 import com.hazelcast.spi.properties.HazelcastProperties;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import static com.hazelcast.internal.networking.ChannelOption.DIRECT_BUF;
 import static com.hazelcast.internal.networking.ChannelOption.SO_RCVBUF;
@@ -85,6 +88,7 @@ public class UnifiedProtocolDecoder
             }
 
             String protocol = loadProtocol();
+            ioService.getLoggingService().getLogger(getClass()).severe(Arrays.toString(protocol.getBytes()));
 
             if (CLUSTER.equals(protocol)) {
                 initChannelForCluster();
@@ -103,6 +107,8 @@ public class UnifiedProtocolDecoder
                 }
                 // text doesn't have a protocol; anything that isn't cluster/client protocol will be interpreted as txt.
                 initChannelForText(protocol, false);
+            } else if (protocol.charAt(0) == '*') {
+                initChannelForRedis(protocol);
             } else {
                 throw new IllegalStateException("Unknown protocol: " + protocol);
             }
@@ -125,6 +131,25 @@ public class UnifiedProtocolDecoder
             throw new IllegalStateException("TLS handshake header detected, but plain protocol header was expected.");
         }
         return bytesToString(protocolBytes);
+    }
+
+    private void initChannelForRedis(String protocol) {
+        ChannelOptions config = channel.options();
+
+        config.setOption(SO_RCVBUF, clientRcvBuf());
+
+        TcpIpConnection connection = (TcpIpConnection) channel.attributeMap().get(TcpIpConnection.class);
+
+        RedisEncoder encoder = new RedisEncoder(connection);
+
+        channel.attributeMap().put(RedisEncoder.ENCODER, encoder);
+
+        RedisDecoder decoder = new RedisDecoder(connection, encoder);
+        decoder.src(newByteBuffer(config.getOption(SO_RCVBUF), config.getOption(DIRECT_BUF)));
+        // we need to restore whatever is read
+        decoder.src().put(stringToBytes(protocol));
+
+        channel.inboundPipeline().replace(this, decoder);
     }
 
     private void initChannelForCluster() {
