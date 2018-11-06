@@ -29,12 +29,12 @@ import com.hazelcast.nio.Bits;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
-import com.hazelcast.raft.service.lock.RaftLockService;
 import com.hazelcast.raft.service.exception.WaitKeyCancelledException;
+import com.hazelcast.raft.service.lock.RaftLockOwnershipState;
+import com.hazelcast.raft.service.lock.RaftLockService;
 import com.hazelcast.raft.service.session.SessionAwareProxy;
 import com.hazelcast.raft.service.session.SessionManagerProvider;
 import com.hazelcast.spi.InternalCompletableFuture;
-import com.hazelcast.util.UuidUtil;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -42,27 +42,25 @@ import java.util.concurrent.locks.Condition;
 
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
 import static com.hazelcast.raft.impl.RaftGroupIdImpl.dataSize;
-import static com.hazelcast.raft.service.lock.RaftLockService.INVALID_FENCE;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.CREATE_TYPE;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.DESTROY_TYPE;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.FORCE_UNLOCK_TYPE;
-import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.LOCK_COUNT_TYPE;
-import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.LOCK_FENCE_TYPE;
+import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.LOCK_OWNERSHIP_STATE;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.LOCK_TYPE;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.TRY_LOCK_TYPE;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.UNLOCK_TYPE;
 import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
 import static com.hazelcast.raft.service.util.ClientAccessor.getClient;
 import static com.hazelcast.util.ThreadUtil.getThreadId;
+import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 
 /**
  * TODO: Javadoc Pending...
  */
 public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
-    static final ClientMessageDecoder INT_RESPONSE_DECODER = new IntResponseDecoder();
     static final ClientMessageDecoder BOOLEAN_RESPONSE_DECODER = new BooleanResponseDecoder();
-    static final ClientMessageDecoder LONG_RESPONSE_DECODER = new LongResponseDecoder();
+    static final ClientMessageDecoder LOCK_OWNERSHIP_STATE_RESPONSE_DECODER = new RaftLockOwnershipStateResponseDecoder();
 
     public static ILock create(HazelcastInstance instance, String name) {
         int dataSize = ClientMessage.HEADER_SIZE + calculateDataSize(name);
@@ -101,12 +99,14 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     @Override
     public void lock() {
-        UUID invUid = UuidUtil.newUnsecureUUID();
+        UUID invUid = newUnsecureUUID();
         for (;;) {
             long sessionId = acquireSession();
             ClientMessage msg = encodeRequest(LOCK_TYPE, groupId, name, sessionId, getThreadId(), invUid);
             try {
-                invoke(client, name, msg, LONG_RESPONSE_DECODER).join();
+                RaftLockOwnershipState ownership = RaftLockProxy.<RaftLockOwnershipState>invoke(client, name, msg,
+                        LOCK_OWNERSHIP_STATE_RESPONSE_DECODER).join();
+                assert ownership.isLocked();
                 break;
             } catch (SessionExpiredException e) {
                 invalidateSession(sessionId);
@@ -121,18 +121,18 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     @Override
     public boolean tryLock(long time, TimeUnit unit) {
-        UUID invUid = UuidUtil.newUnsecureUUID();
+        UUID invUid = newUnsecureUUID();
         long timeoutMs = Math.max(0, unit.toMillis(time));
         for (;;) {
             long sessionId = acquireSession();
             ClientMessage msg = encodeRequest(TRY_LOCK_TYPE, groupId, name, sessionId, getThreadId(), invUid, timeoutMs);
             try {
-                InternalCompletableFuture<Long> future = invoke(client, name, msg, LONG_RESPONSE_DECODER);
-                boolean locked = (future.join() != INVALID_FENCE);
-                if (!locked) {
-                    releaseSession(sessionId);
+                RaftLockOwnershipState ownership = RaftLockProxy.<RaftLockOwnershipState>invoke(client, name, msg,
+                        LOCK_OWNERSHIP_STATE_RESPONSE_DECODER).join();
+                if (ownership.isLocked()) {
+                    return ownership.isLocked();
                 }
-                return locked;
+                releaseSession(sessionId);
             } catch (WaitKeyCancelledException e) {
                 return false;
             } catch (SessionExpiredException e) {
@@ -147,8 +147,8 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
         if (sessionId == NO_SESSION_ID) {
             throw new IllegalMonitorStateException();
         }
-        UUID invUid = UuidUtil.newUnsecureUUID();
-        ClientMessage msg = encodeRequest(UNLOCK_TYPE, groupId, name, sessionId, getThreadId(), invUid);
+        UUID invUid = newUnsecureUUID();
+        ClientMessage msg = encodeRequest(UNLOCK_TYPE, groupId, name, sessionId, getThreadId(), invUid, 1);
         try {
             invoke(client, name, msg, BOOLEAN_RESPONSE_DECODER).join();
         } catch (SessionExpiredException e) {
@@ -169,20 +169,23 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
         if (sessionId == NO_SESSION_ID) {
             return false;
         }
-        ClientMessage msg = encodeRequest(LOCK_COUNT_TYPE, groupId, name, sessionId, getThreadId());
-        InternalCompletableFuture<Integer> future = invoke(client, name, msg, INT_RESPONSE_DECODER);
-        return future.join() > 0;
+
+        ClientMessage msg = encodeRequest(LOCK_OWNERSHIP_STATE, groupId, name, -1, -1);
+        InternalCompletableFuture<RaftLockOwnershipState> f = invoke(client, name, msg, LOCK_OWNERSHIP_STATE_RESPONSE_DECODER);
+        RaftLockOwnershipState ownership = f.join();
+        return (ownership.getSessionId() == sessionId && ownership.getThreadId() == getThreadId());
     }
 
     @Override
     public int getLockCount() {
-        ClientMessage msg = encodeRequest(LOCK_COUNT_TYPE, groupId, name, NO_SESSION_ID, 0);
-        InternalCompletableFuture<Integer> future = invoke(client, name, msg, INT_RESPONSE_DECODER);
-        return future.join();
+        ClientMessage msg = encodeRequest(LOCK_OWNERSHIP_STATE, groupId, name, -1, -1);
+        InternalCompletableFuture<RaftLockOwnershipState> f = invoke(client, name, msg, LOCK_OWNERSHIP_STATE_RESPONSE_DECODER);
+        RaftLockOwnershipState ownership = f.join();
+        return ownership.getLockCount();
     }
 
     @Override
-    public boolean tryLock(long time, TimeUnit unit, long leaseTime, TimeUnit leaseUnit) throws InterruptedException {
+    public boolean tryLock(long time, TimeUnit unit, long leaseTime, TimeUnit leaseUnit) {
         throw new UnsupportedOperationException();
     }
 
@@ -193,15 +196,14 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
 
     @Override
     public void forceUnlock() {
-        ClientMessage msg = encodeRequest(LOCK_FENCE_TYPE, groupId, name, -1, -1);
-        long fence = RaftLockProxy.<Long>invoke(client, name, msg, LONG_RESPONSE_DECODER).join();
+        ClientMessage msg = encodeRequest(LOCK_OWNERSHIP_STATE, groupId, name, -1, -1);
+        RaftLockOwnershipState ownership = RaftLockProxy.<RaftLockOwnershipState>invoke(client, name, msg,
+                LOCK_OWNERSHIP_STATE_RESPONSE_DECODER).join();
+        if (!ownership.isLocked()) {
+            throw new IllegalMonitorStateException("Lock[" + name + "] has no owner!");
+        }
 
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 5;
-        msg = prepareClientMessage(groupId, name, dataSize, FORCE_UNLOCK_TYPE);
-        setRequestParams(msg, -1, -1, UuidUtil.newUnsecureUUID());
-        msg.set(fence);
-        msg.updateFrameLength();
-
+        msg = encodeRequest(FORCE_UNLOCK_TYPE, groupId, name, -1, -1, newUnsecureUUID(), ownership.getFence());
         invoke(client, name, msg, BOOLEAN_RESPONSE_DECODER).join();
     }
 
@@ -221,7 +223,7 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
     }
 
     @Override
-    public void lockInterruptibly() throws InterruptedException {
+    public void lockInterruptibly() {
         throw new UnsupportedOperationException();
     }
 
@@ -271,6 +273,17 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
     }
 
     static ClientMessage encodeRequest(int messageTypeId, RaftGroupId groupId, String name, long sessionId,
+                                       long threadId, UUID invUid, int val) {
+        int dataSize = ClientMessage.HEADER_SIZE
+                + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4 + Bits.INT_SIZE_IN_BYTES;
+        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, messageTypeId);
+        setRequestParams(msg, sessionId, threadId, invUid);
+        msg.set(val);
+        msg.updateFrameLength();
+        return msg;
+    }
+
+    static ClientMessage encodeRequest(int messageTypeId, RaftGroupId groupId, String name, long sessionId,
             long threadId, UUID invUid, long val) {
 
         int dataSize = ClientMessage.HEADER_SIZE
@@ -309,13 +322,6 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
         return msg;
     }
 
-    private static class IntResponseDecoder implements ClientMessageDecoder {
-        @Override
-        public Integer decodeClientMessage(ClientMessage msg) {
-            return msg.getInt();
-        }
-    }
-
     private static class BooleanResponseDecoder implements ClientMessageDecoder {
         @Override
         public Boolean decodeClientMessage(ClientMessage msg) {
@@ -323,10 +329,14 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
         }
     }
 
-    private static class LongResponseDecoder implements ClientMessageDecoder {
+    private static class RaftLockOwnershipStateResponseDecoder implements ClientMessageDecoder {
         @Override
-        public Long decodeClientMessage(ClientMessage msg) {
-            return msg.getLong();
+        public RaftLockOwnershipState decodeClientMessage(ClientMessage msg) {
+            long fence = msg.getLong();
+            int lockCount = msg.getInt();
+            long sessionId = msg.getLong();
+            long threadId = msg.getLong();
+            return new RaftLockOwnershipState(fence, lockCount, sessionId, threadId);
         }
     }
 }

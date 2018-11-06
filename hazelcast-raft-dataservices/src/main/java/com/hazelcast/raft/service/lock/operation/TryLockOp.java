@@ -22,11 +22,10 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.util.PostponedResponse;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
 import com.hazelcast.raft.service.lock.RaftLockService;
+import com.hazelcast.raft.service.lock.RaftLockOwnershipState;
 
 import java.io.IOException;
 import java.util.UUID;
-
-import static com.hazelcast.raft.service.lock.RaftLockService.INVALID_FENCE;
 
 /**
  * TODO: Javadoc Pending...
@@ -46,12 +45,14 @@ public class TryLockOp extends AbstractLockOp {
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
-        long fence = service.tryAcquire(groupId, name, getLockEndpoint(), commitIndex, invocationUid, timeoutMs);
-        if (fence != INVALID_FENCE) {
-            return fence;
+        RaftLockOwnershipState ownership = service.tryAcquire(groupId, name, getLockEndpoint(), commitIndex, invocationUid, timeoutMs);
+        if (ownership.isLocked()) {
+            return ownership;
+        } else if (timeoutMs  > 0) {
+            return PostponedResponse.INSTANCE;
         }
 
-        return timeoutMs > 0 ? PostponedResponse.INSTANCE : INVALID_FENCE;
+        return ownership;
     }
 
     @Override

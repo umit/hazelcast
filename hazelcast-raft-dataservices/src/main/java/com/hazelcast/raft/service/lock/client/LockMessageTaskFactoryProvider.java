@@ -36,8 +36,7 @@ public class LockMessageTaskFactoryProvider implements MessageTaskFactoryProvide
     public static final int TRY_LOCK_TYPE = 12003;
     public static final int UNLOCK_TYPE = 12004;
     public static final int FORCE_UNLOCK_TYPE = 12005;
-    public static final int LOCK_COUNT_TYPE = 12006;
-    public static final int LOCK_FENCE_TYPE = 12007;
+    public static final int LOCK_OWNERSHIP_STATE = 12006;
 
     private final Node node;
 
@@ -91,17 +90,10 @@ public class LockMessageTaskFactoryProvider implements MessageTaskFactoryProvide
             }
         };
 
-        factories[LOCK_COUNT_TYPE] = new MessageTaskFactory() {
+        factories[LOCK_OWNERSHIP_STATE] = new MessageTaskFactory() {
             @Override
             public MessageTask create(ClientMessage clientMessage, Connection connection) {
-                return new GetLockCountMessageTask(clientMessage, node, connection);
-            }
-        };
-
-        factories[LOCK_FENCE_TYPE] = new MessageTaskFactory() {
-            @Override
-            public MessageTask create(ClientMessage clientMessage, Connection connection) {
-                return new GetLockFenceMessageTask(clientMessage, node, connection);
+                return new GetLockOwnershipStateMessageTask(clientMessage, node, connection);
             }
         };
 

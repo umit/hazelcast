@@ -24,8 +24,6 @@ import com.hazelcast.raft.service.lock.RaftLock.ReleaseResult;
 
 import java.util.UUID;
 
-import static com.hazelcast.raft.service.lock.RaftLockService.INVALID_FENCE;
-
 /**
  * TODO: Javadoc Pending...
  */
@@ -56,26 +54,25 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> impleme
     AcquireResult tryAcquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid, long timeoutMs) {
         boolean wait = (timeoutMs > 0);
         AcquireResult result = getOrInitResource(name).acquire(endpoint, commitIndex, invocationUid, wait);
-        long fence = result.fence;
 
         for (LockInvocationKey waitKey : result.cancelled) {
             removeWaitKey(waitKey);
         }
 
-        if (wait && fence == INVALID_FENCE) {
+        if (wait && !result.ownership.isLocked()) {
             addWaitKey(new LockInvocationKey(name, endpoint, commitIndex, invocationUid), timeoutMs);
         }
 
         return result;
     }
 
-    ReleaseResult release(String name, LockEndpoint endpoint, UUID invocationUid) {
+    ReleaseResult release(String name, LockEndpoint endpoint, UUID invocationUid, int lockCount) {
         RaftLock lock = getResourceOrNull(name);
         if (lock == null) {
             return ReleaseResult.FAILED;
         }
 
-        ReleaseResult result = lock.release(endpoint, invocationUid);
+        ReleaseResult result = lock.release(endpoint, invocationUid, lockCount);
         for (LockInvocationKey key : result.notifications) {
             removeWaitKey(key);
         }
@@ -97,34 +94,9 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> impleme
         return result;
     }
 
-    int getLockCount(String name, LockEndpoint endpoint) {
+    RaftLockOwnershipState getLockOwnershipState(String name) {
         RaftLock lock = getResourceOrNull(name);
-        if (lock == null) {
-            return 0;
-        }
-
-        if (endpoint != null) {
-            LockInvocationKey owner = lock.owner();
-            return (owner != null && endpoint.equals(owner.endpoint())) ? lock.lockCount() : 0;
-        }
-
-        return lock.lockCount();
-    }
-
-    long getLockFence(String name, LockEndpoint endpoint) {
-        RaftLock lock = getResourceOrNull(name);
-        if (lock == null) {
-            throw new IllegalMonitorStateException();
-        }
-
-        LockInvocationKey owner = lock.owner();
-        if (owner == null) {
-            throw new IllegalMonitorStateException("Lock[" + name + "] has no owner!");
-        } else if (endpoint != null && !owner.endpoint().equals(endpoint)) {
-            throw new IllegalMonitorStateException("Lock[" + name + "] is owned by " + owner.endpoint() + "!");
-        }
-
-        return owner.commitIndex();
+        return lock != null ? lock.lockOwnershipState() : RaftLockOwnershipState.NOT_LOCKED;
     }
 
     @Override

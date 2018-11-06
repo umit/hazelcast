@@ -26,6 +26,7 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;
+import com.hazelcast.raft.service.lock.RaftLockOwnershipState;
 import com.hazelcast.raft.service.lock.RaftLockService;
 
 import java.security.Permission;
@@ -67,6 +68,10 @@ public abstract class AbstractLockMessageTask extends AbstractMessageTask implem
         if (response instanceof Boolean) {
             return encodeBooleanResponse((Boolean) response);
         }
+        if (response instanceof RaftLockOwnershipState) {
+            return encodeRaftLockOwnershipStateResponse((RaftLockOwnershipState) response);
+        }
+
         throw new IllegalArgumentException("Unknown response: " + response);
     }
 
@@ -83,6 +88,18 @@ public abstract class AbstractLockMessageTask extends AbstractMessageTask implem
         ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
         clientMessage.set(response);
         clientMessage.updateFrameLength();
+        return clientMessage;
+    }
+
+    private ClientMessage encodeRaftLockOwnershipStateResponse(RaftLockOwnershipState ownership) {
+        ClientMessage clientMessage;
+        int dataSize = ClientMessage.HEADER_SIZE + Bits.LONG_SIZE_IN_BYTES * 3 + Bits.INT_SIZE_IN_BYTES;
+        clientMessage = ClientMessage.createForEncode(dataSize);
+        clientMessage.set(ownership.getFence());
+        clientMessage.set(ownership.getLockCount());
+        clientMessage.set(ownership.getSessionId());
+        clientMessage.set(ownership.getThreadId());
+
         return clientMessage;
     }
 

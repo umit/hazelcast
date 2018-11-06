@@ -20,23 +20,23 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
-import com.hazelcast.raft.service.lock.operation.GetLockFenceOp;
+import com.hazelcast.raft.service.lock.operation.GetLockOwnershipStateOp;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class GetLockFenceMessageTask extends AbstractLockMessageTask {
+public class GetLockOwnershipStateMessageTask extends AbstractLockMessageTask {
 
     private long threadId;
 
-    GetLockFenceMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    GetLockOwnershipStateMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
         RaftInvocationManager invocationManager = getRaftInvocationManager();
-        invocationManager.invoke(groupId, new GetLockFenceOp(name, sessionId, threadId)).andThen(this);
+        invocationManager.invoke(groupId, new GetLockOwnershipStateOp(name)).andThen(this);
     }
 
     @Override

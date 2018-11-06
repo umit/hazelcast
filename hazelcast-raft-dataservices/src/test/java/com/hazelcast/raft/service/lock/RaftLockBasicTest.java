@@ -57,7 +57,6 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     private HazelcastInstance lockInstance;
     private ILock lock;
     private String name = "lock";
-    private int groupSize = 3;
 
     @Before
     public void setup() {
@@ -68,7 +67,7 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     }
 
     protected HazelcastInstance[] createInstances() {
-        return newInstances(groupSize);
+        return newInstances(3);
     }
 
     protected ILock createLock(String name) {

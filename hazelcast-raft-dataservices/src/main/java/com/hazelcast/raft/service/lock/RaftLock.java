@@ -21,7 +21,6 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.service.blocking.BlockingResource;
-import com.hazelcast.util.UuidUtil;
 import com.hazelcast.util.collection.Long2ObjectHashMap;
 
 import java.io.IOException;
@@ -34,7 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static com.hazelcast.raft.service.lock.RaftLockService.INVALID_FENCE;
+import static com.hazelcast.raft.service.lock.RaftLockOwnershipState.NOT_LOCKED;
+import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.util.Collections.unmodifiableCollection;
 
 /**
@@ -57,7 +57,9 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
         // if acquire() is being retried
         if (invocationUid.equals(invocationRefUids.get(endpoint))
                 || (owner != null && owner.invocationUid().equals(invocationUid))) {
-            return AcquireResult.acquired(owner.commitIndex());
+            RaftLockOwnershipState ownership = new RaftLockOwnershipState(owner.commitIndex(), lockCount, endpoint.sessionId(),
+                    endpoint.threadId());
+            return AcquireResult.acquired(ownership);
         }
 
         invocationRefUids.remove(endpoint);
@@ -70,7 +72,9 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
         if (endpoint.equals(owner.endpoint())) {
             invocationRefUids.put(endpoint, invocationUid);
             lockCount++;
-            return AcquireResult.acquired(owner.commitIndex());
+            RaftLockOwnershipState ownership = new RaftLockOwnershipState(owner.commitIndex(), lockCount, endpoint.sessionId(),
+                    endpoint.threadId());
+            return AcquireResult.acquired(ownership);
         }
 
         Collection<LockInvocationKey> cancelledWaitKeys = cancelWaitKeys(endpoint, invocationUid);
@@ -96,11 +100,7 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
         return cancelled;
     }
 
-    ReleaseResult release(LockEndpoint endpoint, UUID invocationUuid) {
-        return release(endpoint, 1, invocationUuid);
-    }
-
-    private ReleaseResult release(LockEndpoint endpoint, int releaseCount, UUID invocationUid) {
+    ReleaseResult release(LockEndpoint endpoint, UUID invocationUid, int releaseCount) {
         // if release() is being retried
         if (invocationUid.equals(invocationRefUids.get(endpoint))) {
             return ReleaseResult.SUCCESSFUL;
@@ -132,7 +132,7 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
                 owner = newOwner;
                 lockCount = 1;
 
-                return ReleaseResult.successful(keys);
+                return ReleaseResult.successful(lockOwnershipState(), keys);
             } else {
                 owner = null;
             }
@@ -149,18 +149,18 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
         }
 
         if (owner.commitIndex() == expectedFence) {
-            return release(owner.endpoint(), lockCount, invocationUid);
+            return release(owner.endpoint(), invocationUid, lockCount);
         }
 
         return ReleaseResult.FAILED;
     }
 
-    int lockCount() {
-        return lockCount;
-    }
+    RaftLockOwnershipState lockOwnershipState() {
+        if (owner == null) {
+            return RaftLockOwnershipState.NOT_LOCKED;
+        }
 
-    LockInvocationKey owner() {
-        return owner;
+        return new RaftLockOwnershipState(owner.commitIndex(), lockCount, owner.sessionId(), owner.endpoint().threadId());
     }
 
     @Override
@@ -173,7 +173,7 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
                 }
             }
 
-            ReleaseResult result = release(owner.endpoint(), Integer.MAX_VALUE, UuidUtil.newUnsecureUUID());
+            ReleaseResult result = release(owner.endpoint(), newUnsecureUUID(), Integer.MAX_VALUE);
 
             if (!result.success) {
                 assert result.notifications.isEmpty();
@@ -250,20 +250,20 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
 
     static class AcquireResult {
 
-        private static AcquireResult acquired(long fence) {
-            return new AcquireResult(fence, Collections.<LockInvocationKey>emptyList());
+        private static AcquireResult acquired(RaftLockOwnershipState ownership) {
+            return new AcquireResult(ownership, Collections.<LockInvocationKey>emptyList());
         }
 
         private static AcquireResult notAcquired(Collection<LockInvocationKey> cancelled) {
-            return new AcquireResult(INVALID_FENCE, cancelled);
+            return new AcquireResult(NOT_LOCKED, cancelled);
         }
 
-        final long fence;
+        final RaftLockOwnershipState ownership;
 
         final Collection<LockInvocationKey> cancelled;
 
-        private AcquireResult(long fence, Collection<LockInvocationKey> cancelled) {
-            this.fence = fence;
+        private AcquireResult(RaftLockOwnershipState ownership, Collection<LockInvocationKey> cancelled) {
+            this.ownership = ownership;
             this.cancelled = unmodifiableCollection(cancelled);
         }
 
@@ -272,25 +272,28 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
     static class ReleaseResult {
 
         static final ReleaseResult FAILED
-                = new ReleaseResult(false, Collections.<LockInvocationKey>emptyList());
+                = new ReleaseResult(false, null, Collections.<LockInvocationKey>emptyList());
 
         private static final ReleaseResult SUCCESSFUL
-                = new ReleaseResult(true, Collections.<LockInvocationKey>emptyList());
+                = new ReleaseResult(true, null, Collections.<LockInvocationKey>emptyList());
 
-        private static ReleaseResult successful(Collection<LockInvocationKey> notifications) {
-            return new ReleaseResult(true, notifications);
+        private static ReleaseResult successful(RaftLockOwnershipState ownership, Collection<LockInvocationKey> notifications) {
+            return new ReleaseResult(true, ownership, notifications);
         }
 
         private static ReleaseResult failed(Collection<LockInvocationKey> notifications) {
-            return new ReleaseResult(false, notifications);
+            return new ReleaseResult(false, null, notifications);
         }
 
         final boolean success;
 
+        final RaftLockOwnershipState ownership;
+
         final Collection<LockInvocationKey> notifications;
 
-        private ReleaseResult(boolean success, Collection<LockInvocationKey> notifications) {
+        private ReleaseResult(boolean success, RaftLockOwnershipState ownership, Collection<LockInvocationKey> notifications) {
             this.success = success;
+            this.ownership = ownership;
             this.notifications = unmodifiableCollection(notifications);
         }
     }

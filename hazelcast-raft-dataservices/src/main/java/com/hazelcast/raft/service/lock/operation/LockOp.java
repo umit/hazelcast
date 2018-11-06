@@ -21,10 +21,9 @@ import com.hazelcast.raft.impl.util.PostponedResponse;
 import com.hazelcast.raft.service.lock.LockEndpoint;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
 import com.hazelcast.raft.service.lock.RaftLockService;
+import com.hazelcast.raft.service.lock.RaftLockOwnershipState;
 
 import java.util.UUID;
-
-import static com.hazelcast.raft.service.lock.RaftLockService.INVALID_FENCE;
 
 /**
  * TODO: Javadoc Pending...
@@ -42,11 +41,8 @@ public class LockOp extends AbstractLockOp {
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
         LockEndpoint endpoint = getLockEndpoint();
-        long fence = service.acquire(groupId, name, endpoint, commitIndex, invocationUid);
-        if (fence != INVALID_FENCE) {
-            return fence;
-        }
-        return PostponedResponse.INSTANCE;
+        RaftLockOwnershipState ownership = service.acquire(groupId, name, endpoint, commitIndex, invocationUid);
+        return ownership.isLocked() ? ownership : PostponedResponse.INSTANCE;
     }
 
     @Override
