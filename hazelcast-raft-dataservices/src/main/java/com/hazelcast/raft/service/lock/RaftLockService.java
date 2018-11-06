@@ -84,55 +84,51 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         return nodeEngine.getConfig().findRaftLockConfig(name);
     }
 
-    public long acquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
+    public RaftLockOwnershipState acquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
         heartbeatSession(groupId, endpoint.sessionId());
         AcquireResult result = getOrInitRegistry(groupId).acquire(name, endpoint, commitIndex, invocationUid);
-        long fence = result.fence;
-        boolean acquired = (fence != INVALID_FENCE);
 
         if (logger.isFineEnabled()) {
-            logger.fine("Lock[" + name + "] in " + groupId + " acquired: " + acquired + " by <" + endpoint + ", "
-                    + invocationUid + ">");
+            logger.fine("Lock[" + name + "] in " + groupId + " acquired: " + result.ownership.isLocked() + " by <" + endpoint
+                    + ", " + invocationUid + ">");
         }
 
-        if (!acquired) {
+        if (!result.ownership.isLocked()) {
             notifyCancelledWaitKeys(groupId, name, result.cancelled);
         }
 
-        return fence;
+        return result.ownership;
     }
 
-    public long tryAcquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid,
-                          long timeoutMs) {
+    public RaftLockOwnershipState tryAcquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid,
+                                             long timeoutMs) {
         heartbeatSession(groupId, endpoint.sessionId());
         AcquireResult result = getOrInitRegistry(groupId).tryAcquire(name, endpoint, commitIndex, invocationUid, timeoutMs);
-        long fence = result.fence;
-        boolean acquired = (fence != INVALID_FENCE);
 
         if (logger.isFineEnabled()) {
-            logger.fine("Lock[" + name + "] in " + groupId + " acquired: " + acquired + " by <" + endpoint + ", "
-                    + invocationUid + ">");
+            logger.fine("Lock[" + name + "] in " + groupId + " acquired: " + result.ownership.isLocked() + " by <" + endpoint
+                    + ", " + invocationUid + ">");
         }
 
-        if (!acquired) {
+        if (!result.ownership.isLocked()) {
             scheduleTimeout(groupId, new LockInvocationKey(name, endpoint, commitIndex, invocationUid), timeoutMs);
             notifyCancelledWaitKeys(groupId, name, result.cancelled);
         }
 
-        return fence;
+        return result.ownership;
     }
 
-    public void release(RaftGroupId groupId, String name, LockEndpoint endpoint, UUID invocationUid) {
+    public void release(RaftGroupId groupId, String name, LockEndpoint endpoint, UUID invocationUid, int lockCount) {
         heartbeatSession(groupId, endpoint.sessionId());
         LockRegistry registry = getLockRegistryOrFail(groupId, name);
-        ReleaseResult result = registry.release(name, endpoint, invocationUid);
+        ReleaseResult result = registry.release(name, endpoint, invocationUid, lockCount);
 
         if (result.success) {
             if (logger.isFineEnabled()) {
                 logger.fine("Lock[" + name + "] in " + groupId + " is released by <" + endpoint + ", " + invocationUid + ">");
             }
 
-            notifySucceededWaitKeys(groupId, name, result.notifications);
+            notifySucceededWaitKeys(groupId, name, result.ownership, result.notifications);
         } else {
             notifyCancelledWaitKeys(groupId, name, result.notifications);
             throw new IllegalMonitorStateException("Current thread is not owner of the lock!");
@@ -149,17 +145,20 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
                         + expectedFence);
             }
 
-            notifySucceededWaitKeys(groupId, name, result.notifications);
+            notifySucceededWaitKeys(groupId, name, result.ownership, result.notifications);
         } else {
             notifyCancelledWaitKeys(groupId, name, result.notifications);
             throw new IllegalMonitorStateException("Current thread is not owner of the lock!");
         }
     }
 
-    private void notifySucceededWaitKeys(RaftGroupId groupId, String name, Collection<LockInvocationKey> waitKeys) {
+    private void notifySucceededWaitKeys(RaftGroupId groupId, String name, RaftLockOwnershipState ownership,
+                                         Collection<LockInvocationKey> waitKeys) {
         if (waitKeys.isEmpty()) {
             return;
         }
+
+        assert ownership.isLocked();
 
         LockInvocationKey waitKey = waitKeys.iterator().next();
         if (logger.isFineEnabled()) {
@@ -167,7 +166,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
                     + waitKey.invocationUid() + ">");
         }
 
-        notifyWaitKeys(groupId, waitKeys, waitKey.commitIndex());
+        notifyWaitKeys(groupId, waitKeys, ownership);
     }
 
     private void notifyCancelledWaitKeys(RaftGroupId groupId, String name, Collection<LockInvocationKey> waitKeys) {
@@ -180,19 +179,12 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         notifyWaitKeys(groupId, waitKeys, new WaitKeyCancelledException());
     }
 
-    public int getLockCount(RaftGroupId groupId, String name, LockEndpoint endpoint) {
+    public RaftLockOwnershipState getLockOwnershipState(RaftGroupId groupId, String name) {
         checkNotNull(groupId);
         checkNotNull(name);
 
         LockRegistry registry = getRegistryOrNull(groupId);
-        return registry != null ? registry.getLockCount(name, endpoint) : 0;
-    }
-
-    public long getLockFence(RaftGroupId groupId, String name, LockEndpoint endpoint) {
-        checkNotNull(groupId);
-        checkNotNull(name);
-
-        return getLockRegistryOrFail(groupId, name).getLockFence(name, endpoint);
+        return registry != null ? registry.getLockOwnershipState(name) : RaftLockOwnershipState.NOT_LOCKED;
     }
 
     private LockRegistry getLockRegistryOrFail(RaftGroupId groupId, String name) {
@@ -212,7 +204,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
 
     @Override
     protected Object invalidatedWaitKeyResponse() {
-        return INVALID_FENCE;
+        return RaftLockOwnershipState.NOT_LOCKED;
     }
 
     @Override

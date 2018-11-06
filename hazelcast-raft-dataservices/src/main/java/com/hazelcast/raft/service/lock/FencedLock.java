@@ -43,6 +43,9 @@ public interface FencedLock extends DistributedObject {
 
     boolean isLockedByCurrentThread();
 
+    // returns the true lock count if the lock is acquired by the caller endpoint
+    // returns 1 if the lock is acquired by another endpoint because reentrant acquires are local
+    // returns 0 otherwise
     int getLockCount();
 
     RaftGroupId getGroupId();

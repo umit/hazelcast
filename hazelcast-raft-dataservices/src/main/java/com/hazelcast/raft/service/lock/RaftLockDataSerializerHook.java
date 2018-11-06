@@ -21,8 +21,7 @@ import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.service.lock.operation.ForceUnlockOp;
-import com.hazelcast.raft.service.lock.operation.GetLockCountOp;
-import com.hazelcast.raft.service.lock.operation.GetLockFenceOp;
+import com.hazelcast.raft.service.lock.operation.GetLockOwnershipStateOp;
 import com.hazelcast.raft.service.lock.operation.LockOp;
 import com.hazelcast.raft.service.lock.operation.TryLockOp;
 import com.hazelcast.raft.service.lock.operation.UnlockOp;
@@ -38,12 +37,12 @@ public class RaftLockDataSerializerHook implements DataSerializerHook {
     public static final int RAFT_LOCK = 2;
     public static final int LOCK_ENDPOINT = 3;
     public static final int LOCK_INVOCATION_KEY = 4;
-    public static final int LOCK_OP = 5;
-    public static final int TRY_LOCK_OP = 6;
-    public static final int UNLOCK_OP = 7;
-    public static final int FORCE_UNLOCK_OP = 8;
-    public static final int GET_LOCK_COUNT_OP = 9;
-    public static final int GET_LOCK_FENCE_OP = 10;
+    public static final int RAFT_LOCK_OWNERSHIP = 5;
+    public static final int LOCK_OP = 6;
+    public static final int TRY_LOCK_OP = 7;
+    public static final int UNLOCK_OP = 8;
+    public static final int FORCE_UNLOCK_OP = 9;
+    public static final int GET_RAFT_LOCK_OWNERSHIP_STATE_OP = 10;
 
     @Override
     public int getFactoryId() {
@@ -64,6 +63,8 @@ public class RaftLockDataSerializerHook implements DataSerializerHook {
                         return new LockEndpoint();
                     case LOCK_INVOCATION_KEY:
                         return new LockInvocationKey();
+                    case RAFT_LOCK_OWNERSHIP:
+                        return new RaftLockOwnershipState();
                     case LOCK_OP:
                         return new LockOp();
                     case TRY_LOCK_OP:
@@ -72,10 +73,8 @@ public class RaftLockDataSerializerHook implements DataSerializerHook {
                         return new UnlockOp();
                     case FORCE_UNLOCK_OP:
                         return new ForceUnlockOp();
-                    case GET_LOCK_COUNT_OP:
-                        return new GetLockCountOp();
-                    case GET_LOCK_FENCE_OP:
-                        return new GetLockFenceOp();
+                    case GET_RAFT_LOCK_OWNERSHIP_STATE_OP:
+                        return new GetLockOwnershipStateOp();
                     default:
                         throw new IllegalArgumentException("Undefined type: " + typeId);
                 }

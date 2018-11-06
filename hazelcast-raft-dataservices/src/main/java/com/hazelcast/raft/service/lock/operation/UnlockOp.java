@@ -16,10 +16,13 @@
 
 package com.hazelcast.raft.service.lock.operation;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
 import com.hazelcast.raft.service.lock.RaftLockService;
 
+import java.io.IOException;
 import java.util.UUID;
 
 /**
@@ -27,22 +30,43 @@ import java.util.UUID;
  */
 public class UnlockOp extends AbstractLockOp {
 
+    private int lockCount;
+
     public UnlockOp() {
     }
 
-    public UnlockOp(String name, long sessionId, long threadId, UUID invUid) {
+    public UnlockOp(String name, long sessionId, long threadId, UUID invUid, int lockCount) {
         super(name, sessionId, threadId, invUid);
+        this.lockCount = lockCount;
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
-        service.release(groupId, name, getLockEndpoint(), invocationUid);
+        service.release(groupId, name, getLockEndpoint(), invocationUid, lockCount);
         return true;
     }
 
     @Override
     public int getId() {
         return RaftLockDataSerializerHook.UNLOCK_OP;
+    }
+
+    @Override
+    public void writeData(ObjectDataOutput out) throws IOException {
+        super.writeData(out);
+        out.writeInt(lockCount);
+    }
+
+    @Override
+    public void readData(ObjectDataInput in) throws IOException {
+        super.readData(in);
+        lockCount = in.readInt();
+    }
+
+    @Override
+    protected void toString(StringBuilder sb) {
+        super.toString(sb);
+        sb.append(", lockCount=").append(lockCount);
     }
 }

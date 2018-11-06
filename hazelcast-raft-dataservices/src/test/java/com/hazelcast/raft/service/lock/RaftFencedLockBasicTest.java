@@ -44,7 +44,6 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
     protected HazelcastInstance lockInstance;
     private FencedLock lock;
     private String name = "lock";
-    private int groupSize = 3;
 
     @Before
     public void setup() {
@@ -65,7 +64,7 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
     }
 
     protected HazelcastInstance[] createInstances() {
-        return newInstances(groupSize);
+        return newInstances(3);
     }
 
     protected FencedLock createLock(String name) {
@@ -450,7 +449,7 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
         lock.lock();
 
         assertTrue(lock.isLockedByCurrentThread());
-        assertEquals(1, lock.getLockCount());
+        assertEquals(2, lock.getLockCount());
     }
 
     @Test(timeout = 60000)

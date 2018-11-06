@@ -26,6 +26,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.service.lock.FencedLock;
+import com.hazelcast.raft.service.lock.RaftLockOwnershipState;
 import com.hazelcast.raft.service.lock.proxy.AbstractRaftFencedLockProxy;
 import com.hazelcast.raft.service.session.SessionManagerProvider;
 import com.hazelcast.spi.InternalCompletableFuture;
@@ -36,14 +37,12 @@ import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDat
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.CREATE_TYPE;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.DESTROY_TYPE;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.FORCE_UNLOCK_TYPE;
-import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.LOCK_COUNT_TYPE;
-import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.LOCK_FENCE_TYPE;
+import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.LOCK_OWNERSHIP_STATE;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.LOCK_TYPE;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.TRY_LOCK_TYPE;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.UNLOCK_TYPE;
 import static com.hazelcast.raft.service.lock.client.RaftLockProxy.BOOLEAN_RESPONSE_DECODER;
-import static com.hazelcast.raft.service.lock.client.RaftLockProxy.INT_RESPONSE_DECODER;
-import static com.hazelcast.raft.service.lock.client.RaftLockProxy.LONG_RESPONSE_DECODER;
+import static com.hazelcast.raft.service.lock.client.RaftLockProxy.LOCK_OWNERSHIP_STATE_RESPONSE_DECODER;
 import static com.hazelcast.raft.service.lock.client.RaftLockProxy.encodeRequest;
 import static com.hazelcast.raft.service.lock.client.RaftLockProxy.invoke;
 import static com.hazelcast.raft.service.lock.client.RaftLockProxy.prepareClientMessage;
@@ -86,40 +85,41 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
     }
 
     @Override
-    protected InternalCompletableFuture<Long> doLock(RaftGroupId groupId, String name, long sessionId, long threadId, UUID invocationUid) {
+    protected final InternalCompletableFuture<RaftLockOwnershipState> doLock(RaftGroupId groupId, String name,
+                                                                       long sessionId, long threadId,
+                                                                       UUID invocationUid) {
         ClientMessage msg = encodeRequest(LOCK_TYPE, groupId, name, sessionId, threadId, invocationUid);
-        return invoke(client, name, msg, LONG_RESPONSE_DECODER);
+        return invoke(client, name, msg, LOCK_OWNERSHIP_STATE_RESPONSE_DECODER);
     }
 
     @Override
-    protected InternalCompletableFuture<Long> doTryLock(RaftGroupId groupId, String name, long sessionId, long threadId, UUID invocationUid,
-                                     long timeoutMillis) {
+    protected final InternalCompletableFuture<RaftLockOwnershipState> doTryLock(RaftGroupId groupId, String name,
+                                                                                long sessionId, long threadId,
+                                                                                UUID invocationUid, long timeoutMillis) {
         ClientMessage msg = encodeRequest(TRY_LOCK_TYPE, groupId, name, sessionId, threadId, invocationUid, timeoutMillis);
-        return invoke(client, name, msg, LONG_RESPONSE_DECODER);
+        return invoke(client, name, msg, LOCK_OWNERSHIP_STATE_RESPONSE_DECODER);
     }
 
     @Override
-    protected InternalCompletableFuture<Object> doUnlock(RaftGroupId groupId, String name, long sessionId, long threadId, UUID invocationUid) {
-        ClientMessage msg = encodeRequest(UNLOCK_TYPE, groupId, name, sessionId, threadId, invocationUid);
+    protected final InternalCompletableFuture<Object> doUnlock(RaftGroupId groupId, String name,
+                                                               long sessionId, long threadId,
+                                                               UUID invocationUid, int releaseCount) {
+        ClientMessage msg = encodeRequest(UNLOCK_TYPE, groupId, name, sessionId, threadId, invocationUid, releaseCount);
         return invoke(client, name, msg, BOOLEAN_RESPONSE_DECODER);
     }
 
     @Override
-    protected InternalCompletableFuture<Object> doForceUnlock(RaftGroupId groupId, String name, long expectedFence, UUID invocationUid) {
+    protected final InternalCompletableFuture<Object> doForceUnlock(RaftGroupId groupId, String name,
+                                                                    UUID invocationUid, long expectedFence) {
         ClientMessage msg = encodeRequest(FORCE_UNLOCK_TYPE, groupId, name, -1, -1, invocationUid, expectedFence);
         return invoke(client, name, msg, BOOLEAN_RESPONSE_DECODER);
     }
 
     @Override
-    protected InternalCompletableFuture<Long> doGetLockFence(RaftGroupId groupId, String name, long sessionId, long threadId) {
-        ClientMessage msg = encodeRequest(LOCK_FENCE_TYPE, groupId, name, sessionId, threadId);
-        return invoke(client, name, msg, LONG_RESPONSE_DECODER);
-    }
-
-    @Override
-    protected InternalCompletableFuture<Integer> doGetLockCount(RaftGroupId groupId, String name, long sessionId, long threadId) {
-        ClientMessage msg = encodeRequest(LOCK_COUNT_TYPE, groupId, name, sessionId, threadId);
-        return invoke(client, name, msg, INT_RESPONSE_DECODER);
+    protected final InternalCompletableFuture<RaftLockOwnershipState> doGetLockOwnershipState(RaftGroupId groupId,
+                                                                                              String name) {
+        ClientMessage msg = encodeRequest(LOCK_OWNERSHIP_STATE, groupId, name, -1, -1);
+        return invoke(client, name, msg, LOCK_OWNERSHIP_STATE_RESPONSE_DECODER);
     }
 
     @Override

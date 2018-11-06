@@ -259,8 +259,10 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
                 LockRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertFalse(registry.getWaitTimeouts().isEmpty());
-                assertTrue(registry.getLockCount(name, null) > 0);
-                assertEquals(fence, registry.getLockFence(name, null));
+                RaftLockOwnershipState ownership = registry.getLockOwnershipState(name);
+                assertTrue(ownership.isLocked());
+                assertTrue(ownership.getLockCount() > 0);
+                assertEquals(fence, ownership.getFence());
             }
         });
     }
