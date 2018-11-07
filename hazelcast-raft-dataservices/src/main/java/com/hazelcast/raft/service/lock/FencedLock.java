@@ -19,21 +19,34 @@ package com.hazelcast.raft.service.lock;
 import com.hazelcast.core.DistributedObject;
 import com.hazelcast.raft.RaftGroupId;
 
+import javax.annotation.Nonnull;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
 
 /**
  * TODO: Javadoc Pending...
  * TODO: Move this interface to somewhere like com.hazelcast.core
  */
-public interface FencedLock extends DistributedObject {
+public interface FencedLock extends Lock, DistributedObject {
 
-    long lock();
+    void lock();
 
-    long tryLock();
+    void lockInterruptibly() throws InterruptedException;
 
-    long tryLock(long time, TimeUnit unit) throws InterruptedException;
+    long lockAndGetFence();
+
+    boolean tryLock();
+
+    long tryLockAndGetFence();
+
+    boolean tryLock(long time, @Nonnull TimeUnit unit);
+
+    long tryLockAndGetFence(long time, @Nonnull TimeUnit unit);
 
     void unlock();
+
+    @Nonnull Condition newCondition();
 
     void forceUnlock();
 

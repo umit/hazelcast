@@ -59,11 +59,11 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
     public void setup() {
         instances = createInstances();
 
-        lock = createLock(name);
+        lock = createLock();
         assertNotNull(lock);
     }
 
-    private FencedLock createLock(String name) {
+    private FencedLock createLock() {
         lockInstance = instances[RandomPicker.getInt(instances.length)];
         return createLock(lockInstance);
     }
@@ -113,12 +113,8 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
         spawn(new Runnable() {
             @Override
             public void run() {
-                try {
-                    lock.tryLock(10, MINUTES);
-                    latch.countDown();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+                lock.tryLock(10, MINUTES);
+                latch.countDown();
             }
         });
 
@@ -137,7 +133,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testFailedTryLockClearsWaitTimeouts() throws InterruptedException {
+    public void testFailedTryLockClearsWaitTimeouts() {
         lockByOtherThread(lock);
 
         RaftGroupId groupId = lock.getGroupId();
@@ -145,7 +141,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
         RaftLockService service = getNodeEngineImpl(leader).getService(RaftLockService.SERVICE_NAME);
         LockRegistry registry = service.getRegistryOrNull(groupId);
 
-        long fence = lock.tryLock(1, TimeUnit.SECONDS);
+        long fence = lock.tryLockAndGetFence(1, TimeUnit.SECONDS);
 
         assertEquals(RaftLockService.INVALID_FENCE, fence);
         assertTrue(registry.getWaitTimeouts().isEmpty());
@@ -163,11 +159,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
         spawn(new Runnable() {
             @Override
             public void run() {
-                try {
-                    lock.tryLock(10, MINUTES);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+                lock.tryLock(10, MINUTES);
             }
         });
 
@@ -185,17 +177,13 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
 
     @Test
     public void testNewRaftGroupMemberSchedulesTimeoutsWithSnapshot() throws ExecutionException, InterruptedException {
-        final long fence = this.lock.lock();
+        final long fence = this.lock.lockAndGetFence();
         assertTrue(fence > 0);
 
         spawn(new Runnable() {
             @Override
             public void run() {
-                try {
-                    lock.tryLock(10, MINUTES);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+                lock.tryLock(10, MINUTES);
             }
         });
 
@@ -342,11 +330,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
         spawn(new Runnable() {
             @Override
             public void run() {
-                try {
-                    lock.tryLock(30, TimeUnit.MINUTES);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+                lock.tryLock(30, TimeUnit.MINUTES);
             }
         });
 
