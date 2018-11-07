@@ -27,16 +27,19 @@ import com.hazelcast.raft.service.session.SessionAwareProxy;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.util.Clock;
 
+import javax.annotation.Nonnull;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
 
 import static com.hazelcast.raft.service.lock.RaftLockService.INVALID_FENCE;
 import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static com.hazelcast.util.ThreadUtil.getThreadId;
 import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * TODO: Javadoc Pending...
@@ -53,7 +56,17 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
     }
 
     @Override
-    public final long lock() {
+    public void lock() {
+        lockAndGetFence();
+    }
+
+    @Override
+    public void lockInterruptibly() {
+        lockAndGetFence();
+    }
+
+    @Override
+    public final long lockAndGetFence() {
         long threadId = getThreadId();
         long fence = tryReentrantLock(threadId);
         if (fence != INVALID_FENCE) {
@@ -81,12 +94,22 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
     }
 
     @Override
-    public final long tryLock() {
-        return tryLock(0, TimeUnit.MILLISECONDS);
+    public boolean tryLock() {
+        return tryLockAndGetFence() != INVALID_FENCE;
     }
 
     @Override
-    public final long tryLock(long time, TimeUnit unit) {
+    public final long tryLockAndGetFence() {
+        return tryLockAndGetFence(0, MILLISECONDS);
+    }
+
+    @Override
+    public boolean tryLock(long time, @Nonnull TimeUnit unit) {
+        return tryLockAndGetFence(time, unit) != INVALID_FENCE;
+    }
+
+    @Override
+    public final long tryLockAndGetFence(long time, @Nonnull TimeUnit unit) {
         checkNotNull(unit);
 
         long threadId = getThreadId();
@@ -173,6 +196,12 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
             lockStates.remove(threadId);
             releaseSession(sessionId);
         }
+    }
+
+    @Nonnull
+    @Override
+    public Condition newCondition() {
+        throw new UnsupportedOperationException();
     }
 
     @Override

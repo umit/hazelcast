@@ -51,11 +51,11 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
     @Before
     public void setup() {
         instances = newInstances(3);
-        lock = createLock(name);
+        lock = createLock();
         assertNotNull(lock);
     }
 
-    private RaftFencedLockProxy createLock(String name) {
+    private RaftFencedLockProxy createLock() {
         lockInstance = instances[RandomPicker.getInt(instances.length)];
         NodeEngineImpl nodeEngine = getNodeEngineImpl(lockInstance);
         RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
