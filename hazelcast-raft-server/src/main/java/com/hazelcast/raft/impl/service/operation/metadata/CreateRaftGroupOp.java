@@ -20,11 +20,12 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.service.RaftMetadataManager;
-import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.RaftMemberImpl;
+import com.hazelcast.raft.impl.RaftOp;
+import com.hazelcast.raft.impl.service.RaftMetadataManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -34,7 +35,7 @@ import java.util.Collection;
  * TODO: Javadoc Pending...
  *
  */
-public class CreateRaftGroupOp extends RaftOp implements IdentifiedDataSerializable {
+public class CreateRaftGroupOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
     private String groupName;
     private Collection<RaftMemberImpl> members;
@@ -52,6 +53,11 @@ public class CreateRaftGroupOp extends RaftOp implements IdentifiedDataSerializa
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
         return metadataManager.createRaftGroup(groupName, members, commitIndex);
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return true;
     }
 
     @Override

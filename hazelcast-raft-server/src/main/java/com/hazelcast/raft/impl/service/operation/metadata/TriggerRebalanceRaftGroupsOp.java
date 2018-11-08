@@ -24,13 +24,14 @@ import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftMetadataManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 
 import java.io.IOException;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class TriggerRebalanceRaftGroupsOp extends RaftOp implements IdentifiedDataSerializable {
+public class TriggerRebalanceRaftGroupsOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
     public TriggerRebalanceRaftGroupsOp() {
     }
@@ -41,6 +42,11 @@ public class TriggerRebalanceRaftGroupsOp extends RaftOp implements IdentifiedDa
         RaftMetadataManager metadataManager = service.getMetadataManager();
         metadataManager.triggerRebalanceRaftGroups();
         return null;
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return true;
     }
 
     @Override

@@ -19,10 +19,11 @@ package com.hazelcast.raft.service.lock.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 import com.hazelcast.raft.impl.util.PostponedResponse;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
-import com.hazelcast.raft.service.lock.RaftLockService;
 import com.hazelcast.raft.service.lock.RaftLockOwnershipState;
+import com.hazelcast.raft.service.lock.RaftLockService;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -30,7 +31,7 @@ import java.util.UUID;
 /**
  * TODO: Javadoc Pending...
  */
-public class TryLockOp extends AbstractLockOp {
+public class TryLockOp extends AbstractLockOp implements InvocationTargetLeaveAware {
 
     private long timeoutMs;
 
@@ -53,6 +54,11 @@ public class TryLockOp extends AbstractLockOp {
         }
 
         return ownership;
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return true;
     }
 
     @Override

@@ -20,16 +20,17 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.RaftOp;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 
 import java.io.IOException;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class GetDestroyingRaftGroupIdsOp extends RaftOp implements IdentifiedDataSerializable {
+public class GetDestroyingRaftGroupIdsOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
     public GetDestroyingRaftGroupIdsOp() {
     }
@@ -38,6 +39,11 @@ public class GetDestroyingRaftGroupIdsOp extends RaftOp implements IdentifiedDat
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
         return service.getMetadataManager().getDestroyingRaftGroupIds();
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return true;
     }
 
     @Override

@@ -18,8 +18,8 @@ package com.hazelcast.raft.impl.service.proxy;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
 import java.io.IOException;
@@ -27,7 +27,7 @@ import java.io.IOException;
 /**
  * TODO: Javadoc Pending...
  */
-public class DefaultRaftReplicateOp extends RaftReplicateOp {
+public class DefaultRaftReplicateOp extends RaftReplicateOp implements InvocationTargetLeaveAware {
 
     private RaftOp raftOp;
 
@@ -42,6 +42,15 @@ public class DefaultRaftReplicateOp extends RaftReplicateOp {
     @Override
     protected RaftOp getRaftOp() {
         return raftOp;
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        if (raftOp instanceof InvocationTargetLeaveAware) {
+            return ((InvocationTargetLeaveAware) raftOp).isSafeToRetryOnTargetLeave();
+        }
+
+        return false;
     }
 
     @Override

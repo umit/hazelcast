@@ -20,16 +20,19 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 
 import java.io.IOException;
 import java.util.UUID;
 
+import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
+
 /**
  * TODO: Javadoc Pending...
  */
-public class ChangePermitsOp extends AbstractSemaphoreOp implements IdentifiedDataSerializable {
+public class ChangePermitsOp extends AbstractSemaphoreOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
     private int permits;
 
@@ -45,6 +48,11 @@ public class ChangePermitsOp extends AbstractSemaphoreOp implements IdentifiedDa
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftSemaphoreService service = getService();
         return service.changePermits(groupId, name, sessionId, threadId, invocationUid, permits);
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return sessionId != NO_SESSION_ID;
     }
 
     @Override

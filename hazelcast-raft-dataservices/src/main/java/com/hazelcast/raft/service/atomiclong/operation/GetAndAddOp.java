@@ -19,6 +19,7 @@ package com.hazelcast.raft.service.atomiclong.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongDataSerializerHook;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLong;
 
@@ -27,7 +28,7 @@ import java.io.IOException;
 /**
  * TODO: Javadoc Pending...
  */
-public class GetAndAddOp extends AbstractAtomicLongOp {
+public class GetAndAddOp extends AbstractAtomicLongOp implements InvocationTargetLeaveAware {
 
     private long delta;
 
@@ -43,6 +44,11 @@ public class GetAndAddOp extends AbstractAtomicLongOp {
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftAtomicLong atomic = getAtomicLong(groupId);
         return atomic.getAndAdd(delta);
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return delta == 0;
     }
 
     @Override

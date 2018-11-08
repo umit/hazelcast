@@ -25,6 +25,7 @@ import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 import com.hazelcast.raft.impl.service.proxy.RaftNodeAware;
 
 import java.io.IOException;
@@ -36,8 +37,8 @@ import static com.hazelcast.util.Preconditions.checkState;
 /**
  * TODO: Javadoc Pending...
  */
-public class GetInitialRaftGroupMembersIfCurrentGroupMemberOp extends RaftOp
-        implements IdentifiedDataSerializable, RaftNodeAware {
+public class GetInitialRaftGroupMembersIfCurrentGroupMemberOp extends RaftOp implements RaftNodeAware, InvocationTargetLeaveAware,
+                                                                                        IdentifiedDataSerializable {
 
     private RaftMember raftMember;
 
@@ -62,6 +63,11 @@ public class GetInitialRaftGroupMembersIfCurrentGroupMemberOp extends RaftOp
         checkState(members.contains(raftMember), raftMember
                 + " is not in the current committed member list: " + members + " of " + groupId);
         return new ArrayList<RaftMember>(raftNode.getInitialMembers());
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return true;
     }
 
     @Override

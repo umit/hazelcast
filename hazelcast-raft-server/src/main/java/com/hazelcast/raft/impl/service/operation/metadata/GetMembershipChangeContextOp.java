@@ -20,21 +20,27 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.RaftOp;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 
 import java.io.IOException;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class GetMembershipChangeContextOp extends RaftOp implements IdentifiedDataSerializable {
+public class GetMembershipChangeContextOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
         return service.getMetadataManager().getMembershipChangeContext();
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return true;
     }
 
     @Override

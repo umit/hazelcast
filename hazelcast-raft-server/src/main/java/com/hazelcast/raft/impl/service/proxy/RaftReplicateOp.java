@@ -35,12 +35,12 @@ import java.io.IOException;
 /**
  * The base class that replicates the given {@link RaftOp} to the target raft group
  */
-public abstract class RaftReplicateOp extends Operation
-        implements IdentifiedDataSerializable, RaftSystemOperation, ExecutionCallback {
+public abstract class RaftReplicateOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation,
+                                                                   ExecutionCallback {
 
     private RaftGroupId groupId;
 
-    public RaftReplicateOp() {
+    RaftReplicateOp() {
     }
 
     RaftReplicateOp(RaftGroupId groupId) {

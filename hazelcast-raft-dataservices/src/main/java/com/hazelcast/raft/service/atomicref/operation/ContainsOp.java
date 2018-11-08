@@ -21,6 +21,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 import com.hazelcast.raft.service.atomicref.RaftAtomicReferenceDataSerializerHook;
 import com.hazelcast.raft.service.atomicref.RaftAtomicRef;
 
@@ -29,7 +30,7 @@ import java.io.IOException;
 /**
  * TODO: Javadoc Pending...
  */
-public class ContainsOp extends AbstractAtomicRefOp implements IdentifiedDataSerializable {
+public class ContainsOp extends AbstractAtomicRefOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
     private Data value;
 
@@ -45,6 +46,11 @@ public class ContainsOp extends AbstractAtomicRefOp implements IdentifiedDataSer
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftAtomicRef ref = getAtomicRef(groupId);
         return ref.contains(value);
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return true;
     }
 
     @Override

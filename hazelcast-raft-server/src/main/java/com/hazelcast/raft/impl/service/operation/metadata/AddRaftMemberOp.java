@@ -24,6 +24,7 @@ import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 
 import java.io.IOException;
 
@@ -32,7 +33,7 @@ import static com.hazelcast.raft.impl.service.RaftMetadataManager.METADATA_GROUP
 /**
  * TODO: Javadoc Pending...
  */
-public class AddRaftMemberOp extends RaftOp implements IdentifiedDataSerializable {
+public class AddRaftMemberOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
     private RaftMemberImpl member;
 
@@ -49,6 +50,11 @@ public class AddRaftMemberOp extends RaftOp implements IdentifiedDataSerializabl
         RaftService service = getService();
         service.getMetadataManager().addActiveMember(member);
         return null;
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return true;
     }
 
     @Override

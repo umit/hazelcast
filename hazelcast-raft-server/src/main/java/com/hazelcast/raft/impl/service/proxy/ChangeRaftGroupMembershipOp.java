@@ -21,19 +21,19 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftMemberImpl;
-import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
+import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftOp;
+import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
 import java.io.IOException;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class ChangeRaftGroupMembershipOp extends RaftReplicateOp {
+public class ChangeRaftGroupMembershipOp extends RaftReplicateOp implements InvocationTargetLeaveAware {
 
-    public static final int NAN_MEMBERS_COMMIT_INDEX = -1;
+    private static final int NAN_MEMBERS_COMMIT_INDEX = -1;
 
     private long membersCommitIndex;
     private RaftMemberImpl member;
@@ -62,6 +62,11 @@ public class ChangeRaftGroupMembershipOp extends RaftReplicateOp {
     @Override
     protected RaftOp getRaftOp() {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return false;
     }
 
     @Override

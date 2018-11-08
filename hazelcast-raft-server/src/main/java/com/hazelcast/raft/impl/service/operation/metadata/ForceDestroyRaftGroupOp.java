@@ -23,6 +23,7 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 
 import java.io.IOException;
 
@@ -30,7 +31,7 @@ import java.io.IOException;
  * TODO: Javadoc Pending...
  *
  */
-public class ForceDestroyRaftGroupOp extends RaftOp implements IdentifiedDataSerializable {
+public class ForceDestroyRaftGroupOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
     private RaftGroupId targetGroupId;
 
@@ -46,6 +47,11 @@ public class ForceDestroyRaftGroupOp extends RaftOp implements IdentifiedDataSer
         RaftService service = getService();
         service.getMetadataManager().forceDestroyRaftGroup(targetGroupId);
         return null;
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return true;
     }
 
     @Override

@@ -19,16 +19,19 @@ package com.hazelcast.raft.service.semaphore.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 
 import java.io.IOException;
 import java.util.UUID;
 
+import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
+
 /**
  * TODO: Javadoc Pending...
  */
-public class ReleasePermitsOp extends AbstractSemaphoreOp {
+public class ReleasePermitsOp extends AbstractSemaphoreOp implements InvocationTargetLeaveAware {
 
     private int permits;
 
@@ -45,6 +48,11 @@ public class ReleasePermitsOp extends AbstractSemaphoreOp {
         RaftSemaphoreService service = getService();
         service.releasePermits(groupId, name, sessionId, threadId, invocationUid, permits);
         return true;
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return sessionId != NO_SESSION_ID;
     }
 
     @Override

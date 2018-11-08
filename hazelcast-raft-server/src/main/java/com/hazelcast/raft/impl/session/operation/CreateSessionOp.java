@@ -22,6 +22,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 import com.hazelcast.raft.impl.session.RaftSessionService;
 import com.hazelcast.raft.impl.session.RaftSessionServiceDataSerializerHook;
 
@@ -30,7 +31,7 @@ import java.io.IOException;
 /**
  * TODO: Javadoc Pending...
  */
-public class CreateSessionOp extends RaftOp implements IdentifiedDataSerializable {
+public class CreateSessionOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
     // used for diagnostics
     private Address endpoint;
@@ -46,6 +47,11 @@ public class CreateSessionOp extends RaftOp implements IdentifiedDataSerializabl
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftSessionService service = getService();
         return service.createNewSession(groupId, endpoint);
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return true;
     }
 
     @Override
