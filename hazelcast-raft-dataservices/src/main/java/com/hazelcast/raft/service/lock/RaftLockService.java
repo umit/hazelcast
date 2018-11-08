@@ -84,7 +84,8 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         return nodeEngine.getConfig().findRaftLockConfig(name);
     }
 
-    public RaftLockOwnershipState acquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
+    public RaftLockOwnershipState acquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex,
+                                          UUID invocationUid) {
         heartbeatSession(groupId, endpoint.sessionId());
         AcquireResult result = getOrInitRegistry(groupId).acquire(name, endpoint, commitIndex, invocationUid);
 
@@ -100,8 +101,8 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         return result.ownership;
     }
 
-    public RaftLockOwnershipState tryAcquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid,
-                                             long timeoutMs) {
+    public RaftLockOwnershipState tryAcquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex,
+                                             UUID invocationUid, long timeoutMs) {
         heartbeatSession(groupId, endpoint.sessionId());
         AcquireResult result = getOrInitRegistry(groupId).tryAcquire(name, endpoint, commitIndex, invocationUid, timeoutMs);
 

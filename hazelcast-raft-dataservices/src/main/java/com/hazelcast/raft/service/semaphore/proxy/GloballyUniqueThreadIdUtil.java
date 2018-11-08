@@ -32,23 +32,26 @@ public final class GloballyUniqueThreadIdUtil {
 
     public static final String GLOBAL_THREAD_ID_GENERATOR_NAME = "globalThreadIdGenerator";
 
-    private static final ConcurrentMap<Tuple2<RaftGroupId, Long>, Long> globalThreadIds
+    private static final ConcurrentMap<Tuple2<RaftGroupId, Long>, Long> GLOBAL_THREAD_IDS
             = new ConcurrentHashMap<Tuple2<RaftGroupId, Long>, Long>();
+
+    private GloballyUniqueThreadIdUtil() {
+    }
 
     public static Long getGlobalThreadId(RaftGroupId groupId, ConstructorFunction<RaftGroupId, Long> ctorFunction) {
         Tuple2<RaftGroupId, Long> key = Tuple2.of(groupId, getThreadId());
-        Long globalThreadId = globalThreadIds.get(key);
+        Long globalThreadId = GLOBAL_THREAD_IDS.get(key);
         if (globalThreadId != null) {
             return globalThreadId;
         }
 
-        globalThreadId = globalThreadIds.get(key);
+        globalThreadId = GLOBAL_THREAD_IDS.get(key);
         if (globalThreadId != null) {
             return globalThreadId;
         }
 
         globalThreadId = ctorFunction.createNew(groupId);
-        Long existing = globalThreadIds.putIfAbsent(key, globalThreadId);
+        Long existing = GLOBAL_THREAD_IDS.putIfAbsent(key, globalThreadId);
 
         return existing != null ? existing : globalThreadId;
     }

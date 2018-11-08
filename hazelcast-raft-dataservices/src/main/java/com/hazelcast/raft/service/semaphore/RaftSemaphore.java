@@ -326,11 +326,12 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
                 + ", available=" + available + ", sessionStates=" + sessionStates + ", waitKeys=" + waitKeys + '}';
     }
 
-    static class AcquireResult {
+    static final class AcquireResult {
 
         final int acquired;
 
-        final Collection<SemaphoreInvocationKey> cancelled; // can be populated when both acquired and not acquired
+        // can be populated when both acquired and not acquired
+        final Collection<SemaphoreInvocationKey> cancelled;
 
         private AcquireResult(int acquired, Collection<SemaphoreInvocationKey> cancelled) {
             this.acquired = acquired;
@@ -338,30 +339,35 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
         }
     }
 
-    static class ReleaseResult {
-
-        private static ReleaseResult failed(Collection<SemaphoreInvocationKey> cancelled) {
-            return new ReleaseResult(false, Collections.<SemaphoreInvocationKey>emptyList(), cancelled);
-        }
-
-        private static ReleaseResult successful(Collection<SemaphoreInvocationKey> acquired, Collection<SemaphoreInvocationKey> cancelled) {
-            return new ReleaseResult(true, acquired, cancelled);
-        }
+    static final class ReleaseResult {
 
         final boolean success;
+
         final Collection<SemaphoreInvocationKey> acquired;
+
         final Collection<SemaphoreInvocationKey> cancelled;
 
-        private ReleaseResult(boolean success,
-                              Collection<SemaphoreInvocationKey> acquired, Collection<SemaphoreInvocationKey> cancelled) {
+        private ReleaseResult(boolean success, Collection<SemaphoreInvocationKey> acquired,
+                              Collection<SemaphoreInvocationKey> cancelled) {
             this.success = success;
             this.acquired = unmodifiableCollection(acquired);
             this.cancelled = unmodifiableCollection(cancelled);
         }
+
+        private static ReleaseResult successful(Collection<SemaphoreInvocationKey> acquired,
+                                                Collection<SemaphoreInvocationKey> cancelled) {
+            return new ReleaseResult(true, acquired, cancelled);
+        }
+
+        private static ReleaseResult failed(Collection<SemaphoreInvocationKey> cancelled) {
+            return new ReleaseResult(false, Collections.<SemaphoreInvocationKey>emptyList(), cancelled);
+        }
     }
 
     private static class SessionState {
+
         private final Map<Tuple2<Long, UUID>, Integer> invocationRefUids = new HashMap<Tuple2<Long, UUID>, Integer>();
+
         private int acquiredPermits;
 
         @Override

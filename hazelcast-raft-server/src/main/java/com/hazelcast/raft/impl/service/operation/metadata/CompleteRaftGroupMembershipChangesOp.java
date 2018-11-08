@@ -35,7 +35,8 @@ import java.util.Map.Entry;
 /**
  * TODO: Javadoc Pending...
  */
-public class CompleteRaftGroupMembershipChangesOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
+public class CompleteRaftGroupMembershipChangesOp extends RaftOp implements InvocationTargetLeaveAware,
+                                                                            IdentifiedDataSerializable {
 
     private Map<RaftGroupId, Tuple2<Long, Long>> changedGroups;
 

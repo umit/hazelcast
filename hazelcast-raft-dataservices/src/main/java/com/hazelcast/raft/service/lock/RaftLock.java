@@ -248,15 +248,7 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
                 + ", invocationRefUids=" + invocationRefUids + ", waitKeys=" + waitKeys + '}';
     }
 
-    static class AcquireResult {
-
-        private static AcquireResult acquired(RaftLockOwnershipState ownership) {
-            return new AcquireResult(ownership, Collections.<LockInvocationKey>emptyList());
-        }
-
-        private static AcquireResult notAcquired(Collection<LockInvocationKey> cancelled) {
-            return new AcquireResult(NOT_LOCKED, cancelled);
-        }
+    static final class AcquireResult {
 
         final RaftLockOwnershipState ownership;
 
@@ -267,23 +259,23 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
             this.cancelled = unmodifiableCollection(cancelled);
         }
 
+        private static AcquireResult acquired(RaftLockOwnershipState ownership) {
+            return new AcquireResult(ownership, Collections.<LockInvocationKey>emptyList());
+        }
+
+        private static AcquireResult notAcquired(Collection<LockInvocationKey> cancelled) {
+            return new AcquireResult(NOT_LOCKED, cancelled);
+        }
+
     }
 
-    static class ReleaseResult {
+    static final class ReleaseResult {
 
         static final ReleaseResult FAILED
                 = new ReleaseResult(false, null, Collections.<LockInvocationKey>emptyList());
 
         private static final ReleaseResult SUCCESSFUL
                 = new ReleaseResult(true, null, Collections.<LockInvocationKey>emptyList());
-
-        private static ReleaseResult successful(RaftLockOwnershipState ownership, Collection<LockInvocationKey> notifications) {
-            return new ReleaseResult(true, ownership, notifications);
-        }
-
-        private static ReleaseResult failed(Collection<LockInvocationKey> notifications) {
-            return new ReleaseResult(false, null, notifications);
-        }
 
         final boolean success;
 
@@ -295,6 +287,14 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
             this.success = success;
             this.ownership = ownership;
             this.notifications = unmodifiableCollection(notifications);
+        }
+
+        private static ReleaseResult successful(RaftLockOwnershipState ownership, Collection<LockInvocationKey> notifications) {
+            return new ReleaseResult(true, ownership, notifications);
+        }
+
+        private static ReleaseResult failed(Collection<LockInvocationKey> notifications) {
+            return new ReleaseResult(false, null, notifications);
         }
     }
 

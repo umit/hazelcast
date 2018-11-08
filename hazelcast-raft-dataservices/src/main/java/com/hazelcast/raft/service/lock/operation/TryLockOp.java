@@ -21,6 +21,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 import com.hazelcast.raft.impl.util.PostponedResponse;
+import com.hazelcast.raft.service.lock.LockEndpoint;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
 import com.hazelcast.raft.service.lock.RaftLockOwnershipState;
 import com.hazelcast.raft.service.lock.RaftLockService;
@@ -46,7 +47,8 @@ public class TryLockOp extends AbstractLockOp implements InvocationTargetLeaveAw
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
-        RaftLockOwnershipState ownership = service.tryAcquire(groupId, name, getLockEndpoint(), commitIndex, invocationUid, timeoutMs);
+        LockEndpoint endpoint = getLockEndpoint();
+        RaftLockOwnershipState ownership = service.tryAcquire(groupId, name, endpoint, commitIndex, invocationUid, timeoutMs);
         if (ownership.isLocked()) {
             return ownership;
         } else if (timeoutMs  > 0) {
