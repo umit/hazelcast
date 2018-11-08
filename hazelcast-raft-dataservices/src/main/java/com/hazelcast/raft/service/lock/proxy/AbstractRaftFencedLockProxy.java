@@ -321,7 +321,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
     // !!! ONLY FOR TESTING !!!
     public final long getLocalLockCount() {
         LockState lockState = lockStates.get(getThreadId());
-        return lockState != null ? lockState.lockCount: 0;
+        return lockState != null ? lockState.lockCount : 0;
     }
 
     @Override
