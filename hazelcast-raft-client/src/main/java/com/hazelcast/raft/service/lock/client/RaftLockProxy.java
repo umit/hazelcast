@@ -129,10 +129,10 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
             try {
                 RaftLockOwnershipState ownership = RaftLockProxy.<RaftLockOwnershipState>invoke(client, name, msg,
                         LOCK_OWNERSHIP_STATE_RESPONSE_DECODER).join();
-                if (ownership.isLocked()) {
-                    return ownership.isLocked();
+                if (!ownership.isLocked()) {
+                    releaseSession(sessionId);
                 }
-                releaseSession(sessionId);
+                return ownership.isLocked();
             } catch (WaitKeyCancelledException e) {
                 return false;
             } catch (SessionExpiredException e) {
