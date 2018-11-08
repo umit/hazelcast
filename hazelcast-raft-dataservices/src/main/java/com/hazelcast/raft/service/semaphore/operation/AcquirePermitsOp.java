@@ -19,6 +19,7 @@ package com.hazelcast.raft.service.semaphore.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 import com.hazelcast.raft.impl.util.PostponedResponse;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
@@ -26,10 +27,12 @@ import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 import java.io.IOException;
 import java.util.UUID;
 
+import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
+
 /**
  * TODO: Javadoc Pending...
  */
-public class AcquirePermitsOp extends AbstractSemaphoreOp {
+public class AcquirePermitsOp extends AbstractSemaphoreOp implements InvocationTargetLeaveAware {
 
     private int permits;
     private long timeoutMs;
@@ -52,6 +55,11 @@ public class AcquirePermitsOp extends AbstractSemaphoreOp {
             return PostponedResponse.INSTANCE;
         }
         return acquired;
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return sessionId != NO_SESSION_ID;
     }
 
     @Override

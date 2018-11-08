@@ -19,6 +19,7 @@ package com.hazelcast.raft.service.countdownlatch.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 import com.hazelcast.raft.impl.util.PostponedResponse;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchDataSerializerHook;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchService;
@@ -28,7 +29,7 @@ import java.io.IOException;
 /**
  * TODO: Javadoc Pending...
  */
-public class AwaitOp extends AbstractCountDownLatchOp {
+public class AwaitOp extends AbstractCountDownLatchOp implements InvocationTargetLeaveAware {
 
     private long timeoutMillis;
 
@@ -48,6 +49,11 @@ public class AwaitOp extends AbstractCountDownLatchOp {
         }
 
         return timeoutMillis > 0 ? PostponedResponse.INSTANCE : false;
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return true;
     }
 
     @Override

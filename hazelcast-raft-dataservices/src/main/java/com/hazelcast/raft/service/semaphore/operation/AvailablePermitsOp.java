@@ -21,6 +21,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 
@@ -29,7 +30,7 @@ import java.io.IOException;
 /**
  * TODO: Javadoc Pending...
  */
-public class AvailablePermitsOp extends RaftOp implements IdentifiedDataSerializable {
+public class AvailablePermitsOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
     private String name;
 
@@ -44,6 +45,11 @@ public class AvailablePermitsOp extends RaftOp implements IdentifiedDataSerializ
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftSemaphoreService service = getService();
         return service.availablePermits(groupId, name);
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return true;
     }
 
     @Override

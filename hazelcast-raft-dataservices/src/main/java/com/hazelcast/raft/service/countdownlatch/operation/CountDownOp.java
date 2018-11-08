@@ -19,6 +19,7 @@ package com.hazelcast.raft.service.countdownlatch.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchDataSerializerHook;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchService;
 
@@ -28,7 +29,7 @@ import java.util.UUID;
 /**
  * TODO: Javadoc Pending...
  */
-public class CountDownOp extends AbstractCountDownLatchOp {
+public class CountDownOp extends AbstractCountDownLatchOp implements InvocationTargetLeaveAware {
 
     private int expectedRound;
     private UUID invocationUid;
@@ -46,6 +47,11 @@ public class CountDownOp extends AbstractCountDownLatchOp {
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftCountDownLatchService service = getService();
         return service.countDown(groupId, name, expectedRound, invocationUid);
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return true;
     }
 
     @Override

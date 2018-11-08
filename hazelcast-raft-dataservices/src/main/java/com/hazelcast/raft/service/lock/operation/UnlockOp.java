@@ -19,6 +19,7 @@ package com.hazelcast.raft.service.lock.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
 import com.hazelcast.raft.service.lock.RaftLockService;
 
@@ -28,7 +29,7 @@ import java.util.UUID;
 /**
  * TODO: Javadoc Pending...
  */
-public class UnlockOp extends AbstractLockOp {
+public class UnlockOp extends AbstractLockOp implements InvocationTargetLeaveAware {
 
     private int lockCount;
 
@@ -44,6 +45,11 @@ public class UnlockOp extends AbstractLockOp {
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
         service.release(groupId, name, getLockEndpoint(), invocationUid, lockCount);
+        return true;
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
         return true;
     }
 

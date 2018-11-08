@@ -17,18 +17,19 @@
 package com.hazelcast.raft.service.lock.operation;
 
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 import com.hazelcast.raft.impl.util.PostponedResponse;
 import com.hazelcast.raft.service.lock.LockEndpoint;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
-import com.hazelcast.raft.service.lock.RaftLockService;
 import com.hazelcast.raft.service.lock.RaftLockOwnershipState;
+import com.hazelcast.raft.service.lock.RaftLockService;
 
 import java.util.UUID;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class LockOp extends AbstractLockOp {
+public class LockOp extends AbstractLockOp implements InvocationTargetLeaveAware {
 
     public LockOp() {
     }
@@ -43,6 +44,11 @@ public class LockOp extends AbstractLockOp {
         LockEndpoint endpoint = getLockEndpoint();
         RaftLockOwnershipState ownership = service.acquire(groupId, name, endpoint, commitIndex, invocationUid);
         return ownership.isLocked() ? ownership : PostponedResponse.INSTANCE;
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return true;
     }
 
     @Override

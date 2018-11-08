@@ -16,12 +16,14 @@
 
 package com.hazelcast.spi.impl.operationservice.impl;
 
+import com.hazelcast.core.IndeterminateOperationStateException;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.impl.RaftMemberImpl;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 import com.hazelcast.spi.ExceptionAction;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.exception.CallerNotMemberException;
@@ -29,10 +31,7 @@ import com.hazelcast.spi.exception.TargetNotMemberException;
 
 import static com.hazelcast.spi.ExceptionAction.RETRY_INVOCATION;
 import static com.hazelcast.spi.ExceptionAction.THROW_EXCEPTION;
-import static com.hazelcast.spi.InvocationBuilder.DEFAULT_CALL_TIMEOUT;
 import static com.hazelcast.spi.InvocationBuilder.DEFAULT_DESERIALIZE_RESULT;
-import static com.hazelcast.spi.InvocationBuilder.DEFAULT_TRY_COUNT;
-import static com.hazelcast.spi.InvocationBuilder.DEFAULT_TRY_PAUSE_MILLIS;
 
 /**
  * TODO: Javadoc Pending...
@@ -41,16 +40,15 @@ public class RaftInvocation extends Invocation {
 
     private final RaftInvocationContext raftInvocationContext;
     private final RaftGroupId groupId;
-    private final boolean canFailOnIndeterminateOperationState;
     private volatile MemberCursor memberCursor;
     private volatile RaftMemberImpl lastInvocationEndpoint;
+    private volatile Throwable targetLeft;
 
-    public RaftInvocation(Context context, RaftInvocationContext raftInvocationContext, RaftGroupId groupId,
-            Operation op, boolean canFailOnIndeterminateOperationState) {
-        super(context, op, null, DEFAULT_TRY_COUNT, DEFAULT_TRY_PAUSE_MILLIS, DEFAULT_CALL_TIMEOUT, DEFAULT_DESERIALIZE_RESULT);
+    public RaftInvocation(Context context, RaftInvocationContext raftInvocationContext, RaftGroupId groupId, Operation op,
+                          int retryCount, long retryPauseMillis, long callTimeoutMillis) {
+        super(context, op, null, retryCount, retryPauseMillis, callTimeoutMillis, DEFAULT_DESERIALIZE_RESULT);
         this.raftInvocationContext = raftInvocationContext;
         this.groupId = groupId;
-        this.canFailOnIndeterminateOperationState = canFailOnIndeterminateOperationState;
 
         int partitionId = context.partitionService.getPartitionId(groupId);
         op.setPartitionId(partitionId);
@@ -65,6 +63,11 @@ public class RaftInvocation extends Invocation {
 
     @Override
     void notifyNormalResponse(Object value, int expectedBackups) {
+        if (!(value instanceof MemberLeftException) && targetLeft != null && isRetryable(value)) {
+            String message = this + " failed because the target has left the cluster before response is received";
+            value = new IndeterminateOperationStateException(message, targetLeft);
+        }
+
         super.notifyNormalResponse(value, expectedBackups);
         raftInvocationContext.setKnownLeader(groupId, lastInvocationEndpoint);
     }
@@ -73,13 +76,18 @@ public class RaftInvocation extends Invocation {
     protected ExceptionAction onException(Throwable t) {
         raftInvocationContext.updateKnownLeaderOnFailure(groupId, t);
 
-        if (shouldFailOnIndeterminateOperationState() && (t instanceof MemberLeftException)) {
-            return THROW_EXCEPTION;
+        if (t instanceof MemberLeftException) {
+            if (shouldFailOnIndeterminateOperationState()) {
+                return THROW_EXCEPTION;
+            } else if (targetLeft != null) {
+                targetLeft = t;
+            }
         }
+
         return isRetryable(t) ? RETRY_INVOCATION : op.onInvocationException(t);
     }
 
-    private boolean isRetryable(Throwable cause) {
+    private boolean isRetryable(Object cause) {
         return cause instanceof NotLeaderException
                 || cause instanceof LeaderDemotedException
                 || cause instanceof MemberLeftException
@@ -106,6 +114,12 @@ public class RaftInvocation extends Invocation {
 
     @Override
     protected boolean shouldFailOnIndeterminateOperationState() {
-        return canFailOnIndeterminateOperationState && raftInvocationContext.shouldFailOnIndeterminateOperationState();
+        if (op instanceof InvocationTargetLeaveAware) {
+            if (((InvocationTargetLeaveAware) op).isSafeToRetryOnTargetLeave()) {
+                return false;
+            }
+        }
+
+        return raftInvocationContext.shouldFailOnIndeterminateOperationState();
     }
 }

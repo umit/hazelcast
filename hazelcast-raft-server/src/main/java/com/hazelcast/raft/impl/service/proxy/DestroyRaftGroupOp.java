@@ -26,7 +26,7 @@ import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 /**
  * TODO: Javadoc Pending...
  */
-public class DestroyRaftGroupOp extends RaftReplicateOp {
+public class DestroyRaftGroupOp extends RaftReplicateOp implements InvocationTargetLeaveAware {
 
     public DestroyRaftGroupOp() {
     }
@@ -43,6 +43,11 @@ public class DestroyRaftGroupOp extends RaftReplicateOp {
     @Override
     protected RaftOp getRaftOp() {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return false;
     }
 
     @Override

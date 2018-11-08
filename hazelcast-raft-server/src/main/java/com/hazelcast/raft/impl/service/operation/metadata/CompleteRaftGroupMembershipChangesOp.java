@@ -24,6 +24,7 @@ import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftMetadataManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 import com.hazelcast.raft.impl.util.Tuple2;
 
 import java.io.IOException;
@@ -34,7 +35,7 @@ import java.util.Map.Entry;
 /**
  * TODO: Javadoc Pending...
  */
-public class CompleteRaftGroupMembershipChangesOp extends RaftOp implements IdentifiedDataSerializable {
+public class CompleteRaftGroupMembershipChangesOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
     private Map<RaftGroupId, Tuple2<Long, Long>> changedGroups;
 
@@ -50,6 +51,11 @@ public class CompleteRaftGroupMembershipChangesOp extends RaftOp implements Iden
         RaftService service = getService();
         RaftMetadataManager metadataManager = service.getMetadataManager();
         return metadataManager.completeRaftGroupMembershipChanges(changedGroups);
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return true;
     }
 
     @Override

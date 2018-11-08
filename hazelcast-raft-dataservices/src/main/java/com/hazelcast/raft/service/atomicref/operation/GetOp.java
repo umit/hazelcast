@@ -18,12 +18,13 @@ package com.hazelcast.raft.service.atomicref.operation;
 
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 import com.hazelcast.raft.service.atomicref.RaftAtomicReferenceDataSerializerHook;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class GetOp extends AbstractAtomicRefOp implements IdentifiedDataSerializable {
+public class GetOp extends AbstractAtomicRefOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
     public GetOp() {
     }
@@ -35,6 +36,10 @@ public class GetOp extends AbstractAtomicRefOp implements IdentifiedDataSerializ
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         return getAtomicRef(groupId).get();
+    }
+
+    public boolean isSafeToRetryOnTargetLeave() {
+        return true;
     }
 
     @Override

@@ -17,15 +17,18 @@
 package com.hazelcast.raft.service.semaphore.operation;
 
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 
 import java.util.UUID;
 
+import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
+
 /**
  * TODO: Javadoc Pending...
  */
-public class DrainPermitsOp extends AbstractSemaphoreOp {
+public class DrainPermitsOp extends AbstractSemaphoreOp implements InvocationTargetLeaveAware {
 
     public DrainPermitsOp() {
     }
@@ -38,6 +41,11 @@ public class DrainPermitsOp extends AbstractSemaphoreOp {
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftSemaphoreService service = getService();
         return service.drainPermits(groupId, name, sessionId, threadId, invocationUid);
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return sessionId != NO_SESSION_ID;
     }
 
     @Override

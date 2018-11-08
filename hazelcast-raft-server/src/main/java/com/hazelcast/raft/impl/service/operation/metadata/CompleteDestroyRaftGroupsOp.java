@@ -19,11 +19,12 @@ package com.hazelcast.raft.impl.service.operation.metadata;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.impl.service.RaftMetadataManager;
-import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.RaftOp;
+import com.hazelcast.raft.impl.service.RaftMetadataManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -32,7 +33,7 @@ import java.util.Set;
 /**
  * TODO: Javadoc Pending...
  */
-public class CompleteDestroyRaftGroupsOp extends RaftOp implements IdentifiedDataSerializable {
+public class CompleteDestroyRaftGroupsOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
     private Set<RaftGroupId> groupIds;
 
@@ -49,6 +50,11 @@ public class CompleteDestroyRaftGroupsOp extends RaftOp implements IdentifiedDat
         RaftMetadataManager metadataManager = service.getMetadataManager();
         metadataManager.completeDestroyRaftGroups(groupIds);
         return null;
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return true;
     }
 
     @Override

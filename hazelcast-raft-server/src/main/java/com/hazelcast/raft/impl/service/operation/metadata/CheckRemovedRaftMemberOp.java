@@ -21,16 +21,17 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftMemberImpl;
+import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.RaftOp;
+import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
 
 import java.io.IOException;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class CheckRemovedRaftMemberOp extends RaftOp implements IdentifiedDataSerializable {
+public class CheckRemovedRaftMemberOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
     private RaftMemberImpl member;
 
@@ -45,6 +46,11 @@ public class CheckRemovedRaftMemberOp extends RaftOp implements IdentifiedDataSe
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
         return service.getMetadataManager().isMemberRemoved(member);
+    }
+
+    @Override
+    public boolean isSafeToRetryOnTargetLeave() {
+        return true;
     }
 
     @Override
