@@ -19,8 +19,9 @@ package com.hazelcast.raft.impl.service.exception;
 import com.hazelcast.core.HazelcastException;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * An internal exception thrown when a Raft group is attempted to be created with a Hazelcast node that is not an active CP node.
+ * This situation can occur while a CP node is being removed from the CP sub-system.
+ * This exception will be handled internally and will not be exposed to the user.
  */
 public class CannotCreateRaftGroupException extends HazelcastException {
     public CannotCreateRaftGroupException(String message) {

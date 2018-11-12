@@ -64,7 +64,8 @@ import static com.hazelcast.raft.impl.RaftNodeStatus.TERMINATED;
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 
 /**
- * TODO: Javadoc Pending...
+ * The integration point of the Raft algorithm implementation and Hazelcast system
+ * Replicates Raft RPCs via Hazelcast operations and executes committed Raft operations.
  */
 @SuppressWarnings("checkstyle:classfanoutcomplexity")
 final class NodeEngineRaftIntegration implements RaftIntegration {

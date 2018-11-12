@@ -23,7 +23,8 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * Represents information of a session that is just created.
+ * {@link #ttlMillis} and {@link #heartbeatMillis} must be respected by the caller.
  */
 public class SessionResponse implements IdentifiedDataSerializable {
 
@@ -33,7 +34,7 @@ public class SessionResponse implements IdentifiedDataSerializable {
 
     private long heartbeatMillis;
 
-    public SessionResponse() {
+    SessionResponse() {
     }
 
     public SessionResponse(long sessionId, long ttlMillis, long heartbeatMillis) {

@@ -27,14 +27,14 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * TODO: Javadoc Pending...
+ * Snapshot of {@link SessionRegistry} state
  */
 public class SessionRegistrySnapshot implements IdentifiedDataSerializable {
 
     private long nextSessionId;
     private Set<Session> sessions;
 
-    public SessionRegistrySnapshot() {
+    SessionRegistrySnapshot() {
     }
 
     SessionRegistrySnapshot(long nextSessionId, Collection<Session> sessions) {

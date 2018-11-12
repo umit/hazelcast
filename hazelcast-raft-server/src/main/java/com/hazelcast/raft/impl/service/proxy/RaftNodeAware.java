@@ -19,7 +19,8 @@ package com.hazelcast.raft.impl.service.proxy;
 import com.hazelcast.raft.impl.RaftNode;
 
 /**
- * A query operation that requires to access RaftNode state can implement this interface
+ * A query operation that requires to access RaftNode state can implement this interface.
+ * Before the query is executed, {@link RaftNode} will be provided to the query.
  */
 public interface RaftNodeAware {
     void setRaftNode(RaftNode raftNode);

@@ -23,7 +23,7 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.impl.RaftMemberImpl;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 import com.hazelcast.spi.ExceptionAction;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.exception.CallerNotMemberException;
@@ -34,7 +34,8 @@ import static com.hazelcast.spi.ExceptionAction.THROW_EXCEPTION;
 import static com.hazelcast.spi.InvocationBuilder.DEFAULT_DESERIALIZE_RESULT;
 
 /**
- * TODO: Javadoc Pending...
+ * A {@link Invocation} implementation that realizes an operation invocation on the leader node of the given Raft group.
+ * Internally handles Raft-related exceptions.
  */
 public class RaftInvocation extends Invocation {
 
@@ -115,7 +116,7 @@ public class RaftInvocation extends Invocation {
     @Override
     protected boolean shouldFailOnIndeterminateOperationState() {
         if (op instanceof InvocationTargetLeaveAware) {
-            if (((InvocationTargetLeaveAware) op).isSafeToRetryOnTargetLeave()) {
+            if (((InvocationTargetLeaveAware) op).isRetryableOnTargetLeave()) {
                 return false;
             }
         }

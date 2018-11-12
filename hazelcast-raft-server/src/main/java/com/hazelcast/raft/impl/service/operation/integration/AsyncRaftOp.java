@@ -28,14 +28,13 @@ import com.hazelcast.spi.Operation;
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * Base class for operation classes that will carry Raft RPCs between Raft nodes
  */
 abstract class AsyncRaftOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation {
 
     protected RaftGroupId groupId;
 
-    public AsyncRaftOp() {
+    AsyncRaftOp() {
     }
 
     AsyncRaftOp(RaftGroupId groupId) {

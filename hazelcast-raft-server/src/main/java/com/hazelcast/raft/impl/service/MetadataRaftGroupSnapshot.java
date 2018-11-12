@@ -26,10 +26,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * Snapshot of the Metadata Raft group state
  */
-public final class MetadataSnapshot implements IdentifiedDataSerializable {
+public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializable {
 
     private final Collection<RaftMemberImpl> members = new ArrayList<RaftMemberImpl>();
     private final Collection<RaftGroupInfo> raftGroups = new ArrayList<RaftGroupInfo>();
@@ -66,7 +65,7 @@ public final class MetadataSnapshot implements IdentifiedDataSerializable {
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.METADATA_SNAPSHOT;
+        return RaftServiceDataSerializerHook.METADATA_RAFT_GROUP_SNAPSHOT;
     }
 
     @Override

@@ -17,7 +17,7 @@
 package com.hazelcast.raft.service.lock.operation;
 
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 import com.hazelcast.raft.impl.util.PostponedResponse;
 import com.hazelcast.raft.service.lock.LockEndpoint;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
@@ -47,7 +47,7 @@ public class LockOp extends AbstractLockOp implements InvocationTargetLeaveAware
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return true;
     }
 

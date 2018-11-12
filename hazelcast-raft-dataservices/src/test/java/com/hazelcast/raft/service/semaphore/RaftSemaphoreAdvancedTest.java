@@ -12,7 +12,7 @@ import com.hazelcast.raft.impl.log.LogEntry;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.operation.snapshot.RestoreSnapshotOp;
-import com.hazelcast.raft.impl.session.RaftSessionService;
+import com.hazelcast.raft.impl.session.SessionService;
 import com.hazelcast.raft.service.blocking.ResourceRegistry;
 import com.hazelcast.raft.service.semaphore.operation.ChangePermitsOp;
 import com.hazelcast.raft.service.semaphore.operation.DrainPermitsOp;
@@ -255,8 +255,8 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 for (HazelcastInstance instance : instances) {
-                    RaftSessionService sessionService = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
-                    assertFalse(sessionService.getSessions(groupId).isEmpty());
+                    SessionService sessionService = getNodeEngineImpl(instance).getService(SessionService.SERVICE_NAME);
+                    assertFalse(sessionService.getAllSessions(groupId).isEmpty());
                 }
             }
         });
@@ -274,8 +274,8 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 for (HazelcastInstance instance : instances) {
-                    RaftSessionService service = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
-                    assertTrue(service.getSessions(groupId).isEmpty());
+                    SessionService service = getNodeEngineImpl(instance).getService(SessionService.SERVICE_NAME);
+                    assertTrue(service.getAllSessions(groupId).isEmpty());
                 }
 
                 assertEquals(NO_SESSION_ID, service.getSession(groupId));
@@ -292,8 +292,8 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 for (HazelcastInstance instance : instances) {
-                    RaftSessionService sessionService = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
-                    assertFalse(sessionService.getSessions(semaphore.getGroupId()).isEmpty());
+                    SessionService sessionService = getNodeEngineImpl(instance).getService(SessionService.SERVICE_NAME);
+                    assertFalse(sessionService.getAllSessions(semaphore.getGroupId()).isEmpty());
                 }
             }
         });
@@ -302,8 +302,8 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 for (HazelcastInstance instance : instances) {
-                    RaftSessionService sessionService = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
-                    assertFalse(sessionService.getSessions(semaphore.getGroupId()).isEmpty());
+                    SessionService sessionService = getNodeEngineImpl(instance).getService(SessionService.SERVICE_NAME);
+                    assertFalse(sessionService.getAllSessions(semaphore.getGroupId()).isEmpty());
                 }
             }
         }, 20);
@@ -322,8 +322,8 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 for (HazelcastInstance instance : instances) {
-                    RaftSessionService sessionService = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
-                    assertFalse(sessionService.getSessions(semaphore.getGroupId()).isEmpty());
+                    SessionService sessionService = getNodeEngineImpl(instance).getService(SessionService.SERVICE_NAME);
+                    assertFalse(sessionService.getAllSessions(semaphore.getGroupId()).isEmpty());
                 }
             }
         });
@@ -332,8 +332,8 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 for (HazelcastInstance instance : instances) {
-                    RaftSessionService sessionService = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
-                    assertFalse(sessionService.getSessions(semaphore.getGroupId()).isEmpty());
+                    SessionService sessionService = getNodeEngineImpl(instance).getService(SessionService.SERVICE_NAME);
+                    assertFalse(sessionService.getAllSessions(semaphore.getGroupId()).isEmpty());
                 }
             }
         }, 20);

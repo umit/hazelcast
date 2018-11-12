@@ -32,7 +32,6 @@ import com.hazelcast.raft.impl.service.operation.integration.PreVoteResponseOp;
 import com.hazelcast.raft.impl.service.operation.integration.VoteRequestOp;
 import com.hazelcast.raft.impl.service.operation.integration.VoteResponseOp;
 import com.hazelcast.raft.impl.service.operation.metadata.AddRaftMemberOp;
-import com.hazelcast.raft.impl.service.operation.metadata.CheckRemovedRaftMemberOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteDestroyRaftGroupsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CompleteRaftGroupMembershipChangesOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateMetadataRaftGroupOp;
@@ -74,7 +73,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int APPEND_REQUEST_OP = 7;
     public static final int APPEND_SUCCESS_RESPONSE_OP = 8;
     public static final int APPEND_FAILURE_RESPONSE_OP = 9;
-    public static final int METADATA_SNAPSHOT = 10;
+    public static final int METADATA_RAFT_GROUP_SNAPSHOT = 10;
     public static final int INSTALL_SNAPSHOT_OP = 11;
     public static final int DEFAULT_RAFT_GROUP_REPLICATE_OP = 12;
     public static final int CREATE_RAFT_GROUP_OP = 13;
@@ -85,25 +84,24 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int MEMBERSHIP_CHANGE_REPLICATE_OP = 18;
     public static final int MEMBERSHIP_CHANGE_CTX = 19;
     public static final int DEFAULT_RAFT_GROUP_QUERY_OP = 20;
-    public static final int CHECK_REMOVED_MEMBER_OP = 21;
-    public static final int DESTROY_RAFT_NODES_OP = 22;
-    public static final int GET_ACTIVE_RAFT_MEMBERS_OP = 23;
-    public static final int GET_DESTROYING_RAFT_GROUP_IDS_OP = 24;
-    public static final int GET_MEMBERSHIP_CHANGE_CONTEXT_OP = 25;
-    public static final int GET_RAFT_GROUP_OP = 26;
-    public static final int CREATE_RAFT_NODE_OP = 27;
-    public static final int DESTROY_RAFT_GROUP_OP = 28;
-    public static final int RESTORE_SNAPSHOT_OP = 29;
-    public static final int NOTIFY_TERM_CHANGE_OP = 30;
-    public static final int MEMBER = 31;
-    public static final int SEND_ACTIVE_RAFT_MEMBERS_OP = 32;
-    public static final int ADD_RAFT_MEMBER_OP = 33;
-    public static final int TRIGGER_EXPAND_RAFT_GROUPS_OP = 34;
-    public static final int TRIGGER_REBALANCE_RAFT_GROUPS_OP = 35;
-    public static final int CREATE_METADATA_RAFT_GROUP_OP = 36;
-    public static final int FORCE_DESTROY_RAFT_GROUP_OP = 37;
-    public static final int GET_INITIAL_RAFT_GROUP_MEMBERS_IF_CURRENT_GROUP_MEMBER_OP = 38;
-    public static final int RAFT_PREJOIN_OP = 39;
+    public static final int DESTROY_RAFT_NODES_OP = 21;
+    public static final int GET_ACTIVE_RAFT_MEMBERS_OP = 22;
+    public static final int GET_DESTROYING_RAFT_GROUP_IDS_OP = 23;
+    public static final int GET_MEMBERSHIP_CHANGE_CONTEXT_OP = 24;
+    public static final int GET_RAFT_GROUP_OP = 25;
+    public static final int CREATE_RAFT_NODE_OP = 26;
+    public static final int DESTROY_RAFT_GROUP_OP = 27;
+    public static final int RESTORE_SNAPSHOT_OP = 28;
+    public static final int NOTIFY_TERM_CHANGE_OP = 29;
+    public static final int RAFT_MEMBER = 30;
+    public static final int SEND_ACTIVE_RAFT_MEMBERS_OP = 31;
+    public static final int ADD_RAFT_MEMBER_OP = 32;
+    public static final int TRIGGER_EXPAND_RAFT_GROUPS_OP = 33;
+    public static final int TRIGGER_REBALANCE_RAFT_GROUPS_OP = 34;
+    public static final int CREATE_METADATA_RAFT_GROUP_OP = 35;
+    public static final int FORCE_DESTROY_RAFT_GROUP_OP = 36;
+    public static final int GET_INITIAL_RAFT_GROUP_MEMBERS_IF_CURRENT_GROUP_MEMBER_OP = 37;
+    public static final int RAFT_PRE_JOIN_OP = 38;
 
     @Override
     public int getFactoryId() {
@@ -134,8 +132,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new AppendSuccessResponseOp();
                     case APPEND_FAILURE_RESPONSE_OP:
                         return new AppendFailureResponseOp();
-                    case METADATA_SNAPSHOT:
-                        return new MetadataSnapshot();
+                    case METADATA_RAFT_GROUP_SNAPSHOT:
+                        return new MetadataRaftGroupSnapshot();
                     case INSTALL_SNAPSHOT_OP:
                         return new InstallSnapshotOp();
                     case CREATE_RAFT_GROUP_OP:
@@ -156,8 +154,6 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new MembershipChangeContext();
                     case DEFAULT_RAFT_GROUP_QUERY_OP:
                         return new RaftQueryOp();
-                    case CHECK_REMOVED_MEMBER_OP:
-                        return new CheckRemovedRaftMemberOp();
                     case DESTROY_RAFT_NODES_OP:
                         return new DestroyRaftNodesOp();
                     case GET_ACTIVE_RAFT_MEMBERS_OP:
@@ -176,7 +172,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new RestoreSnapshotOp();
                     case NOTIFY_TERM_CHANGE_OP:
                         return new NotifyTermChangeOp();
-                    case MEMBER:
+                    case RAFT_MEMBER:
                         return new RaftMemberImpl();
                     case SEND_ACTIVE_RAFT_MEMBERS_OP:
                         return new SendActiveRaftMembersOp();
@@ -192,7 +188,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new ForceDestroyRaftGroupOp();
                     case GET_INITIAL_RAFT_GROUP_MEMBERS_IF_CURRENT_GROUP_MEMBER_OP:
                         return new GetInitialRaftGroupMembersIfCurrentGroupMemberOp();
-                    case RAFT_PREJOIN_OP:
+                    case RAFT_PRE_JOIN_OP:
                         return new RaftServicePreJoinOp();
                     default:
                         throw new IllegalArgumentException("Undefined type: " + typeId);

@@ -26,7 +26,7 @@ import com.hazelcast.raft.impl.service.RaftService;
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * Carries a {@link InstallSnapshot} RPC from a Raft group leader to a follower
  */
 public class InstallSnapshotOp extends AsyncRaftOp {
 

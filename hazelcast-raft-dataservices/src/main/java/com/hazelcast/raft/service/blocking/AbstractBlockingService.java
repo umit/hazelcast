@@ -134,7 +134,7 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
     }
 
     @Override
-    public final void onSessionInvalidated(RaftGroupId groupId, long sessionId) {
+    public final void onSessionClosed(RaftGroupId groupId, long sessionId) {
         ResourceRegistry<W, R> registry = registries.get(groupId);
         if (registry == null) {
             logger.warning("Resource registry of " + groupId + " not found to handle invalidated Session[" + sessionId + "]");
@@ -149,7 +149,7 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
     }
 
     @Override
-    public final Collection<Long> getActiveSessions(RaftGroupId groupId) {
+    public final Collection<Long> getAttachedSessions(RaftGroupId groupId) {
         RR registry = getRegistryOrNull(groupId);
         return registry != null ? registry.getActiveSessions() : Collections.<Long>emptyList();
     }
@@ -211,7 +211,7 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
             return;
         }
 
-        if (sessionAccessor.isValid(groupId, sessionId)) {
+        if (sessionAccessor.isActive(groupId, sessionId)) {
             sessionAccessor.heartbeat(groupId, sessionId);
             return;
         }

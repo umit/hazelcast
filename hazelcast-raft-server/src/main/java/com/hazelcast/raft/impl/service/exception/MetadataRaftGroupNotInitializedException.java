@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package com.hazelcast.raft.impl;
+package com.hazelcast.raft.impl.service.exception;
 
 import com.hazelcast.raft.exception.RaftException;
 import com.hazelcast.spi.exception.RetryableException;
 
 /**
- * TODO: Javadoc Pending...
+ * Thrown when all CP nodes have not committed their CP node list and initialization of the Metadata Raft group is not done yet.
+ * Handled and retried internally.
  */
 public class MetadataRaftGroupNotInitializedException extends RaftException implements RetryableException {
     public MetadataRaftGroupNotInitializedException() {

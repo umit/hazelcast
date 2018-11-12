@@ -16,13 +16,14 @@
 
 package com.hazelcast.raft.impl.session.operation;
 
+import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
-import com.hazelcast.raft.impl.session.RaftSessionService;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.session.SessionService;
 import com.hazelcast.raft.impl.session.RaftSessionServiceDataSerializerHook;
 
 import java.io.IOException;
@@ -30,7 +31,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * TODO: Javadoc Pending...
+ * Closes inactive sessions. A session is considered to be inactive if it is committing heartbeats
+ * but has not acquired any resource for {@link RaftConfig#getSessionTimeToLiveSeconds()}.
+ * There is no point for committing heartbeats for such sessions. If clients commit a new session-based operation afterwards,
+ * they can create a new session.
  */
 public class CloseInactiveSessionsOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
@@ -45,19 +49,19 @@ public class CloseInactiveSessionsOp extends RaftOp implements InvocationTargetL
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
-        RaftSessionService service = getService();
+        SessionService service = getService();
         service.closeInactiveSessions(groupId, sessions);
         return null;
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return true;
     }
 
     @Override
     public String getServiceName() {
-        return RaftSessionService.SERVICE_NAME;
+        return SessionService.SERVICE_NAME;
     }
 
     @Override

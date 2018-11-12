@@ -17,10 +17,13 @@
 package com.hazelcast.raft.impl.service.exception;
 
 import com.hazelcast.core.HazelcastException;
+import com.hazelcast.raft.RaftManagementService;
 
 /**
- * TODO: Javadoc Pending...
+ * Thrown while a CP node is requested to be removed from the CP sub-system while there is an ongoing process for another member.
+ * This exception will be handled internally and will not be exposed to the user.
  *
+ * @see RaftManagementService#triggerRemoveRaftMember(com.hazelcast.raft.RaftMember)
  */
 public class CannotRemoveMemberException extends HazelcastException {
 

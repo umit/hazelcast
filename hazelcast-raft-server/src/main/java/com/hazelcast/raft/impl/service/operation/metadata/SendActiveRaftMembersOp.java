@@ -19,8 +19,9 @@ package com.hazelcast.raft.impl.service.operation.metadata;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.impl.RaftSystemOperation;
 import com.hazelcast.raft.impl.RaftMemberImpl;
+import com.hazelcast.raft.impl.RaftOp;
+import com.hazelcast.raft.impl.RaftSystemOperation;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.spi.Operation;
@@ -30,7 +31,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * TODO: Javadoc Pending...
+ * CP nodes use this operation to broadcast their current active CP node list to the AP Hazelcast nodes.
+ * <p/>
+ * Please note that this operation is not a {@link RaftOp}, so it is not handled via the Raft layer.
  */
 public class SendActiveRaftMembersOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation {
 
@@ -46,7 +49,7 @@ public class SendActiveRaftMembersOp extends Operation implements IdentifiedData
     @Override
     public void run() {
         RaftService service = getService();
-        service.getMetadataManager().setActiveMembers(members);
+        service.getMetadataGroupManager().setActiveMembers(members);
     }
 
     @Override
@@ -57,6 +60,16 @@ public class SendActiveRaftMembersOp extends Operation implements IdentifiedData
     @Override
     public String getServiceName() {
         return RaftService.SERVICE_NAME;
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftServiceDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftServiceDataSerializerHook.SEND_ACTIVE_RAFT_MEMBERS_OP;
     }
 
     @Override
@@ -77,16 +90,6 @@ public class SendActiveRaftMembersOp extends Operation implements IdentifiedData
             RaftMemberImpl member = in.readObject();
             members.add(member);
         }
-    }
-
-    @Override
-    public int getFactoryId() {
-        return RaftServiceDataSerializerHook.F_ID;
-    }
-
-    @Override
-    public int getId() {
-        return RaftServiceDataSerializerHook.SEND_ACTIVE_RAFT_MEMBERS_OP;
     }
 
     @Override

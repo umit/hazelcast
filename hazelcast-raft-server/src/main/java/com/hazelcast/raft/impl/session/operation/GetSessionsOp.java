@@ -20,46 +20,34 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.SessionInfo;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
-import com.hazelcast.raft.impl.session.RaftSessionService;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.session.SessionService;
 import com.hazelcast.raft.impl.session.RaftSessionServiceDataSerializerHook;
-import com.hazelcast.raft.impl.util.Tuple2;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 
 /**
- * TODO: Javadoc Pending...
+ * Returns the collection of active sessions in the given Raft group
  */
-public class InvalidateSessionsOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
-
-    private Collection<Tuple2<Long, Long>> sessions;
-
-    public InvalidateSessionsOp() {
-    }
-
-    public InvalidateSessionsOp(Collection<Tuple2<Long, Long>> sessionIds) {
-        this.sessions = sessionIds;
-    }
+public class GetSessionsOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
-        RaftSessionService service = getService();
-        service.invalidateSessions(groupId, sessions);
-        return null;
+        SessionService service = getService();
+        return new ArrayList<SessionInfo>(service.getSessionsLocally(groupId));
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return true;
     }
 
     @Override
     public String getServiceName() {
-        return RaftSessionService.SERVICE_NAME;
+        return SessionService.SERVICE_NAME;
     }
 
     @Override
@@ -69,32 +57,14 @@ public class InvalidateSessionsOp extends RaftOp implements InvocationTargetLeav
 
     @Override
     public int getId() {
-        return RaftSessionServiceDataSerializerHook.INVALIDATE_SESSIONS;
+        return RaftSessionServiceDataSerializerHook.GET_SESSIONS;
     }
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeInt(sessions.size());
-        for (Tuple2<Long, Long> s : sessions) {
-            out.writeLong(s.element1);
-            out.writeLong(s.element2);
-        }
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
-        int size = in.readInt();
-        List<Tuple2<Long, Long>> sessionIds = new ArrayList<Tuple2<Long, Long>>();
-        for (int i = 0; i < size; i++) {
-            long sessionId = in.readLong();
-            long version = in.readLong();
-            sessionIds.add(Tuple2.of(sessionId, version));
-        }
-        this.sessions = sessionIds;
-    }
-
-    @Override
-    protected void toString(StringBuilder sb) {
-        sb.append(", sessions=").append(sessions);
     }
 }

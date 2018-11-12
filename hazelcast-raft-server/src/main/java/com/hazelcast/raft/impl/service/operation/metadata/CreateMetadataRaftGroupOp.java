@@ -22,17 +22,19 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.service.RaftMetadataManager;
+import com.hazelcast.raft.impl.service.MetadataRaftGroupManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * TODO: Javadoc Pending...
+ * Used during cluster startup by CP nodes to commit their CP node list to the Metadata group.
+ * in order to guarantee that each CP node discovers the same list.
+ * Fails with {@link IllegalArgumentException} if a CP node commits a different list.
  */
 public class CreateMetadataRaftGroupOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
@@ -50,19 +52,29 @@ public class CreateMetadataRaftGroupOp extends RaftOp implements InvocationTarge
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        RaftMetadataManager metadataManager = service.getMetadataManager();
+        MetadataRaftGroupManager metadataManager = service.getMetadataGroupManager();
         metadataManager.createInitialMetadataRaftGroup(initialMembers, metadataMembersCount);
         return null;
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return true;
     }
 
     @Override
     public String getServiceName() {
         return RaftService.SERVICE_NAME;
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftServiceDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftServiceDataSerializerHook.CREATE_METADATA_RAFT_GROUP_OP;
     }
 
     @Override
@@ -83,16 +95,6 @@ public class CreateMetadataRaftGroupOp extends RaftOp implements InvocationTarge
             initialMembers.add(member);
         }
         metadataMembersCount = in.readInt();
-    }
-
-    @Override
-    public int getFactoryId() {
-        return RaftServiceDataSerializerHook.F_ID;
-    }
-
-    @Override
-    public int getId() {
-        return RaftServiceDataSerializerHook.CREATE_METADATA_RAFT_GROUP_OP;
     }
 
     @Override

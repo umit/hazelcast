@@ -19,17 +19,23 @@ package com.hazelcast.raft.impl.service.operation.metadata;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.raft.RaftGroup.RaftGroupStatus;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * If a Raft node loses its majority completely, its remaining members cannot leave the CP subsystem gracefully.
+ * It is because we need to make a commit to a halted Raft group, and the system block since we won't be able to do it.
+ * To recover from this failure case, we forcefully destroy a Raft group. Status of the Raft group will be directly
+ * changed to {@link RaftGroupStatus#DESTROYED} without gracefully destroying {@link RaftNode} instances first.
+ * <p/>
+ * This operation is committed to the Metadata group.
  */
 public class ForceDestroyRaftGroupOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
@@ -45,12 +51,12 @@ public class ForceDestroyRaftGroupOp extends RaftOp implements InvocationTargetL
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        service.getMetadataManager().forceDestroyRaftGroup(targetGroupId);
+        service.getMetadataGroupManager().forceDestroyRaftGroup(targetGroupId);
         return null;
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return true;
     }
 

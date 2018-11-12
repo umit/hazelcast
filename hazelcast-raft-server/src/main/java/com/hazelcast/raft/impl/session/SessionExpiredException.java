@@ -20,7 +20,7 @@ import com.hazelcast.client.impl.protocol.ClientExceptionFactory;
 import com.hazelcast.core.HazelcastException;
 
 /**
- * TODO: Javadoc Pending...
+ * Thrown when an operation is attached to a Raft session that is no longer active.
  */
 public class SessionExpiredException extends HazelcastException {
 

@@ -22,18 +22,28 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.service.RaftMetadataManager;
+import com.hazelcast.raft.impl.service.RaftInvocationManager;
+import com.hazelcast.raft.impl.service.MetadataRaftGroupManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.service.exception.CannotCreateRaftGroupException;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * Creates a new Raft group with the given name and the members and returns its ID.
+ * Expected number of members for the Raft group is validated via the Hazelcast configuration. Number of members in the operation
+ * are expected to be same with the Raft group member count in the configuration.
+ * If an active Raft group exists for the same name, we check if the Raft group contains the same number of members.
+ * If group size is same, we return ID of the existing Raft group.
+ * Otherwise, we fail with {@link IllegalStateException} and this exception will be exposed to the user.
+ * If a member in the given member list is not an active CP node, the operation fails with {@link CannotCreateRaftGroupException}.
+ * This exception will be handled by {@link RaftInvocationManager} and another attempt will be made with a new member list.
+ * <p/>
+ * This operation is committed to the Metadata group.
  */
 public class CreateRaftGroupOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
@@ -51,18 +61,28 @@ public class CreateRaftGroupOp extends RaftOp implements InvocationTargetLeaveAw
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        RaftMetadataManager metadataManager = service.getMetadataManager();
+        MetadataRaftGroupManager metadataManager = service.getMetadataGroupManager();
         return metadataManager.createRaftGroup(groupName, members, commitIndex);
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return true;
     }
 
     @Override
     public String getServiceName() {
         return RaftService.SERVICE_NAME;
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftServiceDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftServiceDataSerializerHook.CREATE_RAFT_GROUP_OP;
     }
 
     @Override
@@ -83,16 +103,6 @@ public class CreateRaftGroupOp extends RaftOp implements InvocationTargetLeaveAw
             RaftMemberImpl member = in.readObject();
             members.add(member);
         }
-    }
-
-    @Override
-    public int getFactoryId() {
-        return RaftServiceDataSerializerHook.F_ID;
-    }
-
-    @Override
-    public int getId() {
-        return RaftServiceDataSerializerHook.CREATE_RAFT_GROUP_OP;
     }
 
     @Override

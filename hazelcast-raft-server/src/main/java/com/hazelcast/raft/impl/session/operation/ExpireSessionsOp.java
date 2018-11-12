@@ -16,6 +16,7 @@
 
 package com.hazelcast.raft.impl.session.operation;
 
+import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
@@ -24,29 +25,32 @@ import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 import com.hazelcast.raft.impl.session.SessionService;
 import com.hazelcast.raft.impl.session.RaftSessionServiceDataSerializerHook;
-import com.hazelcast.raft.impl.session.SessionAwareService;
+import com.hazelcast.raft.impl.util.Tuple2;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 /**
- * Closes the given session on the Raft group and notifies services via the {@link SessionAwareService} interface.
- * Returns silently if an active session is not found for the given session id.
+ * Expires sessions that do have not committed any heartbeat for {@link RaftConfig#getSessionTimeToLiveSeconds()} seconds.
  */
-public class CloseSessionOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
+public class ExpireSessionsOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
-    private long sessionId;
+    private Collection<Tuple2<Long, Long>> sessions;
 
-    public CloseSessionOp() {
+    public ExpireSessionsOp() {
     }
 
-    public CloseSessionOp(long sessionId) {
-        this.sessionId = sessionId;
+    public ExpireSessionsOp(Collection<Tuple2<Long, Long>> sessionIds) {
+        this.sessions = sessionIds;
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         SessionService service = getService();
-        return service.closeSession(groupId, sessionId);
+        service.expireSessions(groupId, sessions);
+        return null;
     }
 
     @Override
@@ -66,21 +70,32 @@ public class CloseSessionOp extends RaftOp implements InvocationTargetLeaveAware
 
     @Override
     public int getId() {
-        return RaftSessionServiceDataSerializerHook.CLOSE_SESSION;
+        return RaftSessionServiceDataSerializerHook.EXPIRE_SESSIONS;
     }
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeLong(sessionId);
+        out.writeInt(sessions.size());
+        for (Tuple2<Long, Long> s : sessions) {
+            out.writeLong(s.element1);
+            out.writeLong(s.element2);
+        }
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
-        sessionId = in.readLong();
+        int size = in.readInt();
+        List<Tuple2<Long, Long>> sessionIds = new ArrayList<Tuple2<Long, Long>>();
+        for (int i = 0; i < size; i++) {
+            long sessionId = in.readLong();
+            long version = in.readLong();
+            sessionIds.add(Tuple2.of(sessionId, version));
+        }
+        this.sessions = sessionIds;
     }
 
     @Override
     protected void toString(StringBuilder sb) {
-        sb.append(", sessionId=").append(sessionId);
+        sb.append(", sessions=").append(sessions);
     }
 }

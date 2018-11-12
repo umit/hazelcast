@@ -21,7 +21,7 @@ import com.hazelcast.core.ICompletableFuture;
 import java.util.Collection;
 
 /**
- * TODO: Javadoc Pending...
+ * The public API used for managing CP nodes and Raft groups.
  */
 public interface RaftManagementService {
 
@@ -65,12 +65,15 @@ public interface RaftManagementService {
      * If other active Raft members are available, they will replace the removed member in the Raft groups.
      * Otherwise, the Raft groups the removed member is a member of will shrink and their majority values will be recalculated.
      * <p>
+     * This method can be invoked only from the Hazelcast master node.
+     * <p>
      * This method is idempotent.
      * If the given member is not in the active Raft members list, then this method will have no effect.
      *
      * @return a Future representing pending completion of the operation
      * @throws IllegalStateException When member removal initiated by a non-master member
-     *                               or the given member is still member of the Hazelcast cluster.
+     *                               or the given member is still member of the Hazelcast cluster
+     *                               or another CP member is being removed from the CP sub-system
      */
     ICompletableFuture<Void> triggerRemoveRaftMember(RaftMember member);
 

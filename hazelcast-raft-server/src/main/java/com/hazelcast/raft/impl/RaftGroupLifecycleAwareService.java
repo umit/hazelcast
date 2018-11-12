@@ -19,10 +19,12 @@ package com.hazelcast.raft.impl;
 import com.hazelcast.raft.RaftGroupId;
 
 /**
- * TODO: Javadoc Pending...
+ * Contains methods that are invoked on life cycle changes of a Raft group
  */
 public interface RaftGroupLifecycleAwareService {
 
-    // will be called on the thread where Raft commits are done, but can be called without a Raft commit...
+    /**
+     * Called on the thread of the Raft group when the given Raft group is destroyed, either gracefully or forcefully.
+     */
     void onGroupDestroy(RaftGroupId groupId);
 }

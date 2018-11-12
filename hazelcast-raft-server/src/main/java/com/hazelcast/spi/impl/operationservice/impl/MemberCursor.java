@@ -19,7 +19,7 @@ package com.hazelcast.spi.impl.operationservice.impl;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 
 /**
- * TODO: Javadoc Pending...
+ * Iterates over Raft members
  */
 class MemberCursor {
     private final RaftMemberImpl[] members;

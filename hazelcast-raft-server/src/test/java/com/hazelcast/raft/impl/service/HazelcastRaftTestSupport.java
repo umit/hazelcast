@@ -193,6 +193,6 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
     }
 
     public static RaftGroupInfo getRaftGroupLocally(HazelcastInstance instance, RaftGroupId groupId) {
-        return getRaftService(instance).getMetadataManager().getRaftGroup(groupId);
+        return getRaftService(instance).getMetadataGroupManager().getRaftGroup(groupId);
     }
 }

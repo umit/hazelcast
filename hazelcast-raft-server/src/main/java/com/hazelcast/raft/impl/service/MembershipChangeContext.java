@@ -42,9 +42,10 @@ import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 
 /**
- * TODO: Javadoc Pending...
+ * When there is a membership change in the CP sub-system, all decided membership changes of Raft groups are maintained here.
+ * {@link RaftGroupMembershipManager} realizes these membership changes.
  *
- * This class is IMMUTABLE because it can be returned as a response to local queries of {@link RaftCleanupHandler}
+ * This class is IMMUTABLE because it can be returned as a response to local queries of {@link RaftGroupMembershipManager}
  */
 public class MembershipChangeContext implements IdentifiedDataSerializable {
 
@@ -52,14 +53,14 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
     private RaftMemberImpl leavingMember;
     private final List<RaftGroupMembershipChangeContext> changes = new ArrayList<RaftGroupMembershipChangeContext>();
 
-    public MembershipChangeContext() {
+    MembershipChangeContext() {
     }
 
-    public MembershipChangeContext(Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups) {
+    MembershipChangeContext(Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups) {
         this(memberMissingGroups, null, Collections.<RaftGroupMembershipChangeContext>emptyList());
     }
 
-    public MembershipChangeContext(RaftMemberImpl leavingMember, List<RaftGroupMembershipChangeContext> changes) {
+    MembershipChangeContext(RaftMemberImpl leavingMember, List<RaftGroupMembershipChangeContext> changes) {
         this(Collections.<RaftGroupId, List<RaftMemberImpl>>emptyMap(), leavingMember, changes);
     }
 
@@ -70,27 +71,27 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
         this.changes.addAll(changes);
     }
 
-    public Map<RaftGroupId, List<RaftMemberImpl>> getMemberMissingGroups() {
+    Map<RaftGroupId, List<RaftMemberImpl>> getMemberMissingGroups() {
         return unmodifiableMap(memberMissingGroups);
     }
 
-    public boolean hasNoPendingMembersToAdd() {
+    boolean hasNoPendingMembersToAdd() {
         return memberMissingGroups.isEmpty();
     }
 
-    public RaftMemberImpl getLeavingMember() {
+    RaftMemberImpl getLeavingMember() {
         return leavingMember;
     }
 
-    public List<RaftGroupMembershipChangeContext> getChanges() {
+    List<RaftGroupMembershipChangeContext> getChanges() {
         return unmodifiableList(changes);
     }
 
-    public boolean hasNoPendingChanges() {
+    boolean hasNoPendingChanges() {
         return changes.isEmpty();
     }
 
-    public MembershipChangeContext setChanges(List<RaftGroupMembershipChangeContext> newChanges) {
+    MembershipChangeContext setChanges(List<RaftGroupMembershipChangeContext> newChanges) {
         checkNotNull(newChanges);
         checkFalse(newChanges.isEmpty(), "Cannot set empty changes for " + this);
         checkState(leavingMember == null,
@@ -106,7 +107,7 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
         return new MembershipChangeContext(leavingMember, newChanges);
     }
 
-    public MembershipChangeContext excludeCompletedChanges(Collection<RaftGroupId> completedGroupIds) {
+    MembershipChangeContext excludeCompletedChanges(Collection<RaftGroupId> completedGroupIds) {
         checkNotNull(completedGroupIds);
 
         List<RaftGroupMembershipChangeContext> remainingChanges = new ArrayList<RaftGroupMembershipChangeContext>(changes);
@@ -121,7 +122,7 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
         return new MembershipChangeContext(leavingMember, remainingChanges);
     }
 
-    public boolean shouldContinueRaftGroupRebalancing() {
+    boolean shouldContinueRaftGroupRebalancing() {
         return hasNoPendingChanges() && leavingMember == null;
     }
 
@@ -137,11 +138,11 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
 
         private RaftMemberImpl memberToRemove;
 
-        public RaftGroupMembershipChangeContext() {
+        RaftGroupMembershipChangeContext() {
         }
 
-        public RaftGroupMembershipChangeContext(RaftGroupId groupId, long membersCommitIndex, Collection<RaftMemberImpl> members,
-                                                RaftMemberImpl memberToAdd, RaftMemberImpl memberToRemove) {
+        RaftGroupMembershipChangeContext(RaftGroupId groupId, long membersCommitIndex, Collection<RaftMemberImpl> members,
+                                         RaftMemberImpl memberToAdd, RaftMemberImpl memberToRemove) {
             this.groupId = groupId;
             this.membersCommitIndex = membersCommitIndex;
             this.members = members;
@@ -149,23 +150,23 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
             this.memberToRemove = memberToRemove;
         }
 
-        public RaftGroupId getGroupId() {
+        RaftGroupId getGroupId() {
             return groupId;
         }
 
-        public long getMembersCommitIndex() {
+        long getMembersCommitIndex() {
             return membersCommitIndex;
         }
 
-        public Collection<RaftMemberImpl> getMembers() {
+        Collection<RaftMemberImpl> getMembers() {
             return members;
         }
 
-        public RaftMemberImpl getMemberToAdd() {
+        RaftMemberImpl getMemberToAdd() {
             return memberToAdd;
         }
 
-        public RaftMemberImpl getMemberToRemove() {
+        RaftMemberImpl getMemberToRemove() {
             return memberToRemove;
         }
 
