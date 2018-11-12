@@ -21,10 +21,10 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.service.RaftMetadataManager;
+import com.hazelcast.raft.impl.service.MetadataRaftGroupManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 import com.hazelcast.raft.impl.util.Tuple2;
 
 import java.io.IOException;
@@ -33,7 +33,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 /**
- * TODO: Javadoc Pending...
+ * Commits the given successfully-applied membership changes to the Metadata Raft group.
+ * The given changes do not have to contain all pending Raft group membership changes.
  */
 public class CompleteRaftGroupMembershipChangesOp extends RaftOp implements InvocationTargetLeaveAware,
                                                                             IdentifiedDataSerializable {
@@ -50,18 +51,28 @@ public class CompleteRaftGroupMembershipChangesOp extends RaftOp implements Invo
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        RaftMetadataManager metadataManager = service.getMetadataManager();
+        MetadataRaftGroupManager metadataManager = service.getMetadataGroupManager();
         return metadataManager.completeRaftGroupMembershipChanges(changedGroups);
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return true;
     }
 
     @Override
     public String getServiceName() {
         return RaftService.SERVICE_NAME;
+    }
+
+    @Override
+    public int getFactoryId() {
+        return RaftServiceDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftServiceDataSerializerHook.COMPLETE_RAFT_GROUP_MEMBERSHIP_CHANGES_OP;
     }
 
     @Override
@@ -85,16 +96,6 @@ public class CompleteRaftGroupMembershipChangesOp extends RaftOp implements Invo
             long newMembersCommitIndex = in.readLong();
             changedGroups.put(groupId, Tuple2.of(currMembersCommitIndex, newMembersCommitIndex));
         }
-    }
-
-    @Override
-    public int getFactoryId() {
-        return RaftServiceDataSerializerHook.F_ID;
-    }
-
-    @Override
-    public int getId() {
-        return RaftServiceDataSerializerHook.COMPLETE_RAFT_GROUP_MEMBERSHIP_CHANGES_OP;
     }
 
     @Override

@@ -17,16 +17,18 @@
 package com.hazelcast.raft.impl.service.proxy;
 
 import com.hazelcast.core.ICompletableFuture;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.command.DestroyRaftGroupCmd;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftOp;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
 /**
- * TODO: Javadoc Pending...
+ * Replicates a {@link DestroyRaftGroupCmd} to a Raft group.
  */
-public class DestroyRaftGroupOp extends RaftReplicateOp implements InvocationTargetLeaveAware {
+public class DestroyRaftGroupOp extends RaftReplicateOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
     public DestroyRaftGroupOp() {
     }
@@ -46,7 +48,7 @@ public class DestroyRaftGroupOp extends RaftReplicateOp implements InvocationTar
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return false;
     }
 

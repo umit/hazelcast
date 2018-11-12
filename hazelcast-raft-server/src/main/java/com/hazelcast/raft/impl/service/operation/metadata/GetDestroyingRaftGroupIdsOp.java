@@ -23,12 +23,14 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * Returns ids of the Raft groups that are currently being destroyed.
+ * <p/>
+ * This operation is committed to the Metadata group.
  */
 public class GetDestroyingRaftGroupIdsOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
@@ -38,11 +40,11 @@ public class GetDestroyingRaftGroupIdsOp extends RaftOp implements InvocationTar
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        return service.getMetadataManager().getDestroyingRaftGroupIds();
+        return service.getMetadataGroupManager().getDestroyingRaftGroupIds();
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return true;
     }
 

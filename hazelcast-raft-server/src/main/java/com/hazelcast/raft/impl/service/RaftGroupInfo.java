@@ -36,7 +36,8 @@ import static com.hazelcast.raft.RaftGroup.RaftGroupStatus.DESTROYING;
 import static com.hazelcast.util.Preconditions.checkState;
 
 /**
- * TODO: Javadoc Pending...
+ * Contains metadata information for Raft groups, such as group id, group members, etc.
+ * Maintained within the Metadata Raft group.
  */
 public final class RaftGroupInfo implements RaftGroup, IdentifiedDataSerializable {
 

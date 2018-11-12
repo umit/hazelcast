@@ -406,7 +406,7 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
         lock.destroy();
 
         final RaftGroupId groupId = getGroupId(lock);
-        getRaftInvocationManager(instances[0]).triggerDestroyRaftGroup(groupId).get();
+        getRaftInvocationManager(instances[0]).triggerDestroy(groupId).get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -439,7 +439,7 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
         sleepSeconds(1);
 
         final RaftGroupId groupId = getGroupId(lock);
-        getRaftInvocationManager(instances[0]).triggerDestroyRaftGroup(groupId).get();
+        getRaftInvocationManager(instances[0]).triggerDestroy(groupId).get();
 
         for (Future future : futures) {
             try {

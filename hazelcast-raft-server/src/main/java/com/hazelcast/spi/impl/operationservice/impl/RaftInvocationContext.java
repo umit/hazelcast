@@ -28,21 +28,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * TODO: Javadoc Pending...
- *
- * @author mdogan 30.05.2018
+ *  Contains all static dependencies for a {@link RaftInvocation} along with the CP node list.
  */
 public class RaftInvocationContext {
 
-
     private final ILogger logger;
-
     private final RaftService raftService;
     private final ConcurrentMap<RaftGroupId, RaftMemberImpl> knownLeaders =
             new ConcurrentHashMap<RaftGroupId, RaftMemberImpl>();
     private final boolean failOnIndeterminateOperationState;
 
-    private volatile RaftMemberImpl[] allMembers = {};
+    private volatile RaftMemberImpl[] members = {};
 
     public RaftInvocationContext(ILogger logger, RaftService raftService) {
         this.logger = logger;
@@ -52,15 +48,15 @@ public class RaftInvocationContext {
     }
 
     public void reset() {
-        allMembers = new RaftMemberImpl[0];
+        members = new RaftMemberImpl[0];
         knownLeaders.clear();
     }
 
-    public void setAllMembers(Collection<RaftMemberImpl> endpoints) {
-        allMembers = endpoints.toArray(new RaftMemberImpl[0]);
+    public void setMembers(Collection<RaftMemberImpl> members) {
+        this.members = members.toArray(new RaftMemberImpl[0]);
     }
 
-    public RaftMemberImpl getKnownLeader(RaftGroupId groupId) {
+    RaftMemberImpl getKnownLeader(RaftGroupId groupId) {
         return knownLeaders.get(groupId);
     }
 
@@ -97,7 +93,7 @@ public class RaftInvocationContext {
 
     MemberCursor newMemberCursor(RaftGroupId groupId) {
         RaftGroupInfo group = raftService.getRaftGroup(groupId);
-        RaftMemberImpl[] endpoints = group != null ? group.membersArray() : allMembers;
+        RaftMemberImpl[] endpoints = group != null ? group.membersArray() : members;
         return new MemberCursor(endpoints);
     }
 }

@@ -21,15 +21,17 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.service.RaftMetadataManager;
+import com.hazelcast.raft.impl.service.MetadataRaftGroupManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * Initiates the destroy process for the given Raft group.
+ * <p/>
+ * This operation is committed to the Metadata group.
  */
 public class TriggerDestroyRaftGroupOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
@@ -42,32 +44,23 @@ public class TriggerDestroyRaftGroupOp extends RaftOp implements InvocationTarge
         this.targetGroupId = targetGroupId;
     }
 
+    // Please note that targetGroupId is the Raft group that is being queried and groupId argument is the Metadata Raft group
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        RaftMetadataManager metadataManager = service.getMetadataManager();
+        MetadataRaftGroupManager metadataManager = service.getMetadataGroupManager();
         metadataManager.triggerDestroyRaftGroup(targetGroupId);
         return targetGroupId;
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return true;
     }
 
     @Override
     public String getServiceName() {
         return RaftService.SERVICE_NAME;
-    }
-
-    @Override
-    public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeObject(targetGroupId);
-    }
-
-    @Override
-    public void readData(ObjectDataInput in) throws IOException {
-        targetGroupId = in.readObject();
     }
 
     @Override
@@ -78,6 +71,16 @@ public class TriggerDestroyRaftGroupOp extends RaftOp implements InvocationTarge
     @Override
     public int getId() {
         return RaftServiceDataSerializerHook.TRIGGER_DESTROY_RAFT_GROUP_OP;
+    }
+
+    @Override
+    public void writeData(ObjectDataOutput out) throws IOException {
+        out.writeObject(targetGroupId);
+    }
+
+    @Override
+    public void readData(ObjectDataInput in) throws IOException {
+        targetGroupId = in.readObject();
     }
 
     @Override

@@ -19,7 +19,7 @@ package com.hazelcast.raft.service.lock.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
 import com.hazelcast.raft.service.lock.RaftLockService;
 
@@ -49,7 +49,7 @@ public class UnlockOp extends AbstractLockOp implements InvocationTargetLeaveAwa
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return true;
     }
 

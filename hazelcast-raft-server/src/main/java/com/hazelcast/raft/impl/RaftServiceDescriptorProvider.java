@@ -17,13 +17,13 @@
 package com.hazelcast.raft.impl;
 
 import com.hazelcast.raft.impl.service.RaftService;
-import com.hazelcast.raft.impl.session.RaftSessionService;
+import com.hazelcast.raft.impl.session.SessionService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.impl.servicemanager.ServiceDescriptor;
 import com.hazelcast.spi.impl.servicemanager.ServiceDescriptorProvider;
 
 /**
- * TODO: Javadoc Pending...
+ * Provides information about internal Raft services.
  */
 public class RaftServiceDescriptorProvider implements ServiceDescriptorProvider {
 
@@ -50,12 +50,12 @@ public class RaftServiceDescriptorProvider implements ServiceDescriptorProvider 
     private static class RaftSessionServiceDescriptor implements ServiceDescriptor {
         @Override
         public String getServiceName() {
-            return RaftSessionService.SERVICE_NAME;
+            return SessionService.SERVICE_NAME;
         }
 
         @Override
         public Object getService(NodeEngine nodeEngine) {
-            return new RaftSessionService(nodeEngine);
+            return new SessionService(nodeEngine);
         }
     }
 }

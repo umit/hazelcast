@@ -18,7 +18,7 @@ package com.hazelcast.raft.service.atomicref.operation;
 
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 import com.hazelcast.raft.service.atomicref.RaftAtomicReferenceDataSerializerHook;
 
 /**
@@ -38,7 +38,7 @@ public class GetOp extends AbstractAtomicRefOp implements InvocationTargetLeaveA
         return getAtomicRef(groupId).get();
     }
 
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return true;
     }
 

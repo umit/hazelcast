@@ -24,14 +24,16 @@ import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 
 import java.io.IOException;
 
-import static com.hazelcast.raft.impl.service.RaftMetadataManager.METADATA_GROUP_ID;
+import static com.hazelcast.raft.impl.service.MetadataRaftGroupManager.METADATA_GROUP_ID;
 
 /**
- * TODO: Javadoc Pending...
+ * A {@link RaftOp} that adds a new CP member to the CP sub-system.
+ * Committed to the Metadata Raft group.
+ * Fails with {@link IllegalArgumentException} if the member to be added is already a CP member that is currently being removed.
  */
 public class AddRaftMemberOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
@@ -48,28 +50,18 @@ public class AddRaftMemberOp extends RaftOp implements InvocationTargetLeaveAwar
     public Object run(RaftGroupId groupId, long commitIndex) {
         assert METADATA_GROUP_ID.equals(groupId);
         RaftService service = getService();
-        service.getMetadataManager().addActiveMember(member);
+        service.getMetadataGroupManager().addActiveMember(member);
         return null;
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return true;
     }
 
     @Override
     public String getServiceName() {
         return RaftService.SERVICE_NAME;
-    }
-
-    @Override
-    public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeObject(member);
-    }
-
-    @Override
-    public void readData(ObjectDataInput in) throws IOException {
-        member = in.readObject();
     }
 
     @Override
@@ -80,6 +72,16 @@ public class AddRaftMemberOp extends RaftOp implements InvocationTargetLeaveAwar
     @Override
     public int getId() {
         return RaftServiceDataSerializerHook.ADD_RAFT_MEMBER_OP;
+    }
+
+    @Override
+    public void writeData(ObjectDataOutput out) throws IOException {
+        out.writeObject(member);
+    }
+
+    @Override
+    public void readData(ObjectDataInput in) throws IOException {
+        member = in.readObject();
     }
 
     @Override

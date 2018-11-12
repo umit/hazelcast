@@ -21,7 +21,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 import com.hazelcast.raft.service.atomicref.RaftAtomicReferenceDataSerializerHook;
 import com.hazelcast.raft.service.atomicref.RaftAtomicRef;
 
@@ -49,7 +49,7 @@ public class ContainsOp extends AbstractAtomicRefOp implements InvocationTargetL
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return true;
     }
 

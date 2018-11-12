@@ -31,9 +31,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import static com.hazelcast.raft.impl.session.Session.toExpirationTime;
 
 /**
- * TODO: Javadoc Pending...
+ * Maintains active sessions of a Raft group
  */
-public class SessionRegistry {
+class SessionRegistry {
 
     private final RaftGroupId groupId;
     private final Map<Long, Session> sessions = new ConcurrentHashMap<Long, Session>();
@@ -71,7 +71,7 @@ public class SessionRegistry {
         return sessions.remove(sessionId) != null;
     }
 
-    boolean invalidateSession(long sessionId, long expectedVersion) {
+    boolean expireSession(long sessionId, long expectedVersion) {
         Session session = sessions.get(sessionId);
         if (session == null) {
             return false;
@@ -97,7 +97,7 @@ public class SessionRegistry {
     }
 
     // queried locally
-    Collection<Tuple2<Long, Long>> getExpiredSessions() {
+    Collection<Tuple2<Long, Long>> getSessionsToExpire() {
         List<Tuple2<Long, Long>> expired = new ArrayList<Tuple2<Long, Long>>();
         long now = Clock.currentTimeMillis();
         for (Session session : sessions.values()) {

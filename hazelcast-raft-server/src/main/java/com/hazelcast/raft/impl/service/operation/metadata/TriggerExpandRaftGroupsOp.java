@@ -22,10 +22,10 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.service.RaftMetadataManager;
+import com.hazelcast.raft.impl.service.MetadataRaftGroupManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -33,7 +33,15 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 /**
- * TODO: Javadoc Pending...
+ * Crashed CP nodes are removed from Raft groups via an explicit API call.
+ * Then, number of members in the corresponding Raft groups will be smaller then their initial size.
+ * When new CP nodes are added to the CP sub-system, these Raft groups are expanded by adding the given members.
+ * <p/>
+ * Fails with {@link IllegalArgumentException} if there is an ongoing membership change in the CP sub-system.
+ * Fails with {@link IllegalArgumentException} if a given CP node is not in the current active CP node list.
+ * Fails with {@link IllegalArgumentException} if a given CP node is not in the candidate list of its Raft group.
+ * <p/>
+ * This operation is committed to the Metadata group.
  */
 public class TriggerExpandRaftGroupsOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
@@ -49,12 +57,12 @@ public class TriggerExpandRaftGroupsOp extends RaftOp implements InvocationTarge
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        RaftMetadataManager metadataManager = service.getMetadataManager();
+        MetadataRaftGroupManager metadataManager = service.getMetadataGroupManager();
         return metadataManager.triggerExpandRaftGroups(membersToAdd);
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return false;
     }
 

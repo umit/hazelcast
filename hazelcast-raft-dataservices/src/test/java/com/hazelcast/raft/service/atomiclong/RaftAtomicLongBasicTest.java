@@ -241,7 +241,7 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
         atomicLong.destroy();
 
         final RaftGroupId groupId = getGroupId(atomicLong);
-        getRaftInvocationManager(instances[0]).triggerDestroyRaftGroup(groupId).get();
+        getRaftInvocationManager(instances[0]).triggerDestroy(groupId).get();
 
         assertTrueEventually(new AssertTask() {
             @Override

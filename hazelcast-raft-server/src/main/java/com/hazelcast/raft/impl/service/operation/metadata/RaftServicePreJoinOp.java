@@ -20,6 +20,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.nio.serialization.impl.Versioned;
+import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.spi.Operation;
@@ -27,8 +28,9 @@ import com.hazelcast.spi.Operation;
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * If the CP sub-system discovery process is completed, new Hazelcast nodes skip the discovery step.
+ * <p/>
+ * Please note that this operation is not a {@link RaftOp}, so it is not handled via the Raft layer.
  */
 public class RaftServicePreJoinOp extends Operation implements IdentifiedDataSerializable, Versioned {
 
@@ -45,7 +47,7 @@ public class RaftServicePreJoinOp extends Operation implements IdentifiedDataSer
     public void run() {
         RaftService service = getService();
         if (discoveryCompleted) {
-            service.getMetadataManager().disableDiscovery();
+            service.getMetadataGroupManager().disableDiscovery();
         }
     }
 
@@ -60,6 +62,16 @@ public class RaftServicePreJoinOp extends Operation implements IdentifiedDataSer
     }
 
     @Override
+    public int getFactoryId() {
+        return RaftServiceDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftServiceDataSerializerHook.RAFT_PRE_JOIN_OP;
+    }
+
+    @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeBoolean(discoveryCompleted);
@@ -69,16 +81,6 @@ public class RaftServicePreJoinOp extends Operation implements IdentifiedDataSer
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         discoveryCompleted = in.readBoolean();
-    }
-
-    @Override
-    public int getFactoryId() {
-        return RaftServiceDataSerializerHook.F_ID;
-    }
-
-    @Override
-    public int getId() {
-        return RaftServiceDataSerializerHook.RAFT_PREJOIN_OP;
     }
 
     @Override

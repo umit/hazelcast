@@ -17,8 +17,7 @@
 package com.hazelcast.raft.impl.util;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * An immutable container of 3 statically typed fields
  */
 @SuppressWarnings("checkstyle:visibilitymodifier")
 public final class Tuple3<X, Y, Z> {

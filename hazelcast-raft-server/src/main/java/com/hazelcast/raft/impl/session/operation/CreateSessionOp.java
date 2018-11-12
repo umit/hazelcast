@@ -22,14 +22,15 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
-import com.hazelcast.raft.impl.session.RaftSessionService;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.session.SessionService;
 import com.hazelcast.raft.impl.session.RaftSessionServiceDataSerializerHook;
 
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * Creates a new session for the given endpoint and returns its id.
+ * This operation does not check if the given endpoint has another active session on the Raft group.
  */
 public class CreateSessionOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
@@ -45,18 +46,18 @@ public class CreateSessionOp extends RaftOp implements InvocationTargetLeaveAwar
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
-        RaftSessionService service = getService();
+        SessionService service = getService();
         return service.createNewSession(groupId, endpoint);
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return true;
     }
 
     @Override
     public String getServiceName() {
-        return RaftSessionService.SERVICE_NAME;
+        return SessionService.SERVICE_NAME;
     }
 
     @Override

@@ -59,17 +59,17 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 
-import static com.hazelcast.raft.impl.service.RaftMetadataManager.METADATA_GROUP_ID;
+import static com.hazelcast.raft.impl.service.MetadataRaftGroupManager.METADATA_GROUP_ID;
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
- * TODO: Javadoc Pending...
+ * Realizes pending Raft group membership changes and periodically checks validity of local {@link RaftNode} instances on CP nodes
  */
-class RaftCleanupHandler {
+class RaftGroupMembershipManager {
 
-    static final long CLEANUP_TASK_PERIOD_IN_MILLIS = SECONDS.toMillis(1);
+    static final long MANAGEMENT_TASK_PERIOD_IN_MILLIS = SECONDS.toMillis(1);
     private static final long CHECK_LOCAL_RAFT_NODES_TASK_PERIOD_IN_MILLIS = SECONDS.toMillis(10);
 
     private final NodeEngine nodeEngine;
@@ -77,7 +77,7 @@ class RaftCleanupHandler {
     private final ILogger logger;
     private volatile RaftInvocationManager invocationManager;
 
-    RaftCleanupHandler(NodeEngine nodeEngine, RaftService raftService) {
+    RaftGroupMembershipManager(NodeEngine nodeEngine, RaftService raftService) {
         this.nodeEngine = nodeEngine;
         this.logger = nodeEngine.getLogger(getClass());
         this.raftService = raftService;
@@ -92,20 +92,20 @@ class RaftCleanupHandler {
 
         ExecutionService executionService = nodeEngine.getExecutionService();
         // scheduleWithRepetition skips subsequent execution if one is already running.
-        executionService.scheduleWithRepetition(new RaftGroupDestroyHandlerTask(), CLEANUP_TASK_PERIOD_IN_MILLIS,
-                CLEANUP_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
-        executionService.scheduleWithRepetition(new RaftMembershipChangeHandlerTask(), CLEANUP_TASK_PERIOD_IN_MILLIS,
-                CLEANUP_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
+        executionService.scheduleWithRepetition(new RaftGroupDestroyHandlerTask(), MANAGEMENT_TASK_PERIOD_IN_MILLIS,
+                MANAGEMENT_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
+        executionService.scheduleWithRepetition(new RaftMembershipChangeHandlerTask(), MANAGEMENT_TASK_PERIOD_IN_MILLIS,
+                MANAGEMENT_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
         executionService.scheduleWithRepetition(new CheckLocalRaftNodesTask(), CHECK_LOCAL_RAFT_NODES_TASK_PERIOD_IN_MILLIS,
                 CHECK_LOCAL_RAFT_NODES_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
     }
 
     private RaftMemberImpl getLocalMember() {
-        return raftService.getMetadataManager().getLocalMember();
+        return raftService.getMetadataGroupManager().getLocalMember();
     }
 
     private boolean skipRunningCleanupTask() {
-        return !raftService.getMetadataManager().isMetadataLeader();
+        return !raftService.getMetadataGroupManager().isMetadataGroupLeader();
     }
 
     private class CheckLocalRaftNodesTask implements Runnable {
@@ -165,7 +165,7 @@ class RaftCleanupHandler {
             }
 
             OperationService operationService = nodeEngine.getOperationService();
-            for (RaftMemberImpl member : raftService.getMetadataManager().getActiveMembers()) {
+            for (RaftMemberImpl member : raftService.getMetadataGroupManager().getActiveMembers()) {
                 if (!member.equals(raftService.getLocalMember())) {
                     operationService.send(new DestroyRaftNodesOp(destroyedGroupIds), member.getAddress());
                 }
@@ -312,7 +312,7 @@ class RaftCleanupHandler {
             } else {
                 logger.fine("Adding " + ctx.getMemberToAdd() + " to " + groupId);
 
-                future = invocationManager.changeRaftGroupMembership(groupId, ctx.getMembersCommitIndex(),
+                future = invocationManager.changeMembership(groupId, ctx.getMembersCommitIndex(),
                         ctx.getMemberToAdd(), MembershipChangeType.ADD);
             }
 
@@ -343,7 +343,7 @@ class RaftCleanupHandler {
                                   final CountDownLatch latch,
                                   final RaftGroupMembershipChangeContext ctx,
                                   final long currentCommitIndex) {
-            ICompletableFuture<Long> future = invocationManager.changeRaftGroupMembership(ctx.getGroupId(), currentCommitIndex,
+            ICompletableFuture<Long> future = invocationManager.changeMembership(ctx.getGroupId(), currentCommitIndex,
                     ctx.getMemberToRemove(), MembershipChangeType.REMOVE);
             future.andThen(new ExecutionCallback<Long>() {
                 @Override

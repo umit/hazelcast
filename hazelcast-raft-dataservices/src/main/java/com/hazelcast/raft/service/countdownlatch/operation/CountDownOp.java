@@ -19,7 +19,7 @@ package com.hazelcast.raft.service.countdownlatch.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchDataSerializerHook;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchService;
 
@@ -50,7 +50,7 @@ public class CountDownOp extends AbstractCountDownLatchOp implements InvocationT
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return true;
     }
 

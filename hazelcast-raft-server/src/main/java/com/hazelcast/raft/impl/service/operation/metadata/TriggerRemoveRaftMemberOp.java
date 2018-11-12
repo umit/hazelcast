@@ -20,17 +20,19 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.RaftMember;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.service.RaftMetadataManager;
+import com.hazelcast.raft.impl.service.MetadataRaftGroupManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * When a CP node is shutting down gracefully, or a crashed CP node is removed from the CP sub-system via
+ * {@link RaftService#triggerRemoveRaftMember(RaftMember)}, this operation is committed to the Metadata Raft group.
  */
 public class TriggerRemoveRaftMemberOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
@@ -46,29 +48,19 @@ public class TriggerRemoveRaftMemberOp extends RaftOp implements InvocationTarge
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        RaftMetadataManager metadataManager = service.getMetadataManager();
+        MetadataRaftGroupManager metadataManager = service.getMetadataGroupManager();
         metadataManager.triggerRemoveMember(member);
         return null;
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return true;
     }
 
     @Override
     public String getServiceName() {
         return RaftService.SERVICE_NAME;
-    }
-
-    @Override
-    public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeObject(member);
-    }
-
-    @Override
-    public void readData(ObjectDataInput in) throws IOException {
-        member = in.readObject();
     }
 
     @Override
@@ -79,6 +71,16 @@ public class TriggerRemoveRaftMemberOp extends RaftOp implements InvocationTarge
     @Override
     public int getId() {
         return RaftServiceDataSerializerHook.TRIGGER_REMOVE_RAFT_MEMBER_OP;
+    }
+
+    @Override
+    public void writeData(ObjectDataOutput out) throws IOException {
+        out.writeObject(member);
+    }
+
+    @Override
+    public void readData(ObjectDataInput in) throws IOException {
+        member = in.readObject();
     }
 
     @Override

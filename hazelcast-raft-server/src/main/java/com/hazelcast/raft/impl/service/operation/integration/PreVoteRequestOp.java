@@ -26,8 +26,7 @@ import com.hazelcast.raft.impl.service.RaftService;
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * Carries a {@link PreVoteRequest} RPC from a Raft candidate to a follower
  */
 public class PreVoteRequestOp extends AsyncRaftOp {
 

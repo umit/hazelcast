@@ -23,12 +23,14 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * Returns information about the queried Raft group.
+ * <p/>
+ * This operation is committed to the Metadata group.
  */
 public class GetRaftGroupOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
@@ -41,30 +43,21 @@ public class GetRaftGroupOp extends RaftOp implements InvocationTargetLeaveAware
         this.targetGroupId = targetGroupId;
     }
 
+    // Please note that targetGroupId is the Raft group that is being queried and groupId argument is the Metadata Raft group
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        return service.getMetadataManager().getRaftGroup(targetGroupId);
+        return service.getMetadataGroupManager().getRaftGroup(targetGroupId);
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return true;
     }
 
     @Override
     public String getServiceName() {
         return RaftService.SERVICE_NAME;
-    }
-
-    @Override
-    public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeObject(targetGroupId);
-    }
-
-    @Override
-    public void readData(ObjectDataInput in) throws IOException {
-        targetGroupId = in.readObject();
     }
 
     @Override
@@ -75,6 +68,16 @@ public class GetRaftGroupOp extends RaftOp implements InvocationTargetLeaveAware
     @Override
     public int getId() {
         return RaftServiceDataSerializerHook.GET_RAFT_GROUP_OP;
+    }
+
+    @Override
+    public void writeData(ObjectDataOutput out) throws IOException {
+        out.writeObject(targetGroupId);
+    }
+
+    @Override
+    public void readData(ObjectDataInput in) throws IOException {
+        targetGroupId = in.readObject();
     }
 
     @Override

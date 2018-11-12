@@ -33,7 +33,9 @@ import com.hazelcast.spi.Operation;
 import java.io.IOException;
 
 /**
- * The base class that replicates the given {@link RaftOp} to the target raft group
+ * The base class that replicates the given {@link RaftOp} to the target Raft group
+ * <p/>
+ * Please note that this operation is not a {@link RaftOp}, so it is not handled via the Raft layer.
  */
 public abstract class RaftReplicateOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation,
                                                                    ExecutionCallback {

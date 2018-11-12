@@ -21,14 +21,23 @@ import com.hazelcast.raft.RaftGroupId;
 import java.util.Collection;
 
 /**
- * TODO: Javadoc Pending...
+ * Services that attach their resources to Raft sessions implement this service
  */
 public interface SessionAwareService {
 
+    /**
+     * Injects {@link SessionAccessor} in order to enable the custom service to validate and trigger session activity
+     */
     void setSessionAccessor(SessionAccessor accessor);
 
-    void onSessionInvalidated(RaftGroupId groupId, long sessionId);
+    /**
+     * Called when a session is closed.
+     */
+    void onSessionClosed(RaftGroupId groupId, long sessionId);
 
-    Collection<Long> getActiveSessions(RaftGroupId groupId);
+    /**
+     * Returns a collection of session ids that this service has attached some resources.
+     */
+    Collection<Long> getAttachedSessions(RaftGroupId groupId);
 
 }

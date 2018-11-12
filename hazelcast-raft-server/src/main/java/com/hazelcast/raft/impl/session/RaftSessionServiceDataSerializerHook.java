@@ -22,8 +22,9 @@ import com.hazelcast.nio.serialization.DataSerializableFactory;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.impl.session.operation.CloseInactiveSessionsOp;
 import com.hazelcast.raft.impl.session.operation.CloseSessionOp;
-import com.hazelcast.raft.impl.session.operation.InvalidateSessionsOp;
+import com.hazelcast.raft.impl.session.operation.ExpireSessionsOp;
 import com.hazelcast.raft.impl.session.operation.CreateSessionOp;
+import com.hazelcast.raft.impl.session.operation.GetSessionsOp;
 import com.hazelcast.raft.impl.session.operation.HeartbeatSessionOp;
 
 @SuppressWarnings("checkstyle:declarationorder")
@@ -33,13 +34,15 @@ public class RaftSessionServiceDataSerializerHook implements DataSerializerHook 
 
     public static final int F_ID = FactoryIdHelper.getFactoryId(RAFT_SESSION_DS_FACTORY, RAFT_SESSION_DS_FACTORY_ID);
 
-    public static final int SESSION_REGISTRY_SNAPSHOT = 1;
-    public static final int SESSION_RESPONSE = 2;
-    public static final int CREATE_SESSION = 3;
-    public static final int HEARTBEAT_SESSION = 4;
-    public static final int CLOSE_SESSION = 5;
-    public static final int INVALIDATE_SESSIONS = 6;
-    public static final int CLOSE_INACTIVE_SESSIONS = 7;
+    public static final int SESSION = 1;
+    public static final int SESSION_REGISTRY_SNAPSHOT = 2;
+    public static final int SESSION_RESPONSE = 3;
+    public static final int CREATE_SESSION = 4;
+    public static final int HEARTBEAT_SESSION = 5;
+    public static final int CLOSE_SESSION = 6;
+    public static final int EXPIRE_SESSIONS = 7;
+    public static final int CLOSE_INACTIVE_SESSIONS = 8;
+    public static final int GET_SESSIONS = 9;
 
 
     @Override
@@ -53,6 +56,8 @@ public class RaftSessionServiceDataSerializerHook implements DataSerializerHook 
             @Override
             public IdentifiedDataSerializable create(int typeId) {
                 switch (typeId) {
+                    case SESSION:
+                        return new Session();
                     case SESSION_REGISTRY_SNAPSHOT:
                         return new SessionRegistrySnapshot();
                     case SESSION_RESPONSE:
@@ -63,10 +68,12 @@ public class RaftSessionServiceDataSerializerHook implements DataSerializerHook 
                         return new HeartbeatSessionOp();
                     case CLOSE_SESSION:
                         return new CloseSessionOp();
-                    case INVALIDATE_SESSIONS:
-                        return new InvalidateSessionsOp();
+                    case EXPIRE_SESSIONS:
+                        return new ExpireSessionsOp();
                     case CLOSE_INACTIVE_SESSIONS:
                         return new CloseInactiveSessionsOp();
+                    case GET_SESSIONS:
+                        return new GetSessionsOp();
                     default:
                         throw new IllegalArgumentException("Undefined type: " + typeId);
                 }

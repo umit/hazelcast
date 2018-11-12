@@ -27,13 +27,13 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.exception.CannotCreateRaftGroupException;
-import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
-import com.hazelcast.raft.impl.service.operation.metadata.GetActiveRaftMembersOp;
-import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOp;
 import com.hazelcast.raft.impl.service.proxy.ChangeRaftGroupMembershipOp;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOp;
 import com.hazelcast.raft.impl.service.proxy.DestroyRaftGroupOp;
 import com.hazelcast.raft.impl.service.proxy.RaftQueryOp;
+import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
+import com.hazelcast.raft.impl.service.operation.metadata.GetActiveRaftMembersOp;
+import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOp;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
@@ -46,18 +46,17 @@ import com.hazelcast.spi.impl.operationservice.impl.RaftInvocationContext;
 import com.hazelcast.spi.properties.GroupProperty;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Executor;
 
 import static com.hazelcast.raft.QueryPolicy.LEADER_LOCAL;
-import static com.hazelcast.raft.impl.service.RaftMetadataManager.METADATA_GROUP_ID;
+import static com.hazelcast.raft.impl.service.MetadataRaftGroupManager.METADATA_GROUP_ID;
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 
 /**
- * TODO: Javadoc Pending...
+ * Performs invocations to create & destroy Raft groups, commit {@link RaftOp} to Raft groups, and run queries on Raft groups.
  */
 @SuppressWarnings("unchecked")
 public class RaftInvocationManager {
@@ -160,12 +159,13 @@ public class RaftInvocationManager {
         });
     }
 
-    public InternalCompletableFuture<RaftGroupId> triggerDestroyRaftGroup(final RaftGroupId groupId) {
+    // TODO [basri] this operation should be here or somewhere else?
+    public InternalCompletableFuture<RaftGroupId> triggerDestroy(RaftGroupId groupId) {
         return invoke(METADATA_GROUP_ID, new TriggerDestroyRaftGroupOp(groupId));
     }
 
-    <T> InternalCompletableFuture<T> changeRaftGroupMembership(RaftGroupId groupId, long membersCommitIndex,
-                                                               RaftMemberImpl member, MembershipChangeType changeType) {
+    <T> InternalCompletableFuture<T> changeMembership(RaftGroupId groupId, long membersCommitIndex,
+                                                      RaftMemberImpl member, MembershipChangeType changeType) {
         Operation operation = new ChangeRaftGroupMembershipOp(groupId, membersCommitIndex, member, changeType);
         Invocation invocation = new RaftInvocation(operationService.getInvocationContext(), raftInvocationContext, groupId,
                 operation, invocationMaxRetryCount, invocationRetryPauseMillis, operationCallTimeout);
@@ -198,11 +198,6 @@ public class RaftInvocationManager {
         return invocation.invoke();
     }
 
-    void setAllMembers(Collection<RaftMemberImpl> members) {
-        raftInvocationContext.setAllMembers(members);
-    }
-
-    // !!! ONLY FOR TESTING !!!
     public RaftInvocationContext getRaftInvocationContext() {
         return raftInvocationContext;
     }

@@ -7,7 +7,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.impl.service.RaftService;
-import com.hazelcast.raft.impl.session.RaftSessionService;
+import com.hazelcast.raft.impl.session.SessionService;
 import com.hazelcast.raft.service.lock.proxy.RaftFencedLockProxy;
 import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.session.SessionManagerService;
@@ -476,7 +476,7 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
 
     private void closeSession(HazelcastInstance instance, RaftGroupId groupId, long sessionId) throws ExecutionException, InterruptedException {
         NodeEngineImpl nodeEngine = getNodeEngineImpl(instance);
-        RaftSessionService service = nodeEngine.getService(RaftSessionService.SERVICE_NAME);
+        SessionService service = nodeEngine.getService(SessionService.SERVICE_NAME);
         service.forceCloseSession(groupId, sessionId).get();
     }
 

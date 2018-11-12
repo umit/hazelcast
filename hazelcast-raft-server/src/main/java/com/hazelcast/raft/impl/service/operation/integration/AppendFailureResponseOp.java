@@ -18,15 +18,16 @@ package com.hazelcast.raft.impl.service.operation.integration;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.raft.impl.dto.AppendFailureResponse;
-import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.dto.AppendFailureResponse;
+import com.hazelcast.raft.impl.dto.AppendRequest;
 import com.hazelcast.raft.impl.service.RaftService;
+import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * Carries a failure response from a Raft follower to a Raft leader for a {@link AppendRequest} RPC
  */
 public class AppendFailureResponseOp extends AsyncRaftOp {
 

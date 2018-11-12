@@ -20,6 +20,8 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.RaftNode;
+import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.RaftSystemOperation;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
@@ -30,7 +32,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * TODO: Javadoc Pending...
+ * When a Raft group is destroyed, its members terminate their internal {@link RaftNode} instances.
+ * This operation is sent to members of destroyed Raft groups.
+ * <p/>
+ * Please note that this operation is not a {@link RaftOp}, so it is not handled via the Raft layer.
  */
 public class DestroyRaftNodesOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation {
 
@@ -62,6 +67,16 @@ public class DestroyRaftNodesOp extends Operation implements IdentifiedDataSeria
     }
 
     @Override
+    public int getFactoryId() {
+        return RaftServiceDataSerializerHook.F_ID;
+    }
+
+    @Override
+    public int getId() {
+        return RaftServiceDataSerializerHook.DESTROY_RAFT_NODES_OP;
+    }
+
+    @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeInt(groupIds.size());
@@ -79,16 +94,6 @@ public class DestroyRaftNodesOp extends Operation implements IdentifiedDataSeria
             RaftGroupId groupId = in.readObject();
             groupIds.add(groupId);
         }
-    }
-
-    @Override
-    public int getFactoryId() {
-        return RaftServiceDataSerializerHook.F_ID;
-    }
-
-    @Override
-    public int getId() {
-        return RaftServiceDataSerializerHook.DESTROY_RAFT_NODES_OP;
     }
 
     @Override

@@ -19,19 +19,22 @@ package com.hazelcast.raft.impl.service.proxy;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftOp;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * Replicates a membership change operation to a Raft group.
  */
-public class ChangeRaftGroupMembershipOp extends RaftReplicateOp implements InvocationTargetLeaveAware {
+public class ChangeRaftGroupMembershipOp extends RaftReplicateOp implements InvocationTargetLeaveAware,
+                                                                            IdentifiedDataSerializable {
 
     private static final int NAN_MEMBERS_COMMIT_INDEX = -1;
 
@@ -65,7 +68,7 @@ public class ChangeRaftGroupMembershipOp extends RaftReplicateOp implements Invo
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return false;
     }
 

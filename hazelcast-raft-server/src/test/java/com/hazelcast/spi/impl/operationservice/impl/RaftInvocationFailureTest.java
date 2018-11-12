@@ -15,7 +15,7 @@ import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOp;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 import com.hazelcast.spi.exception.CallerNotMemberException;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -140,7 +140,7 @@ public class RaftInvocationFailureTest extends HazelcastRaftTestSupport {
         }
 
         @Override
-        public boolean isSafeToRetryOnTargetLeave() {
+        public boolean isRetryableOnTargetLeave() {
             return true;
         }
 

@@ -95,7 +95,7 @@ public class RaftMemberImpl implements RaftMember, Serializable, IdentifiedDataS
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.MEMBER;
+        return RaftServiceDataSerializerHook.RAFT_MEMBER;
     }
 
     @Override

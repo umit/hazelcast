@@ -24,13 +24,15 @@ import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 
 import java.io.IOException;
 import java.util.ArrayList;
 
 /**
- * TODO: Javadoc Pending...
+ * Returns the current active CP nodes in the Metadata group.
+ * <p/>
+ * This operation is committed to the Metadata group.
  */
 public class GetActiveRaftMembersOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 
@@ -41,25 +43,17 @@ public class GetActiveRaftMembersOp extends RaftOp implements InvocationTargetLe
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftService service = getService();
         // returning array list to be able to serialize response
-        return new ArrayList<RaftMemberImpl>(service.getMetadataManager().getActiveMembers());
+        return new ArrayList<RaftMemberImpl>(service.getMetadataGroupManager().getActiveMembers());
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return true;
     }
 
     @Override
     public String getServiceName() {
         return RaftService.SERVICE_NAME;
-    }
-
-    @Override
-    public void writeData(ObjectDataOutput out) throws IOException {
-    }
-
-    @Override
-    public void readData(ObjectDataInput in) throws IOException {
     }
 
     @Override
@@ -70,6 +64,14 @@ public class GetActiveRaftMembersOp extends RaftOp implements InvocationTargetLe
     @Override
     public int getId() {
         return RaftServiceDataSerializerHook.GET_ACTIVE_RAFT_MEMBERS_OP;
+    }
+
+    @Override
+    public void writeData(ObjectDataOutput out) throws IOException {
+    }
+
+    @Override
+    public void readData(ObjectDataInput in) throws IOException {
     }
 
 }

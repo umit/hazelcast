@@ -17,7 +17,7 @@
 package com.hazelcast.raft.service.semaphore.operation;
 
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.service.proxy.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 
@@ -44,7 +44,7 @@ public class DrainPermitsOp extends AbstractSemaphoreOp implements InvocationTar
     }
 
     @Override
-    public boolean isSafeToRetryOnTargetLeave() {
+    public boolean isRetryableOnTargetLeave() {
         return sessionId != NO_SESSION_ID;
     }
 
