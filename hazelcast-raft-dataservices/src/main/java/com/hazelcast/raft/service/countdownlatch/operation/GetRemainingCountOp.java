@@ -16,13 +16,14 @@
 
 package com.hazelcast.raft.service.countdownlatch.operation;
 
+import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchDataSerializerHook;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchService;
 
 /**
- * TODO: Javadoc Pending...
+ * Operation for {@link ICountDownLatch#getCount()}
  */
 public class GetRemainingCountOp extends AbstractCountDownLatchOp implements InvocationTargetLeaveAware {
 

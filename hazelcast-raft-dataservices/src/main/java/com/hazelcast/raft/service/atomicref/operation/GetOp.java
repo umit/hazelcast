@@ -16,13 +16,14 @@
 
 package com.hazelcast.raft.service.atomicref.operation;
 
+import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 import com.hazelcast.raft.service.atomicref.RaftAtomicReferenceDataSerializerHook;
 
 /**
- * TODO: Javadoc Pending...
+ * Operation for {@link IAtomicReference#get()}
  */
 public class GetOp extends AbstractAtomicRefOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 

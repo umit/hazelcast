@@ -71,7 +71,7 @@ public abstract class AbstractSessionManagerTest extends HazelcastRaftTestSuppor
         long sessionId = sessionManager.acquireSession(groupId);
         assertNotEquals(AbstractSessionManager.NO_SESSION_ID, sessionId);
         assertEquals(sessionId, sessionManager.getSession(groupId));
-        assertEquals(1, sessionManager.getSessionUsageCount(groupId, sessionId));
+        assertEquals(1, sessionManager.getSessionAcquireCount(groupId, sessionId));
 
         SessionAccessor sessionAccessor = getSessionAccessor();
         assertTrue(sessionAccessor.isActive(groupId, sessionId));
@@ -84,7 +84,7 @@ public abstract class AbstractSessionManagerTest extends HazelcastRaftTestSuppor
         long sessionId = sessionManager.acquireSession(groupId);
         assertEquals(newSessionId, sessionId);
         assertEquals(sessionId, sessionManager.getSession(groupId));
-        assertEquals(2, sessionManager.getSessionUsageCount(groupId, sessionId));
+        assertEquals(2, sessionManager.getSessionAcquireCount(groupId, sessionId));
     }
 
     @Test
@@ -112,7 +112,7 @@ public abstract class AbstractSessionManagerTest extends HazelcastRaftTestSuppor
         for (long sessionId : sessions) {
             assertEquals(expectedSessionId, sessionId);
         }
-        assertEquals(sessions.length, sessionManager.getSessionUsageCount(groupId, expectedSessionId));
+        assertEquals(sessions.length, sessionManager.getSessionAcquireCount(groupId, expectedSessionId));
     }
 
     @Test
@@ -126,7 +126,7 @@ public abstract class AbstractSessionManagerTest extends HazelcastRaftTestSuppor
         AbstractSessionManager sessionManager = getSessionManager();
         long sessionId = sessionManager.acquireSession(groupId);
         sessionManager.releaseSession(groupId, sessionId);
-        assertEquals(0, sessionManager.getSessionUsageCount(groupId, sessionId));
+        assertEquals(0, sessionManager.getSessionAcquireCount(groupId, sessionId));
     }
 
     @Test

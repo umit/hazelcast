@@ -28,6 +28,7 @@ import com.hazelcast.raft.service.semaphore.operation.ChangePermitsOp;
 import com.hazelcast.raft.service.semaphore.operation.DrainPermitsOp;
 import com.hazelcast.raft.service.semaphore.operation.InitSemaphoreOp;
 import com.hazelcast.raft.service.semaphore.operation.ReleasePermitsOp;
+import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.util.ConstructorFunction;
@@ -43,13 +44,18 @@ import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.lang.Math.max;
 
 /**
- * TODO: Javadoc Pending...
+ * Server-side sessionless proxy of Raft-based {@link ISemaphore} API
  */
 public class RaftSessionlessSemaphoreProxy implements ISemaphore {
 
     private final RaftInvocationManager invocationManager;
     private final RaftGroupId groupId;
     private final String name;
+
+    /**
+     * Since sessionId will be {@link AbstractSessionManager#NO_SESSION_ID} for all requests,
+     * uniqueness of <sessionId, threadId> pair is provided via generating globally unique thread ids using a RaftAtomicLong.
+     */
     private final ConstructorFunction<RaftGroupId, Long> globallyUniqueThreadIdCtor;
 
     public RaftSessionlessSemaphoreProxy(final RaftInvocationManager invocationManager, RaftGroupId groupId, String name) {

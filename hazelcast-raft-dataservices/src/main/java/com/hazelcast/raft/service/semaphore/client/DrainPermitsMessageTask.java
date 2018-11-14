@@ -25,7 +25,7 @@ import com.hazelcast.raft.service.semaphore.operation.DrainPermitsOp;
 import java.util.UUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for {@link DrainPermitsOp}
  */
 public class DrainPermitsMessageTask extends AbstractSemaphoreMessageTask {
 

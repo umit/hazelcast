@@ -45,10 +45,15 @@ import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.lang.Math.max;
 
 /**
- * TODO: Javadoc Pending...
+ * Server-side session-aware proxy of Raft-based {@link ISemaphore} API
  */
 public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements ISemaphore {
 
+    /**
+     * Since a proxy does not know how many permits will be drained on the Raft group,
+     * it uses this constant to increment its local session acquire count.
+     * Then, it adjusts the local session acquire count after the drain response is returned.
+     */
     public static final int DRAIN_SESSION_ACQ_COUNT = 1024;
 
     private final String name;

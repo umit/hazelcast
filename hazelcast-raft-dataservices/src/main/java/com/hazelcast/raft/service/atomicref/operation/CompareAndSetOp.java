@@ -16,6 +16,7 @@
 
 package com.hazelcast.raft.service.atomicref.operation;
 
+import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
@@ -27,7 +28,7 @@ import com.hazelcast.raft.service.atomicref.RaftAtomicRef;
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * Operation for {@link IAtomicReference#compareAndSet(Object, Object)}
  */
 public class CompareAndSetOp extends AbstractAtomicRefOp implements IdentifiedDataSerializable {
 

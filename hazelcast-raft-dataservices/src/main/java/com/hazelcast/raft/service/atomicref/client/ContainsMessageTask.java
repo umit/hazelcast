@@ -24,7 +24,7 @@ import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.atomicref.operation.ContainsOp;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for {@link ContainsOp}
  */
 public class ContainsMessageTask extends AbstractAtomicRefMessageTask {
 

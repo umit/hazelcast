@@ -20,15 +20,15 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
 import com.hazelcast.raft.service.lock.RaftLockService;
 
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * @see com.hazelcast.raft.service.lock.RaftLock#lockOwnershipState()
  */
 public class GetLockOwnershipStateOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 

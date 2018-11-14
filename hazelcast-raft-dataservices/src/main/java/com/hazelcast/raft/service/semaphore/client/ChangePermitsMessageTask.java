@@ -19,14 +19,13 @@ package com.hazelcast.raft.service.semaphore.client;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.semaphore.operation.ChangePermitsOp;
 
 import java.util.UUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for {@link ChangePermitsOp}
  */
 public class ChangePermitsMessageTask extends AbstractSemaphoreMessageTask {
 
@@ -41,8 +40,7 @@ public class ChangePermitsMessageTask extends AbstractSemaphoreMessageTask {
     @Override
     protected void processMessage() {
         RaftInvocationManager invocationManager = getRaftInvocationManager();
-        RaftOp op = new ChangePermitsOp(name, sessionId, threadId, invocationUid, permits);
-        invocationManager.invoke(groupId, op).andThen(this);
+        invocationManager.invoke(groupId, new ChangePermitsOp(name, sessionId, threadId, invocationUid, permits)).andThen(this);
     }
 
     @Override

@@ -33,7 +33,7 @@ public interface SessionAwareService {
     /**
      * Called when a session is closed.
      */
-    void onSessionClosed(RaftGroupId groupId, long sessionId);
+    void onSessionClose(RaftGroupId groupId, long sessionId);
 
     /**
      * Returns a collection of session ids that this service has attached some resources.

@@ -23,7 +23,7 @@ import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.countdownlatch.operation.GetRoundOp;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for {@link GetRoundOp}
  */
 public class GetRoundMessageTask extends AbstractCountDownLatchMessageTask {
 

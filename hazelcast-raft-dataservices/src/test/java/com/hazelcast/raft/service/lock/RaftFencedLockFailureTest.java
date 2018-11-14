@@ -286,8 +286,15 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
 
     @Test
     public void testLockAcquireRetry() {
+        lock.lock();
+        lock.unlock();
+
+        // there is a session id now
+
         RaftGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
+        assertNotEquals(NO_SESSION_ID, sessionId);
+
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid = newUnsecureUUID();
 
@@ -299,8 +306,15 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
 
     @Test
     public void testLockReentrantAcquireRetry() {
+        lock.lock();
+        lock.unlock();
+
+        // there is a session id now
+
         RaftGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
+        assertNotEquals(NO_SESSION_ID, sessionId);
+
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid1 = newUnsecureUUID();
         UUID invUid2 = newUnsecureUUID();

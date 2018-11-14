@@ -32,7 +32,7 @@ import com.hazelcast.raft.service.lock.RaftLockService;
 import java.security.Permission;
 
 /**
- * TODO: Javadoc Pending...
+ * Base class for client message tasks of Raft-based lock
  */
 public abstract class AbstractLockMessageTask extends AbstractMessageTask implements ExecutionCallback {
 

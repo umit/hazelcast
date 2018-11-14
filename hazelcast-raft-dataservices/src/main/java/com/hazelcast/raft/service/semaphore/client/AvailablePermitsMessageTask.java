@@ -23,7 +23,7 @@ import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.semaphore.operation.AvailablePermitsOp;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for {@link AvailablePermitsOp}
  */
 public class AvailablePermitsMessageTask extends AbstractSemaphoreMessageTask {
 

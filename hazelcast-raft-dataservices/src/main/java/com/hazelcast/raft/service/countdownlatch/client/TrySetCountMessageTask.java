@@ -23,7 +23,7 @@ import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.countdownlatch.operation.TrySetCountOp;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for {@link TrySetCountOp}
  */
 public class TrySetCountMessageTask extends AbstractCountDownLatchMessageTask {
 

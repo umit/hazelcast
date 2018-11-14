@@ -19,7 +19,7 @@ package com.hazelcast.raft.exception;
 import com.hazelcast.raft.RaftMember;
 
 /**
- * A {@code RaftException} which is thrown when an appended but yet not committed entry is truncated by the new leader.
+ * A {@code RaftException} which is thrown when an appended but not-committed entry is truncated by the new leader.
  */
 public class LeaderDemotedException extends RaftException {
 

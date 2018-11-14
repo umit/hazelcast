@@ -19,13 +19,14 @@ package com.hazelcast.raft.service.lock;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.raft.service.session.AbstractSessionManager;
 
 import java.io.IOException;
 
 import static com.hazelcast.raft.service.lock.RaftLockService.INVALID_FENCE;
 
 /**
- * TODO: Javadoc Pending...
+ * Represents ownership state of a RaftLock
  */
 public class RaftLockOwnershipState implements IdentifiedDataSerializable {
 
@@ -54,6 +55,9 @@ public class RaftLockOwnershipState implements IdentifiedDataSerializable {
         return fence != INVALID_FENCE;
     }
 
+    /**
+     * Returns fencing token of the lock if it is currently hold by some endpoint. {@link RaftLockService#INVALID_FENCE} otherwise
+     */
     public long getFence() {
         return fence;
     }
@@ -62,10 +66,17 @@ public class RaftLockOwnershipState implements IdentifiedDataSerializable {
         return lockCount;
     }
 
+    /**
+     * Returns the session id that currently holds the lock. Returns {@link AbstractSessionManager#NO_SESSION_ID} if not held
+     */
     public long getSessionId() {
         return sessionId;
     }
 
+    /**
+     * Returns the thread id that holds the lock. If the lock is not held, return value is meaningless.
+     * When the lock is held, pair of <session id, thread id> is unique.
+     */
     public long getThreadId() {
         return threadId;
     }

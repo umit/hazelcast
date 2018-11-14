@@ -25,6 +25,9 @@ import com.hazelcast.nio.Connection;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 
+/**
+ * Provider for Raft-based count down latch client message task factories
+ */
 public class CountDownLatchMessageTaskFactoryProvider implements MessageTaskFactoryProvider {
 
     public static final int CREATE_TYPE = 13000;

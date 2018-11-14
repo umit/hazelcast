@@ -32,17 +32,21 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * TODO: Javadoc Pending...
+ * Expires the given wait keys on the given blocking service.
+ * Invocations that are waiting responses of these wait keys will be notified with the return value
+ * provided by {@link AbstractBlockingService#expiredWaitKeyResponse()}
+ *
+ * @param <W> concrete type of the WaitKey
  */
-public class InvalidateWaitKeysOp<W extends WaitKey> extends RaftOp implements IdentifiedDataSerializable {
+public class ExpireWaitKeysOp<W extends WaitKey> extends RaftOp implements IdentifiedDataSerializable {
 
     private String serviceName;
     private Collection<W> keys;
 
-    public InvalidateWaitKeysOp() {
+    public ExpireWaitKeysOp() {
     }
 
-    public InvalidateWaitKeysOp(String serviceName, Collection<W> keys) {
+    public ExpireWaitKeysOp(String serviceName, Collection<W> keys) {
         this.serviceName = serviceName;
         this.keys = keys;
     }
@@ -50,7 +54,7 @@ public class InvalidateWaitKeysOp<W extends WaitKey> extends RaftOp implements I
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         AbstractBlockingService<W, BlockingResource<W>, ResourceRegistry<W, BlockingResource<W>>> service = getService();
-        service.invalidateWaitKeys(groupId, keys);
+        service.expireWaitKeys(groupId, keys);
         return null;
     }
 
@@ -66,7 +70,7 @@ public class InvalidateWaitKeysOp<W extends WaitKey> extends RaftOp implements I
 
     @Override
     public int getId() {
-        return RaftDataServiceDataSerializerHook.INVALIDATE_WAIT_KEYS_OP;
+        return RaftDataServiceDataSerializerHook.EXPIRE_WAIT_KEYS_OP;
     }
 
     @Override

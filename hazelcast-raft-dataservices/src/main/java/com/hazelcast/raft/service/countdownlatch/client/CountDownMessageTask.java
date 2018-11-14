@@ -25,7 +25,7 @@ import com.hazelcast.raft.service.countdownlatch.operation.CountDownOp;
 import java.util.UUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for {@link CountDownOp}
  */
 public class CountDownMessageTask extends AbstractCountDownLatchMessageTask {
 

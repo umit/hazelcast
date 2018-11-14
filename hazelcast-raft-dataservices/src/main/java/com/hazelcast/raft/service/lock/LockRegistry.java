@@ -25,7 +25,7 @@ import com.hazelcast.raft.service.lock.RaftLock.ReleaseResult;
 import java.util.UUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Contains {@link RaftLock} resources and manages wait timeouts based on lock / unlock requests
  */
 class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> implements IdentifiedDataSerializable {
 

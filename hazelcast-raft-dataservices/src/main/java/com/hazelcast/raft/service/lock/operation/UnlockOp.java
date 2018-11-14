@@ -20,6 +20,8 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.service.lock.FencedLock;
+import com.hazelcast.raft.service.lock.LockEndpoint;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
 import com.hazelcast.raft.service.lock.RaftLockService;
 
@@ -27,7 +29,9 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Operation for {@link FencedLock#unlock()}
+ *
+ * @see com.hazelcast.raft.service.lock.RaftLock#release(LockEndpoint, UUID, int)
  */
 public class UnlockOp extends AbstractLockOp implements InvocationTargetLeaveAware {
 

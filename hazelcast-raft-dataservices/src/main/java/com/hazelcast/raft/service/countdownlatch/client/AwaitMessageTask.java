@@ -23,7 +23,7 @@ import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.countdownlatch.operation.AwaitOp;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for {@link AwaitOp}
  */
 public class AwaitMessageTask extends AbstractCountDownLatchMessageTask {
 

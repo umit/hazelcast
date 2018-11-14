@@ -460,11 +460,11 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
         final RaftGroupId groupId = lock.getGroupId();
         final long sessionId = sessionManager.getSession(groupId);
         assertNotEquals(AbstractSessionManager.NO_SESSION_ID, sessionId);
-        assertEquals(1, sessionManager.getSessionUsageCount(groupId, sessionId));
+        assertEquals(1, sessionManager.getSessionAcquireCount(groupId, sessionId));
 
         long fence = lock.tryLockAndGetFence();
         assertEquals(RaftLockService.INVALID_FENCE, fence);
-        assertEquals(1, sessionManager.getSessionUsageCount(groupId, sessionId));
+        assertEquals(1, sessionManager.getSessionAcquireCount(groupId, sessionId));
     }
 
     @Test(expected = DistributedObjectDestroyedException.class)

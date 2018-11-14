@@ -31,7 +31,7 @@ import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchService;
 import java.security.Permission;
 
 /**
- * TODO: Javadoc Pending...
+ * Base class for client message tasks of Raft-based count down latch
  */
 public abstract class AbstractCountDownLatchMessageTask extends AbstractMessageTask implements ExecutionCallback {
 

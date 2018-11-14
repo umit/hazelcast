@@ -42,7 +42,8 @@ import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
- * TODO: Javadoc Pending...
+ * Implements proxy methods for Raft-based {@link FencedLock} API.
+ * Lock reentrancy is implemented locally.
  */
 public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy implements FencedLock {
 

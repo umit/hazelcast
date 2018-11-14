@@ -28,13 +28,13 @@ import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * Base class for operations of Raft-based atomic long
  */
 public abstract class AbstractAtomicLongOp extends RaftOp implements IdentifiedDataSerializable {
 
     private String name;
 
-    public AbstractAtomicLongOp() {
+    AbstractAtomicLongOp() {
     }
 
     AbstractAtomicLongOp(String name) {

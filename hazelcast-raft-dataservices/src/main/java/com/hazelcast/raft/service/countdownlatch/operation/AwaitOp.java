@@ -25,9 +25,10 @@ import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchDataSerialize
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchService;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 /**
- * TODO: Javadoc Pending...
+ * Operation for {@link com.hazelcast.core.ICountDownLatch#await(long, TimeUnit)}
  */
 public class AwaitOp extends AbstractCountDownLatchOp implements InvocationTargetLeaveAware {
 

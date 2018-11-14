@@ -254,7 +254,7 @@ public class SessionService implements ManagedService, SnapshotAwareService<Sess
         Collection<SessionAwareService> services = nodeEngine.getServices(SessionAwareService.class);
         for (SessionAwareService sessionAwareService : services) {
             for (long sessionId : sessionIds) {
-                sessionAwareService.onSessionClosed(groupId, sessionId);
+                sessionAwareService.onSessionClose(groupId, sessionId);
             }
         }
     }

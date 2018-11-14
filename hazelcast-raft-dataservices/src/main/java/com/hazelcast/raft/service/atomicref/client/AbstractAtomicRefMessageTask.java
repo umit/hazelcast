@@ -32,7 +32,7 @@ import com.hazelcast.raft.service.atomicref.RaftAtomicRefService;
 import java.security.Permission;
 
 /**
- * TODO: Javadoc Pending...
+ * Base class for client message tasks of Raft-based atomic reference
  */
 public abstract class AbstractAtomicRefMessageTask extends AbstractMessageTask implements ExecutionCallback {
 

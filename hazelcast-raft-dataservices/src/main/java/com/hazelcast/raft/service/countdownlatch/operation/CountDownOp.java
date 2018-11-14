@@ -16,6 +16,7 @@
 
 package com.hazelcast.raft.service.countdownlatch.operation;
 
+import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
@@ -27,7 +28,7 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Operation for {@link ICountDownLatch#countDown()}
  */
 public class CountDownOp extends AbstractCountDownLatchOp implements InvocationTargetLeaveAware {
 

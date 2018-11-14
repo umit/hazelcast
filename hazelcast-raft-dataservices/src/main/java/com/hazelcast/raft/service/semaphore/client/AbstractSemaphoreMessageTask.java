@@ -31,7 +31,7 @@ import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 import java.security.Permission;
 
 /**
- * TODO: Javadoc Pending...
+ * Base class for client message tasks of Raft-based semaphore
  */
 public abstract class AbstractSemaphoreMessageTask extends AbstractMessageTask implements ExecutionCallback {
 

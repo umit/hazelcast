@@ -28,7 +28,7 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Base class for operations of Raft-based lock
  */
 @SuppressWarnings("checkstyle:declarationorder")
 abstract class AbstractLockOp extends RaftOp implements IdentifiedDataSerializable {

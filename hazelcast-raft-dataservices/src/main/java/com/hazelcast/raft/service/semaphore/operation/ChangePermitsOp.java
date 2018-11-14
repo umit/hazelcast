@@ -16,11 +16,13 @@
 
 package com.hazelcast.raft.service.semaphore.operation;
 
+import com.hazelcast.core.ISemaphore;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.service.semaphore.RaftSemaphore;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 
@@ -30,7 +32,9 @@ import java.util.UUID;
 import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
 
 /**
- * TODO: Javadoc Pending...
+ * Operation for {@link ISemaphore#increasePermits(int)} and {@link ISemaphore#reducePermits(int)}
+ *
+ * @see RaftSemaphore#change(long, long, UUID, int)
  */
 public class ChangePermitsOp extends AbstractSemaphoreOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 

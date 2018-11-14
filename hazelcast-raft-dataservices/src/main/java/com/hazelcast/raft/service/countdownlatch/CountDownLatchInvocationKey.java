@@ -16,6 +16,7 @@
 
 package com.hazelcast.raft.service.countdownlatch;
 
+import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
@@ -27,17 +28,17 @@ import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSI
 import static com.hazelcast.util.Preconditions.checkNotNull;
 
 /**
- * TODO: Javadoc Pending...
+ * Represents a {@link ICountDownLatch#countDown()} invocation
  */
 public class CountDownLatchInvocationKey implements WaitKey, IdentifiedDataSerializable {
 
     private String name;
     private long commitIndex;
 
-    public CountDownLatchInvocationKey() {
+    CountDownLatchInvocationKey() {
     }
 
-    public CountDownLatchInvocationKey(String name, long commitIndex) {
+    CountDownLatchInvocationKey(String name, long commitIndex) {
         checkNotNull(name);
         this.name = name;
         this.commitIndex = commitIndex;

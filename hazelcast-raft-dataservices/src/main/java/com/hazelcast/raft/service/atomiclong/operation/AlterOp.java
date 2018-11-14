@@ -16,6 +16,7 @@
 
 package com.hazelcast.raft.service.atomiclong.operation;
 
+import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
@@ -29,12 +30,21 @@ import static com.hazelcast.raft.service.atomiclong.operation.AlterOp.AlterResul
 import static com.hazelcast.util.Preconditions.checkNotNull;
 
 /**
- * TODO: Javadoc pending
+ * Operation for {@link IAtomicLong#alter(IFunction)}
  */
 public class AlterOp extends AbstractAtomicLongOp {
 
+    /**
+     * Denotes how the return value will be chosen.
+     */
     public enum AlterResultType {
+        /**
+         * The value before the function is applied
+         */
         BEFORE_VALUE,
+        /**
+         * The value after the function is applied
+         */
         AFTER_VALUE
     }
 

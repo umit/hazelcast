@@ -20,7 +20,7 @@ import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.raft.RaftGroupId;
 
 /**
- * TODO: Javadoc Pending...
+ * State-machine implementation of the Raft-based atomic reference
  */
 public class RaftAtomicRef {
 

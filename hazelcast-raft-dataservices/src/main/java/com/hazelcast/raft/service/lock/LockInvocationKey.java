@@ -25,7 +25,8 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Represents lock() invocation of a LockEndpoint.
+ * A LockInvocationKey either holds the lock or resides in the wait queue.
  */
 public class LockInvocationKey implements WaitKey, IdentifiedDataSerializable {
     private String name;
@@ -48,10 +49,6 @@ public class LockInvocationKey implements WaitKey, IdentifiedDataSerializable {
         return name;
     }
 
-    public LockEndpoint endpoint() {
-        return endpoint;
-    }
-
     @Override
     public long commitIndex() {
         return commitIndex;
@@ -62,7 +59,11 @@ public class LockInvocationKey implements WaitKey, IdentifiedDataSerializable {
         return endpoint.sessionId();
     }
 
-    public UUID invocationUid() {
+    LockEndpoint endpoint() {
+        return endpoint;
+    }
+
+    UUID invocationUid() {
         return invocationUid;
     }
 
@@ -77,8 +78,7 @@ public class LockInvocationKey implements WaitKey, IdentifiedDataSerializable {
     }
 
     @Override
-    public void writeData(ObjectDataOutput out)
-            throws IOException {
+    public void writeData(ObjectDataOutput out) throws IOException {
         out.writeUTF(name);
         out.writeObject(endpoint);
         out.writeLong(commitIndex);
@@ -87,8 +87,7 @@ public class LockInvocationKey implements WaitKey, IdentifiedDataSerializable {
     }
 
     @Override
-    public void readData(ObjectDataInput in)
-            throws IOException {
+    public void readData(ObjectDataInput in) throws IOException {
         name = in.readUTF();
         endpoint = in.readObject();
         commitIndex = in.readLong();

@@ -26,7 +26,7 @@ import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchService;
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * Base class for operations of Raft-based count down latch
  */
 public abstract class AbstractCountDownLatchOp extends RaftOp implements IdentifiedDataSerializable {
 

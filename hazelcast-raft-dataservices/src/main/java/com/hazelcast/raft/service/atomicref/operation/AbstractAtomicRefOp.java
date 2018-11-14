@@ -28,7 +28,7 @@ import com.hazelcast.raft.service.atomicref.RaftAtomicRefService;
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * Base class for operations of Raft-based atomic reference
  */
 public abstract class AbstractAtomicRefOp extends RaftOp implements IdentifiedDataSerializable {
 

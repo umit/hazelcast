@@ -28,7 +28,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * TODO: Javadoc Pending...
+ * Snapshot of a {@link RaftAtomicLongService} state for a Raft group
  */
 public class RaftAtomicLongSnapshot implements IdentifiedDataSerializable {
 

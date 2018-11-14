@@ -47,11 +47,14 @@ import static com.hazelcast.util.Preconditions.checkNotNull;
 import static java.util.Collections.newSetFromMap;
 
 /**
- * TODO: Javadoc Pending...
+ * Contains Raft-based atomic reference instances, implements snapshotting, and creates proxies
  */
 public class RaftAtomicRefService implements ManagedService, RaftRemoteService, RaftGroupLifecycleAwareService,
                                              SnapshotAwareService<RaftAtomicRefSnapshot> {
 
+    /**
+     * Name of the service
+     */
     public static final String SERVICE_NAME = "hz:raft:atomicRefService";
 
     private final Map<Tuple2<RaftGroupId, String>, RaftAtomicRef> atomicRefs =

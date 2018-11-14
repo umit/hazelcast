@@ -16,6 +16,7 @@
 
 package com.hazelcast.raft.service.atomicref.operation;
 
+import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
@@ -31,7 +32,8 @@ import java.io.IOException;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 
 /**
- * TODO: Javadoc Pending...
+ * Operation for {@link IAtomicReference#apply(IFunction)}, {@link IAtomicReference#alter(IFunction)},
+ * {@link IAtomicReference#alterAndGet(IFunction)}, and {@link IAtomicReference#getAndAlter(IFunction)}
  */
 public class ApplyOp extends AbstractAtomicRefOp implements IdentifiedDataSerializable {
 

@@ -25,7 +25,7 @@ import com.hazelcast.raft.service.atomicref.operation.ApplyOp;
 import com.hazelcast.raft.service.atomicref.operation.ApplyOp.ReturnValueType;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for {@link ApplyOp}
  */
 public class ApplyMessageTask extends AbstractAtomicRefMessageTask {
 

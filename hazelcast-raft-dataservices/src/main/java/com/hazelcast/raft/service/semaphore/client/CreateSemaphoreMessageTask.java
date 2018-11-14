@@ -29,7 +29,7 @@ import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 import java.security.Permission;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for getting Raft group id of the requested Raft-based semaphore
  */
 public class CreateSemaphoreMessageTask extends AbstractMessageTask implements ExecutionCallback {
 

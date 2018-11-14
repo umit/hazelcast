@@ -19,7 +19,7 @@ package com.hazelcast.raft.service.atomiclong;
 import com.hazelcast.raft.RaftGroupId;
 
 /**
- * TODO: Javadoc Pending...
+ * State-machine implementation of the Raft-based atomic long
  */
 public class RaftAtomicLong {
 

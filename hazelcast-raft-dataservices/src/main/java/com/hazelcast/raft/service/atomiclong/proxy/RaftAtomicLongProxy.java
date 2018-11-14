@@ -43,7 +43,7 @@ import static com.hazelcast.raft.service.atomiclong.operation.AlterOp.AlterResul
 import static com.hazelcast.raft.service.atomiclong.operation.AlterOp.AlterResultType.BEFORE_VALUE;
 
 /**
- * TODO: Javadoc Pending...
+ * Raft-based proxy implementation of {@link IAtomicLong} interface
  */
 @SuppressWarnings("checkstyle:methodcount")
 public class RaftAtomicLongProxy implements IAtomicLong {
