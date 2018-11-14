@@ -22,7 +22,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.session.SessionService;
 import com.hazelcast.raft.impl.session.RaftSessionServiceDataSerializerHook;
 import com.hazelcast.raft.impl.util.Tuple2;
@@ -35,7 +35,7 @@ import java.util.List;
 /**
  * Expires sessions that do have not committed any heartbeat for {@link RaftConfig#getSessionTimeToLiveSeconds()} seconds.
  */
-public class ExpireSessionsOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
+public class ExpireSessionsOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
     private Collection<Tuple2<Long, Long>> sessions;
 
@@ -54,7 +54,7 @@ public class ExpireSessionsOp extends RaftOp implements InvocationTargetLeaveAwa
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

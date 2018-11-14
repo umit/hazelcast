@@ -27,18 +27,18 @@ import com.hazelcast.core.IndeterminateOperationStateException;
  * - the failed leader committed the operation.
  * <p/>
  * In this case, we check if the operation is safe to retry. The operation is considered to be safe to retry only if
- * it implements this interface and {@link #isRetryableOnTargetLeave()} method returns {@code true}. If this is the case,
- * the operation will be retried. Otherwise, we do not know if the operation is safe or not. In this case, we make a decision
- * between offering at-most-once and at-least-once execution semantics via the
+ * it implements this interface and {@link #isRetryableOnIndeterminateOperationState()} method returns {@code true}.
+ * If this is the case, the operation will be retried. Otherwise, we do not know if the operation is safe or not.
+ * In this case, we make a decision between offering at-most-once and at-least-once execution semantics via the
  * {@link RaftAlgorithmConfig#failOnIndeterminateOperationState} configuration parameter. If this configuration is enabled,
  * we do not retry the operation and fail with {@link IndeterminateOperationStateException}, hence offer at-most-once semantics.
  * Otherwise, we retry the operation and we are fine with a possible duplicate commit of the operation.
  */
-public interface InvocationTargetLeaveAware {
+public interface IndeterminateOperationStateAware {
 
     /**
      * Returns true if duplicate commit of the operation is equivalent to committing it only once.
      */
-    boolean isRetryableOnTargetLeave();
+    boolean isRetryableOnIndeterminateOperationState();
 
 }

@@ -25,7 +25,7 @@ import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.MetadataRaftGroupManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -36,7 +36,7 @@ import java.util.List;
  * in order to guarantee that each CP node discovers the same list.
  * Fails with {@link IllegalArgumentException} if a CP node commits a different list.
  */
-public class CreateMetadataRaftGroupOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
+public class CreateMetadataRaftGroupOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
     private List<RaftMemberImpl> initialMembers;
     private int metadataMembersCount;
@@ -58,7 +58,7 @@ public class CreateMetadataRaftGroupOp extends RaftOp implements InvocationTarge
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

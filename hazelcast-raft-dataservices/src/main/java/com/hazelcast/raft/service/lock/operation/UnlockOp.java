@@ -19,7 +19,7 @@ package com.hazelcast.raft.service.lock.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.service.lock.FencedLock;
 import com.hazelcast.raft.service.lock.LockEndpoint;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
@@ -33,7 +33,7 @@ import java.util.UUID;
  *
  * @see com.hazelcast.raft.service.lock.RaftLock#release(LockEndpoint, UUID, int)
  */
-public class UnlockOp extends AbstractLockOp implements InvocationTargetLeaveAware {
+public class UnlockOp extends AbstractLockOp implements IndeterminateOperationStateAware {
 
     private int lockCount;
 
@@ -53,7 +53,7 @@ public class UnlockOp extends AbstractLockOp implements InvocationTargetLeaveAwa
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

@@ -25,7 +25,7 @@ import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.service.proxy.RaftNodeAware;
 
 import java.io.IOException;
@@ -43,7 +43,8 @@ import static com.hazelcast.util.Preconditions.checkState;
  * <p/>
  * This operation is NOT committed to the Metadata group. It is committed to the queried Raft group.
  */
-public class GetInitialRaftGroupMembersIfCurrentGroupMemberOp extends RaftOp implements RaftNodeAware, InvocationTargetLeaveAware,
+public class GetInitialRaftGroupMembersIfCurrentGroupMemberOp extends RaftOp implements RaftNodeAware,
+                                                                                        IndeterminateOperationStateAware,
                                                                                         IdentifiedDataSerializable {
 
     private RaftMember raftMember;
@@ -72,7 +73,7 @@ public class GetInitialRaftGroupMembersIfCurrentGroupMemberOp extends RaftOp imp
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

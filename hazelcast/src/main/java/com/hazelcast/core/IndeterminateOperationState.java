@@ -14,18 +14,10 @@
  * limitations under the License.
  */
 
-package com.hazelcast.raft.exception;
-
-import com.hazelcast.core.IndeterminateOperationState;
-import com.hazelcast.raft.RaftMember;
+package com.hazelcast.core;
 
 /**
- * A {@code RaftException} which is thrown when an installed snapshot causes
- * an appended entry to be truncated from the Raft log before its commit status is learnt.
+ * A marker interface for exceptions to denote that execution status of an invocation is not known
  */
-public class StaleAppendRequestException extends RaftException implements IndeterminateOperationState {
-
-    public StaleAppendRequestException(RaftMember leader) {
-        super(leader);
-    }
+public interface IndeterminateOperationState {
 }

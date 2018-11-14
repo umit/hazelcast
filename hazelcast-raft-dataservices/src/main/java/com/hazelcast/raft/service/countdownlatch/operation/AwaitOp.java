@@ -19,7 +19,7 @@ package com.hazelcast.raft.service.countdownlatch.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.util.PostponedResponse;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchDataSerializerHook;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchService;
@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Operation for {@link com.hazelcast.core.ICountDownLatch#await(long, TimeUnit)}
  */
-public class AwaitOp extends AbstractCountDownLatchOp implements InvocationTargetLeaveAware {
+public class AwaitOp extends AbstractCountDownLatchOp implements IndeterminateOperationStateAware {
 
     private long timeoutMillis;
 
@@ -53,7 +53,7 @@ public class AwaitOp extends AbstractCountDownLatchOp implements InvocationTarge
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

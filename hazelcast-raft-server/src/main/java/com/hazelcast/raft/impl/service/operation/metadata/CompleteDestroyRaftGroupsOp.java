@@ -25,7 +25,7 @@ import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.MetadataRaftGroupManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -34,7 +34,7 @@ import java.util.Set;
 /**
  * Marks the given Raft groups as {@link RaftGroupStatus#DESTROYED} and notifies its CP nodes
  */
-public class CompleteDestroyRaftGroupsOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
+public class CompleteDestroyRaftGroupsOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
     private Set<RaftGroupId> groupIds;
 
@@ -54,7 +54,7 @@ public class CompleteDestroyRaftGroupsOp extends RaftOp implements InvocationTar
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

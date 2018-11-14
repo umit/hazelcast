@@ -26,7 +26,7 @@ import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.MetadataRaftGroupManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 
 import java.io.IOException;
 
@@ -34,7 +34,7 @@ import java.io.IOException;
  * When a CP node is shutting down gracefully, or a crashed CP node is removed from the CP sub-system via
  * {@link RaftService#triggerRemoveRaftMember(RaftMember)}, this operation is committed to the Metadata Raft group.
  */
-public class TriggerRemoveRaftMemberOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
+public class TriggerRemoveRaftMemberOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
     private RaftMemberImpl member;
 
@@ -54,7 +54,7 @@ public class TriggerRemoveRaftMemberOp extends RaftOp implements InvocationTarge
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

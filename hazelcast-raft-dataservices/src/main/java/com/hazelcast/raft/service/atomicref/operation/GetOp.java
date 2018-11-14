@@ -19,13 +19,13 @@ package com.hazelcast.raft.service.atomicref.operation;
 import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.service.atomicref.RaftAtomicReferenceDataSerializerHook;
 
 /**
  * Operation for {@link IAtomicReference#get()}
  */
-public class GetOp extends AbstractAtomicRefOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
+public class GetOp extends AbstractAtomicRefOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
     public GetOp() {
     }
@@ -39,7 +39,7 @@ public class GetOp extends AbstractAtomicRefOp implements InvocationTargetLeaveA
         return getAtomicRef(groupId).get();
     }
 
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

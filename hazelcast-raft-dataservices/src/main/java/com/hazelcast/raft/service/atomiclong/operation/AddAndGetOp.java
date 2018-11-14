@@ -20,7 +20,7 @@ import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongDataSerializerHook;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLong;
 
@@ -29,7 +29,7 @@ import java.io.IOException;
 /**
  * Operation for {@link IAtomicLong#addAndGet(long)}
  */
-public class AddAndGetOp extends AbstractAtomicLongOp implements InvocationTargetLeaveAware {
+public class AddAndGetOp extends AbstractAtomicLongOp implements IndeterminateOperationStateAware {
 
     private long delta;
 
@@ -48,7 +48,7 @@ public class AddAndGetOp extends AbstractAtomicLongOp implements InvocationTarge
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return delta == 0;
     }
 

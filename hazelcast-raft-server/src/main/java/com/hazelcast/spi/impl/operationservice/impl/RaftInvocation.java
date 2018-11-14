@@ -16,14 +16,15 @@
 
 package com.hazelcast.spi.impl.operationservice.impl;
 
-import com.hazelcast.core.IndeterminateOperationStateException;
+import com.hazelcast.core.IndeterminateOperationState;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.NotLeaderException;
+import com.hazelcast.raft.exception.StaleAppendRequestException;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.RaftMemberImpl;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 import com.hazelcast.spi.ExceptionAction;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.exception.CallerNotMemberException;
@@ -43,7 +44,7 @@ public class RaftInvocation extends Invocation {
     private final RaftGroupId groupId;
     private volatile MemberCursor memberCursor;
     private volatile RaftMemberImpl lastInvocationEndpoint;
-    private volatile Throwable targetLeft;
+    private volatile Throwable indeterminateException;
 
     public RaftInvocation(Context context, RaftInvocationContext raftInvocationContext, RaftGroupId groupId, Operation op,
                           int retryCount, long retryPauseMillis, long callTimeoutMillis) {
@@ -64,12 +65,12 @@ public class RaftInvocation extends Invocation {
 
     @Override
     void notifyNormalResponse(Object value, int expectedBackups) {
-        if (!(value instanceof MemberLeftException) && targetLeft != null && isRetryable(value)) {
-            String message = this + " failed because the target has left the cluster before response is received";
-            value = new IndeterminateOperationStateException(message, targetLeft);
+        if (!(value instanceof IndeterminateOperationState) && indeterminateException != null && isRetryable(value)) {
+            value = indeterminateException;
         }
 
         super.notifyNormalResponse(value, expectedBackups);
+        // TODO [basri] maybe we should update known leader only if the result is not an exception?
         raftInvocationContext.setKnownLeader(groupId, lastInvocationEndpoint);
     }
 
@@ -77,11 +78,16 @@ public class RaftInvocation extends Invocation {
     protected ExceptionAction onException(Throwable t) {
         raftInvocationContext.updateKnownLeaderOnFailure(groupId, t);
 
-        if (t instanceof MemberLeftException) {
-            if (shouldFailOnIndeterminateOperationState()) {
+        if (t instanceof IndeterminateOperationState) {
+            if (isRetryableOnIndeterminateOperationState()) {
+                if (indeterminateException == null) {
+                    indeterminateException = t;
+                }
+                return RETRY_INVOCATION;
+            } else if (shouldFailOnIndeterminateOperationState()) {
                 return THROW_EXCEPTION;
-            } else if (targetLeft != null) {
-                targetLeft = t;
+            } else if (indeterminateException == null) {
+                indeterminateException = t;
             }
         }
 
@@ -91,6 +97,7 @@ public class RaftInvocation extends Invocation {
     private boolean isRetryable(Object cause) {
         return cause instanceof NotLeaderException
                 || cause instanceof LeaderDemotedException
+                || cause instanceof StaleAppendRequestException
                 || cause instanceof MemberLeftException
                 || cause instanceof CallerNotMemberException
                 || cause instanceof TargetNotMemberException;
@@ -113,14 +120,16 @@ public class RaftInvocation extends Invocation {
         return cursor.get();
     }
 
-    @Override
-    protected boolean shouldFailOnIndeterminateOperationState() {
-        if (op instanceof InvocationTargetLeaveAware) {
-            if (((InvocationTargetLeaveAware) op).isRetryableOnTargetLeave()) {
-                return false;
-            }
+    private boolean isRetryableOnIndeterminateOperationState() {
+        if (op instanceof IndeterminateOperationStateAware) {
+            return ((IndeterminateOperationStateAware) op).isRetryableOnIndeterminateOperationState();
         }
 
+        return false;
+    }
+
+    @Override
+    protected boolean shouldFailOnIndeterminateOperationState() {
         return raftInvocationContext.shouldFailOnIndeterminateOperationState();
     }
 }
