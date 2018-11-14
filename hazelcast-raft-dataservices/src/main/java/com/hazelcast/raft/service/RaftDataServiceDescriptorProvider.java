@@ -27,7 +27,7 @@ import com.hazelcast.spi.impl.servicemanager.ServiceDescriptor;
 import com.hazelcast.spi.impl.servicemanager.ServiceDescriptorProvider;
 
 /**
- * TODO: Javadoc pending...
+ * Service descriptions of Raft data structures
  */
 public class RaftDataServiceDescriptorProvider implements ServiceDescriptorProvider {
 

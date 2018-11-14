@@ -26,12 +26,16 @@ import java.util.concurrent.ConcurrentMap;
 import static com.hazelcast.util.ThreadUtil.getThreadId;
 
 /**
- * TODO: Javadoc Pending...
+ * Generates a unique id for the thread of the caller and memorizes it in the {@link #GLOBAL_THREAD_IDS} map.
  */
 public final class GloballyUniqueThreadIdUtil {
 
+    /**
+     * Name of the RaftAtomicLong that is used for generating globally unique thread ids
+     */
     public static final String GLOBAL_THREAD_ID_GENERATOR_NAME = "globalThreadIdGenerator";
 
+    // TODO [basri] should we clean up this on cp subsystem reset?
     private static final ConcurrentMap<Tuple2<RaftGroupId, Long>, Long> GLOBAL_THREAD_IDS
             = new ConcurrentHashMap<Tuple2<RaftGroupId, Long>, Long>();
 

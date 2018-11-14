@@ -24,8 +24,14 @@ import com.hazelcast.raft.service.blocking.WaitKey;
 import java.io.IOException;
 import java.util.UUID;
 
+import static com.hazelcast.util.Preconditions.checkTrue;
+
 /**
- * TODO: Javadoc Pending...
+ * Represents acquire() invocation of a semaphore endpoint
+ * A SemaphoreInvocationKey either holds some permits or resides in the wait queue.
+ * Combination of a session id and a thread id a single-threaded unique entity.
+ * When it sends a request X, it can either retry this request X, or send a new request Y.
+ * After it sends request Y, it will not retry request X anymore.
  */
 public class SemaphoreInvocationKey implements WaitKey, IdentifiedDataSerializable {
 
@@ -36,10 +42,11 @@ public class SemaphoreInvocationKey implements WaitKey, IdentifiedDataSerializab
     private UUID invocationUid;
     private int permits;
 
-    public SemaphoreInvocationKey() {
+    SemaphoreInvocationKey() {
     }
 
-    public SemaphoreInvocationKey(String name, long commitIndex, long sessionId, long threadId, UUID invocationUid, int permits) {
+    SemaphoreInvocationKey(String name, long commitIndex, long sessionId, long threadId, UUID invocationUid, int permits) {
+        checkTrue(permits > 0, "permits must be positive");
         this.name = name;
         this.commitIndex = commitIndex;
         this.sessionId = sessionId;
@@ -86,8 +93,7 @@ public class SemaphoreInvocationKey implements WaitKey, IdentifiedDataSerializab
     }
 
     @Override
-    public void writeData(ObjectDataOutput out)
-            throws IOException {
+    public void writeData(ObjectDataOutput out) throws IOException {
         out.writeUTF(name);
         out.writeLong(commitIndex);
         out.writeLong(sessionId);
@@ -98,8 +104,7 @@ public class SemaphoreInvocationKey implements WaitKey, IdentifiedDataSerializab
     }
 
     @Override
-    public void readData(ObjectDataInput in)
-            throws IOException {
+    public void readData(ObjectDataInput in) throws IOException {
         name = in.readUTF();
         commitIndex = in.readLong();
         sessionId = in.readLong();

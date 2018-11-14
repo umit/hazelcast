@@ -20,7 +20,7 @@ import com.hazelcast.client.impl.protocol.ClientExceptionFactory;
 import com.hazelcast.core.HazelcastException;
 
 /**
- * TODO: Javadoc Pending...
+ * Thrown when a wait key is cancelled and means that the corresponding operation has not succeeded
  */
 public class WaitKeyCancelledException extends HazelcastException {
 

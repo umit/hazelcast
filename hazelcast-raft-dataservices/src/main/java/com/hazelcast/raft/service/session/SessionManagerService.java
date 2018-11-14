@@ -37,10 +37,13 @@ import java.util.concurrent.TimeUnit;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
- * TODO: Javadoc Pending...
+ * Server-side implementation of Raft proxy session manager
  */
 public class SessionManagerService extends AbstractSessionManager implements GracefulShutdownAwareService {
 
+    /**
+     * Name of the service
+     */
     public static final String SERVICE_NAME = "hz:raft:sessionManager";
 
     private static final long SHUTDOWN_TASK_PERIOD_IN_MILLIS = SECONDS.toMillis(1);
@@ -50,6 +53,32 @@ public class SessionManagerService extends AbstractSessionManager implements Gra
 
     public SessionManagerService(NodeEngine nodeEngine) {
         this.nodeEngine = nodeEngine;
+    }
+
+    @Override
+    protected SessionResponse requestNewSession(RaftGroupId groupId) {
+        CreateSessionOp op = new CreateSessionOp(nodeEngine.getThisAddress());
+        ICompletableFuture<SessionResponse> future = getInvocationManager().invoke(groupId, op);
+        try {
+            return future.get();
+        } catch (Exception e) {
+            throw ExceptionUtil.rethrow(e);
+        }
+    }
+
+    @Override
+    protected ICompletableFuture<Object> heartbeat(RaftGroupId groupId, long sessionId) {
+        return getInvocationManager().invoke(groupId, new HeartbeatSessionOp(sessionId));
+    }
+
+    @Override
+    protected ICompletableFuture<Object> closeSession(RaftGroupId groupId, Long sessionId) {
+        return getInvocationManager().invoke(groupId, new CloseSessionOp(sessionId));
+    }
+
+    @Override
+    protected ScheduledFuture<?> scheduleWithRepetition(Runnable task, long period, TimeUnit unit) {
+        return nodeEngine.getExecutionService().scheduleWithRepetition(task, period, period, unit);
     }
 
     @Override
@@ -94,31 +123,5 @@ public class SessionManagerService extends AbstractSessionManager implements Gra
     private RaftInvocationManager getInvocationManager() {
         RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
         return raftService.getInvocationManager();
-    }
-
-    @Override
-    protected ScheduledFuture<?> scheduleWithRepetition(Runnable task, long period, TimeUnit unit) {
-        return nodeEngine.getExecutionService().scheduleWithRepetition(task, period, period, unit);
-    }
-
-    @Override
-    protected SessionResponse requestNewSession(RaftGroupId groupId) {
-        CreateSessionOp op = new CreateSessionOp(nodeEngine.getThisAddress());
-        ICompletableFuture<SessionResponse> future = getInvocationManager().invoke(groupId, op);
-        try {
-            return future.get();
-        } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
-        }
-    }
-
-    @Override
-    protected ICompletableFuture<Object> heartbeat(RaftGroupId groupId, long sessionId) {
-        return getInvocationManager().invoke(groupId, new HeartbeatSessionOp(sessionId));
-    }
-
-    @Override
-    protected ICompletableFuture<Object> closeSession(RaftGroupId groupId, Long sessionId) {
-        return getInvocationManager().invoke(groupId, new CloseSessionOp(sessionId));
     }
 }

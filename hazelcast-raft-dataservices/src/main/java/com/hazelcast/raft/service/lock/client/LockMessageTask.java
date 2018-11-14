@@ -25,7 +25,7 @@ import com.hazelcast.raft.service.lock.operation.LockOp;
 import java.util.UUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for {@link LockOp}
  */
 public class LockMessageTask extends AbstractLockMessageTask {
 

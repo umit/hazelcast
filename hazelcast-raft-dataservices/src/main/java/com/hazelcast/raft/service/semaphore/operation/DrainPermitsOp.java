@@ -16,8 +16,10 @@
 
 package com.hazelcast.raft.service.semaphore.operation;
 
+import com.hazelcast.core.ISemaphore;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.service.semaphore.RaftSemaphore;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 
@@ -26,7 +28,9 @@ import java.util.UUID;
 import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
 
 /**
- * TODO: Javadoc Pending...
+ * Operation for {@link ISemaphore#drainPermits()}}
+ *
+ * @see RaftSemaphore#drain(long, long, UUID)
  */
 public class DrainPermitsOp extends AbstractSemaphoreOp implements InvocationTargetLeaveAware {
 

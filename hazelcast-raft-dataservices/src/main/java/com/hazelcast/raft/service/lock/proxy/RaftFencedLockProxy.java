@@ -19,6 +19,7 @@ package com.hazelcast.raft.service.lock.proxy;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
+import com.hazelcast.raft.service.lock.FencedLock;
 import com.hazelcast.raft.service.lock.RaftLockOwnershipState;
 import com.hazelcast.raft.service.lock.operation.ForceUnlockOp;
 import com.hazelcast.raft.service.lock.operation.GetLockOwnershipStateOp;
@@ -32,7 +33,7 @@ import com.hazelcast.spi.InternalCompletableFuture;
 import java.util.UUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Server-side proxy of Raft-based {@link FencedLock} API
  */
 public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
 

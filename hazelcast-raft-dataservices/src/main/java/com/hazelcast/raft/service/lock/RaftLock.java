@@ -38,12 +38,24 @@ import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.util.Collections.unmodifiableCollection;
 
 /**
- * TODO: Javadoc Pending...
+ * State-machine implementation of the Raft-based lock
  */
 class RaftLock extends BlockingResource<LockInvocationKey> implements IdentifiedDataSerializable {
 
+    /**
+     * Current owner of the lock
+     */
     private LockInvocationKey owner;
+
+    /**
+     * Number of acquires the current lock owner has committed on the Raft group
+     */
     private int lockCount;
+
+    /**
+     * For each LockEndpoint, uid of its last invocation.
+     * Used for preventing duplicate execution of lock / unlock requests.
+     */
     private Map<LockEndpoint, UUID> invocationRefUids = new HashMap<LockEndpoint, UUID>();
 
     RaftLock() {
@@ -53,8 +65,18 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
         super(groupId, name);
     }
 
+    /**
+     * Assigns the lock to the endpoint, if the lock is not held.
+     * Lock count is incremented if the endpoint already holds the lock.
+     * If some other endpoint holds the lock and the second argument is true, a wait key is created and added to the wait queue.
+     * Lock count is not incremented if the lock request is a retry of the lock holder.
+     * If the lock request is a retry of a lock endpoint that resides in the wait queue with the same invocation uid,
+     * a duplicate wait key is added to the wait queue because cancelling the previous wait key can cause the caller to fail.
+     * If the lock request is a new request of a lock endpoint that resides in the wait queue with a different invocation uid,
+     * the existing wait key is cancelled because it means the caller has stopped waiting for response of the previous invocation.
+     */
     AcquireResult acquire(LockEndpoint endpoint, long commitIndex, UUID invocationUid, boolean wait) {
-        // if acquire() is being retried
+        // if lock() is being retried
         if (invocationUid.equals(invocationRefUids.get(endpoint))
                 || (owner != null && owner.invocationUid().equals(invocationUid))) {
             RaftLockOwnershipState ownership = new RaftLockOwnershipState(owner.commitIndex(), lockCount, endpoint.sessionId(),
@@ -100,10 +122,18 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
         return cancelled;
     }
 
+    /**
+     * Releases the lock with the given release count. The lock is freed if release count > lock count.
+     * If the remaining lock count > 0 after a successful release, the lock is still held by the endpoint.
+     * The lock is not released if it is a retry of a previous successful release request of the current lock holder.
+     * If the lock is assigned to some other endpoint after this release, wait keys of the new lock holder are returned.
+     * If the release request fails because the requesting endpoint does not hold the lock, all wait keys of the endpoint
+     * are cancelled because that endpoint has stopped waiting for response of the previous lock() invocation.
+     */
     ReleaseResult release(LockEndpoint endpoint, UUID invocationUid, int releaseCount) {
-        // if release() is being retried
+        // if unlock() is being retried
         if (invocationUid.equals(invocationRefUids.get(endpoint))) {
-            return ReleaseResult.SUCCESSFUL;
+            return ReleaseResult.successful(lockOwnershipState());
         }
 
         if (owner != null && endpoint.equals(owner.endpoint())) {
@@ -111,12 +141,13 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
 
             lockCount -= Math.min(releaseCount, lockCount);
             if (lockCount > 0) {
-                return ReleaseResult.SUCCESSFUL;
+                return ReleaseResult.successful(lockOwnershipState());
             }
 
+            List<LockInvocationKey> keys;
             LockInvocationKey newOwner = waitKeys.poll();
             if (newOwner != null) {
-                List<LockInvocationKey> keys = new ArrayList<LockInvocationKey>();
+                keys = new ArrayList<LockInvocationKey>(1);
                 keys.add(newOwner);
 
                 Iterator<LockInvocationKey> iter = waitKeys.iterator();
@@ -131,24 +162,22 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
 
                 owner = newOwner;
                 lockCount = 1;
-
-                return ReleaseResult.successful(lockOwnershipState(), keys);
             } else {
                 owner = null;
+                keys = Collections.emptyList();
             }
 
-            return ReleaseResult.SUCCESSFUL;
+            return ReleaseResult.successful(lockOwnershipState(), keys);
         }
 
         return ReleaseResult.failed(cancelWaitKeys(endpoint, invocationUid));
     }
 
+    /**
+     * Releases the lock if it is current held by the given expected fencing token.
+     */
     ReleaseResult forceRelease(long expectedFence, UUID invocationUid) {
-        if (owner == null) {
-            return ReleaseResult.FAILED;
-        }
-
-        if (owner.commitIndex() == expectedFence) {
+        if (owner != null && owner.commitIndex() == expectedFence) {
             return release(owner.endpoint(), invocationUid, lockCount);
         }
 
@@ -163,8 +192,11 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
         return new RaftLockOwnershipState(owner.commitIndex(), lockCount, owner.sessionId(), owner.endpoint().threadId());
     }
 
+    /**
+     * Releases the lock if the current lock holder's session is closed.
+     */
     @Override
-    protected void onInvalidateSession(long sessionId, Long2ObjectHashMap<Object> responses) {
+    protected void onSessionClose(long sessionId, Long2ObjectHashMap<Object> responses) {
         if (owner != null && sessionId == owner.endpoint().sessionId()) {
             Iterator<LockEndpoint> it = invocationRefUids.keySet().iterator();
             while (it.hasNext()) {
@@ -190,8 +222,11 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
         }
     }
 
+    /**
+     * Returns session id of the current lock holder or an empty collection if the lock is not held
+     */
     @Override
-    protected Collection<Long> getOwnerSessions() {
+    protected Collection<Long> getActivelyAttachedSessions() {
         return owner != null ? Collections.singleton(owner.sessionId()) : Collections.<Long>emptyList();
     }
 
@@ -206,8 +241,7 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
     }
 
     @Override
-    public void writeData(ObjectDataOutput out)
-            throws IOException {
+    public void writeData(ObjectDataOutput out) throws IOException {
         super.writeData(out);
         boolean hasOwner = (owner != null);
         out.writeBoolean(hasOwner);
@@ -225,8 +259,7 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
     }
 
     @Override
-    public void readData(ObjectDataInput in)
-            throws IOException {
+    public void readData(ObjectDataInput in) throws IOException {
         super.readData(in);
         boolean hasOwner = in.readBoolean();
         if (hasOwner) {
@@ -248,10 +281,22 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
                 + ", invocationRefUids=" + invocationRefUids + ", waitKeys=" + waitKeys + '}';
     }
 
+    /**
+     * Represents result of a lock() request
+     */
     static final class AcquireResult {
 
+        /**
+         * If the lock() request is successful, represents new state of the lock ownership.
+         * It is {@link RaftLockOwnershipState#NOT_LOCKED} otherwise.
+         */
         final RaftLockOwnershipState ownership;
 
+        /**
+         * If new a lock() request is send while there are pending wait keys of a previous lock() request,
+         * pending wait keys are cancelled. It is because LockEndpoint is a single-threaded entity and
+         * a new lock() request implies that the LockEndpoint is no longer interested in its previous lock() call.
+         */
         final Collection<LockInvocationKey> cancelled;
 
         private AcquireResult(RaftLockOwnershipState ownership, Collection<LockInvocationKey> cancelled) {
@@ -266,21 +311,32 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
         private static AcquireResult notAcquired(Collection<LockInvocationKey> cancelled) {
             return new AcquireResult(NOT_LOCKED, cancelled);
         }
-
     }
 
+    /**
+     * Represents result of a unlock() request
+     */
     static final class ReleaseResult {
 
         static final ReleaseResult FAILED
-                = new ReleaseResult(false, null, Collections.<LockInvocationKey>emptyList());
+                = new ReleaseResult(false, NOT_LOCKED, Collections.<LockInvocationKey>emptyList());
 
-        private static final ReleaseResult SUCCESSFUL
-                = new ReleaseResult(true, null, Collections.<LockInvocationKey>emptyList());
-
+        /**
+         * true if the unlock() request is successful
+         */
         final boolean success;
 
+        /**
+         * If the unlock() request is successful, represents new state of the lock ownership.
+         * It can be {@link RaftLockOwnershipState#NOT_LOCKED} if the lock has no new owner after successful release.
+         * It is {@link RaftLockOwnershipState#NOT_LOCKED} if the unlock() request is failed.
+         */
         final RaftLockOwnershipState ownership;
 
+        /**
+         * If the unlock() request is successful and ownership is given to some other endpoint, contains its wait keys.
+         * If the unlock() request is failed, can contain cancelled wait keys of the caller, if there is any.
+         */
         final Collection<LockInvocationKey> notifications;
 
         private ReleaseResult(boolean success, RaftLockOwnershipState ownership, Collection<LockInvocationKey> notifications) {
@@ -289,12 +345,16 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
             this.notifications = unmodifiableCollection(notifications);
         }
 
+        private static ReleaseResult successful(RaftLockOwnershipState ownership) {
+            return new ReleaseResult(true, ownership, Collections.<LockInvocationKey>emptyList());
+        }
+
         private static ReleaseResult successful(RaftLockOwnershipState ownership, Collection<LockInvocationKey> notifications) {
             return new ReleaseResult(true, ownership, notifications);
         }
 
         private static ReleaseResult failed(Collection<LockInvocationKey> notifications) {
-            return new ReleaseResult(false, null, notifications);
+            return new ReleaseResult(false, NOT_LOCKED, notifications);
         }
     }
 

@@ -23,7 +23,7 @@ import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.atomiclong.operation.GetAndAddOp;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for {@link GetAndAddOp}
  */
 public class GetAndAddMessageTask extends AbstractAtomicLongMessageTask {
 

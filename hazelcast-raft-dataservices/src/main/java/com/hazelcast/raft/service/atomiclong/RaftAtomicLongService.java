@@ -45,11 +45,14 @@ import static com.hazelcast.util.Preconditions.checkNotNull;
 import static java.util.Collections.newSetFromMap;
 
 /**
- * TODO: Javadoc Pending...
+ * Contains Raft-based atomic long instances, implements snapshotting, and creates proxies
  */
 public class RaftAtomicLongService implements ManagedService, RaftRemoteService, RaftGroupLifecycleAwareService,
                                               SnapshotAwareService<RaftAtomicLongSnapshot> {
 
+    /**
+     * Name of the service
+     */
     public static final String SERVICE_NAME = "hz:raft:atomicLongService";
 
     private final Map<Tuple2<RaftGroupId, String>, RaftAtomicLong> atomicLongs =

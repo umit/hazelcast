@@ -33,7 +33,7 @@ import static com.hazelcast.util.Preconditions.checkNotNull;
 import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Raft-based proxy implementation of {@link ICountDownLatch} interface
  */
 public class RaftCountDownLatchProxy implements ICountDownLatch {
 

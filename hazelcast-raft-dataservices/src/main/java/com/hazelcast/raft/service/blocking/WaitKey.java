@@ -16,14 +16,28 @@
 
 package com.hazelcast.raft.service.blocking;
 
+import com.hazelcast.raft.service.session.AbstractSessionManager;
+
 /**
- * TODO: Javadoc Pending...
+ * This abstraction is used when an operation does not return a response at commit-time.
+ * Such an operation will either return a response in future or timeout.
+ * Future completions of such operations are represented with implementations of this interface.
  */
 public interface WaitKey {
 
+    /**
+     * Returns name of the data structure to which this wait key is attached.
+     */
     String name();
 
+    /**
+     * Returns id of the session to which the corresponding operation is attached.
+     * Returns {@link AbstractSessionManager#NO_SESSION_ID} If no session is attached.
+     */
     long sessionId();
 
+    /**
+     * Returns commit index of the operation that has not returned a response at the time of its commit.
+     */
     long commitIndex();
 }

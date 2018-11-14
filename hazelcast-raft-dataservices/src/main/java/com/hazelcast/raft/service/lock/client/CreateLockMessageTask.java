@@ -30,7 +30,7 @@ import java.security.Permission;
 
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for getting Raft group id of the requested Raft-based lock
  */
 public class CreateLockMessageTask extends AbstractMessageTask implements ExecutionCallback {
 

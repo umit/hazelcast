@@ -25,7 +25,7 @@ import java.util.Collection;
 import java.util.UUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Contains {@link RaftCountDownLatch} resources and manages wait timeouts
  */
 public class CountDownLatchRegistry extends ResourceRegistry<CountDownLatchInvocationKey, RaftCountDownLatch>
         implements IdentifiedDataSerializable {

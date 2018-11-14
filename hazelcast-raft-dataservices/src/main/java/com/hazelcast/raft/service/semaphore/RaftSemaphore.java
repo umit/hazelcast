@@ -43,13 +43,14 @@ import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.util.Collections.unmodifiableCollection;
 
 /**
- * TODO: Javadoc Pending...
+ * State-machine implementation of the Raft-based semaphore.
+ * Supports both sessionless and session-aware semaphore proxies.
  */
 public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> implements IdentifiedDataSerializable {
 
     private boolean initialized;
     private int available;
-    private final Map<Long, SessionState> sessionStates = new HashMap<Long, SessionState>();
+    private final Map<Long, SessionSemaphoreState> sessionStates = new HashMap<Long, SessionSemaphoreState>();
 
     RaftSemaphore() {
     }
@@ -78,8 +79,19 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
         return available >= permits;
     }
 
+    /**
+     * Assigns permits to the endpoint, if sufficient number of permits are available.
+     * If there are no sufficient number of permits and the second argument is true,
+     * a wait key is created and added to the wait queue.
+     * Permits are not assigned if the acquire request is a retry of a successful acquire request of a session-aware proxy.
+     * Permits are assigned again if the acquire request is a retry of a successful acquire request of a sessionless proxy.
+     * If the acquire request is a retry of an endpoint that resides in the wait queue with the same invocation uid,
+     * a duplicate wait key is added to the wait queue because cancelling the previous wait key can cause the caller to fail.
+     * If the acquire request is a new request of an endpoint that resides in the wait queue with a different invocation uid,
+     * the existing wait key is cancelled because it means the caller has stopped waiting for response of the previous invocation.
+     */
     AcquireResult acquire(SemaphoreInvocationKey key, boolean wait) {
-        SessionState state = sessionStates.get(key.sessionId());
+        SessionSemaphoreState state = sessionStates.get(key.sessionId());
         if (state != null && state.invocationRefUids.containsKey(Tuple2.of(key.threadId(), key.invocationUid()))) {
             return new AcquireResult(key.permits(), Collections.<SemaphoreInvocationKey>emptyList());
         }
@@ -105,9 +117,9 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
             return;
         }
 
-        SessionState state = sessionStates.get(sessionId);
+        SessionSemaphoreState state = sessionStates.get(sessionId);
         if (state == null) {
-            state = new SessionState();
+            state = new SessionSemaphoreState();
             sessionStates.put(sessionId, state);
         }
 
@@ -117,11 +129,20 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
         }
     }
 
+    /**
+     * Releases the given number of permits.
+     * Permits are not released if it is a retry of a previous successful release request of a session-aware proxy.
+     * Permits are released again if it is a retry of a successful release request of a sessionless proxy.
+     * If the release request fails because the requesting endpoint does not hold the given number of permits, all wait keys
+     * of the endpoint are cancelled because that endpoint has stopped waiting for response of the previous acquire() invocation.
+     * Returns completed wait keys after successful release if there are any.
+     * Returns cancelled wait keys after failed release if there are any.
+     */
     ReleaseResult release(long sessionId, long threadId, UUID invocationUid, int permits) {
         checkPositive(permits, "Permits should be positive!");
 
         if (sessionId != NO_SESSION_ID) {
-            SessionState state = sessionStates.get(sessionId);
+            SessionSemaphoreState state = sessionStates.get(sessionId);
             if (state == null) {
                 return ReleaseResult.failed(cancelWaitKeys(sessionId, threadId, invocationUid));
             }
@@ -184,8 +205,14 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
         return assigned;
     }
 
+    /**
+     * Assigns all available permits to the <sessionId, threadId> endpoint.
+     * Permits are not assigned if the drain request is a retry of a successful drain request of a session-aware proxy.
+     * Permits are assigned again if the drain request is a retry of a successful drain request of a sessionless proxy.
+     * Returns cancelled wait keys of the same endpoint if there are any.
+     */
     AcquireResult drain(long sessionId, long threadId, UUID invocationUid) {
-        SessionState state = sessionStates.get(sessionId);
+        SessionSemaphoreState state = sessionStates.get(sessionId);
         if (state != null) {
             Integer permits = state.invocationRefUids.get(Tuple2.of(threadId, invocationUid));
             if (permits != null) {
@@ -204,6 +231,14 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
         return new AcquireResult(drained, cancelled);
     }
 
+    /**
+     * Changes the number of permits by adding the given permit value.
+     * Permits are not changed if it is a retry of a previous successful change request of a session-aware proxy.
+     * Permits are changed again if it is a retry of a successful change request of a sessionless proxy.
+     * If number of permits increase, new assignments can be done.
+     * Returns completed wait keys after successful change if there are any.
+     * Returns cancelled wait keys of the same endpoint if there are any.
+     */
     ReleaseResult change(long sessionId, long threadId, UUID invocationUid, int permits) {
         if (permits == 0) {
             return ReleaseResult.failed(Collections.<SemaphoreInvocationKey>emptyList());
@@ -212,9 +247,9 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
         Collection<SemaphoreInvocationKey> cancelled = cancelWaitKeys(sessionId, threadId, invocationUid);
 
         if (sessionId != NO_SESSION_ID) {
-            SessionState state = sessionStates.get(sessionId);
+            SessionSemaphoreState state = sessionStates.get(sessionId);
             if (state == null) {
-                state = new SessionState();
+                state = new SessionSemaphoreState();
                 sessionStates.put(sessionId, state);
             }
 
@@ -235,9 +270,12 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
         return ReleaseResult.successful(acquired, cancelled);
     }
 
+    /**
+     * Releases permits of the closed session.
+     */
     @Override
-    protected void onInvalidateSession(long sessionId, Long2ObjectHashMap<Object> responses) {
-        SessionState state = sessionStates.get(sessionId);
+    protected void onSessionClose(long sessionId, Long2ObjectHashMap<Object> responses) {
+        SessionSemaphoreState state = sessionStates.get(sessionId);
         if (state != null && state.acquiredPermits > 0) {
             // remove the session after release() because release() checks existence of the session
             ReleaseResult result = release(sessionId, 0, newUnsecureUUID(), state.acquiredPermits);
@@ -250,9 +288,9 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
     }
 
     @Override
-    protected Collection<Long> getOwnerSessions() {
+    protected Collection<Long> getActivelyAttachedSessions() {
         Set<Long> activeSessionIds = new HashSet<Long>();
-        for (Map.Entry<Long, SessionState> e : sessionStates.entrySet()) {
+        for (Entry<Long, SessionSemaphoreState> e : sessionStates.entrySet()) {
             if (e.getValue().acquiredPermits > 0) {
                 activeSessionIds.add(e.getKey());
             }
@@ -272,15 +310,14 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
     }
 
     @Override
-    public void writeData(ObjectDataOutput out)
-            throws IOException {
+    public void writeData(ObjectDataOutput out) throws IOException {
         super.writeData(out);
         out.writeBoolean(initialized);
         out.writeInt(available);
         out.writeInt(sessionStates.size());
-        for (Entry<Long, SessionState> e1 : sessionStates.entrySet()) {
+        for (Entry<Long, SessionSemaphoreState> e1 : sessionStates.entrySet()) {
             out.writeLong(e1.getKey());
-            SessionState state = e1.getValue();
+            SessionSemaphoreState state = e1.getValue();
             out.writeInt(state.invocationRefUids.size());
             for (Entry<Tuple2<Long, UUID>, Integer> e2 : state.invocationRefUids.entrySet()) {
                 Tuple2<Long, UUID> t = e2.getKey();
@@ -296,15 +333,14 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
     }
 
     @Override
-    public void readData(ObjectDataInput in)
-            throws IOException {
+    public void readData(ObjectDataInput in) throws IOException {
         super.readData(in);
         initialized = in.readBoolean();
         available = in.readInt();
         int count = in.readInt();
         for (int i = 0; i < count; i++) {
             long sessionId = in.readLong();
-            SessionState state = new SessionState();
+            SessionSemaphoreState state = new SessionSemaphoreState();
             int refUidCount = in.readInt();
             for (int j = 0; j < refUidCount; j++) {
                 long threadId = in.readLong();
@@ -326,11 +362,19 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
                 + ", available=" + available + ", sessionStates=" + sessionStates + ", waitKeys=" + waitKeys + '}';
     }
 
+    /**
+     * Represents result of an acquire() request
+     */
     static final class AcquireResult {
 
+        /**
+         * Number of acquired permits
+         */
         final int acquired;
 
-        // can be populated when both acquired and not acquired
+        /**
+         * Cancelled wait keys of the caller if there is any, independent of the acquire request is successful or not.
+         */
         final Collection<SemaphoreInvocationKey> cancelled;
 
         private AcquireResult(int acquired, Collection<SemaphoreInvocationKey> cancelled) {
@@ -339,12 +383,24 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
         }
     }
 
+    /**
+     * Represents result of a release() request
+     */
     static final class ReleaseResult {
 
+        /**
+         * true if the release() request is successful
+         */
         final boolean success;
 
+        /**
+         * If the release() request is successful and permits are assigned to some other endpoints, contains their wait keys.
+         */
         final Collection<SemaphoreInvocationKey> acquired;
 
+        /**
+         * Cancelled wait keys of the caller if there is any, independent of the release request is successful or not.
+         */
         final Collection<SemaphoreInvocationKey> cancelled;
 
         private ReleaseResult(boolean success, Collection<SemaphoreInvocationKey> acquired,
@@ -364,8 +420,11 @@ public class RaftSemaphore extends BlockingResource<SemaphoreInvocationKey> impl
         }
     }
 
-    private static class SessionState {
+    private static class SessionSemaphoreState {
 
+        /**
+         * map of <threadId, invocationUid> -> permits to track last operation of each endpoint
+         */
         private final Map<Tuple2<Long, UUID>, Integer> invocationRefUids = new HashMap<Tuple2<Long, UUID>, Integer>();
 
         private int acquiredPermits;

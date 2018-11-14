@@ -16,19 +16,22 @@
 
 package com.hazelcast.raft.service.semaphore.operation;
 
+import com.hazelcast.core.ISemaphore;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * Operation for {@link ISemaphore#init(int)}
+ *
+ * @see com.hazelcast.raft.service.semaphore.RaftSemaphore#init(int)
  */
 public class InitSemaphoreOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 

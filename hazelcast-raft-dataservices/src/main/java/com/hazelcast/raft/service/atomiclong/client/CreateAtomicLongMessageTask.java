@@ -29,7 +29,7 @@ import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import java.security.Permission;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for getting Raft group id of the requested Raft-based atomic long
  */
 public class CreateAtomicLongMessageTask extends AbstractMessageTask implements ExecutionCallback {
 

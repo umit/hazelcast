@@ -31,11 +31,14 @@ import java.util.Collection;
 import java.util.UUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Contains Raft-based count down latch instances
  */
 public class RaftCountDownLatchService
         extends AbstractBlockingService<CountDownLatchInvocationKey, RaftCountDownLatch, CountDownLatchRegistry> {
 
+    /**
+     * Name of the service
+     */
     public static final String SERVICE_NAME = "hz:raft:countDownLatchService";
 
     public RaftCountDownLatchService(NodeEngine nodeEngine) {
@@ -101,7 +104,7 @@ public class RaftCountDownLatchService
     }
 
     @Override
-    protected Object invalidatedWaitKeyResponse() {
+    protected Object expiredWaitKeyResponse() {
         return false;
     }
 

@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * TODO: Javadoc Pending...
+ * Snapshot of a {@link RaftAtomicRefService} state for a Raft group
  */
 public class RaftAtomicRefSnapshot implements IdentifiedDataSerializable {
 

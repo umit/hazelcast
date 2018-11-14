@@ -29,7 +29,7 @@ import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchService;
 import java.security.Permission;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for getting Raft group id of the requested Raft-based count down latch
  */
 public class CreateCountDownLatchMessageTask extends AbstractMessageTask implements ExecutionCallback {
 

@@ -23,7 +23,7 @@ import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.semaphore.operation.InitSemaphoreOp;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for {@link InitSemaphoreOp}
  */
 public class InitSemaphoreMessageTask extends AbstractSemaphoreMessageTask {
 

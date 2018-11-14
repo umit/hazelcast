@@ -25,11 +25,13 @@ import org.junit.runner.RunWith;
 import java.util.UUID;
 
 import static com.hazelcast.concurrent.lock.LockTestUtils.lockByOtherThread;
+import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
 import static com.hazelcast.raft.service.spi.RaftProxyFactory.create;
 import static com.hazelcast.util.ThreadUtil.getThreadId;
 import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
@@ -272,8 +274,15 @@ public class RaftLockFailureTest extends HazelcastRaftTestSupport {
 
     @Test
     public void testLockAcquireRetry() {
+        lock.lock();
+        lock.unlock();
+
+        // there is a session id now
+
         final RaftGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
+        assertNotEquals(NO_SESSION_ID, sessionId);
+
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid = newUnsecureUUID();
 
@@ -285,8 +294,15 @@ public class RaftLockFailureTest extends HazelcastRaftTestSupport {
 
     @Test
     public void testLockReentrantAcquireRetry() {
+        lock.lock();
+        lock.unlock();
+
+        // there is a session id now
+
         final RaftGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
+        assertNotEquals(NO_SESSION_ID, sessionId);
+
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid1 = newUnsecureUUID();
         UUID invUid2 = newUnsecureUUID();

@@ -27,7 +27,7 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Base class for operations of Raft-based semaphore
  */
 abstract class AbstractSemaphoreOp extends RaftOp implements IdentifiedDataSerializable {
 

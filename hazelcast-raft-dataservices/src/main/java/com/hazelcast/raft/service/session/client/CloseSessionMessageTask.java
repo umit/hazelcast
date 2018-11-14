@@ -19,7 +19,6 @@ package com.hazelcast.raft.service.session.client;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
@@ -32,7 +31,7 @@ import com.hazelcast.raft.impl.session.operation.CloseSessionOp;
 import java.security.Permission;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for {@link CloseSessionOp}
  */
 public class CloseSessionMessageTask extends AbstractMessageTask implements ExecutionCallback {
 
@@ -47,8 +46,7 @@ public class CloseSessionMessageTask extends AbstractMessageTask implements Exec
     protected void processMessage() {
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         RaftInvocationManager invocationManager = service.getInvocationManager();
-        ICompletableFuture<Boolean> future = invocationManager.invoke(groupId, new CloseSessionOp(sessionId));
-        future.andThen(this);
+        invocationManager.invoke(groupId, new CloseSessionOp(sessionId)).andThen(this);
     }
 
     @Override

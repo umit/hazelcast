@@ -36,10 +36,13 @@ import java.util.Collection;
 import java.util.UUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Contains Raft-based semaphore instances
  */
 public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvocationKey, RaftSemaphore, SemaphoreRegistry> {
 
+    /**
+     * Name of the service
+     */
     public static final String SERVICE_NAME = "hz:raft:semaphoreService";
 
     public RaftSemaphoreService(NodeEngine nodeEngine) {
@@ -156,7 +159,7 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
     }
 
     @Override
-    protected Object invalidatedWaitKeyResponse() {
+    protected Object expiredWaitKeyResponse() {
         return false;
     }
 

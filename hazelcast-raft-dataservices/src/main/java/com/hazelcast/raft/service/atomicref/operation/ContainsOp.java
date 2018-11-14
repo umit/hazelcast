@@ -16,19 +16,20 @@
 
 package com.hazelcast.raft.service.atomicref.operation;
 
+import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
-import com.hazelcast.raft.service.atomicref.RaftAtomicReferenceDataSerializerHook;
 import com.hazelcast.raft.service.atomicref.RaftAtomicRef;
+import com.hazelcast.raft.service.atomicref.RaftAtomicReferenceDataSerializerHook;
 
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * Operation for {@link IAtomicReference#contains(Object)}
  */
 public class ContainsOp extends AbstractAtomicRefOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 

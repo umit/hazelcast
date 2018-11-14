@@ -44,7 +44,7 @@ import static com.hazelcast.util.ThreadUtil.getThreadId;
 import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Server-side proxy of Raft-based {@link ILock} API
  */
 public class RaftLockProxy extends SessionAwareProxy implements ILock {
 

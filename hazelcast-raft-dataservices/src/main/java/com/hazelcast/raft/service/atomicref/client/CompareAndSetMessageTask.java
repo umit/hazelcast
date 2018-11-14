@@ -24,7 +24,7 @@ import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.atomicref.operation.CompareAndSetOp;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for {@link CompareAndSetOp}
  */
 public class CompareAndSetMessageTask extends AbstractAtomicRefMessageTask {
 

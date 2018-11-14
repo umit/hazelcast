@@ -22,6 +22,7 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.service.lock.FencedLock;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
 import com.hazelcast.raft.service.lock.RaftLockService;
 
@@ -29,7 +30,9 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Operation for {@link FencedLock#forceUnlock()}
+ *
+ * @see com.hazelcast.raft.service.lock.RaftLock#forceRelease(long, UUID)
  */
 public class ForceUnlockOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
 

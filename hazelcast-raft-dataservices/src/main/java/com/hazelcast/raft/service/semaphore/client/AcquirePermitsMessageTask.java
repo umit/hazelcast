@@ -26,7 +26,7 @@ import com.hazelcast.raft.service.semaphore.operation.AcquirePermitsOp;
 import java.util.UUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for {@link AcquirePermitsOp}
  */
 public class AcquirePermitsMessageTask extends AbstractSemaphoreMessageTask {
 

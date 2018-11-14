@@ -16,6 +16,7 @@
 
 package com.hazelcast.raft.service.semaphore.operation;
 
+import com.hazelcast.core.ISemaphore;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
@@ -29,7 +30,9 @@ import java.util.UUID;
 import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
 
 /**
- * TODO: Javadoc Pending...
+ * Operation for {@link ISemaphore#release()}
+ *
+ * @see com.hazelcast.raft.service.semaphore.RaftSemaphore#release(long, long, UUID, int)
  */
 public class ReleasePermitsOp extends AbstractSemaphoreOp implements InvocationTargetLeaveAware {
 

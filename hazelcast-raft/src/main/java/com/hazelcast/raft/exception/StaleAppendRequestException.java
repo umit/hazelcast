@@ -19,8 +19,8 @@ package com.hazelcast.raft.exception;
 import com.hazelcast.raft.RaftMember;
 
 /**
- * A {@code RaftException} which is thrown when an appended but yet not committed entry is truncated
- * after a snapshot is installed.
+ * A {@code RaftException} which is thrown when an installed snapshot causes
+ * an appended entry to be truncated from the Raft log before its commit status is learnt.
  */
 public class StaleAppendRequestException extends RaftException {
 

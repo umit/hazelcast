@@ -23,7 +23,7 @@ import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.lock.operation.GetLockOwnershipStateOp;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for {@link GetLockOwnershipStateOp}
  */
 public class GetLockOwnershipStateMessageTask extends AbstractLockMessageTask {
 

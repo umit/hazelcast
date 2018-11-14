@@ -19,7 +19,6 @@ package com.hazelcast.raft.service.lock.client;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
@@ -33,7 +32,7 @@ import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
 import java.security.Permission;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for destroying a Raft-based lock with {@link DestroyRaftObjectOp}
  */
 public class DestroyLockMessageTask extends AbstractMessageTask implements ExecutionCallback {
 
@@ -48,8 +47,7 @@ public class DestroyLockMessageTask extends AbstractMessageTask implements Execu
     protected void processMessage() {
         RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
         RaftInvocationManager invocationManager = raftService.getInvocationManager();
-        ICompletableFuture<Object> future = invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name));
-        future.andThen(this);
+        invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).andThen(this);
     }
 
     @Override

@@ -31,7 +31,7 @@ import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import java.security.Permission;
 
 /**
- * TODO: Javadoc Pending...
+ * Base class for client message tasks of Raft-based atomic long
  */
 public abstract class AbstractAtomicLongMessageTask extends AbstractMessageTask implements ExecutionCallback {
 

@@ -36,7 +36,7 @@ import static com.hazelcast.util.Preconditions.checkTrue;
 import static java.lang.Math.max;
 
 /**
- * TODO: Javadoc Pending...
+ * State-machine implementation of the Raft-based count down latch
  */
 public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocationKey> implements IdentifiedDataSerializable {
 
@@ -51,9 +51,14 @@ public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocatio
         super(groupId, name);
     }
 
+    /**
+     * Reduces remaining count of the latch.
+     * If the expected round is smaller than the current round, it is either a retry or a countDown() request
+     * sent before re-initialization of the latch. In this case, this count down request is ignored.
+     */
     Tuple2<Integer, Collection<CountDownLatchInvocationKey>> countDown(int expectedRound, UUID invocationUuid) {
         if (expectedRound > round) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("expected round: " + expectedRound + ", actual round: " + round);
         }
 
         if (expectedRound < round) {
@@ -106,11 +111,11 @@ public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocatio
     }
 
     @Override
-    protected void onInvalidateSession(long sessionId, Long2ObjectHashMap<Object> result) {
+    protected void onSessionClose(long sessionId, Long2ObjectHashMap<Object> responses) {
     }
 
     @Override
-    protected Collection<Long> getOwnerSessions() {
+    protected Collection<Long> getActivelyAttachedSessions() {
         return Collections.emptyList();
     }
 
@@ -125,8 +130,7 @@ public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocatio
     }
 
     @Override
-    public void writeData(ObjectDataOutput out)
-            throws IOException {
+    public void writeData(ObjectDataOutput out) throws IOException {
         super.writeData(out);
 
         out.writeInt(round);
@@ -139,8 +143,7 @@ public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocatio
     }
 
     @Override
-    public void readData(ObjectDataInput in)
-            throws IOException {
+    public void readData(ObjectDataInput in) throws IOException {
         super.readData(in);
 
         round = in.readInt();

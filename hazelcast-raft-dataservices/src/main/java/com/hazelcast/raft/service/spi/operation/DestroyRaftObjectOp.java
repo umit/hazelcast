@@ -27,7 +27,7 @@ import com.hazelcast.raft.service.spi.RaftRemoteService;
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * Destroys the distributed object with the given name on the requested Raft group
  */
 public class DestroyRaftObjectOp extends RaftOp implements IdentifiedDataSerializable {
 

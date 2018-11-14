@@ -26,7 +26,7 @@ import java.util.Collection;
 import java.util.UUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Contains {@link RaftSemaphore} resources and manages wait timeouts based on acquire / release requests
  */
 public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, RaftSemaphore>
         implements IdentifiedDataSerializable {

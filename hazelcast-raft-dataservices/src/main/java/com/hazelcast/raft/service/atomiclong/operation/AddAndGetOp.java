@@ -16,6 +16,7 @@
 
 package com.hazelcast.raft.service.atomiclong.operation;
 
+import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
@@ -26,7 +27,7 @@ import com.hazelcast.raft.service.atomiclong.RaftAtomicLong;
 import java.io.IOException;
 
 /**
- * TODO: Javadoc Pending...
+ * Operation for {@link IAtomicLong#addAndGet(long)}
  */
 public class AddAndGetOp extends AbstractAtomicLongOp implements InvocationTargetLeaveAware {
 

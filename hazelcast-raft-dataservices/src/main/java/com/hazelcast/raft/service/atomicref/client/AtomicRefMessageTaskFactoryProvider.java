@@ -26,7 +26,7 @@ import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 
 /**
- * TODO: Javadoc Pending...
+ * Provider for Raft-based atomic reference client message task factories
  */
 public class AtomicRefMessageTaskFactoryProvider implements MessageTaskFactoryProvider {
 

@@ -26,7 +26,7 @@ import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 
 /**
- * TODO: Javadoc pending...
+ * Provider for Raft-based lock client message task factories
  */
 public class LockMessageTaskFactoryProvider implements MessageTaskFactoryProvider {
 

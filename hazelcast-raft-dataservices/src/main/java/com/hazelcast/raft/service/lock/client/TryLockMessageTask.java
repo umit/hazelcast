@@ -23,7 +23,7 @@ import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.lock.operation.TryLockOp;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for {@link TryLockOp}
  */
 public class TryLockMessageTask extends LockMessageTask {
 

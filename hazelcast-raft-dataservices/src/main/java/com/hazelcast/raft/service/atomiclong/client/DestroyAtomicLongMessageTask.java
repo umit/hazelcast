@@ -23,7 +23,7 @@ import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.spi.operation.DestroyRaftObjectOp;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for destroying a Raft-based atomic long with {@link DestroyRaftObjectOp}
  */
 public class DestroyAtomicLongMessageTask extends AbstractAtomicLongMessageTask {
 

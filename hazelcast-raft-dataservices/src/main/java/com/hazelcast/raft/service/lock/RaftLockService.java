@@ -38,11 +38,18 @@ import java.util.UUID;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 
 /**
- * TODO: Javadoc Pending...
+ * Contains Raft-based lock instances
  */
 public class RaftLockService extends AbstractBlockingService<LockInvocationKey, RaftLock, LockRegistry> {
 
+    /**
+     * Representation of a failed lock request
+     */
     public static final long INVALID_FENCE = 0L;
+
+    /**
+     * Name of the service
+     */
     public static final String SERVICE_NAME = "hz:raft:lockService";
 
     public RaftLockService(NodeEngine nodeEngine) {
@@ -204,7 +211,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
     }
 
     @Override
-    protected Object invalidatedWaitKeyResponse() {
+    protected Object expiredWaitKeyResponse() {
         return RaftLockOwnershipState.NOT_LOCKED;
     }
 

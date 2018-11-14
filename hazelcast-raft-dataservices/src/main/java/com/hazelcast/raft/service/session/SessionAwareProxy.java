@@ -19,7 +19,7 @@ package com.hazelcast.raft.service.session;
 import com.hazelcast.raft.RaftGroupId;
 
 /**
- * TODO: Javadoc Pending...
+ * Base class for server and client proxies that make use of Raft sessions
  */
 public abstract class SessionAwareProxy {
 
@@ -31,31 +31,55 @@ public abstract class SessionAwareProxy {
         this.groupId = groupId;
     }
 
-    protected final long getSession() {
-        return sessionManager.getSession(groupId);
+    public final RaftGroupId getGroupId() {
+        return groupId;
     }
 
+    /**
+     * Increments acquire count of the session.
+     * Creates a new session if there is no session yet.
+     */
     protected final long acquireSession() {
         return sessionManager.acquireSession(groupId);
     }
 
+    /**
+     * Increments acquire count of the session.
+     * Creates a new session if there is no session yet.
+     */
     protected final long acquireSession(int count) {
         return sessionManager.acquireSession(groupId, count);
     }
 
+    /**
+     * Decrements acquire count of the session.
+     * Returns silently if no session exists for the given id.
+     */
     protected final void releaseSession(long sessionId) {
         sessionManager.releaseSession(groupId, sessionId);
     }
 
+    /**
+     * Decrements acquire count of the session.
+     * Returns silently if no session exists for the given id.
+     */
     protected final void releaseSession(long sessionId, int count) {
         sessionManager.releaseSession(groupId, sessionId, count);
     }
 
+    /**
+     * Invalidates the given session.
+     * No more heartbeats will be sent for the given session.
+     */
     protected final void invalidateSession(long sessionId) {
         sessionManager.invalidateSession(groupId, sessionId);
     }
 
-    public final RaftGroupId getGroupId() {
-        return groupId;
+    /**
+     * Returns id of the session opened for the given Raft group.
+     * Returns {@link AbstractSessionManager#NO_SESSION_ID} if no session exists.
+     */
+    protected final long getSession() {
+        return sessionManager.getSession(groupId);
     }
 }

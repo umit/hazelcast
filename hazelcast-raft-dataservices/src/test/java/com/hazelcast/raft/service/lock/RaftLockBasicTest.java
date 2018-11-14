@@ -342,11 +342,11 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
         final RaftGroupId groupId = getGroupId(lock);
         final long sessionId = sessionManager.getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
-        assertEquals(1, sessionManager.getSessionUsageCount(groupId, sessionId));
+        assertEquals(1, sessionManager.getSessionAcquireCount(groupId, sessionId));
 
         boolean locked = lock.tryLock();
         assertFalse(locked);
-        assertEquals(1, sessionManager.getSessionUsageCount(groupId, sessionId));
+        assertEquals(1, sessionManager.getSessionAcquireCount(groupId, sessionId));
     }
 
     @Test(expected = DistributedObjectDestroyedException.class)

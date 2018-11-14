@@ -40,14 +40,19 @@ import static com.hazelcast.util.Preconditions.checkNotNull;
 import static java.util.Collections.unmodifiableMap;
 
 /**
- * TODO: Javadoc Pending...
+ * Base class for registries for blocking resources. Maintains blocking resources and their associated wait timeouts.
+ * When a new wait key is registered into a blocking resource, a timeout can be set here.
+ * If a return value is not produced for that wait key until the timeout occurs, the wait key will be expired.
+ *
+ * @param <W> concrete type of the WaitKey
+ * @param <R> concrete type of the resource
  */
 public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingResource<W>> implements DataSerializable {
 
     private RaftGroupId groupId;
     private final Map<String, R> resources = new ConcurrentHashMap<String, R>();
     private final Set<String> destroyedNames = new HashSet<String>();
-    // value.element1: timeout duration, value.element2: deadline timestamp (transient)
+    // value.element1: timeout duration (persisted in the snapshot), value.element2: deadline timestamp (transient)
     private final Map<W, Tuple2<Long, Long>> waitTimeouts = new ConcurrentHashMap<W, Tuple2<Long, Long>>();
 
     public ResourceRegistry() {
@@ -57,9 +62,7 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
         this.groupId = groupId;
     }
 
-    public final RaftGroupId getGroupId() {
-        return groupId;
-    }
+    protected abstract R createNewResource(RaftGroupId groupId, String name);
 
     protected final R getResourceOrNull(String name) {
         checkNotDestroyed(name);
@@ -77,8 +80,6 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
         return resource;
     }
 
-    protected abstract R createNewResource(RaftGroupId groupId, String name);
-
     private void checkNotDestroyed(String name) {
         checkNotNull(name);
         if (destroyedNames.contains(name)) {
@@ -90,7 +91,11 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
         waitTimeouts.put(key, Tuple2.of(timeoutMs, Clock.currentTimeMillis() + timeoutMs));
     }
 
-    protected final boolean invalidateWaitKey(W key) {
+    protected final void removeWaitKey(W key) {
+        waitTimeouts.remove(key);
+    }
+
+    final boolean expireWaitKey(W key) {
         removeWaitKey(key);
 
         BlockingResource<W> resource = getResourceOrNull(key.name());
@@ -98,14 +103,10 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
             return false;
         }
 
-        return resource.invalidateWaitKey(key);
+        return resource.expireWaitKey(key);
     }
 
-    protected final void removeWaitKey(W key) {
-        waitTimeouts.remove(key);
-    }
-
-    final Collection<W> getExpiredWaitKeys(long now) {
+    final Collection<W> getWaitKeysToExpire(long now) {
         List<W> expired = new ArrayList<W>();
         for (Entry<W, Tuple2<Long, Long>> e : waitTimeouts.entrySet()) {
             long deadline = e.getValue().element2;
@@ -134,30 +135,25 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
         return newKeys;
     }
 
-    final Map<Long, Object> invalidateSession(long sessionId) {
+    final Map<Long, Object> closeSession(long sessionId) {
         Long2ObjectHashMap<Object> result = new Long2ObjectHashMap<Object>();
         for (R resource : resources.values()) {
-            result.putAll(resource.invalidateSession(sessionId));
+            result.putAll(resource.closeSession(sessionId));
         }
 
         return result;
     }
 
-    // queried locally in tests
-    public final Map<W, Tuple2<Long, Long>> getWaitTimeouts() {
-        return unmodifiableMap(waitTimeouts);
-    }
-
-    public final Collection<Long> getActiveSessions() {
+    final Collection<Long> getAttachedSessions() {
         Set<Long> sessions = new HashSet<Long>();
         for (R res : resources.values()) {
-            res.reportActiveSessions(sessions);
+            res.collectAttachedSessions(sessions);
         }
 
         return sessions;
     }
 
-    public final Collection<Long> destroyResource(String name) {
+    final Collection<Long> destroyResource(String name) {
         destroyedNames.add(name);
         BlockingResource<W> resource = resources.remove(name);
         if (resource == null) {
@@ -172,6 +168,15 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
         }
 
         return indices;
+    }
+
+    public final RaftGroupId getGroupId() {
+        return groupId;
+    }
+
+    // queried locally in tests
+    public final Map<W, Tuple2<Long, Long>> getWaitTimeouts() {
+        return unmodifiableMap(waitTimeouts);
     }
 
     public final Collection<Long> destroy() {

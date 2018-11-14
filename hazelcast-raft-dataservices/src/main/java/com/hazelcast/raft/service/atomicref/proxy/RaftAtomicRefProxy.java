@@ -37,7 +37,9 @@ import static com.hazelcast.raft.service.atomicref.operation.ApplyOp.ReturnValue
 import static com.hazelcast.util.Preconditions.checkTrue;
 
 /**
- * TODO: Javadoc Pending...
+ * Raft-based proxy implementation of {@link IAtomicReference} interface
+ *
+ * @param <T> type of the referenced values
  */
 public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
 

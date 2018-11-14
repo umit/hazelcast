@@ -19,7 +19,6 @@ package com.hazelcast.raft.service.session.client;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
@@ -27,13 +26,12 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;
-import com.hazelcast.raft.impl.session.SessionResponse;
 import com.hazelcast.raft.impl.session.operation.HeartbeatSessionOp;
 
 import java.security.Permission;
 
 /**
- * TODO: Javadoc Pending...
+ * Client message task for {@link HeartbeatSessionOp}
  */
 public class HeartbeatSessionMessageTask extends AbstractMessageTask implements ExecutionCallback {
 
@@ -48,8 +46,7 @@ public class HeartbeatSessionMessageTask extends AbstractMessageTask implements 
     protected void processMessage() {
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         RaftInvocationManager invocationManager = service.getInvocationManager();
-        ICompletableFuture<SessionResponse> future = invocationManager.invoke(groupId, new HeartbeatSessionOp(sessionId));
-        future.andThen(this);
+        invocationManager.invoke(groupId, new HeartbeatSessionOp(sessionId)).andThen(this);
     }
 
     @Override

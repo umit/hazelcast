@@ -19,6 +19,7 @@ package com.hazelcast.raft.service.lock.operation;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 import com.hazelcast.raft.impl.util.PostponedResponse;
+import com.hazelcast.raft.service.lock.FencedLock;
 import com.hazelcast.raft.service.lock.LockEndpoint;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
 import com.hazelcast.raft.service.lock.RaftLockOwnershipState;
@@ -27,7 +28,9 @@ import com.hazelcast.raft.service.lock.RaftLockService;
 import java.util.UUID;
 
 /**
- * TODO: Javadoc Pending...
+ * Operation for {@link FencedLock#lock()}
+ *
+ * @see com.hazelcast.raft.service.lock.RaftLock#acquire(LockEndpoint, long, UUID, boolean)
  */
 public class LockOp extends AbstractLockOp implements InvocationTargetLeaveAware {
 
