@@ -25,7 +25,7 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
 import java.io.IOException;
@@ -33,7 +33,7 @@ import java.io.IOException;
 /**
  * Replicates a membership change operation to a Raft group.
  */
-public class ChangeRaftGroupMembershipOp extends RaftReplicateOp implements InvocationTargetLeaveAware,
+public class ChangeRaftGroupMembershipOp extends RaftReplicateOp implements IndeterminateOperationStateAware,
                                                                             IdentifiedDataSerializable {
 
     private static final int NAN_MEMBERS_COMMIT_INDEX = -1;
@@ -68,7 +68,7 @@ public class ChangeRaftGroupMembershipOp extends RaftReplicateOp implements Invo
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return false;
     }
 

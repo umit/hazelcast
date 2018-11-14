@@ -17,7 +17,7 @@
 package com.hazelcast.raft.service.lock.operation;
 
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.util.PostponedResponse;
 import com.hazelcast.raft.service.lock.FencedLock;
 import com.hazelcast.raft.service.lock.LockEndpoint;
@@ -32,7 +32,7 @@ import java.util.UUID;
  *
  * @see com.hazelcast.raft.service.lock.RaftLock#acquire(LockEndpoint, long, UUID, boolean)
  */
-public class LockOp extends AbstractLockOp implements InvocationTargetLeaveAware {
+public class LockOp extends AbstractLockOp implements IndeterminateOperationStateAware {
 
     public LockOp() {
     }
@@ -50,7 +50,7 @@ public class LockOp extends AbstractLockOp implements InvocationTargetLeaveAware
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

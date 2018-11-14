@@ -18,14 +18,14 @@ package com.hazelcast.raft.service.countdownlatch.operation;
 
 import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchDataSerializerHook;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchService;
 
 /**
  * Operation used by {@link ICountDownLatch#countDown()}
  */
-public class GetRoundOp extends AbstractCountDownLatchOp implements InvocationTargetLeaveAware {
+public class GetRoundOp extends AbstractCountDownLatchOp implements IndeterminateOperationStateAware {
 
     public GetRoundOp() {
     }
@@ -41,7 +41,7 @@ public class GetRoundOp extends AbstractCountDownLatchOp implements InvocationTa
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

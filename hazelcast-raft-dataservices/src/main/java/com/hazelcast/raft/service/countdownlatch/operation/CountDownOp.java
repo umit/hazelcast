@@ -20,7 +20,7 @@ import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchDataSerializerHook;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchService;
 
@@ -30,7 +30,7 @@ import java.util.UUID;
 /**
  * Operation for {@link ICountDownLatch#countDown()}
  */
-public class CountDownOp extends AbstractCountDownLatchOp implements InvocationTargetLeaveAware {
+public class CountDownOp extends AbstractCountDownLatchOp implements IndeterminateOperationStateAware {
 
     private int expectedRound;
     private UUID invocationUid;
@@ -51,7 +51,7 @@ public class CountDownOp extends AbstractCountDownLatchOp implements InvocationT
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

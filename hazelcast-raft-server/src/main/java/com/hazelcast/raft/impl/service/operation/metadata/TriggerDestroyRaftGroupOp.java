@@ -24,7 +24,7 @@ import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.MetadataRaftGroupManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 
 import java.io.IOException;
 
@@ -33,7 +33,7 @@ import java.io.IOException;
  * <p/>
  * This operation is committed to the Metadata group.
  */
-public class TriggerDestroyRaftGroupOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
+public class TriggerDestroyRaftGroupOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
     private RaftGroupId targetGroupId;
 
@@ -54,7 +54,7 @@ public class TriggerDestroyRaftGroupOp extends RaftOp implements InvocationTarge
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

@@ -22,7 +22,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.session.SessionService;
 import com.hazelcast.raft.impl.session.RaftSessionServiceDataSerializerHook;
 
@@ -32,7 +32,7 @@ import java.io.IOException;
  * Creates a new session for the given endpoint and returns its id.
  * This operation does not check if the given endpoint has another active session on the Raft group.
  */
-public class CreateSessionOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
+public class CreateSessionOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
     // used for diagnostics
     private Address endpoint;
@@ -51,7 +51,7 @@ public class CreateSessionOp extends RaftOp implements InvocationTargetLeaveAwar
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

@@ -21,7 +21,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.service.lock.FencedLock;
 import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
 import com.hazelcast.raft.service.lock.RaftLockService;
@@ -34,7 +34,7 @@ import java.util.UUID;
  *
  * @see com.hazelcast.raft.service.lock.RaftLock#forceRelease(long, UUID)
  */
-public class ForceUnlockOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
+public class ForceUnlockOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
     private String name;
     private long expectedFence;
@@ -57,7 +57,7 @@ public class ForceUnlockOp extends RaftOp implements InvocationTargetLeaveAware,
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

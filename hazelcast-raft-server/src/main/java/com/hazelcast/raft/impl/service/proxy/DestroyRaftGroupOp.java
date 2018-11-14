@@ -22,13 +22,13 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.command.DestroyRaftGroupCmd;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
 /**
  * Replicates a {@link DestroyRaftGroupCmd} to a Raft group.
  */
-public class DestroyRaftGroupOp extends RaftReplicateOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
+public class DestroyRaftGroupOp extends RaftReplicateOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
     public DestroyRaftGroupOp() {
     }
@@ -48,7 +48,7 @@ public class DestroyRaftGroupOp extends RaftReplicateOp implements InvocationTar
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return false;
     }
 

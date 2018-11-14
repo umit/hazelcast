@@ -262,8 +262,7 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
     @Test
     public void testMetadataGroupReinitializationAfterLostMajority() {
         HazelcastInstance[] instances = newInstances(3, 3, 1);
-
-        waitAllForLeaderElection(Arrays.copyOf(instances, 3), METADATA_GROUP_ID);
+        waitUntilCPDiscoveryCompleted(instances);
 
         instances[1].getLifecycleService().terminate();
         instances[2].getLifecycleService().terminate();
@@ -300,10 +299,9 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
     @Test
     public void testRaftInvocationsAfterMetadataGroupReinitialization() throws ExecutionException, InterruptedException {
         HazelcastInstance[] instances = newInstances(3, 3, 1);
+        waitUntilCPDiscoveryCompleted(instances);
 
         HazelcastInstance instance = instances[3];
-        RaftInvocationManager invocationManager = getRaftInvocationManager(instance);
-        invocationManager.invoke(METADATA_GROUP_ID, new GetActiveRaftMembersOp()).get();
 
         instances[0].getLifecycleService().terminate();
         instances[1].getLifecycleService().terminate();
@@ -321,15 +319,14 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
             getRaftService(hz).resetAndInitRaftState();
         }
 
-        List<RaftMember> newEndpoints = invocationManager.<List<RaftMember>>invoke(METADATA_GROUP_ID, new GetActiveRaftMembersOp()).get();
+        List<RaftMember> newEndpoints = getRaftInvocationManager(instance).<List<RaftMember>>invoke(METADATA_GROUP_ID, new GetActiveRaftMembersOp()).get();
         assertEquals(3, newEndpoints.size());
     }
 
     @Test
     public void testResetRaftStateWhileMajorityIsReachable() throws ExecutionException, InterruptedException {
-        HazelcastInstance[] instances = newInstances(3);
-
-        waitAllForLeaderElection(Arrays.copyOf(instances, 3), METADATA_GROUP_ID);
+        final HazelcastInstance[] instances = newInstances(3);
+        waitUntilCPDiscoveryCompleted(instances);
 
         RaftInvocationManager invocationManager = getRaftInvocationManager(instances[2]);
 

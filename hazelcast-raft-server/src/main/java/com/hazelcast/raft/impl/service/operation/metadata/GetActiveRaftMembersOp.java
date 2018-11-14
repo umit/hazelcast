@@ -24,7 +24,7 @@ import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -34,7 +34,7 @@ import java.util.ArrayList;
  * <p/>
  * This operation is committed to the Metadata group.
  */
-public class GetActiveRaftMembersOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
+public class GetActiveRaftMembersOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
     public GetActiveRaftMembersOp() {
     }
@@ -47,7 +47,7 @@ public class GetActiveRaftMembersOp extends RaftOp implements InvocationTargetLe
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

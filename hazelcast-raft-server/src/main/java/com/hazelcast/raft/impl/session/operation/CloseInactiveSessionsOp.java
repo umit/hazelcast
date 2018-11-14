@@ -22,7 +22,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.session.SessionService;
 import com.hazelcast.raft.impl.session.RaftSessionServiceDataSerializerHook;
 
@@ -36,7 +36,7 @@ import java.util.Collection;
  * There is no point for committing heartbeats for such sessions. If clients commit a new session-based operation afterwards,
  * they can create a new session.
  */
-public class CloseInactiveSessionsOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
+public class CloseInactiveSessionsOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
     private Collection<Long> sessions;
 
@@ -55,7 +55,7 @@ public class CloseInactiveSessionsOp extends RaftOp implements InvocationTargetL
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

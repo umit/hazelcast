@@ -24,7 +24,7 @@ import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 
 import java.io.IOException;
 
@@ -35,7 +35,7 @@ import static com.hazelcast.raft.impl.service.MetadataRaftGroupManager.METADATA_
  * Committed to the Metadata Raft group.
  * Fails with {@link IllegalArgumentException} if the member to be added is already a CP member that is currently being removed.
  */
-public class AddRaftMemberOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
+public class AddRaftMemberOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
     private RaftMemberImpl member;
 
@@ -55,7 +55,7 @@ public class AddRaftMemberOp extends RaftOp implements InvocationTargetLeaveAwar
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

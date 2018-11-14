@@ -22,7 +22,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.service.atomicref.RaftAtomicRef;
 import com.hazelcast.raft.service.atomicref.RaftAtomicReferenceDataSerializerHook;
 
@@ -31,7 +31,7 @@ import java.io.IOException;
 /**
  * Operation for {@link IAtomicReference#contains(Object)}
  */
-public class ContainsOp extends AbstractAtomicRefOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
+public class ContainsOp extends AbstractAtomicRefOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
     private Data value;
 
@@ -50,7 +50,7 @@ public class ContainsOp extends AbstractAtomicRefOp implements InvocationTargetL
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

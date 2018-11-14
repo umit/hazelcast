@@ -20,7 +20,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
@@ -30,7 +30,7 @@ import java.io.IOException;
  * The operation used by {@link RaftInvocationManager} to replicate a given {@link RaftOp} to leader of the target Raft group.
  * The leader sends the response for this operation after it commits the given operation to the majority of the Raft group.
  */
-public class DefaultRaftReplicateOp extends RaftReplicateOp implements InvocationTargetLeaveAware {
+public class DefaultRaftReplicateOp extends RaftReplicateOp implements IndeterminateOperationStateAware {
 
     private RaftOp raftOp;
 
@@ -48,9 +48,9 @@ public class DefaultRaftReplicateOp extends RaftReplicateOp implements Invocatio
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
-        if (raftOp instanceof InvocationTargetLeaveAware) {
-            return ((InvocationTargetLeaveAware) raftOp).isRetryableOnTargetLeave();
+    public boolean isRetryableOnIndeterminateOperationState() {
+        if (raftOp instanceof IndeterminateOperationStateAware) {
+            return ((IndeterminateOperationStateAware) raftOp).isRetryableOnIndeterminateOperationState();
         }
 
         return false;

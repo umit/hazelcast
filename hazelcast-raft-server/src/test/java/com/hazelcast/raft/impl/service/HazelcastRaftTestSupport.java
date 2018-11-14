@@ -22,6 +22,7 @@ import static com.hazelcast.spi.properties.GroupProperty.MERGE_FIRST_RUN_DELAY_S
 import static com.hazelcast.spi.properties.GroupProperty.MERGE_NEXT_RUN_DELAY_SECONDS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
@@ -69,6 +70,20 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
             }
         }
         throw new AssertionError("Cannot find non-leader instance!");
+    }
+
+    protected void waitUntilCPDiscoveryCompleted(final HazelcastInstance[] instances) {
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (HazelcastInstance instance : instances) {
+                    RaftService service = getRaftService(instance);
+                    if (service.getLocalMember() != null) {
+                        assertTrue(service.getMetadataGroupManager().isDiscoveryCompleted());
+                    }
+                }
+            }
+        });
     }
 
     protected HazelcastInstance[] newInstances(int raftGroupSize) {

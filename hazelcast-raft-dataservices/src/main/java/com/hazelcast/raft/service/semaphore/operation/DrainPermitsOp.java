@@ -18,7 +18,7 @@ package com.hazelcast.raft.service.semaphore.operation;
 
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.service.semaphore.RaftSemaphore;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
@@ -32,7 +32,7 @@ import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSI
  *
  * @see RaftSemaphore#drain(long, long, UUID)
  */
-public class DrainPermitsOp extends AbstractSemaphoreOp implements InvocationTargetLeaveAware {
+public class DrainPermitsOp extends AbstractSemaphoreOp implements IndeterminateOperationStateAware {
 
     public DrainPermitsOp() {
     }
@@ -48,7 +48,7 @@ public class DrainPermitsOp extends AbstractSemaphoreOp implements InvocationTar
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return sessionId != NO_SESSION_ID;
     }
 

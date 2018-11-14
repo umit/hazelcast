@@ -21,7 +21,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.session.SessionService;
 import com.hazelcast.raft.impl.session.RaftSessionServiceDataSerializerHook;
 import com.hazelcast.raft.impl.session.SessionAwareService;
@@ -32,7 +32,7 @@ import java.io.IOException;
  * Closes the given session on the Raft group and notifies services via the {@link SessionAwareService} interface.
  * Returns silently if an active session is not found for the given session id.
  */
-public class CloseSessionOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
+public class CloseSessionOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
     private long sessionId;
 
@@ -50,7 +50,7 @@ public class CloseSessionOp extends RaftOp implements InvocationTargetLeaveAware
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

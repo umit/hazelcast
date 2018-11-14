@@ -28,7 +28,7 @@ import com.hazelcast.raft.exception.RaftGroupDestroyedException;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.RaftSystemOperation;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 import com.hazelcast.spi.Operation;
@@ -42,8 +42,8 @@ import java.io.IOException;
  * Please note that the given query can be committed twice if the leader commits the query but fails before sending the response,
  * therefore the query operation is expected to have no side-effect.
  */
-public class RaftQueryOp extends Operation implements InvocationTargetLeaveAware, RaftSystemOperation, IdentifiedDataSerializable,
-                                                      ExecutionCallback {
+public class RaftQueryOp extends Operation implements IndeterminateOperationStateAware, RaftSystemOperation, ExecutionCallback,
+                                                      IdentifiedDataSerializable {
 
     private RaftGroupId groupId;
     private QueryPolicy queryPolicy;
@@ -80,7 +80,7 @@ public class RaftQueryOp extends Operation implements InvocationTargetLeaveAware
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

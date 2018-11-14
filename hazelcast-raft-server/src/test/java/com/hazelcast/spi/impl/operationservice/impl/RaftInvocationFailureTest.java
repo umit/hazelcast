@@ -11,11 +11,12 @@ import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.exception.StaleAppendRequestException;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOp;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
 import com.hazelcast.spi.exception.CallerNotMemberException;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -27,6 +28,7 @@ import org.junit.runner.RunWith;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.hazelcast.version.MemberVersion.UNKNOWN;
@@ -49,7 +51,7 @@ public class RaftInvocationFailureTest extends HazelcastRaftTestSupport {
         COMMIT_COUNT.set(0);
     }
 
-    @Test(timeout = 60000)
+    @Test
     public void test_invocationFailsOnMemberLeftException() throws ExecutionException, InterruptedException {
         RaftGroupId groupId = getRaftInvocationManager(instances[0]).createRaftGroup(groupName).get();
 
@@ -60,7 +62,7 @@ public class RaftInvocationFailureTest extends HazelcastRaftTestSupport {
                 new DefaultRaftReplicateOp(groupId, new CustomResponseOp()), 10, 50, 60000).invoke();
 
         try {
-            f.get();
+            f.get(60, TimeUnit.SECONDS);
             fail();
         } catch (Exception e) {
             assertTrue(e.getCause() instanceof IndeterminateOperationStateException);
@@ -69,22 +71,81 @@ public class RaftInvocationFailureTest extends HazelcastRaftTestSupport {
         assertTrue(COMMIT_COUNT.get() <= groupSize);
     }
 
-    @Test(timeout = 60000)
-    public void test_invocationFailsWithFirstMemberLeftException_when_thereAreRetryableExceptionsAfterwards()
-            throws ExecutionException, InterruptedException {
+    @Test
+    public void test_invocationFailsWithMemberLeftException_when_thereAreRetryableExceptionsAfterwards() throws ExecutionException, InterruptedException {
         RaftGroupId groupId = getRaftInvocationManager(instances[0]).createRaftGroup(groupName).get();
 
         HazelcastInstance leader = getLeaderInstance(instances, groupId);
 
         Future f = new RaftInvocation(getOperationServiceImpl(leader).invocationContext,
                 getRaftInvocationManager(leader).getRaftInvocationContext(), groupId,
-                new DefaultRaftReplicateOp(groupId, new IdempotentCustomResponseOp()), 10, 50, 60000).invoke();
+                new DefaultRaftReplicateOp(groupId, new CustomResponseOp2()), 10, 50, 60000).invoke();
 
         try {
-            f.get();
+            f.get(60, TimeUnit.SECONDS);
             fail();
         } catch (Exception e) {
             assertTrue(e.getCause() instanceof IndeterminateOperationStateException);
+        }
+
+        assertTrue(COMMIT_COUNT.get() > groupSize);
+    }
+
+    @Test
+    public void test_invocationFailsWithStaleAppendRequestException_when_thereAreRetryableExceptionsAfterwards() throws ExecutionException, InterruptedException {
+        RaftGroupId groupId = getRaftInvocationManager(instances[0]).createRaftGroup(groupName).get();
+
+        HazelcastInstance leader = getLeaderInstance(instances, groupId);
+
+        Future f = new RaftInvocation(getOperationServiceImpl(leader).invocationContext,
+                getRaftInvocationManager(leader).getRaftInvocationContext(), groupId,
+                new DefaultRaftReplicateOp(groupId, new CustomResponseOp3()), 10, 50, 60000).invoke();
+
+        try {
+            f.get(60, TimeUnit.SECONDS);
+            fail();
+        } catch (Exception e) {
+            assertTrue(e.getCause() instanceof IndeterminateOperationStateException);
+        }
+
+        assertTrue(COMMIT_COUNT.get() > groupSize);
+    }
+
+    @Test
+    public void test_invocationFailsWithFirstMemberLeftException_when_thereAreIndeterminateOperationStateExceptionsAfterwards() throws ExecutionException, InterruptedException {
+        RaftGroupId groupId = getRaftInvocationManager(instances[0]).createRaftGroup(groupName).get();
+
+        HazelcastInstance leader = getLeaderInstance(instances, groupId);
+
+        Future f = new RaftInvocation(getOperationServiceImpl(leader).invocationContext,
+                getRaftInvocationManager(leader).getRaftInvocationContext(), groupId,
+                new DefaultRaftReplicateOp(groupId, new CustomResponseOp4()), 10, 50, 60000).invoke();
+
+        try {
+            f.get(60, TimeUnit.SECONDS);
+            fail();
+        } catch (Exception e) {
+            assertTrue(e.getCause() instanceof IndeterminateOperationStateException);
+        }
+
+        assertTrue(COMMIT_COUNT.get() > groupSize);
+    }
+
+    @Test
+    public void test_invocationFailsWitNonRetryableException_when_thereAreRetryableExceptionsAfterIndeterminateOperationState() throws ExecutionException, InterruptedException {
+        RaftGroupId groupId = getRaftInvocationManager(instances[0]).createRaftGroup(groupName).get();
+
+        HazelcastInstance leader = getLeaderInstance(instances, groupId);
+
+        Future f = new RaftInvocation(getOperationServiceImpl(leader).invocationContext,
+                getRaftInvocationManager(leader).getRaftInvocationContext(), groupId,
+                new DefaultRaftReplicateOp(groupId, new CustomResponseOp5()), 10, 50, 60000).invoke();
+
+        try {
+            f.get(60, TimeUnit.SECONDS);
+            fail();
+        } catch (Exception e) {
+            assertTrue(e.getCause() instanceof IllegalStateException);
         }
 
         assertTrue(COMMIT_COUNT.get() > groupSize);
@@ -127,7 +188,7 @@ public class RaftInvocationFailureTest extends HazelcastRaftTestSupport {
         }
     }
 
-    public static class IdempotentCustomResponseOp extends RaftOp implements InvocationTargetLeaveAware {
+    public static class CustomResponseOp2 extends RaftOp implements IndeterminateOperationStateAware {
 
         @Override
         public Object run(RaftGroupId groupId, long commitIndex) throws Exception {
@@ -140,7 +201,95 @@ public class RaftInvocationFailureTest extends HazelcastRaftTestSupport {
         }
 
         @Override
-        public boolean isRetryableOnTargetLeave() {
+        public boolean isRetryableOnIndeterminateOperationState() {
+            return true;
+        }
+
+        @Override
+        protected String getServiceName() {
+            return RaftService.SERVICE_NAME;
+        }
+
+        @Override
+        public void writeData(ObjectDataOutput out) {
+        }
+
+        @Override
+        public void readData(ObjectDataInput in) {
+        }
+    }
+
+    public static class CustomResponseOp3 extends RaftOp implements IndeterminateOperationStateAware {
+
+        @Override
+        public Object run(RaftGroupId groupId, long commitIndex) {
+            if (COMMIT_COUNT.incrementAndGet() <= 3) {
+                throw new StaleAppendRequestException(null);
+            }
+
+            throw new CallerNotMemberException("");
+        }
+
+        @Override
+        public boolean isRetryableOnIndeterminateOperationState() {
+            return true;
+        }
+
+        @Override
+        protected String getServiceName() {
+            return RaftService.SERVICE_NAME;
+        }
+
+        @Override
+        public void writeData(ObjectDataOutput out) {
+        }
+
+        @Override
+        public void readData(ObjectDataInput in) {
+        }
+    }
+
+    public static class CustomResponseOp4 extends RaftOp implements IndeterminateOperationStateAware {
+
+        @Override
+        public Object run(RaftGroupId groupId, long commitIndex) throws Exception {
+            COMMIT_COUNT.incrementAndGet();
+            MemberImpl member = new MemberImpl(new Address("localhost", 1111), UNKNOWN, false);
+            throw new MemberLeftException(member);
+        }
+
+        @Override
+        public boolean isRetryableOnIndeterminateOperationState() {
+            return true;
+        }
+
+        @Override
+        protected String getServiceName() {
+            return RaftService.SERVICE_NAME;
+        }
+
+        @Override
+        public void writeData(ObjectDataOutput out) {
+        }
+
+        @Override
+        public void readData(ObjectDataInput in) {
+        }
+    }
+
+    public static class CustomResponseOp5 extends RaftOp implements IndeterminateOperationStateAware {
+
+        @Override
+        public Object run(RaftGroupId groupId, long commitIndex) {
+            if (COMMIT_COUNT.incrementAndGet() <= 3) {
+                throw new StaleAppendRequestException(null);
+            }
+
+            throw new IllegalStateException("");
+        }
+
+        @Override
+        public boolean isRetryableOnIndeterminateOperationState() {
             return true;
         }
 

@@ -22,7 +22,7 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SessionInfo;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.session.SessionService;
 import com.hazelcast.raft.impl.session.RaftSessionServiceDataSerializerHook;
 
@@ -32,7 +32,7 @@ import java.util.ArrayList;
 /**
  * Returns the collection of active sessions in the given Raft group
  */
-public class GetSessionsOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
+public class GetSessionsOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
@@ -41,7 +41,7 @@ public class GetSessionsOp extends RaftOp implements InvocationTargetLeaveAware,
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

@@ -18,14 +18,14 @@ package com.hazelcast.raft.service.atomiclong.operation;
 
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongDataSerializerHook;
 import com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy;
 
 /**
  * Operation for {@link RaftAtomicLongProxy#localGet(QueryPolicy)}
  */
-public class LocalGetOp extends AbstractAtomicLongOp implements InvocationTargetLeaveAware {
+public class LocalGetOp extends AbstractAtomicLongOp implements IndeterminateOperationStateAware {
 
     public LocalGetOp() {
         super();
@@ -41,7 +41,7 @@ public class LocalGetOp extends AbstractAtomicLongOp implements InvocationTarget
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

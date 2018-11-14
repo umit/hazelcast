@@ -21,7 +21,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.session.SessionService;
 import com.hazelcast.raft.impl.session.RaftSessionServiceDataSerializerHook;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
@@ -32,7 +32,7 @@ import java.io.IOException;
  * Pushes given session's heartbeat timeout forward.
  * Fails with {@link SessionExpiredException} if the given session is already closed.
  */
-public class HeartbeatSessionOp extends RaftOp implements InvocationTargetLeaveAware, IdentifiedDataSerializable {
+public class HeartbeatSessionOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
     private long sessionId;
 
@@ -51,7 +51,7 @@ public class HeartbeatSessionOp extends RaftOp implements InvocationTargetLeaveA
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 

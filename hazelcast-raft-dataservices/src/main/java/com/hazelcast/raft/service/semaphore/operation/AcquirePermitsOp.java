@@ -20,7 +20,7 @@ import com.hazelcast.core.ISemaphore;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.util.PostponedResponse;
 import com.hazelcast.raft.service.semaphore.RaftSemaphore;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreDataSerializerHook;
@@ -37,7 +37,7 @@ import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSI
  *
  * @see RaftSemaphore#acquire(SemaphoreInvocationKey, boolean)
  */
-public class AcquirePermitsOp extends AbstractSemaphoreOp implements InvocationTargetLeaveAware {
+public class AcquirePermitsOp extends AbstractSemaphoreOp implements IndeterminateOperationStateAware {
 
     private int permits;
     private long timeoutMs;
@@ -63,7 +63,7 @@ public class AcquirePermitsOp extends AbstractSemaphoreOp implements InvocationT
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return sessionId != NO_SESSION_ID;
     }
 

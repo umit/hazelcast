@@ -24,7 +24,7 @@ import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.MetadataRaftGroupManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
-import com.hazelcast.raft.impl.InvocationTargetLeaveAware;
+import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.util.Tuple2;
 
 import java.io.IOException;
@@ -36,7 +36,7 @@ import java.util.Map.Entry;
  * Commits the given successfully-applied membership changes to the Metadata Raft group.
  * The given changes do not have to contain all pending Raft group membership changes.
  */
-public class CompleteRaftGroupMembershipChangesOp extends RaftOp implements InvocationTargetLeaveAware,
+public class CompleteRaftGroupMembershipChangesOp extends RaftOp implements IndeterminateOperationStateAware,
                                                                             IdentifiedDataSerializable {
 
     private Map<RaftGroupId, Tuple2<Long, Long>> changedGroups;
@@ -56,7 +56,7 @@ public class CompleteRaftGroupMembershipChangesOp extends RaftOp implements Invo
     }
 
     @Override
-    public boolean isRetryableOnTargetLeave() {
+    public boolean isRetryableOnIndeterminateOperationState() {
         return true;
     }
 
