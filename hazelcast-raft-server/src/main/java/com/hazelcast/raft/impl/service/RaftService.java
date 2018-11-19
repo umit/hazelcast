@@ -22,8 +22,8 @@ import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.RaftManagementService;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.RaftManagementService;
 import com.hazelcast.raft.RaftMember;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftIntegration;
@@ -67,6 +67,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -82,6 +83,8 @@ import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 import static com.hazelcast.spi.ExecutionService.SYSTEM_EXECUTOR;
 import static com.hazelcast.util.Preconditions.checkState;
 import static java.util.Collections.newSetFromMap;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * TODO: Javadoc Pending...
@@ -92,6 +95,8 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
     public static final String SERVICE_NAME = "hz:core:raft";
 
+    private static final long REMOVE_MISSING_MEMBER_TASK_PERIOD_SECONDS = 1;
+
     private final ConcurrentMap<RaftGroupId, RaftNode> nodes = new ConcurrentHashMap<RaftGroupId, RaftNode>();
     private final NodeEngineImpl nodeEngine;
     private final ILogger logger;
@@ -101,6 +106,8 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     private final RaftConfig config;
     private final RaftInvocationManager invocationManager;
     private final MetadataRaftGroupManager metadataGroupManager;
+
+    private final ConcurrentMap<RaftMemberImpl, Long> missingMembers = new ConcurrentHashMap<RaftMemberImpl, Long>();
 
     public RaftService(NodeEngine nodeEngine) {
         this.nodeEngine = (NodeEngineImpl) nodeEngine;
@@ -116,6 +123,10 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         ClientExceptionFactory clientExceptionFactory = this.nodeEngine.getNode().clientEngine.getClientExceptionFactory();
         SessionExpiredException.register(clientExceptionFactory);
         metadataGroupManager.initLocalRaftMemberOnStartup();
+        if (config.getMissingRaftMemberRemovalSeconds() > 0) {
+            nodeEngine.getExecutionService().scheduleWithRepetition(new RemoveMissingMemberTask(),
+                    REMOVE_MISSING_MEMBER_TASK_PERIOD_SECONDS, REMOVE_MISSING_MEMBER_TASK_PERIOD_SECONDS, SECONDS);
+        }
     }
 
     @Override
@@ -304,14 +315,42 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     @Override
     public void memberAdded(MembershipServiceEvent event) {
         metadataGroupManager.broadcastActiveMembers();
+        updateMissingMembers();
     }
 
     @Override
     public void memberRemoved(MembershipServiceEvent event) {
+        updateMissingMembers();
     }
 
     @Override
     public void memberAttributeChanged(MemberAttributeServiceEvent event) {
+        updateMissingMembers();
+    }
+
+    void updateMissingMembers() {
+        if (config.getMissingRaftMemberRemovalSeconds() == 0 || !metadataGroupManager.isDiscoveryCompleted()) {
+            return;
+        }
+
+        Collection<RaftMemberImpl> activeMembers = metadataGroupManager.getActiveMembers();
+        missingMembers.keySet().retainAll(activeMembers);
+
+        ClusterService clusterService = nodeEngine.getClusterService();
+        for (RaftMemberImpl raftMember : activeMembers) {
+            if (clusterService.getMember(raftMember.getAddress()) == null) {
+                if (missingMembers.putIfAbsent(raftMember, System.currentTimeMillis()) == null) {
+                    logger.warning(raftMember + " is not present in the cluster. It will be auto-removed after "
+                            + config.getMissingRaftMemberRemovalSeconds() + " seconds.");
+                }
+            } else if (missingMembers.remove(raftMember) != null) {
+                logger.info(raftMember + " is removed from the missing members list as it is in the cluster.");
+            }
+        }
+    }
+
+    Collection<RaftMemberImpl> getMissingMembers() {
+        return Collections.unmodifiableSet(missingMembers.keySet());
     }
 
     public MetadataRaftGroupManager getMetadataGroupManager() {
@@ -507,7 +546,12 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
 
         void queryInitialMembersFromTargetRaftGroup() {
-            RaftOp op = new GetInitialRaftGroupMembersIfCurrentGroupMemberOp(getLocalMember());
+            RaftMemberImpl localMember = getLocalMember();
+            if (localMember == null) {
+                return;
+            }
+
+            RaftOp op = new GetInitialRaftGroupMembersIfCurrentGroupMemberOp(localMember);
             ICompletableFuture<Collection<RaftMember>> f = invocationManager.query(groupId, op, LEADER_LOCAL);
             f.andThen(new ExecutionCallback<Collection<RaftMember>>() {
                 @Override
@@ -522,4 +566,34 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             });
         }
     }
+
+    private class RemoveMissingMemberTask implements Runnable {
+        @Override
+        public void run() {
+            try {
+                if (!nodeEngine.getClusterService().isMaster() || missingMembers.isEmpty()
+                        || metadataGroupManager.getMembershipChangeContext() != null) {
+                    return;
+                }
+
+                for (Entry<RaftMemberImpl, Long> e : missingMembers.entrySet()) {
+                    long missingTimeSeconds = MILLISECONDS.toSeconds(System.currentTimeMillis() - e.getValue());
+                    if (missingTimeSeconds >= config.getMissingRaftMemberRemovalSeconds()) {
+                        final RaftMemberImpl missingMember = e.getKey();
+                        logger.info("Triggering auto-remove of " + missingMember + " since it is absent for "
+                                + missingTimeSeconds + " seconds...");
+
+                        triggerRemoveRaftMember(missingMember).get();
+
+                        logger.info("Auto-removal of " + missingMember + " is successful.");
+
+                        return;
+                    }
+            }
+            } catch (Exception e) {
+                logger.severe("RemoveMissingMembersTask failed", e);
+            }
+        }
+    }
+
 }

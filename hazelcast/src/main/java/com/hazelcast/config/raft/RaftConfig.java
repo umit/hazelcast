@@ -41,7 +41,17 @@ public class RaftConfig {
 
     private long sessionTimeToLiveSeconds = DEFAULT_SESSION_TTL_SECONDS;
 
+    // TODO [basri] convert this to seconds. millis resolution is not needed
     private long sessionHeartbeatIntervalMillis = DEFAULT_HEARTBEAT_INTERVAL_MILLIS;
+
+    /**
+     * When enabled, an append request fails if the target member (leader) leaves the cluster.
+     * At this point result of append request is indeterminate, it may have been replicated by the leader
+     * to some of the followers.
+     */
+    private boolean failOnIndeterminateOperationState;
+
+    private long missingRaftMemberRemovalSeconds;
 
     public RaftConfig() {
     }
@@ -54,6 +64,8 @@ public class RaftConfig {
         }
         this.sessionTimeToLiveSeconds = config.sessionTimeToLiveSeconds;
         this.sessionHeartbeatIntervalMillis = config.sessionHeartbeatIntervalMillis;
+        this.failOnIndeterminateOperationState = config.failOnIndeterminateOperationState;
+        this.missingRaftMemberRemovalSeconds = config.missingRaftMemberRemovalSeconds;
     }
 
     public RaftAlgorithmConfig getRaftAlgorithmConfig() {
@@ -96,7 +108,7 @@ public class RaftConfig {
     public RaftConfig setSessionTimeToLiveSeconds(long sessionTimeToLiveSeconds) {
         checkPositive(sessionTimeToLiveSeconds, "Session TTL should be greater than zero!");
         checkTrue(TimeUnit.SECONDS.toMillis(sessionTimeToLiveSeconds) > sessionHeartbeatIntervalMillis,
-                "Session timeout should be greater than heartbeat interval!");
+                "Session timeout must be greater than heartbeat interval!");
         this.sessionTimeToLiveSeconds = sessionTimeToLiveSeconds;
         return this;
     }
@@ -108,8 +120,30 @@ public class RaftConfig {
     public RaftConfig setSessionHeartbeatIntervalMillis(long sessionHeartbeatIntervalMillis) {
         checkPositive(sessionTimeToLiveSeconds, "Session heartbeat interval should be greater than zero!");
         checkTrue(TimeUnit.SECONDS.toMillis(sessionTimeToLiveSeconds) > sessionHeartbeatIntervalMillis,
-                "Session TTL should be greater than heartbeat interval!");
+                "Session TTL must be greater than heartbeat interval!");
+        checkTrue(missingRaftMemberRemovalSeconds == 0 || sessionTimeToLiveSeconds <= missingRaftMemberRemovalSeconds,
+                "Session TTL must be smaller than or equal to missingRaftMemberRemovalSeconds!");
         this.sessionHeartbeatIntervalMillis = sessionHeartbeatIntervalMillis;
+        return this;
+    }
+
+    public boolean isFailOnIndeterminateOperationState() {
+        return failOnIndeterminateOperationState;
+    }
+
+    public RaftConfig setFailOnIndeterminateOperationState(boolean failOnIndeterminateOperationState) {
+        this.failOnIndeterminateOperationState = failOnIndeterminateOperationState;
+        return this;
+    }
+
+    public long getMissingRaftMemberRemovalSeconds() {
+        return missingRaftMemberRemovalSeconds;
+    }
+
+    public RaftConfig setMissingRaftMemberRemovalSeconds(long missingRaftMemberRemovalSeconds) {
+        checkTrue(missingRaftMemberRemovalSeconds == 0 || missingRaftMemberRemovalSeconds >= sessionTimeToLiveSeconds,
+                "missingRaftMemberRemovalSeconds must be either 0 or greater than or equal to session TTL");
+        this.missingRaftMemberRemovalSeconds = missingRaftMemberRemovalSeconds;
         return this;
     }
 }

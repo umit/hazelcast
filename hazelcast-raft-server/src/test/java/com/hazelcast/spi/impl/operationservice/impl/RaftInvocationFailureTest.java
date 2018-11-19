@@ -156,7 +156,7 @@ public class RaftInvocationFailureTest extends HazelcastRaftTestSupport {
         Config config = super.createConfig(groupSize, metadataGroupSize);
 
         RaftConfig raftConfig = config.getRaftConfig();
-        raftConfig.getRaftAlgorithmConfig().setFailOnIndeterminateOperationState(true);
+        raftConfig.setFailOnIndeterminateOperationState(true);
         raftConfig.addGroupConfig(new RaftGroupConfig(groupName, groupSize));
 
         return config;
