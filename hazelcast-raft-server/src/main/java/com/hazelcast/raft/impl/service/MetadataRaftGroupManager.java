@@ -53,6 +53,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static com.hazelcast.raft.RaftGroup.RaftGroupStatus.ACTIVE;
@@ -90,7 +91,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     private final ConcurrentMap<RaftGroupId, RaftGroupInfo> groups = new ConcurrentHashMap<RaftGroupId, RaftGroupInfo>();
     // activeMembers must be an ordered non-null collection
     private volatile Collection<RaftMemberImpl> activeMembers = Collections.emptySet();
-    private volatile boolean discoveryCompleted;
+    private final AtomicBoolean discoveryCompleted = new AtomicBoolean();
     private Collection<RaftMemberImpl> initialRaftMembers;
     private MembershipChangeContext membershipChangeContext;
 
@@ -137,14 +138,14 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     }
 
     void reset() {
-        activeMembers = Collections.emptySet();
+        doSetActiveMembers(Collections.<RaftMemberImpl>emptySet());
         groups.clear();
         initialRaftMembers = null;
 
         if (config == null) {
             return;
         }
-        discoveryCompleted = false;
+        discoveryCompleted.set(false);
         initLocalMember();
 
         nodeEngine.getExecutionService()
@@ -203,10 +204,9 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             }
         }
 
-        activeMembers = unmodifiableCollection(new LinkedHashSet<RaftMemberImpl>(snapshot.getMembers()));
-        membershipChangeContext = snapshot.getMembershipChangeContext();
+        doSetActiveMembers(unmodifiableCollection(new LinkedHashSet<RaftMemberImpl>(snapshot.getMembers())));
 
-        updateInvocationManagerMembers(getActiveMembers());
+        membershipChangeContext = snapshot.getMembershipChangeContext();
     }
 
     private static void ensureMetadataGroupId(RaftGroupId groupId) {
@@ -294,7 +294,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         logger.info("New raft group: " + group.id() + " is created with members: " + group.members());
 
         RaftGroupId groupId = group.id();
-        if (group.containsMember(localMember.get())) {
+        if (group.containsMember(getLocalMember())) {
             raftService.createRaftNode(groupId, group.members());
         } else {
             // Broadcast group-info to non-metadata group members
@@ -579,7 +579,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             logger.fine("Applied add-member: " + (addedMember != null ? addedMember : "-") + " and remove-member: "
                     + (removedMember != null ? removedMember : "-") + " in "  + group.id()
                     + " with new members commit index: " + newMembersCommitIndex);
-            if (localMember.get().equals(addedMember)) {
+            if (getLocalMember().equals(addedMember)) {
                 // we are the added member to the group, we can try to create the local raft node if not created already
                 raftService.createRaftNode(group.id(), group.members());
             } else if (addedMember != null) {
@@ -631,7 +631,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     }
 
     public void setActiveMembers(Collection<RaftMemberImpl> members) {
-        if (!discoveryCompleted) {
+        if (!isDiscoveryCompleted()) {
             logger.fine("Ignore received active members " + members + ", discovery is in progress.");
             return;
         }
@@ -640,8 +640,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         checkState(getLocalMember() == null, "This node is already part of Raft members!");
 
         logger.fine("Setting active members to " + members);
-        activeMembers = unmodifiableCollection(new LinkedHashSet<RaftMemberImpl>(members));
-        updateInvocationManagerMembers(members);
+        doSetActiveMembers(unmodifiableCollection(new LinkedHashSet<RaftMemberImpl>(members)));
     }
 
     private void updateInvocationManagerMembers(Collection<RaftMemberImpl> members) {
@@ -663,7 +662,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     }
 
     boolean isMetadataGroupLeader() {
-        RaftMemberImpl member = localMember.get();
+        RaftMemberImpl member = getLocalMember();
         if (member == null) {
             return false;
         }
@@ -688,17 +687,20 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         }
         Collection<RaftMemberImpl> newMembers = new LinkedHashSet<RaftMemberImpl>(activeMembers);
         newMembers.add(member);
-        activeMembers = unmodifiableCollection(newMembers);
-        updateInvocationManagerMembers(newMembers);
-        broadcastActiveMembers();
+        doSetActiveMembers(unmodifiableCollection(newMembers));
         logger.info("Added " + member + ". Active members are " + newMembers);
     }
 
     private void removeActiveMember(RaftMemberImpl member) {
         Collection<RaftMemberImpl> newMembers = new LinkedHashSet<RaftMemberImpl>(activeMembers);
         newMembers.remove(member);
-        activeMembers = unmodifiableCollection(newMembers);
-        updateInvocationManagerMembers(newMembers);
+        doSetActiveMembers(unmodifiableCollection(newMembers));
+    }
+
+    private void doSetActiveMembers(Collection<RaftMemberImpl> members) {
+        activeMembers = unmodifiableCollection(members);
+        updateInvocationManagerMembers(members);
+        raftService.updateMissingMembers();
         broadcastActiveMembers();
     }
 
@@ -709,7 +711,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     }
 
     void broadcastActiveMembers() {
-        if (localMember.get() == null) {
+        if (getLocalMember() == null) {
             return;
         }
         Collection<RaftMemberImpl> members = activeMembers;
@@ -734,13 +736,14 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     }
 
     boolean isDiscoveryCompleted() {
-        return discoveryCompleted;
+        return discoveryCompleted.get();
     }
 
     public void disableDiscovery() {
         logger.info("Initial discovery is already completed. Disabling discovery...");
-        localMember.set(null);
-        discoveryCompleted = true;
+        if (discoveryCompleted.compareAndSet(false, true)) {
+            localMember.set(null);
+        }
     }
 
     private class BroadcastActiveRaftMembersTask implements Runnable {
@@ -759,7 +762,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
 
         @Override
         public void run() {
-            if (discoveryCompleted) {
+            if (isDiscoveryCompleted()) {
                 return;
             }
             Collection<Member> members = nodeEngine.getClusterService().getMembers();
@@ -782,8 +785,9 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
 
             List<RaftMemberImpl> raftMembers = getInitialRaftMembers(members);
             logger.fine("Initial Raft members: " + raftMembers);
-            if (!raftMembers.contains(localMember.get())) {
+            if (!raftMembers.contains(getLocalMember())) {
                 logger.info("I am not one of initial Raft members! I'll serve as an AP member. Raft members: " + raftMembers);
+                localMember.set(null);
                 disableDiscovery();
                 return;
             }
@@ -798,8 +802,8 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
 
             broadcastActiveMembers();
             scheduleRaftGroupMembershipManagementTasks();
-            logger.info("Raft members: " + activeMembers + ", local: " + localMember.get());
-            discoveryCompleted = true;
+            logger.info("Raft members: " + activeMembers + ", local: " + getLocalMember());
+            discoveryCompleted.set(true);
         }
 
         @SuppressWarnings("unchecked")
@@ -807,7 +811,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             int metadataGroupSize = config.getMetadataGroupSize();
             List<RaftMemberImpl> metadataMembers = initialRaftMembers.subList(0, metadataGroupSize);
             try {
-                if (metadataMembers.contains(localMember.get())) {
+                if (metadataMembers.contains(getLocalMember())) {
                     raftService.createRaftNode(METADATA_GROUP_ID, (Collection) metadataMembers);
                 }
 
