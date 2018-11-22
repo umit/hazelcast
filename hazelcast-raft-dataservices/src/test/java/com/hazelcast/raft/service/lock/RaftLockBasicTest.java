@@ -1,8 +1,5 @@
 package com.hazelcast.raft.service.lock;
 
-import com.hazelcast.config.Config;
-import com.hazelcast.config.raft.RaftGroupConfig;
-import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ILock;
 import com.hazelcast.raft.RaftGroupId;
@@ -35,6 +32,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.concurrent.lock.LockTestUtils.lockByOtherThread;
+import static com.hazelcast.config.raft.RaftConfig.DEFAULT_RAFT_GROUP_NAME;
 import static com.hazelcast.raft.service.lock.RaftLockService.SERVICE_NAME;
 import static com.hazelcast.raft.service.lock.RaftLockService.WAIT_TIMEOUT_TASK_UPPER_BOUND_MILLIS;
 import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
@@ -61,7 +59,6 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     @Before
     public void setup() {
         instances = createInstances();
-
         lock = createLock(name);
         assertNotNull(lock);
     }
@@ -300,7 +297,7 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
     @Test
     public void testCreate_withDefaultGroup() {
         ILock lock = createLock(randomName());
-        assertEquals(RaftGroupConfig.DEFAULT_GROUP, getGroupId(lock).name());
+        assertEquals(DEFAULT_RAFT_GROUP_NAME, getGroupId(lock).name());
     }
 
     @Test(expected = DistributedObjectDestroyedException.class)
@@ -475,16 +472,6 @@ public class RaftLockBasicTest extends HazelcastRaftTestSupport {
 
     protected RaftGroupId getGroupId(ILock lock) {
         return ((RaftLockProxy) lock).getGroupId();
-    }
-
-    @Override
-    protected Config createConfig(int groupSize, int metadataGroupSize) {
-        Config config = super.createConfig(groupSize, metadataGroupSize);
-        config.getRaftConfig().addGroupConfig(new RaftGroupConfig(name, groupSize));
-
-        RaftLockConfig lockConfig = new RaftLockConfig(name, name);
-        config.addRaftLockConfig(lockConfig);
-        return config;
     }
 
     protected AbstractSessionManager getSessionManager() {

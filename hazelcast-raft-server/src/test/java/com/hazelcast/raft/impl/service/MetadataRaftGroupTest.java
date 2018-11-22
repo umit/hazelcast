@@ -558,10 +558,10 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
         assertTrue(b3 ^ b4);
     }
 
-    private RaftGroupId createNewRaftGroup(HazelcastInstance instance, String name, int nodeCount) {
+    private RaftGroupId createNewRaftGroup(HazelcastInstance instance, String name, int groupSize) {
         RaftInvocationManager invocationManager = getRaftService(instance).getInvocationManager();
         try {
-            return invocationManager.createRaftGroup(name, nodeCount).get();
+            return invocationManager.createRaftGroup(name, groupSize).get();
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
@@ -593,8 +593,8 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
     }
 
     @Override
-    protected Config createConfig(int groupSize, int metadataGroupSize) {
-        Config config = super.createConfig(groupSize, metadataGroupSize);
+    protected Config createConfig(int cpNodeCount, int groupSize) {
+        Config config = super.createConfig(cpNodeCount, groupSize);
         config.getRaftConfig().getRaftAlgorithmConfig().setLeaderHeartbeatPeriodInMillis(1000);
         return config;
     }

@@ -30,13 +30,12 @@ import com.hazelcast.spi.impl.NodeEngineImpl;
  */
 public class LockMessageTaskFactoryProvider implements MessageTaskFactoryProvider {
 
-    public static final int CREATE_TYPE = 12000;
-    public static final int DESTROY_TYPE = 12001;
-    public static final int LOCK_TYPE = 12002;
-    public static final int TRY_LOCK_TYPE = 12003;
-    public static final int UNLOCK_TYPE = 12004;
-    public static final int FORCE_UNLOCK_TYPE = 12005;
-    public static final int LOCK_OWNERSHIP_STATE = 12006;
+    public static final int DESTROY_TYPE = 12000;
+    public static final int LOCK_TYPE = 12001;
+    public static final int TRY_LOCK_TYPE = 12002;
+    public static final int UNLOCK_TYPE = 12003;
+    public static final int FORCE_UNLOCK_TYPE = 12004;
+    public static final int LOCK_OWNERSHIP_STATE = 12005;
 
     private final Node node;
 
@@ -47,13 +46,6 @@ public class LockMessageTaskFactoryProvider implements MessageTaskFactoryProvide
     @Override
     public MessageTaskFactory[] getFactories() {
         MessageTaskFactory[] factories = new MessageTaskFactory[Short.MAX_VALUE];
-
-        factories[CREATE_TYPE] = new MessageTaskFactory() {
-            @Override
-            public MessageTask create(ClientMessage clientMessage, Connection connection) {
-                return new CreateLockMessageTask(clientMessage, node, connection);
-            }
-        };
 
         factories[DESTROY_TYPE] = new MessageTaskFactory() {
             @Override

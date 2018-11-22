@@ -243,7 +243,7 @@ public class SessionService implements ManagedService, SnapshotAwareService<Sess
     }
 
     private long getHeartbeatIntervalMillis() {
-        return raftService.getConfig().getSessionHeartbeatIntervalMillis();
+        return SECONDS.toMillis(raftService.getConfig().getSessionHeartbeatIntervalSeconds());
     }
 
     private long getSessionTTLMillis() {

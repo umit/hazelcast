@@ -17,16 +17,12 @@
 package com.hazelcast.raft.service.lock;
 
 import com.hazelcast.client.impl.protocol.ClientExceptionFactory;
-import com.hazelcast.config.raft.RaftGroupConfig;
-import com.hazelcast.config.raft.RaftLockConfig;
-import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.ILock;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.blocking.AbstractBlockingService;
+import com.hazelcast.raft.service.exception.WaitKeyCancelledException;
 import com.hazelcast.raft.service.lock.RaftLock.AcquireResult;
 import com.hazelcast.raft.service.lock.RaftLock.ReleaseResult;
-import com.hazelcast.raft.service.exception.WaitKeyCancelledException;
 import com.hazelcast.raft.service.lock.proxy.RaftLockProxy;
 import com.hazelcast.raft.service.session.SessionManagerService;
 import com.hazelcast.spi.NodeEngine;
@@ -35,6 +31,7 @@ import com.hazelcast.util.ExceptionUtil;
 import java.util.Collection;
 import java.util.UUID;
 
+import static com.hazelcast.raft.impl.service.RaftService.getObjectNameForProxy;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 
 /**
@@ -67,28 +64,12 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
     @Override
     public ILock createRaftObjectProxy(String name) {
         try {
-            RaftGroupId groupId = createRaftGroup(name).get();
+            RaftGroupId groupId = raftService.createRaftGroupForProxy(name);
             SessionManagerService sessionManager = nodeEngine.getService(SessionManagerService.SERVICE_NAME);
-            return new RaftLockProxy(raftService.getInvocationManager(), sessionManager, groupId, name);
+            return new RaftLockProxy(raftService.getInvocationManager(), sessionManager, groupId, getObjectNameForProxy(name));
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
-    }
-
-    public ICompletableFuture<RaftGroupId> createRaftGroup(String name) {
-        String raftGroupRef = getRaftGroupRef(name);
-
-        RaftInvocationManager invocationManager = raftService.getInvocationManager();
-        return invocationManager.createRaftGroup(raftGroupRef);
-    }
-
-    private String getRaftGroupRef(String name) {
-        RaftLockConfig config = getConfig(name);
-        return config != null ? config.getRaftGroupRef() : RaftGroupConfig.DEFAULT_GROUP;
-    }
-
-    private RaftLockConfig getConfig(String name) {
-        return nodeEngine.getConfig().findRaftLockConfig(name);
     }
 
     public RaftLockOwnershipState acquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex,

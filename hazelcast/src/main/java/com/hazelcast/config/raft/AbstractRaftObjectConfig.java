@@ -24,22 +24,15 @@ public abstract class AbstractRaftObjectConfig {
 
     protected String name;
 
-    protected String raftGroupRef;
-
     public AbstractRaftObjectConfig() {
     }
 
-    public AbstractRaftObjectConfig(String name, String raftGroupRef) {
+    public AbstractRaftObjectConfig(String name) {
         this.name = name;
-        this.raftGroupRef = raftGroupRef;
     }
 
     public String getName() {
         return name;
-    }
-
-    public String getRaftGroupRef() {
-        return raftGroupRef;
     }
 
 }

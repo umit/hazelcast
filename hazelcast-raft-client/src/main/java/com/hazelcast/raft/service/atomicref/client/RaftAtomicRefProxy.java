@@ -31,13 +31,14 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.service.atomicref.RaftAtomicRefService;
 import com.hazelcast.raft.service.atomicref.operation.ApplyOp.ReturnValueType;
+import com.hazelcast.raft.service.spi.client.RaftGroupTaskFactoryProvider;
 import com.hazelcast.spi.InternalCompletableFuture;
 
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
+import static com.hazelcast.raft.impl.service.RaftService.getObjectNameForProxy;
 import static com.hazelcast.raft.service.atomicref.client.AtomicRefMessageTaskFactoryProvider.APPLY_TYPE;
 import static com.hazelcast.raft.service.atomicref.client.AtomicRefMessageTaskFactoryProvider.COMPARE_AND_SET_TYPE;
 import static com.hazelcast.raft.service.atomicref.client.AtomicRefMessageTaskFactoryProvider.CONTAINS_TYPE;
-import static com.hazelcast.raft.service.atomicref.client.AtomicRefMessageTaskFactoryProvider.CREATE_TYPE;
 import static com.hazelcast.raft.service.atomicref.client.AtomicRefMessageTaskFactoryProvider.DESTROY_TYPE;
 import static com.hazelcast.raft.service.atomicref.client.AtomicRefMessageTaskFactoryProvider.GET_TYPE;
 import static com.hazelcast.raft.service.atomicref.client.AtomicRefMessageTaskFactoryProvider.SET_TYPE;
@@ -58,14 +59,15 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
     public static <T> IAtomicReference<T> create(HazelcastInstance instance, String name) {
         int dataSize = ClientMessage.HEADER_SIZE + calculateDataSize(name);
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
-        msg.setMessageType(CREATE_TYPE);
+        msg.setMessageType(RaftGroupTaskFactoryProvider.CREATE_TYPE);
         msg.setRetryable(false);
         msg.setOperationName("");
         msg.set(name);
         msg.updateFrameLength();
 
+        String objectName = getObjectNameForProxy(name);
         HazelcastClientInstanceImpl client = getClient(instance);
-        ClientInvocationFuture f = new ClientInvocation(client, msg, name).invoke();
+        ClientInvocationFuture f = new ClientInvocation(client, msg, objectName).invoke();
 
         InternalCompletableFuture<RaftGroupId> future = new ClientDelegatingFuture<RaftGroupId>(f, client.getSerializationService(),
                 new ClientMessageDecoder() {
@@ -76,7 +78,7 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
                 });
 
         RaftGroupId groupId = future.join();
-        return new RaftAtomicRefProxy<T>(instance, groupId, name);
+        return new RaftAtomicRefProxy<T>(instance, groupId, objectName);
     }
 
     private final HazelcastClientInstanceImpl client;

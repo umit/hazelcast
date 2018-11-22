@@ -16,9 +16,7 @@
 
 package com.hazelcast.raft.service.semaphore;
 
-import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.config.raft.RaftSemaphoreConfig;
-import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
@@ -34,6 +32,8 @@ import com.hazelcast.util.ExceptionUtil;
 
 import java.util.Collection;
 import java.util.UUID;
+
+import static com.hazelcast.raft.impl.service.RaftService.getObjectNameForProxy;
 
 /**
  * Contains Raft-based semaphore instances
@@ -52,26 +52,17 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
     @Override
     public ISemaphore createRaftObjectProxy(String name) {
         try {
-            RaftGroupId groupId = createRaftGroup(name).get();
+            RaftGroupId groupId = raftService.createRaftGroupForProxy(name);
+            String objectName = getObjectNameForProxy(name);
             RaftSemaphoreConfig config = getConfig(name);
             SessionManagerService sessionManager = nodeEngine.getService(SessionManagerService.SERVICE_NAME);
             RaftInvocationManager invocationManager = raftService.getInvocationManager();
             return config != null && config.isStrictModeEnabled()
-                    ? new RaftSessionAwareSemaphoreProxy(invocationManager, sessionManager, groupId, name)
-                    : new RaftSessionlessSemaphoreProxy(invocationManager, groupId, name);
+                    ? new RaftSessionAwareSemaphoreProxy(invocationManager, sessionManager, groupId, objectName)
+                    : new RaftSessionlessSemaphoreProxy(invocationManager, groupId, objectName);
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
-    }
-
-    public ICompletableFuture<RaftGroupId> createRaftGroup(String name) {
-        String groupRef = getRaftGroupRef(name);
-        return raftService.getInvocationManager().createRaftGroup(groupRef);
-    }
-
-    private String getRaftGroupRef(String name) {
-        RaftSemaphoreConfig config = getConfig(name);
-        return config != null ? config.getRaftGroupRef() : RaftGroupConfig.DEFAULT_GROUP;
     }
 
     private RaftSemaphoreConfig getConfig(String name) {

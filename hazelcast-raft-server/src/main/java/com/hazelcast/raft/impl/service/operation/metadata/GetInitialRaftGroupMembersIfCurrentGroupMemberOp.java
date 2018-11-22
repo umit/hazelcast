@@ -87,7 +87,6 @@ public class GetInitialRaftGroupMembersIfCurrentGroupMemberOp extends RaftOp imp
         return RaftServiceDataSerializerHook.GET_INITIAL_RAFT_GROUP_MEMBERS_IF_CURRENT_GROUP_MEMBER_OP;
     }
 
-
     @Override
     protected String getServiceName() {
         return RaftService.SERVICE_NAME;

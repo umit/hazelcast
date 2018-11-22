@@ -14,35 +14,35 @@
  * limitations under the License.
  */
 
-package com.hazelcast.raft.service.atomiclong.client;
+package com.hazelcast.raft.service.spi.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
-import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
-import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
+import com.hazelcast.raft.impl.service.RaftService;
 
 import java.security.Permission;
 
 /**
- * Client message task for getting Raft group id of the requested Raft-based atomic long
+ * Client message task for Raft group creation
  */
-public class CreateAtomicLongMessageTask extends AbstractMessageTask implements ExecutionCallback {
+public class CreateRaftGroupMessageTask extends AbstractMessageTask {
 
     private String name;
 
-    CreateAtomicLongMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    CreateRaftGroupMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
-        RaftAtomicLongService service = nodeEngine.getService(getServiceName());
-        service.createRaftGroup(name).andThen(this);
+        RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+        RaftGroupId groupId = service.createRaftGroupForProxy(name);
+        sendResponse(groupId);
     }
 
     @Override
@@ -65,18 +65,8 @@ public class CreateAtomicLongMessageTask extends AbstractMessageTask implements 
     }
 
     @Override
-    public void onResponse(Object response) {
-        sendResponse(response);
-    }
-
-    @Override
-    public void onFailure(Throwable t) {
-        handleProcessingFailure(t);
-    }
-
-    @Override
     public String getServiceName() {
-        return RaftAtomicLongService.SERVICE_NAME;
+        return RaftService.SERVICE_NAME;
     }
 
     @Override

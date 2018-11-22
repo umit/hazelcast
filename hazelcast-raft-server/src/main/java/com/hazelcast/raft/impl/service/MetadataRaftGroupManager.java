@@ -16,19 +16,19 @@
 
 package com.hazelcast.raft.impl.service;
 
-import com.hazelcast.config.raft.RaftMetadataGroupConfig;
+import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.core.Member;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
-import com.hazelcast.raft.impl.service.exception.MetadataRaftGroupNotInitializedException;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.exception.CannotCreateRaftGroupException;
 import com.hazelcast.raft.impl.service.exception.CannotRemoveMemberException;
+import com.hazelcast.raft.impl.service.exception.MetadataRaftGroupNotInitializedException;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateMetadataRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftNodeOp;
 import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOp;
@@ -84,7 +84,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     private final NodeEngine nodeEngine;
     private final RaftService raftService;
     private final ILogger logger;
-    private final RaftMetadataGroupConfig config;
+    private final RaftConfig config;
 
     private final AtomicReference<RaftMemberImpl> localMember = new AtomicReference<RaftMemberImpl>();
     // groups are read outside of Raft
@@ -95,7 +95,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     private Collection<RaftMemberImpl> initialRaftMembers;
     private MembershipChangeContext membershipChangeContext;
 
-    MetadataRaftGroupManager(NodeEngine nodeEngine, RaftService raftService, RaftMetadataGroupConfig config) {
+    MetadataRaftGroupManager(NodeEngine nodeEngine, RaftService raftService, RaftConfig config) {
         this.nodeEngine = nodeEngine;
         this.raftService = raftService;
         this.logger = nodeEngine.getLogger(getClass());
@@ -103,11 +103,6 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     }
 
     void initLocalRaftMemberOnStartup() {
-        boolean initialRaftMember = config != null;
-        if (!initialRaftMember) {
-            logger.warning("I am not a Raft member :(");
-            return;
-        }
         initLocalMember();
 
         // task for initial Raft members
@@ -226,6 +221,16 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         checkNotNull(groupId);
 
         return groups.get(groupId);
+    }
+
+    public RaftGroupId getActiveRaftGroupId(String groupName) {
+        for (RaftGroupInfo group : groups.values()) {
+            if (group.status() == RaftGroupInfo.RaftGroupStatus.ACTIVE && group.name().equals(groupName)) {
+                return group.id();
+            }
+        }
+
+        return null;
     }
 
     public void createInitialMetadataRaftGroup(List<RaftMemberImpl> initialMembers, int metadataMembersCount) {
@@ -775,8 +780,8 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             }
             latestMembers = members;
 
-            if (members.size() < config.getGroupSize()) {
-                logger.warning("Waiting for " + config.getGroupSize() + " Raft members to join the cluster. "
+            if (members.size() < config.getCpNodeCount()) {
+                logger.warning("Waiting for " + config.getCpNodeCount() + " Raft members to join the cluster. "
                         + "Current Raft members count: " + members.size());
                 ExecutionService executionService = nodeEngine.getExecutionService();
                 executionService.schedule(this, DISCOVER_INITIAL_RAFT_MEMBERS_TASK_DELAY_MILLIS, MILLISECONDS);
@@ -808,7 +813,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
 
         @SuppressWarnings("unchecked")
         private boolean commitInitialMetadataRaftGroup(List<RaftMemberImpl> initialRaftMembers) {
-            int metadataGroupSize = config.getMetadataGroupSize();
+            int metadataGroupSize = config.getGroupSize();
             List<RaftMemberImpl> metadataMembers = initialRaftMembers.subList(0, metadataGroupSize);
             try {
                 if (metadataMembers.contains(getLocalMember())) {
@@ -830,9 +835,9 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         }
 
         private List<RaftMemberImpl> getInitialRaftMembers(Collection<Member> members) {
-            assert members.size() >= config.getGroupSize();
-            List<Member> memberList = new ArrayList<Member>(members).subList(0, config.getGroupSize());
-            List<RaftMemberImpl> raftMembers = new ArrayList<RaftMemberImpl>(config.getGroupSize());
+            assert members.size() >= config.getCpNodeCount();
+            List<Member> memberList = new ArrayList<Member>(members).subList(0, config.getCpNodeCount());
+            List<RaftMemberImpl> raftMembers = new ArrayList<RaftMemberImpl>(config.getCpNodeCount());
             for (Member member : memberList) {
                 RaftMemberImpl raftMember = new RaftMemberImpl(member);
                 raftMembers.add(raftMember);

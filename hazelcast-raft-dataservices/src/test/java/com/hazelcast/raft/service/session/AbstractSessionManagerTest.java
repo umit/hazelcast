@@ -52,11 +52,9 @@ public abstract class AbstractSessionManagerTest extends HazelcastRaftTestSuppor
 
     @Before
     public void setup() throws ExecutionException, InterruptedException {
-        int raftGroupSize = 3;
-        members = newInstances(raftGroupSize);
-
+        members = newInstances(3);
         RaftInvocationManager invocationManager = getRaftInvocationManager(members[0]);
-        groupId = invocationManager.createRaftGroup("group", raftGroupSize).get();
+        groupId = invocationManager.createRaftGroup("group").get();
     }
 
     @Test
@@ -256,10 +254,10 @@ public abstract class AbstractSessionManagerTest extends HazelcastRaftTestSuppor
     }
 
     @Override
-    protected Config createConfig(int groupSize, int metadataGroupSize) {
-        Config config = super.createConfig(groupSize, metadataGroupSize);
+    protected Config createConfig(int cpNodeCount, int groupSize) {
+        Config config = super.createConfig(cpNodeCount, groupSize);
         RaftConfig raftConfig = config.getRaftConfig();
-        raftConfig.setSessionHeartbeatIntervalMillis(500);
+        raftConfig.setSessionHeartbeatIntervalSeconds(1);
         raftConfig.setSessionTimeToLiveSeconds(sessionTTLSeconds);
         return config;
     }

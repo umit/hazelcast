@@ -16,7 +16,6 @@
 
 package com.hazelcast.raft.impl.service;
 
-import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.internal.cluster.ClusterService;
@@ -27,13 +26,13 @@ import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.exception.CannotCreateRaftGroupException;
+import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
+import com.hazelcast.raft.impl.service.operation.metadata.GetActiveRaftMembersOp;
+import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOp;
 import com.hazelcast.raft.impl.service.proxy.ChangeRaftGroupMembershipOp;
 import com.hazelcast.raft.impl.service.proxy.DefaultRaftReplicateOp;
 import com.hazelcast.raft.impl.service.proxy.DestroyRaftGroupOp;
 import com.hazelcast.raft.impl.service.proxy.RaftQueryOp;
-import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
-import com.hazelcast.raft.impl.service.operation.metadata.GetActiveRaftMembersOp;
-import com.hazelcast.raft.impl.service.operation.metadata.TriggerDestroyRaftGroupOp;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
@@ -85,16 +84,8 @@ public class RaftInvocationManager {
         raftInvocationContext.reset();
     }
 
-    public ICompletableFuture<RaftGroupId> createRaftGroup(String groupNameRef) {
-        RaftGroupConfig groupConfig = raftService.getConfig().getGroupConfig(groupNameRef);
-        if (groupConfig == null) {
-            if (!RaftGroupConfig.DEFAULT_GROUP.equals(groupNameRef)) {
-                throw new IllegalArgumentException("No RaftGroupConfig found with name '" + groupNameRef + "'.");
-            }
-            int groupSize = raftService.getConfig().getMetadataGroupConfig().getGroupSize();
-            groupConfig = new RaftGroupConfig(RaftGroupConfig.DEFAULT_GROUP, groupSize);
-        }
-        return createRaftGroup(groupConfig.getName(), groupConfig.getSize());
+    public ICompletableFuture<RaftGroupId> createRaftGroup(String groupName) {
+        return createRaftGroup(groupName, raftService.getConfig().getGroupSize());
     }
 
     public ICompletableFuture<RaftGroupId> createRaftGroup(String groupName, int groupSize) {

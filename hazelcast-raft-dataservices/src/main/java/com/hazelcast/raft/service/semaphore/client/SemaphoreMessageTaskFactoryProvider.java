@@ -30,14 +30,13 @@ import com.hazelcast.spi.impl.NodeEngineImpl;
  */
 public class SemaphoreMessageTaskFactoryProvider implements MessageTaskFactoryProvider {
 
-    public static final int CREATE_TYPE = 15000;
-    public static final int DESTROY_TYPE = 15001;
-    public static final int ACQUIRE_PERMITS_TYPE = 15002;
-    public static final int AVAILABLE_PERMITS_TYPE = 15003;
-    public static final int CHANGE_PERMITS_TYPE = 15004;
-    public static final int DRAIN_PERMITS_TYPE = 15005;
-    public static final int INIT_SEMAPHORE_TYPE = 15006;
-    public static final int RELEASE_PERMITS_TYPE = 15007;
+    public static final int DESTROY_TYPE = 15000;
+    public static final int ACQUIRE_PERMITS_TYPE = 15001;
+    public static final int AVAILABLE_PERMITS_TYPE = 15002;
+    public static final int CHANGE_PERMITS_TYPE = 15003;
+    public static final int DRAIN_PERMITS_TYPE = 15004;
+    public static final int INIT_SEMAPHORE_TYPE = 15005;
+    public static final int RELEASE_PERMITS_TYPE = 15006;
 
     private final Node node;
 
@@ -48,13 +47,6 @@ public class SemaphoreMessageTaskFactoryProvider implements MessageTaskFactoryPr
     @Override
     public MessageTaskFactory[] getFactories() {
         MessageTaskFactory[] factories = new MessageTaskFactory[Short.MAX_VALUE];
-
-        factories[CREATE_TYPE] = new MessageTaskFactory() {
-            @Override
-            public MessageTask create(ClientMessage clientMessage, Connection connection) {
-                return new CreateSemaphoreMessageTask(clientMessage, node, connection);
-            }
-        };
 
         factories[DESTROY_TYPE] = new MessageTaskFactory() {
             @Override

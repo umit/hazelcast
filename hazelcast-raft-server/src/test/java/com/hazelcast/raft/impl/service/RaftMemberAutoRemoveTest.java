@@ -92,8 +92,8 @@ public class RaftMemberAutoRemoveTest extends HazelcastRaftTestSupport {
     }
 
     @Override
-    protected Config createConfig(int groupSize, int metadataGroupSize) {
-        Config config = super.createConfig(groupSize, metadataGroupSize);
+    protected Config createConfig(int cpNodeCount, int groupSize) {
+        Config config = super.createConfig(cpNodeCount, groupSize);
         config.setProperty(GroupProperty.MERGE_FIRST_RUN_DELAY_SECONDS.getName(), "5")
               .setProperty(GroupProperty.MERGE_NEXT_RUN_DELAY_SECONDS.getName(), "5")
               .getRaftConfig()

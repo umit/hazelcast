@@ -43,11 +43,10 @@ public class RaftLockFailureTest extends HazelcastRaftTestSupport {
     private HazelcastInstance lockInstance;
     private RaftLockProxy lock;
     private String name = "lock";
-    private int groupSize = 3;
 
     @Before
     public void setup() {
-        instances = newInstances(groupSize);
+        instances = newInstances(3);
         lock = createLock(name);
         assertNotNull(lock);
     }
