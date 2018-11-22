@@ -558,6 +558,13 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
         assertTrue(b3 ^ b4);
     }
 
+    @Test
+    public void when_noCpNodeCountConfigured_then_cpDiscoveryCompletes() {
+        final HazelcastInstance[] instances = newInstances(0, 0, 3);
+
+        waitUntilCPDiscoveryCompleted(instances);
+    }
+
     private RaftGroupId createNewRaftGroup(HazelcastInstance instance, String name, int groupSize) {
         RaftInvocationManager invocationManager = getRaftService(instance).getInvocationManager();
         try {

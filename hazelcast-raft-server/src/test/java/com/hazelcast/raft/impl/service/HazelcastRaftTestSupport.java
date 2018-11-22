@@ -77,9 +77,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
             public void run() {
                 for (HazelcastInstance instance : instances) {
                     RaftService service = getRaftService(instance);
-                    if (service.getLocalMember() != null) {
-                        assertTrue(service.getMetadataGroupManager().isDiscoveryCompleted());
-                    }
+                    assertTrue(service.getMetadataGroupManager().isDiscoveryCompleted());
                 }
             }
         });
@@ -118,8 +116,12 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         configureSplitBrainDelay(config);
 
         RaftConfig raftConfig = new RaftConfig();
-        raftConfig.setCpNodeCount(cpNodeCount).setGroupSize(groupSize);
         config.setRaftConfig(raftConfig);
+
+        if (cpNodeCount > 0) {
+            raftConfig.setCpNodeCount(cpNodeCount).setGroupSize(groupSize);
+        }
+
         return config;
     }
 
