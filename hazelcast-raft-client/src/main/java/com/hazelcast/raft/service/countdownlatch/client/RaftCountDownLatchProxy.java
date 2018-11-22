@@ -29,6 +29,7 @@ import com.hazelcast.nio.Bits;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchService;
+import com.hazelcast.raft.service.spi.client.RaftGroupTaskFactoryProvider;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.util.UuidUtil;
 
@@ -37,9 +38,9 @@ import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
 import static com.hazelcast.raft.impl.RaftGroupIdImpl.dataSize;
+import static com.hazelcast.raft.impl.service.RaftService.getObjectNameForProxy;
 import static com.hazelcast.raft.service.countdownlatch.client.CountDownLatchMessageTaskFactoryProvider.AWAIT_TYPE;
 import static com.hazelcast.raft.service.countdownlatch.client.CountDownLatchMessageTaskFactoryProvider.COUNT_DOWN_TYPE;
-import static com.hazelcast.raft.service.countdownlatch.client.CountDownLatchMessageTaskFactoryProvider.CREATE_TYPE;
 import static com.hazelcast.raft.service.countdownlatch.client.CountDownLatchMessageTaskFactoryProvider.DESTROY_TYPE;
 import static com.hazelcast.raft.service.countdownlatch.client.CountDownLatchMessageTaskFactoryProvider.GET_REMAINING_COUNT_TYPE;
 import static com.hazelcast.raft.service.countdownlatch.client.CountDownLatchMessageTaskFactoryProvider.GET_ROUND_TYPE;
@@ -58,14 +59,15 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
     public static ICountDownLatch create(HazelcastInstance instance, String name) {
         int dataSize = ClientMessage.HEADER_SIZE + calculateDataSize(name);
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
-        msg.setMessageType(CREATE_TYPE);
+        msg.setMessageType(RaftGroupTaskFactoryProvider.CREATE_TYPE);
         msg.setRetryable(false);
         msg.setOperationName("");
         msg.set(name);
         msg.updateFrameLength();
 
+        String objectName = getObjectNameForProxy(name);
         HazelcastClientInstanceImpl client = getClient(instance);
-        ClientInvocationFuture f = new ClientInvocation(client, msg, name).invoke();
+        ClientInvocationFuture f = new ClientInvocation(client, msg, objectName).invoke();
 
         InternalCompletableFuture<RaftGroupId> future = new ClientDelegatingFuture<RaftGroupId>(f, client.getSerializationService(),
                 new ClientMessageDecoder() {
@@ -76,7 +78,7 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
                 });
 
         RaftGroupId groupId = future.join();
-        return new RaftCountDownLatchProxy(instance, groupId, name);
+        return new RaftCountDownLatchProxy(instance, groupId, objectName);
     }
 
     private final HazelcastClientInstanceImpl client;

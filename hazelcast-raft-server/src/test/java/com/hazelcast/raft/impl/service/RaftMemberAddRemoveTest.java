@@ -349,8 +349,7 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
     public void testStartNewAPMember_afterDiscoveryIsCompleted() throws ExecutionException, InterruptedException {
         final HazelcastInstance[] instances = newInstances(3);
 
-        RaftInvocationManager invocationManager = getRaftInvocationManager(instances[1]);
-        invocationManager.invoke(METADATA_GROUP_ID, new GetActiveRaftMembersOp()).get();
+        waitUntilCPDiscoveryCompleted(instances);
 
         instances[2].getLifecycleService().terminate();
         assertClusterSizeEventually(2, instances[1]);
@@ -464,10 +463,10 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
     @Test
     public void testNodeBecomesAP_whenInitialRaftMemberCount_isBiggerThanConfiguredNumber() {
-        int groupSize = 3;
-        HazelcastInstance[] instances = newInstances(groupSize);
+        int cpNodeCount = 3;
+        HazelcastInstance[] instances = newInstances(cpNodeCount);
 
-        Config config = createConfig(groupSize, groupSize);
+        Config config = createConfig(cpNodeCount, cpNodeCount);
         final HazelcastInstance instance = factory.newHazelcastInstance(config);
 
         waitAllForLeaderElection(instances, METADATA_GROUP_ID);

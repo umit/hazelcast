@@ -2,7 +2,6 @@ package com.hazelcast.spi.impl.operationservice.impl;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.config.raft.RaftConfig;
-import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IndeterminateOperationStateException;
 import com.hazelcast.core.MemberLeftException;
@@ -152,12 +151,11 @@ public class RaftInvocationFailureTest extends HazelcastRaftTestSupport {
     }
 
     @Override
-    protected Config createConfig(int groupSize, int metadataGroupSize) {
-        Config config = super.createConfig(groupSize, metadataGroupSize);
+    protected Config createConfig(int cpNodeCount, int groupSize) {
+        Config config = super.createConfig(cpNodeCount, groupSize);
 
         RaftConfig raftConfig = config.getRaftConfig();
         raftConfig.setFailOnIndeterminateOperationState(true);
-        raftConfig.addGroupConfig(new RaftGroupConfig(groupName, groupSize));
 
         return config;
     }

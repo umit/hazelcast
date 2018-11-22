@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.hazelcast.raft.service.lock.operation;
+package com.hazelcast.raft.impl.service.operation.metadata;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
@@ -22,29 +22,31 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.RaftOp;
-import com.hazelcast.raft.service.lock.RaftLockDataSerializerHook;
-import com.hazelcast.raft.service.lock.RaftLockService;
+import com.hazelcast.raft.impl.service.RaftService;
+import com.hazelcast.raft.impl.service.RaftServiceDataSerializerHook;
 
 import java.io.IOException;
 
 /**
- * @see com.hazelcast.raft.service.lock.RaftLock#lockOwnershipState()
+ * Returns {@link RaftGroupId} of the given currently active Raft group
+ * <p/>
+ * This operation is committed to the Metadata group.
  */
-public class GetLockOwnershipStateOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
+public class GetActiveRaftGroupIdOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
-    private String name;
+    private String groupName;
 
-    public GetLockOwnershipStateOp() {
+    public GetActiveRaftGroupIdOp() {
     }
 
-    public GetLockOwnershipStateOp(String name) {
-        this.name = name;
+    public GetActiveRaftGroupIdOp(String groupName) {
+        this.groupName = groupName;
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
-        RaftLockService service = getService();
-        return service.getLockOwnershipState(groupId, name);
+        RaftService service = getNodeEngine().getService(RaftService.SERVICE_NAME);
+        return service.getMetadataGroupManager().getActiveRaftGroupId(groupName);
     }
 
     @Override
@@ -53,33 +55,32 @@ public class GetLockOwnershipStateOp extends RaftOp implements IndeterminateOper
     }
 
     @Override
-    public final String getServiceName() {
-        return RaftLockService.SERVICE_NAME;
+    protected String getServiceName() {
+        return RaftService.SERVICE_NAME;
     }
 
     @Override
     public int getFactoryId() {
-        return RaftLockDataSerializerHook.F_ID;
+        return RaftServiceDataSerializerHook.F_ID;
     }
 
     @Override
     public int getId() {
-        return RaftLockDataSerializerHook.GET_RAFT_LOCK_OWNERSHIP_STATE_OP;
+        return RaftServiceDataSerializerHook.GET_ACTIVE_RAFT_GROUP_ID_OP;
     }
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeUTF(name);
+        out.writeUTF(groupName);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
-        name = in.readUTF();
+        groupName = in.readUTF();
     }
 
     @Override
     protected void toString(StringBuilder sb) {
-        super.toString(sb);
-        sb.append(", name=").append(name);
+        sb.append(", groupName=").append(groupName);
     }
 }

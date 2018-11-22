@@ -16,11 +16,9 @@
 
 package com.hazelcast.raft.service.countdownlatch;
 
-import com.hazelcast.config.raft.RaftCountDownLatchConfig;
-import com.hazelcast.config.raft.RaftGroupConfig;
-import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.blocking.AbstractBlockingService;
 import com.hazelcast.raft.service.countdownlatch.proxy.RaftCountDownLatchProxy;
@@ -29,6 +27,8 @@ import com.hazelcast.util.ExceptionUtil;
 
 import java.util.Collection;
 import java.util.UUID;
+
+import static com.hazelcast.raft.impl.service.RaftService.getObjectNameForProxy;
 
 /**
  * Contains Raft-based count down latch instances
@@ -48,25 +48,12 @@ public class RaftCountDownLatchService
     @Override
     public ICountDownLatch createRaftObjectProxy(String name) {
         try {
-            RaftGroupId groupId = createRaftGroup(name).get();
-            return new RaftCountDownLatchProxy(raftService.getInvocationManager(), groupId, name);
+            RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+            RaftGroupId groupId = service.createRaftGroupForProxy(name);
+            return new RaftCountDownLatchProxy(raftService.getInvocationManager(), groupId, getObjectNameForProxy(name));
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
-    }
-
-    public ICompletableFuture<RaftGroupId> createRaftGroup(String name) {
-        String raftGroupRef = getRaftGroupRef(name);
-        return raftService.getInvocationManager().createRaftGroup(raftGroupRef);
-    }
-
-    private String getRaftGroupRef(String name) {
-        RaftCountDownLatchConfig config = getConfig(name);
-        return config != null ? config.getRaftGroupRef() : RaftGroupConfig.DEFAULT_GROUP;
-    }
-
-    private RaftCountDownLatchConfig getConfig(String name) {
-        return nodeEngine.getConfig().findRaftCountDownLatchConfig(name);
     }
 
     public boolean trySetCount(RaftGroupId groupId, String name, int count) {

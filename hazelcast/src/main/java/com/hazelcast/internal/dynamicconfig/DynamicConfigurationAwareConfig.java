@@ -57,11 +57,7 @@ import com.hazelcast.config.SetConfig;
 import com.hazelcast.config.TopicConfig;
 import com.hazelcast.config.UserCodeDeploymentConfig;
 import com.hazelcast.config.WanReplicationConfig;
-import com.hazelcast.config.raft.RaftAtomicLongConfig;
-import com.hazelcast.config.raft.RaftAtomicReferenceConfig;
 import com.hazelcast.config.raft.RaftConfig;
-import com.hazelcast.config.raft.RaftCountDownLatchConfig;
-import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.config.raft.RaftSemaphoreConfig;
 import com.hazelcast.core.ManagedContext;
 import com.hazelcast.internal.cluster.ClusterService;
@@ -1505,50 +1501,12 @@ public class DynamicConfigurationAwareConfig extends Config {
     }
 
     @Override
-    public RaftAtomicLongConfig findRaftAtomicLongConfig(String name) {
-        return staticConfig.findRaftAtomicLongConfig(name);
-    }
-
-    @Override
-    public Config addRaftAtomicLongConfig(RaftAtomicLongConfig config) {
-        throw new UnsupportedOperationException("Unsupported operation");
-    }
-
-    @Override
-    public RaftLockConfig findRaftLockConfig(String name) {
-        return staticConfig.findRaftLockConfig(name);
-    }
-
-    @Override
-    public Config addRaftLockConfig(RaftLockConfig config) {
-        throw new UnsupportedOperationException("Unsupported operation");
-    }
-
-    @Override
-    public RaftAtomicReferenceConfig findRaftAtomicReferenceConfig(String name) {
-        return staticConfig.findRaftAtomicReferenceConfig(name);
-    }
-
-    @Override
-    public Config addRaftAtomicReferenceConfig(RaftAtomicReferenceConfig config) {
-        throw new UnsupportedOperationException("Unsupported operation");
-    }
-
-    @Override
     public RaftSemaphoreConfig findRaftSemaphoreConfig(String name) {
         return staticConfig.findRaftSemaphoreConfig(name);
     }
 
     @Override
     public Config addRaftSemaphoreConfig(RaftSemaphoreConfig config) {
-        throw new UnsupportedOperationException("Unsupported operation");
-    }
-
-    public RaftCountDownLatchConfig findRaftCountDownLatchConfig(String name) {
-        return staticConfig.findRaftCountDownLatchConfig(name);
-    }
-
-    public Config addRaftCountDownLatchConfig(RaftCountDownLatchConfig config) {
         throw new UnsupportedOperationException("Unsupported operation");
     }
 }

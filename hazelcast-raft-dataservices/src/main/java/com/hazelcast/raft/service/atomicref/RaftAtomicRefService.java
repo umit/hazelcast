@@ -16,10 +16,7 @@
 
 package com.hazelcast.raft.service.atomicref;
 
-import com.hazelcast.config.raft.RaftAtomicReferenceConfig;
-import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.core.IAtomicReference;
-import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
@@ -43,6 +40,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.hazelcast.raft.impl.service.RaftService.getObjectNameForProxy;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static java.util.Collections.newSetFromMap;
 
@@ -132,10 +130,10 @@ public class RaftAtomicRefService implements ManagedService, RaftRemoteService, 
     @Override
     public IAtomicReference createRaftObjectProxy(String name) {
         try {
-            RaftGroupId groupId = createRaftGroup(name).get();
+            RaftGroupId groupId = raftService.createRaftGroupForProxy(name);
             RaftInvocationManager invocationManager = raftService.getInvocationManager();
             SerializationService serializationService = nodeEngine.getSerializationService();
-            return new RaftAtomicRefProxy(invocationManager, serializationService, groupId, name);
+            return new RaftAtomicRefProxy(invocationManager, serializationService, groupId, getObjectNameForProxy(name));
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
@@ -146,22 +144,6 @@ public class RaftAtomicRefService implements ManagedService, RaftRemoteService, 
         Tuple2<RaftGroupId, String> key = Tuple2.of(groupId, name);
         destroyedRefs.add(key);
         return atomicRefs.remove(key) != null;
-    }
-
-    public ICompletableFuture<RaftGroupId> createRaftGroup(String name) {
-        String raftGroupRef = getRaftGroupRef(name);
-
-        RaftInvocationManager invocationManager = raftService.getInvocationManager();
-        return invocationManager.createRaftGroup(raftGroupRef);
-    }
-
-    private String getRaftGroupRef(String name) {
-        RaftAtomicReferenceConfig config = getConfig(name);
-        return config != null ? config.getRaftGroupRef() : RaftGroupConfig.DEFAULT_GROUP;
-    }
-
-    private RaftAtomicReferenceConfig getConfig(String name) {
-        return nodeEngine.getConfig().findRaftAtomicReferenceConfig(name);
     }
 
     public RaftAtomicRef getAtomicRef(RaftGroupId groupId, String name) {

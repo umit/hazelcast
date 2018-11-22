@@ -17,7 +17,6 @@
 package com.hazelcast.raft.service.semaphore;
 
 import com.hazelcast.config.Config;
-import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.config.raft.RaftSemaphoreConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
@@ -52,24 +51,21 @@ public class RaftSessionlessSemaphoreBasicTest extends HazelcastRaftTestSupport 
 
     private HazelcastInstance[] instances;
     private String name = "semaphore";
-    private int groupSize = 3;
-    private HazelcastInstance semaphoreInstance;
     private ISemaphore semaphore;
 
     @Before
     public void setup() {
         instances = createInstances();
-
         semaphore = createSemaphore(name);
         assertNotNull(semaphore);
     }
 
     protected HazelcastInstance[] createInstances() {
-        return newInstances(groupSize);
+        return newInstances(3);
     }
 
     protected ISemaphore createSemaphore(String name) {
-        semaphoreInstance = instances[RandomPicker.getInt(instances.length)];
+        HazelcastInstance semaphoreInstance = instances[RandomPicker.getInt(instances.length)];
         return create(semaphoreInstance, RaftSemaphoreService.SERVICE_NAME, name);
     }
 
@@ -483,11 +479,10 @@ public class RaftSessionlessSemaphoreBasicTest extends HazelcastRaftTestSupport 
     }
 
     @Override
-    protected Config createConfig(int groupSize, int metadataGroupSize) {
-        Config config = super.createConfig(groupSize, metadataGroupSize);
-        config.getRaftConfig().addGroupConfig(new RaftGroupConfig(name, groupSize));
+    protected Config createConfig(int cpNodeCount, int groupSize) {
+        Config config = super.createConfig(cpNodeCount, groupSize);
 
-        RaftSemaphoreConfig semaphoreConfig = new RaftSemaphoreConfig(name, name, false);
+        RaftSemaphoreConfig semaphoreConfig = new RaftSemaphoreConfig(name, false);
         config.addRaftSemaphoreConfig(semaphoreConfig);
         return config;
     }

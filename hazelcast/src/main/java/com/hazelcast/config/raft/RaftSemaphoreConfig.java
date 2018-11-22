@@ -28,22 +28,17 @@ public class RaftSemaphoreConfig extends AbstractRaftObjectConfig {
         super();
     }
 
-    public RaftSemaphoreConfig(String name, String raftGroupRef) {
-        super(name, raftGroupRef);
+    public RaftSemaphoreConfig(String name) {
+        super(name);
     }
 
-    public RaftSemaphoreConfig(String name, String raftGroupRef, boolean strictModeEnabled) {
-        super(name, raftGroupRef);
+    public RaftSemaphoreConfig(String name, boolean strictModeEnabled) {
+        super(name);
         this.strictModeEnabled = strictModeEnabled;
     }
 
     public RaftSemaphoreConfig setName(String name) {
         this.name = name;
-        return this;
-    }
-
-    public RaftSemaphoreConfig setRaftGroupRef(String raftGroupRef) {
-        this.raftGroupRef = raftGroupRef;
         return this;
     }
 

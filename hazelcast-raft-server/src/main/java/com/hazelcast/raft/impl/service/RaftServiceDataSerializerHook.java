@@ -39,6 +39,7 @@ import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftNodeOp;
 import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOp;
 import com.hazelcast.raft.impl.service.operation.metadata.ForceDestroyRaftGroupOp;
+import com.hazelcast.raft.impl.service.operation.metadata.GetActiveRaftGroupIdOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetActiveRaftMembersOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetDestroyingRaftGroupIdsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetInitialRaftGroupMembersIfCurrentGroupMemberOp;
@@ -89,19 +90,20 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int GET_DESTROYING_RAFT_GROUP_IDS_OP = 23;
     public static final int GET_MEMBERSHIP_CHANGE_CONTEXT_OP = 24;
     public static final int GET_RAFT_GROUP_OP = 25;
-    public static final int CREATE_RAFT_NODE_OP = 26;
-    public static final int DESTROY_RAFT_GROUP_OP = 27;
-    public static final int RESTORE_SNAPSHOT_OP = 28;
-    public static final int NOTIFY_TERM_CHANGE_OP = 29;
-    public static final int RAFT_MEMBER = 30;
-    public static final int SEND_ACTIVE_RAFT_MEMBERS_OP = 31;
-    public static final int ADD_RAFT_MEMBER_OP = 32;
-    public static final int TRIGGER_EXPAND_RAFT_GROUPS_OP = 33;
-    public static final int TRIGGER_REBALANCE_RAFT_GROUPS_OP = 34;
-    public static final int CREATE_METADATA_RAFT_GROUP_OP = 35;
-    public static final int FORCE_DESTROY_RAFT_GROUP_OP = 36;
-    public static final int GET_INITIAL_RAFT_GROUP_MEMBERS_IF_CURRENT_GROUP_MEMBER_OP = 37;
-    public static final int RAFT_PRE_JOIN_OP = 38;
+    public static final int GET_ACTIVE_RAFT_GROUP_ID_OP = 26;
+    public static final int CREATE_RAFT_NODE_OP = 27;
+    public static final int DESTROY_RAFT_GROUP_OP = 28;
+    public static final int RESTORE_SNAPSHOT_OP = 29;
+    public static final int NOTIFY_TERM_CHANGE_OP = 30;
+    public static final int RAFT_MEMBER = 31;
+    public static final int SEND_ACTIVE_RAFT_MEMBERS_OP = 32;
+    public static final int ADD_RAFT_MEMBER_OP = 33;
+    public static final int TRIGGER_EXPAND_RAFT_GROUPS_OP = 34;
+    public static final int TRIGGER_REBALANCE_RAFT_GROUPS_OP = 35;
+    public static final int CREATE_METADATA_RAFT_GROUP_OP = 36;
+    public static final int FORCE_DESTROY_RAFT_GROUP_OP = 37;
+    public static final int GET_INITIAL_RAFT_GROUP_MEMBERS_IF_CURRENT_GROUP_MEMBER_OP = 38;
+    public static final int RAFT_PRE_JOIN_OP = 39;
 
     @Override
     public int getFactoryId() {
@@ -164,6 +166,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new GetMembershipChangeContextOp();
                     case GET_RAFT_GROUP_OP:
                         return new GetRaftGroupOp();
+                    case GET_ACTIVE_RAFT_GROUP_ID_OP:
+                        return new GetActiveRaftGroupIdOp();
                     case CREATE_RAFT_NODE_OP:
                         return new CreateRaftNodeOp();
                     case DESTROY_RAFT_GROUP_OP:

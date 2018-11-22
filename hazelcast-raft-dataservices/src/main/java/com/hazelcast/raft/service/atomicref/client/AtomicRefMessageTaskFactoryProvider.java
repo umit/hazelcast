@@ -30,13 +30,12 @@ import com.hazelcast.spi.impl.NodeEngineImpl;
  */
 public class AtomicRefMessageTaskFactoryProvider implements MessageTaskFactoryProvider {
 
-    public static final int CREATE_TYPE = 11000;
-    public static final int DESTROY_TYPE = 11001;
-    public static final int APPLY_TYPE = 11002;
-    public static final int COMPARE_AND_SET_TYPE = 11003;
-    public static final int CONTAINS_TYPE = 11004;
-    public static final int GET_TYPE = 11005;
-    public static final int SET_TYPE = 11006;
+    public static final int DESTROY_TYPE = 11000;
+    public static final int APPLY_TYPE = 11001;
+    public static final int COMPARE_AND_SET_TYPE = 11002;
+    public static final int CONTAINS_TYPE = 11003;
+    public static final int GET_TYPE = 11004;
+    public static final int SET_TYPE = 11005;
 
     private final Node node;
 
@@ -47,13 +46,6 @@ public class AtomicRefMessageTaskFactoryProvider implements MessageTaskFactoryPr
     @Override
     public MessageTaskFactory[] getFactories() {
         MessageTaskFactory[] factories = new MessageTaskFactory[Short.MAX_VALUE];
-
-        factories[CREATE_TYPE] = new MessageTaskFactory() {
-            @Override
-            public MessageTask create(ClientMessage clientMessage, Connection connection) {
-                return new CreateAtomicRefMessageTask(clientMessage, node, connection);
-            }
-        };
 
         factories[DESTROY_TYPE] = new MessageTaskFactory() {
             @Override

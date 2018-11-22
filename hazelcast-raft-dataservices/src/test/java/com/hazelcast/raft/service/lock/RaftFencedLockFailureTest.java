@@ -59,12 +59,12 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         lockInstance = instances[RandomPicker.getInt(instances.length)];
         NodeEngineImpl nodeEngine = getNodeEngineImpl(lockInstance);
         RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
-        RaftLockService lockService = nodeEngine.getService(RaftLockService.SERVICE_NAME);
 
         try {
-            RaftGroupId groupId = lockService.createRaftGroup(name).get();
+            RaftGroupId groupId = raftService.createRaftGroupForProxy(name);
+            String objectName = raftService.getObjectNameForProxy(name);
             SessionManagerService sessionManager = nodeEngine.getService(SessionManagerService.SERVICE_NAME);
-            return new RaftFencedLockProxy(raftService.getInvocationManager(), sessionManager, groupId, name);
+            return new RaftFencedLockProxy(raftService.getInvocationManager(), sessionManager, groupId, objectName);
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }

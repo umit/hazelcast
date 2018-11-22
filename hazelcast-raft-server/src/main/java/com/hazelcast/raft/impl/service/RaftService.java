@@ -42,6 +42,7 @@ import com.hazelcast.raft.impl.dto.VoteResponse;
 import com.hazelcast.raft.impl.service.exception.CannotRemoveMemberException;
 import com.hazelcast.raft.impl.service.operation.metadata.AddRaftMemberOp;
 import com.hazelcast.raft.impl.service.operation.metadata.ForceDestroyRaftGroupOp;
+import com.hazelcast.raft.impl.service.operation.metadata.GetActiveRaftGroupIdOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetActiveRaftMembersOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetInitialRaftGroupMembersIfCurrentGroupMemberOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
@@ -82,6 +83,7 @@ import static com.hazelcast.raft.impl.service.RaftGroupMembershipManager.MANAGEM
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 import static com.hazelcast.spi.ExecutionService.SYSTEM_EXECUTOR;
 import static com.hazelcast.util.Preconditions.checkState;
+import static com.hazelcast.util.Preconditions.checkTrue;
 import static java.util.Collections.newSetFromMap;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -114,7 +116,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         this.logger = nodeEngine.getLogger(getClass());
         RaftConfig raftConfig = nodeEngine.getConfig().getRaftConfig();
         this.config = raftConfig != null ? new RaftConfig(raftConfig) : new RaftConfig();
-        this.metadataGroupManager = new MetadataRaftGroupManager(nodeEngine, this, config.getMetadataGroupConfig());
+        this.metadataGroupManager = new MetadataRaftGroupManager(nodeEngine, this, config);
         this.invocationManager = new RaftInvocationManager(nodeEngine, this);
     }
 
@@ -497,6 +499,38 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
     }
 
+    public RaftGroupId createRaftGroupForProxy(String name) {
+        String groupName = getGroupNameForProxy(name);
+
+        try {
+            RaftGroupId groupId = invocationManager
+                    .<RaftGroupId>invoke(MetadataRaftGroupManager.METADATA_GROUP_ID, new GetActiveRaftGroupIdOp(groupName)).get();
+            if (groupId != null) {
+                return groupId;
+            }
+
+            return invocationManager.createRaftGroup(groupName).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Could not create raft group: " + groupName);
+        } catch (ExecutionException e) {
+            throw new IllegalStateException("Could not create raft group: " + groupName);
+        }
+    }
+
+    private String getGroupNameForProxy(String name) {
+        int i = name.indexOf("@");
+        if (i == -1) {
+            return RaftConfig.DEFAULT_RAFT_GROUP_NAME;
+        }
+
+        checkTrue(i < (name.length() - 1), "Custom group name cannot be empty string");
+        checkTrue(name.indexOf("@", i +1) == -1, "Custom group name must be specified at most once");
+        String groupName = name.substring(i + 1).trim();
+        checkTrue(groupName.length() > 0, "Custom group name cannot be empty string");
+        return groupName;
+    }
+
     private ICompletableFuture<Void> invokeTriggerRemoveMember(RaftMemberImpl member) {
         return invocationManager.invoke(METADATA_GROUP_ID, new TriggerRemoveRaftMemberOp(member));
     }
@@ -506,6 +540,19 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         InternalCompletableFuture<List<RaftMemberImpl>> f = invocationManager.query(METADATA_GROUP_ID, op, LEADER_LOCAL);
         List<RaftMemberImpl> members = f.join();
         return !members.contains(member);
+    }
+
+    public static String getObjectNameForProxy(String name) {
+        int i = name.indexOf("@");
+        if (i == -1) {
+            return name;
+        }
+
+        checkTrue(i < (name.length() - 1), "Object name cannot be empty string");
+        checkTrue(name.indexOf("@", i +1) == -1, "Custom group name must be specified at most once");
+        String objectName = name.substring(0, i).trim();
+        checkTrue(objectName.length() > 0, "Object name cannot be empty string");
+        return objectName;
     }
 
     private class InitializeRaftNodeTask implements Runnable {
@@ -579,7 +626,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
                 for (Entry<RaftMemberImpl, Long> e : missingMembers.entrySet()) {
                     long missingTimeSeconds = MILLISECONDS.toSeconds(System.currentTimeMillis() - e.getValue());
                     if (missingTimeSeconds >= config.getMissingRaftMemberRemovalSeconds()) {
-                        final RaftMemberImpl missingMember = e.getKey();
+                        RaftMemberImpl missingMember = e.getKey();
                         logger.info("Triggering auto-remove of " + missingMember + " since it is absent for "
                                 + missingTimeSeconds + " seconds...");
 

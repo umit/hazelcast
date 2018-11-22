@@ -34,6 +34,7 @@ import com.hazelcast.raft.service.lock.RaftLockOwnershipState;
 import com.hazelcast.raft.service.lock.RaftLockService;
 import com.hazelcast.raft.service.session.SessionAwareProxy;
 import com.hazelcast.raft.service.session.SessionManagerProvider;
+import com.hazelcast.raft.service.spi.client.RaftGroupTaskFactoryProvider;
 import com.hazelcast.spi.InternalCompletableFuture;
 
 import java.util.UUID;
@@ -42,7 +43,7 @@ import java.util.concurrent.locks.Condition;
 
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
 import static com.hazelcast.raft.impl.RaftGroupIdImpl.dataSize;
-import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.CREATE_TYPE;
+import static com.hazelcast.raft.impl.service.RaftService.getObjectNameForProxy;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.DESTROY_TYPE;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.FORCE_UNLOCK_TYPE;
 import static com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider.LOCK_OWNERSHIP_STATE;
@@ -65,14 +66,15 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
     public static ILock create(HazelcastInstance instance, String name) {
         int dataSize = ClientMessage.HEADER_SIZE + calculateDataSize(name);
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
-        msg.setMessageType(CREATE_TYPE);
+        msg.setMessageType(RaftGroupTaskFactoryProvider.CREATE_TYPE);
         msg.setRetryable(false);
         msg.setOperationName("");
         msg.set(name);
         msg.updateFrameLength();
 
+        String objectName = getObjectNameForProxy(name);
         HazelcastClientInstanceImpl client = getClient(instance);
-        ClientInvocationFuture f = new ClientInvocation(client, msg, name).invoke();
+        ClientInvocationFuture f = new ClientInvocation(client, msg, objectName).invoke();
 
         InternalCompletableFuture<RaftGroupId> future = new ClientDelegatingFuture<RaftGroupId>(f, client.getSerializationService(),
                 new ClientMessageDecoder() {
@@ -83,7 +85,7 @@ public class RaftLockProxy extends SessionAwareProxy implements ILock {
         });
 
         RaftGroupId groupId = future.join();
-        return new RaftLockProxy(instance, groupId, name);
+        return new RaftLockProxy(instance, groupId, objectName);
     }
 
     private final HazelcastClientInstanceImpl client;

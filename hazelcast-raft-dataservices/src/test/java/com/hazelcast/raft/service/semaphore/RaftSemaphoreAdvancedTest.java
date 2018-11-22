@@ -2,7 +2,6 @@ package com.hazelcast.raft.service.semaphore;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.config.raft.RaftConfig;
-import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.config.raft.RaftSemaphoreConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.raft.RaftGroupId;
@@ -43,7 +42,6 @@ import static com.hazelcast.raft.service.spi.RaftProxyFactory.create;
 import static com.hazelcast.util.ThreadUtil.getThreadId;
 import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.util.concurrent.TimeUnit.MINUTES;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -66,7 +64,6 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
     @Before
     public void setup() {
         instances = createInstances();
-
         semaphore = createSemaphore(name);
         assertNotNull(semaphore);
     }
@@ -441,15 +438,14 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
     }
 
     @Override
-    protected Config createConfig(int groupSize, int metadataGroupSize) {
-        Config config = super.createConfig(groupSize, metadataGroupSize);
+    protected Config createConfig(int cpNodeCount, int groupSize) {
+        Config config = super.createConfig(cpNodeCount, groupSize);
         RaftConfig raftConfig = config.getRaftConfig();
         raftConfig.getRaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(LOG_ENTRY_COUNT_TO_SNAPSHOT);
-        raftConfig.addGroupConfig(new RaftGroupConfig(name, groupSize));
         raftConfig.setSessionTimeToLiveSeconds(10);
-        raftConfig.setSessionHeartbeatIntervalMillis(SECONDS.toMillis(1));
+        raftConfig.setSessionHeartbeatIntervalSeconds(1);
 
-        RaftSemaphoreConfig semaphoreConfig = new RaftSemaphoreConfig(name, name, true);
+        RaftSemaphoreConfig semaphoreConfig = new RaftSemaphoreConfig(name, true);
         config.addRaftSemaphoreConfig(semaphoreConfig);
         return config;
     }

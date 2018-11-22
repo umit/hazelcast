@@ -1,8 +1,5 @@
 package com.hazelcast.raft.service.lock;
 
-import com.hazelcast.config.Config;
-import com.hazelcast.config.raft.RaftGroupConfig;
-import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
@@ -43,24 +40,12 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
     private HazelcastInstance[] instances;
     protected HazelcastInstance lockInstance;
     private FencedLock lock;
-    private String name = "lock";
 
     @Before
     public void setup() {
         instances = createInstances();
-
-        lock = createLock(name);
+        lock = createLock("lock");
         assertNotNull(lock);
-    }
-
-    @Override
-    protected Config createConfig(int groupSize, int metadataGroupSize) {
-        Config config = super.createConfig(groupSize, metadataGroupSize);
-        config.getRaftConfig().addGroupConfig(new RaftGroupConfig(name, groupSize));
-
-        RaftLockConfig lockConfig = new RaftLockConfig(name, name);
-        config.addRaftLockConfig(lockConfig);
-        return config;
     }
 
     protected HazelcastInstance[] createInstances() {
@@ -71,12 +56,12 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
         lockInstance = instances[RandomPicker.getInt(instances.length)];
         NodeEngineImpl nodeEngine = getNodeEngineImpl(lockInstance);
         RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
-        RaftLockService lockService = nodeEngine.getService(RaftLockService.SERVICE_NAME);
 
         try {
-            RaftGroupId groupId = lockService.createRaftGroup(name).get();
+            RaftGroupId groupId = raftService.createRaftGroupForProxy(name);
+            String objectName = raftService.getObjectNameForProxy(name);
             SessionManagerService sessionManager = nodeEngine.getService(SessionManagerService.SERVICE_NAME);
-            return new RaftFencedLockProxy(raftService.getInvocationManager(), sessionManager, groupId, name);
+            return new RaftFencedLockProxy(raftService.getInvocationManager(), sessionManager, groupId, objectName);
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }

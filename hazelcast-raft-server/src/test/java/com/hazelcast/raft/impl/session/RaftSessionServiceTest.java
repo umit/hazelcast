@@ -2,7 +2,6 @@ package com.hazelcast.raft.impl.session;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.config.raft.RaftConfig;
-import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.instance.Node;
 import com.hazelcast.raft.RaftGroupId;
@@ -61,10 +60,10 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
 
     @Before
     public void setup() throws ExecutionException, InterruptedException {
-        int raftGroupSize = 3;
-        instances = newInstances(raftGroupSize);
+        int groupSize = 3;
+        instances = newInstances(groupSize);
         invocationManager = getRaftInvocationManager(instances[0]);
-        groupId = invocationManager.createRaftGroup(RAFT_GROUP_NAME, raftGroupSize).get();
+        groupId = invocationManager.createRaftGroup(RAFT_GROUP_NAME, groupSize).get();
     }
 
     @Test
@@ -336,11 +335,11 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
     }
 
     @Override
-    protected Config createConfig(int groupSize, int metadataGroupSize) {
-        Config config = super.createConfig(groupSize, metadataGroupSize);
+    protected Config createConfig(int cpNodeCount, int groupSize) {
+        Config config = super.createConfig(cpNodeCount, groupSize);
         RaftConfig raftConfig = config.getRaftConfig();
         raftConfig.getRaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(LOG_ENTRY_COUNT_TO_SNAPSHOT);
-        raftConfig.addGroupConfig(new RaftGroupConfig(RAFT_GROUP_NAME, 3));
+
         return config;
     }
 

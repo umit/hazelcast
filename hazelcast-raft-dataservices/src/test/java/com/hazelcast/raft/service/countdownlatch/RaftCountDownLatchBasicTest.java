@@ -1,8 +1,5 @@
 package com.hazelcast.raft.service.countdownlatch;
 
-import com.hazelcast.config.Config;
-import com.hazelcast.config.raft.RaftCountDownLatchConfig;
-import com.hazelcast.config.raft.RaftGroupConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
@@ -31,19 +28,16 @@ public class RaftCountDownLatchBasicTest extends HazelcastRaftTestSupport {
 
     private HazelcastInstance[] instances;
     private ICountDownLatch latch;
-    private String name = "latch";
-    private int groupSize = 3;
 
     @Before
     public void setup() {
         instances = createInstances();
-
-        latch = createLatch(name);
+        latch = createLatch("latch");
         assertNotNull(latch);
     }
 
     protected HazelcastInstance[] createInstances() {
-        return newInstances(groupSize);
+        return newInstances(3);
     }
 
     protected ICountDownLatch createLatch(String name) {
@@ -163,16 +157,6 @@ public class RaftCountDownLatchBasicTest extends HazelcastRaftTestSupport {
         long elapsed = System.currentTimeMillis() - time;
         assertTrue(elapsed >= 100);
         assertEquals(1, latch.getCount());
-    }
-
-    @Override
-    protected Config createConfig(int groupSize, int metadataGroupSize) {
-        Config config = super.createConfig(groupSize, metadataGroupSize);
-        config.getRaftConfig().addGroupConfig(new RaftGroupConfig(name, groupSize));
-
-        RaftCountDownLatchConfig latchConfig = new RaftCountDownLatchConfig(name, name);
-        config.addRaftCountDownLatchConfig(latchConfig);
-        return config;
     }
 
 }

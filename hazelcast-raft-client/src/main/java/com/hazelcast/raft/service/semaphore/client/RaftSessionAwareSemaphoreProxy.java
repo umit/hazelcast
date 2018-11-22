@@ -31,6 +31,7 @@ import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreService;
 import com.hazelcast.raft.service.session.SessionAwareProxy;
 import com.hazelcast.raft.service.session.SessionManagerProvider;
+import com.hazelcast.raft.service.spi.client.RaftGroupTaskFactoryProvider;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.util.Clock;
 
@@ -39,10 +40,10 @@ import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
 import static com.hazelcast.raft.impl.RaftGroupIdImpl.dataSize;
+import static com.hazelcast.raft.impl.service.RaftService.getObjectNameForProxy;
 import static com.hazelcast.raft.service.semaphore.client.SemaphoreMessageTaskFactoryProvider.ACQUIRE_PERMITS_TYPE;
 import static com.hazelcast.raft.service.semaphore.client.SemaphoreMessageTaskFactoryProvider.AVAILABLE_PERMITS_TYPE;
 import static com.hazelcast.raft.service.semaphore.client.SemaphoreMessageTaskFactoryProvider.CHANGE_PERMITS_TYPE;
-import static com.hazelcast.raft.service.semaphore.client.SemaphoreMessageTaskFactoryProvider.CREATE_TYPE;
 import static com.hazelcast.raft.service.semaphore.client.SemaphoreMessageTaskFactoryProvider.DESTROY_TYPE;
 import static com.hazelcast.raft.service.semaphore.client.SemaphoreMessageTaskFactoryProvider.DRAIN_PERMITS_TYPE;
 import static com.hazelcast.raft.service.semaphore.client.SemaphoreMessageTaskFactoryProvider.INIT_SEMAPHORE_TYPE;
@@ -67,14 +68,15 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
     public static ISemaphore create(HazelcastInstance instance, String name) {
         int dataSize = ClientMessage.HEADER_SIZE + calculateDataSize(name);
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
-        msg.setMessageType(CREATE_TYPE);
+        msg.setMessageType(RaftGroupTaskFactoryProvider.CREATE_TYPE);
         msg.setRetryable(false);
         msg.setOperationName("");
         msg.set(name);
         msg.updateFrameLength();
 
+        String objectName = getObjectNameForProxy(name);
         HazelcastClientInstanceImpl client = getClient(instance);
-        ClientInvocationFuture f = new ClientInvocation(client, msg, name).invoke();
+        ClientInvocationFuture f = new ClientInvocation(client, msg, objectName).invoke();
 
         InternalCompletableFuture<RaftGroupId> future = new ClientDelegatingFuture<RaftGroupId>(f, client.getSerializationService(),
                 new ClientMessageDecoder() {
@@ -85,7 +87,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
                 });
 
         RaftGroupId groupId = future.join();
-        return new RaftSessionAwareSemaphoreProxy(instance, groupId, name);
+        return new RaftSessionAwareSemaphoreProxy(instance, groupId, objectName);
     }
 
     private final HazelcastClientInstanceImpl client;

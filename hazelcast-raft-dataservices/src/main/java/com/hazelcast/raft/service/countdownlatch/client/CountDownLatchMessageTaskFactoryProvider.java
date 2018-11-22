@@ -30,13 +30,12 @@ import com.hazelcast.spi.impl.NodeEngineImpl;
  */
 public class CountDownLatchMessageTaskFactoryProvider implements MessageTaskFactoryProvider {
 
-    public static final int CREATE_TYPE = 13000;
-    public static final int DESTROY_TYPE = 13001;
-    public static final int AWAIT_TYPE = 13002;
-    public static final int COUNT_DOWN_TYPE = 13003;
-    public static final int GET_REMAINING_COUNT_TYPE = 13004;
-    public static final int GET_ROUND_TYPE = 13005;
-    public static final int TRY_SET_COUNT_TYPE = 13006;
+    public static final int DESTROY_TYPE = 13000;
+    public static final int AWAIT_TYPE = 13001;
+    public static final int COUNT_DOWN_TYPE = 13002;
+    public static final int GET_REMAINING_COUNT_TYPE = 13003;
+    public static final int GET_ROUND_TYPE = 13004;
+    public static final int TRY_SET_COUNT_TYPE = 13005;
 
     private final Node node;
 
@@ -47,13 +46,6 @@ public class CountDownLatchMessageTaskFactoryProvider implements MessageTaskFact
     @Override
     public MessageTaskFactory[] getFactories() {
         MessageTaskFactory[] factories = new MessageTaskFactory[Short.MAX_VALUE];
-
-        factories[CREATE_TYPE] = new MessageTaskFactory() {
-            @Override
-            public MessageTask create(ClientMessage clientMessage, Connection connection) {
-                return new CreateCountDownLatchMessageTask(clientMessage, node, connection);
-            }
-        };
 
         factories[DESTROY_TYPE] = new MessageTaskFactory() {
             @Override

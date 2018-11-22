@@ -2,8 +2,6 @@ package com.hazelcast.raft.service.lock;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.config.raft.RaftConfig;
-import com.hazelcast.config.raft.RaftGroupConfig;
-import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftNodeImpl;
@@ -36,7 +34,6 @@ import static com.hazelcast.raft.impl.RaftUtil.getSnapshotEntry;
 import static com.hazelcast.raft.service.lock.RaftFencedLockBasicTest.lockByOtherThread;
 import static com.hazelcast.raft.service.session.AbstractSessionManager.NO_SESSION_ID;
 import static java.util.concurrent.TimeUnit.MINUTES;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -58,7 +55,6 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
     @Before
     public void setup() {
         instances = createInstances();
-
         lock = createLock();
         assertNotNull(lock);
     }
@@ -71,28 +67,25 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
     private FencedLock createLock(HazelcastInstance instance) {
         NodeEngineImpl nodeEngine = getNodeEngineImpl(instance);
         RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
-        RaftLockService lockService = nodeEngine.getService(RaftLockService.SERVICE_NAME);
 
         try {
-            RaftGroupId groupId = lockService.createRaftGroup(name).get();
+            RaftGroupId groupId = raftService.createRaftGroupForProxy(name);
+            String objectName = raftService.getObjectNameForProxy(name);
             SessionManagerService sessionManager = nodeEngine.getService(SessionManagerService.SERVICE_NAME);
-            return new RaftFencedLockProxy(raftService.getInvocationManager(), sessionManager, groupId, name);
+            return new RaftFencedLockProxy(raftService.getInvocationManager(), sessionManager, groupId, objectName);
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
     }
 
     @Override
-    protected Config createConfig(int groupSize, int metadataGroupSize) {
-        Config config = super.createConfig(groupSize, metadataGroupSize);
+    protected Config createConfig(int cpNodeCount, int groupSize) {
+        Config config = super.createConfig(cpNodeCount, groupSize);
         RaftConfig raftConfig = config.getRaftConfig();
         raftConfig.getRaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(LOG_ENTRY_COUNT_TO_SNAPSHOT);
-        raftConfig.addGroupConfig(new RaftGroupConfig(name, groupSize));
         raftConfig.setSessionTimeToLiveSeconds(10);
-        raftConfig.setSessionHeartbeatIntervalMillis(SECONDS.toMillis(1));
+        raftConfig.setSessionHeartbeatIntervalSeconds(1);
 
-        RaftLockConfig lockConfig = new RaftLockConfig(name, name);
-        config.addRaftLockConfig(lockConfig);
         return config;
     }
 

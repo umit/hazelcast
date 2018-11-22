@@ -32,12 +32,13 @@ import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.spi.InternalCompletableFuture;
 
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
+import static com.hazelcast.raft.impl.service.RaftService.getObjectNameForProxy;
 import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.ADD_AND_GET_TYPE;
 import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.COMPARE_AND_SET_TYPE;
-import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.CREATE_TYPE;
 import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.DESTROY_TYPE;
 import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.GET_AND_ADD_TYPE;
 import static com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider.GET_AND_SET_TYPE;
+import static com.hazelcast.raft.service.spi.client.RaftGroupTaskFactoryProvider.CREATE_TYPE;
 import static com.hazelcast.raft.service.util.ClientAccessor.getClient;
 
 /**
@@ -57,8 +58,9 @@ public class RaftAtomicLongProxy implements IAtomicLong {
         msg.set(name);
         msg.updateFrameLength();
 
+        String objectName = getObjectNameForProxy(name);
         HazelcastClientInstanceImpl client = getClient(instance);
-        ClientInvocationFuture f = new ClientInvocation(client, msg, name).invoke();
+        ClientInvocationFuture f = new ClientInvocation(client, msg, objectName).invoke();
 
         InternalCompletableFuture<RaftGroupId> future = new ClientDelegatingFuture<RaftGroupId>(f, client.getSerializationService(),
                 new ClientMessageDecoder() {
@@ -67,9 +69,8 @@ public class RaftAtomicLongProxy implements IAtomicLong {
                 return RaftGroupIdImpl.readFrom(msg);
             }
         });
-
         RaftGroupId groupId = future.join();
-        return new RaftAtomicLongProxy(instance, groupId, name);
+        return new RaftAtomicLongProxy(instance, groupId, objectName);
     }
 
     private final HazelcastClientInstanceImpl client;
