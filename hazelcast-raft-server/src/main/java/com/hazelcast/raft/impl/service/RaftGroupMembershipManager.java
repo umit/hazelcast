@@ -36,14 +36,12 @@ import com.hazelcast.raft.impl.service.operation.metadata.DestroyRaftNodesOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetDestroyingRaftGroupIdsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetMembershipChangeContextOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
-import com.hazelcast.raft.impl.service.operation.metadata.TriggerExpandRaftGroupsOp;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.OperationService;
-import com.hazelcast.util.RandomPicker;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -242,46 +240,11 @@ class RaftGroupMembershipManager {
                 return;
             }
 
-            MembershipChangeContext membershipChangeContext = decideMembersToAddIfNeeded(getMembershipChangeContext());
+            MembershipChangeContext membershipChangeContext = getMembershipChangeContext();
             if (membershipChangeContext == null) {
                 return;
             }
 
-            handleMembershipChanges(membershipChangeContext);
-        }
-
-        private MembershipChangeContext getMembershipChangeContext() {
-            InternalCompletableFuture<MembershipChangeContext> f = queryMetadata(new GetMembershipChangeContextOp());
-            return f.join();
-        }
-
-        private MembershipChangeContext decideMembersToAddIfNeeded(MembershipChangeContext membershipChangeContext) {
-            if (membershipChangeContext == null) {
-                return null;
-            } else if (membershipChangeContext.hasNoPendingMembersToAdd()) {
-                return membershipChangeContext;
-            }
-
-            Map<RaftGroupId, RaftMemberImpl> membersToAdd = new HashMap<RaftGroupId, RaftMemberImpl>();
-            for (Entry<RaftGroupId, List<RaftMemberImpl>> e : membershipChangeContext.getMemberMissingGroups().entrySet()) {
-                List<RaftMemberImpl> candidates = e.getValue();
-                int idx = RandomPicker.getInt(candidates.size());
-                RaftMemberImpl memberToAdd = candidates.get(idx);
-                membersToAdd.put(e.getKey(), memberToAdd);
-            }
-
-            RaftOp op = new TriggerExpandRaftGroupsOp(membersToAdd);
-            ICompletableFuture<MembershipChangeContext> future = invocationManager.invoke(METADATA_GROUP_ID, op);
-
-            try {
-                return future.get();
-            } catch (Exception e) {
-                logger.severe("Cannot commit members to add: " + membersToAdd, e);
-                return null;
-            }
-        }
-
-        private void handleMembershipChanges(MembershipChangeContext membershipChangeContext) {
             logger.fine("Handling " + membershipChangeContext);
 
             List<RaftGroupMembershipChangeContext> changes = membershipChangeContext.getChanges();
@@ -300,6 +263,11 @@ class RaftGroupMembershipManager {
                         + ". completed: " + changedGroups, e);
                 Thread.currentThread().interrupt();
             }
+        }
+
+        private MembershipChangeContext getMembershipChangeContext() {
+            InternalCompletableFuture<MembershipChangeContext> f = queryMetadata(new GetMembershipChangeContextOp());
+            return f.join();
         }
 
         private void addMember(final Map<RaftGroupId, Tuple2<Long, Long>> changedGroups,

@@ -78,18 +78,6 @@ public interface RaftManagementService {
     ICompletableFuture<Void> triggerRemoveRaftMember(RaftMember member);
 
     /**
-     * Initiates a rebalancing process for Raft groups that has missing members.
-     * A Raft group has a missing member if its current member count is smaller then its initial member count.
-     * If there's an ongoing member removal operation, then the rebalance call will fail with {@link IllegalStateException}.
-     * <p>
-     * This method is idempotent.
-     *
-     * @return a Future representing pending completion of the operation
-     * @throws IllegalStateException if there's an ongoing member removal operation
-     */
-    ICompletableFuture<Void> triggerRebalanceRaftGroups();
-
-    /**
      * Unconditionally destroys the Raft group without using Raft mechanics.
      * This method must be used only when the given Raft group loses its majority and cannot make progress anymore.
      * Normally, membership changes in Raft groups are done via the Raft algorithm.
