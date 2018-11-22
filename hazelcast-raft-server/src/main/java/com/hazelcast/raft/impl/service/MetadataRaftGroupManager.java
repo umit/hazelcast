@@ -44,12 +44,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -330,60 +328,6 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         return null;
     }
 
-    public void triggerRebalanceRaftGroups() {
-        checkIfMetadataRaftGroupInitialized();
-
-        if (membershipChangeContext != null) {
-            checkState(membershipChangeContext.getLeavingMember() == null,
-                    "Cannot rebalance raft groups because there is ongoing " + membershipChangeContext);
-            return;
-        }
-
-        Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups = getMemberMissingActiveRaftGroups();
-        if (memberMissingGroups.size() > 0) {
-            logger.info("Raft group rebalancing is triggered for " + memberMissingGroups);
-            membershipChangeContext = new MembershipChangeContext(memberMissingGroups);
-        }
-    }
-
-    public MembershipChangeContext triggerExpandRaftGroups(Map<RaftGroupId, RaftMemberImpl> membersToAdd) {
-        checkNotNull(membersToAdd);
-        checkState(membershipChangeContext != null,
-                "There is no membership context to expand groups with members: " + membersToAdd);
-
-        for (RaftMemberImpl member : membersToAdd.values()) {
-            checkTrue(activeMembers.contains(member), membersToAdd + " is not in active members: " + activeMembers);
-        }
-
-        Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups = membershipChangeContext.getMemberMissingGroups();
-        List<RaftGroupMembershipChangeContext> changes = new ArrayList<RaftGroupMembershipChangeContext>();
-        for (Entry<RaftGroupId, RaftMemberImpl> e : membersToAdd.entrySet()) {
-            RaftGroupId groupId = e.getKey();
-            RaftMemberImpl memberToAdd = e.getValue();
-            RaftGroupInfo group = groups.get(groupId);
-            checkTrue(group != null, groupId + " not found in the raft groups");
-
-            Collection<RaftMemberImpl> candidates = memberMissingGroups.get(groupId);
-            checkTrue(candidates != null, groupId + " has no membership change");
-            checkTrue(candidates.contains(memberToAdd), groupId + " does not have " + membersToAdd
-                    + " in its candidate list");
-
-            if (group.status() == DESTROYED) {
-                logger.warning("Will not expand " + groupId + " with " + membersToAdd + " since the group is already destroyed");
-                continue;
-            }
-
-            long idx = group.getMembersCommitIndex();
-            Collection<RaftMemberImpl> members = group.memberImpls();
-            changes.add(new RaftGroupMembershipChangeContext(groupId, idx, members, memberToAdd, null));
-        }
-
-        logger.info("Raft groups will be expanded with the following changes: " + changes);
-
-        membershipChangeContext = membershipChangeContext.setChanges(changes);
-        return membershipChangeContext;
-    }
-
     public void triggerDestroyRaftGroup(RaftGroupId groupId) {
         checkNotNull(groupId);
         checkState(membershipChangeContext == null,
@@ -551,25 +495,15 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
 
         RaftMemberImpl leavingMember = membershipChangeContext.getLeavingMember();
         if (checkSafeToRemove(leavingMember)) {
-            checkState(membershipChangeContext.hasNoPendingChanges(), "Leaving " + leavingMember
+            checkState(membershipChangeContext.getChanges().isEmpty(), "Leaving " + leavingMember
                     + " is removed from all groups but there are still pending membership changes: "
                     + membershipChangeContext);
             logger.info(leavingMember + " is removed from all raft groups and active members");
             removeActiveMember(leavingMember);
             membershipChangeContext = null;
-            return null;
-        }
-
-        if (membershipChangeContext.shouldContinueRaftGroupRebalancing()) {
-            // the current raft group rebalancing step is completed. let's attempt for another one
-            Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups = getMemberMissingActiveRaftGroups();
-            if (memberMissingGroups.size() > 0) {
-                membershipChangeContext = new MembershipChangeContext(memberMissingGroups);
-                logger.info("Raft group rebalancing continues with " + memberMissingGroups);
-            } else {
-                membershipChangeContext = null;
-                logger.info("Rebalancing is completed.");
-            }
+        } else if (membershipChangeContext.getChanges().isEmpty()) {
+            logger.info("Rebalancing is completed.");
+            membershipChangeContext = null;
         }
 
         return membershipChangeContext;
@@ -618,17 +552,18 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         return true;
     }
 
-    private Map<RaftGroupId, List<RaftMemberImpl>> getMemberMissingActiveRaftGroups() {
-        Map<RaftGroupId, List<RaftMemberImpl>> memberMissingGroups = new HashMap<RaftGroupId, List<RaftMemberImpl>>();
+    private List<RaftGroupMembershipChangeContext> getGroupMembershipChangesForNewMember(RaftMemberImpl newMember) {
+        List<RaftGroupMembershipChangeContext> changes = new ArrayList<RaftGroupMembershipChangeContext>();
         for (RaftGroupInfo group : groups.values()) {
-            if (group.status() == ACTIVE && group.initialMemberCount() > group.memberCount()
-                    && activeMembers.size() > group.memberCount()) {
-                List<RaftMemberImpl> candidates = new ArrayList<RaftMemberImpl>(activeMembers);
-                candidates.removeAll(group.memberImpls());
-                memberMissingGroups.put(group.id(), candidates);
+            if (group.status() == ACTIVE && group.initialMemberCount() > group.memberCount()) {
+                checkState(!group.memberImpls().contains(newMember), group + " already contains: " + newMember);
+
+                changes.add(new RaftGroupMembershipChangeContext(group.id(), group.getMembersCommitIndex(), group.memberImpls(),
+                        newMember, null));
             }
         }
-        return memberMissingGroups;
+
+        return changes;
     }
 
     public Collection<RaftMemberImpl> getActiveMembers() {
@@ -687,13 +622,20 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             logger.fine(member + " already exists. Silently returning from addActiveMember().");
             return;
         }
-        if (membershipChangeContext != null && member.equals(membershipChangeContext.getLeavingMember())) {
-            throw new IllegalArgumentException(member + " is already being removed!");
-        }
+
+        checkState(membershipChangeContext == null,
+                "Cannot rebalance raft groups because there is ongoing " + membershipChangeContext);
+
         Collection<RaftMemberImpl> newMembers = new LinkedHashSet<RaftMemberImpl>(activeMembers);
         newMembers.add(member);
         doSetActiveMembers(unmodifiableCollection(newMembers));
         logger.info("Added " + member + ". Active members are " + newMembers);
+
+        List<RaftGroupMembershipChangeContext> changes = getGroupMembershipChangesForNewMember(member);
+        if (changes.size() > 0) {
+            logger.info("Raft group rebalancing is triggered for " + changes);
+            membershipChangeContext = new MembershipChangeContext(null, changes);
+        }
     }
 
     private void removeActiveMember(RaftMemberImpl member) {

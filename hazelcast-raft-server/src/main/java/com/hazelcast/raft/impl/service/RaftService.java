@@ -47,7 +47,6 @@ import com.hazelcast.raft.impl.service.operation.metadata.GetActiveRaftMembersOp
 import com.hazelcast.raft.impl.service.operation.metadata.GetInitialRaftGroupMembersIfCurrentGroupMemberOp;
 import com.hazelcast.raft.impl.service.operation.metadata.GetRaftGroupOp;
 import com.hazelcast.raft.impl.service.operation.metadata.RaftServicePreJoinOp;
-import com.hazelcast.raft.impl.service.operation.metadata.TriggerRebalanceRaftGroupsOp;
 import com.hazelcast.raft.impl.service.operation.metadata.TriggerRemoveRaftMemberOp;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
@@ -173,14 +172,6 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
         invocationManager.reset();
         metadataGroupManager.reset();
-    }
-
-    /**
-     * this method is idempotent
-     */
-    @Override
-    public ICompletableFuture<Void> triggerRebalanceRaftGroups() {
-        return invocationManager.invoke(METADATA_GROUP_ID, new TriggerRebalanceRaftGroupsOp());
     }
 
     @Override
