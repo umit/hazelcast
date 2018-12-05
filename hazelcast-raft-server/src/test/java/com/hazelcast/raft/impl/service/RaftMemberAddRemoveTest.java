@@ -40,10 +40,8 @@ import org.junit.runner.RunWith;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -52,6 +50,7 @@ import java.util.concurrent.TimeoutException;
 import static com.hazelcast.raft.QueryPolicy.LEADER_LOCAL;
 import static com.hazelcast.raft.impl.RaftUtil.getLastLogOrSnapshotEntry;
 import static com.hazelcast.raft.impl.service.MetadataRaftGroupManager.METADATA_GROUP_ID;
+import static com.hazelcast.util.FutureUtil.returnWithDeadline;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -529,32 +528,28 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testNodesTerminate_whenMoreThanInitialRaftMembers_areStartedConcurrently() throws Exception {
+    public void testNodesBecomeAP_whenMoreThanInitialRaftMembers_areStartedConcurrently() {
         final Config config = createConfig(3, 2);
 
-        final Set<HazelcastInstance> instances = Collections.newSetFromMap(new ConcurrentHashMap<HazelcastInstance, Boolean>());
-        Collection<Future> futures = new ArrayList<Future>();
-
-        for (int i = 0; i < 8; i++) {
-            Future future = spawn(new Runnable() {
+        final Collection<Future<HazelcastInstance>> futures = new ArrayList<Future<HazelcastInstance>>();
+        int nodeCount = 8;
+        for (int i = 0; i < nodeCount; i++) {
+            Future<HazelcastInstance> future = spawn(new Callable<HazelcastInstance>() {
                 @Override
-                public void run() {
-                    HazelcastInstance instance = factory.newHazelcastInstance(config);
-                    instances.add(instance);
+                public HazelcastInstance call() {
+                    return factory.newHazelcastInstance(config);
                 }
             });
             futures.add(future);
         }
 
-        for (Future future : futures) {
-            future.get();
-        }
+        final Collection<HazelcastInstance> instances =
+                returnWithDeadline(futures, ASSERT_TRUE_EVENTUALLY_TIMEOUT, TimeUnit.SECONDS);
+        assertClusterSizeEventually(nodeCount, instances);
 
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                assertEquals(8, instances.size());
-
                 int cpCount = 0;
                 int metadataCount = 0;
                 for (HazelcastInstance instance : instances) {
@@ -570,6 +565,11 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
                 assertEquals(2, metadataCount);
             }
         });
+    }
+
+    @Test
+    public void testNodesTerminate_whenInitialRaftMembersConflict() {
+        // TODO
     }
 
 }
