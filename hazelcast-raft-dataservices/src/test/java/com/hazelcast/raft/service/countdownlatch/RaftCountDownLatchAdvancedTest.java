@@ -209,7 +209,7 @@ public class RaftCountDownLatchAdvancedTest extends HazelcastRaftTestSupport {
 
         final HazelcastInstance newInstance = factory.newHazelcastInstance(createConfig(groupSize, groupSize));
         getRaftService(newInstance).triggerRaftMemberPromotion().get();
-        getRaftService(newInstance).triggerRebalanceRaftGroups().get();
+//        getRaftService(newInstance).triggerRebalanceRaftGroups().get();
 
         assertTrueEventually(new AssertTask() {
             @Override

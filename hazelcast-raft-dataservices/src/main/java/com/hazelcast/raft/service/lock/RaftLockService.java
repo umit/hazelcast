@@ -16,7 +16,6 @@
 
 package com.hazelcast.raft.service.lock;
 
-import com.hazelcast.client.impl.protocol.ClientExceptionFactory;
 import com.hazelcast.core.ILock;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.service.blocking.AbstractBlockingService;
@@ -56,9 +55,6 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
     @Override
     protected void initImpl() {
         super.initImpl();
-
-        ClientExceptionFactory clientExceptionFactory = this.nodeEngine.getNode().clientEngine.getClientExceptionFactory();
-        WaitKeyCancelledException.register(clientExceptionFactory);
     }
 
     @Override

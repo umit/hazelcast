@@ -59,7 +59,7 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
 
         try {
             RaftGroupId groupId = raftService.createRaftGroupForProxy(name);
-            String objectName = raftService.getObjectNameForProxy(name);
+            String objectName = RaftService.getObjectNameForProxy(name);
             SessionManagerService sessionManager = nodeEngine.getService(SessionManagerService.SERVICE_NAME);
             return new RaftFencedLockProxy(raftService.getInvocationManager(), sessionManager, groupId, objectName);
         } catch (Exception e) {

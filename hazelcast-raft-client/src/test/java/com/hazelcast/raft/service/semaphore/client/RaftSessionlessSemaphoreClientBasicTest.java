@@ -4,8 +4,6 @@ import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.impl.session.SessionExpiredException;
-import com.hazelcast.raft.service.exception.WaitKeyCancelledException;
 import com.hazelcast.raft.service.semaphore.RaftSessionlessSemaphoreBasicTest;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
@@ -14,8 +12,6 @@ import com.hazelcast.test.annotation.QuickTest;
 import org.junit.After;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-
-import static com.hazelcast.raft.service.util.ClientAccessor.getClient;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
@@ -33,8 +29,6 @@ public class RaftSessionlessSemaphoreClientBasicTest extends RaftSessionlessSema
         HazelcastInstance[] instances = super.createInstances();
         TestHazelcastFactory f = (TestHazelcastFactory) factory;
         client = f.newHazelcastClient();
-        SessionExpiredException.register(getClient(client).getClientExceptionFactory());
-        WaitKeyCancelledException.register(getClient(client).getClientExceptionFactory());
         return instances;
     }
 

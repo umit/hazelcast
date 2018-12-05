@@ -16,7 +16,6 @@
 
 package com.hazelcast.raft.impl.session;
 
-import com.hazelcast.client.impl.protocol.ClientExceptionFactory;
 import com.hazelcast.core.HazelcastException;
 
 /**
@@ -37,14 +36,5 @@ public class SessionExpiredException extends HazelcastException {
 
     public SessionExpiredException(String message, Throwable cause) {
         super(message, cause);
-    }
-
-    public static void register(ClientExceptionFactory factory) {
-        factory.register(ERROR_CODE, SessionExpiredException.class, new ClientExceptionFactory.ExceptionFactory() {
-            @Override
-            public Throwable createException(String message, Throwable cause) {
-                return new SessionExpiredException(message, cause);
-            }
-        });
     }
 }

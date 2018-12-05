@@ -70,7 +70,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
 
         try {
             RaftGroupId groupId = raftService.createRaftGroupForProxy(name);
-            String objectName = raftService.getObjectNameForProxy(name);
+            String objectName = RaftService.getObjectNameForProxy(name);
             SessionManagerService sessionManager = nodeEngine.getService(SessionManagerService.SERVICE_NAME);
             return new RaftFencedLockProxy(raftService.getInvocationManager(), sessionManager, groupId, objectName);
         } catch (Exception e) {
@@ -227,7 +227,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
 
         final HazelcastInstance newInstance = factory.newHazelcastInstance(createConfig(groupSize, groupSize));
         getRaftService(newInstance).triggerRaftMemberPromotion().get();
-        getRaftService(newInstance).triggerRebalanceRaftGroups().get();
+//        getRaftService(newInstance).triggerRebalanceRaftGroups().get();
 
         assertTrueEventually(new AssertTask() {
             @Override

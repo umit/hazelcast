@@ -16,8 +16,9 @@
 
 package com.hazelcast.raft.service.session;
 
-import com.hazelcast.client.impl.ClientMessageDecoder;
-import com.hazelcast.client.impl.HazelcastClientInstanceImpl;
+import com.hazelcast.client.impl.clientside.ClientExceptionFactory;
+import com.hazelcast.client.impl.clientside.ClientMessageDecoder;
+import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
@@ -26,7 +27,9 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.raft.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
+import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.raft.impl.session.SessionResponse;
+import com.hazelcast.raft.service.exception.WaitKeyCancelledException;
 import com.hazelcast.raft.service.session.client.SessionMessageTaskFactoryProvider;
 import com.hazelcast.spi.InternalCompletableFuture;
 
@@ -47,6 +50,19 @@ public class ClientSessionManager extends AbstractSessionManager {
 
     public ClientSessionManager(HazelcastClientInstanceImpl client) {
         this.client = client;
+        ClientExceptionFactory factory = client.getClientExceptionFactory();
+        factory.register(SessionExpiredException.ERROR_CODE, SessionExpiredException.class, new ClientExceptionFactory.ExceptionFactory() {
+            @Override
+            public Throwable createException(String message, Throwable cause) {
+                return new SessionExpiredException(message, cause);
+            }
+        });
+        factory.register(WaitKeyCancelledException.ERROR_CODE, WaitKeyCancelledException.class, new ClientExceptionFactory.ExceptionFactory() {
+            @Override
+            public Throwable createException(String message, Throwable cause) {
+                return new WaitKeyCancelledException(message, cause);
+            }
+        });
     }
 
     @Override

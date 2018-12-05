@@ -34,7 +34,7 @@ public class SimpleCompletableFuture<T> extends AbstractCompletableFuture<T> {
     }
 
     @Override
-    public void setResult(Object result) {
-        super.setResult(result);
+    public boolean setResult(Object result) {
+        return super.setResult(result);
     }
 }

@@ -16,7 +16,7 @@
 
 package com.hazelcast.raft.service.exception;
 
-import com.hazelcast.client.impl.protocol.ClientExceptionFactory;
+
 import com.hazelcast.core.HazelcastException;
 
 /**
@@ -37,15 +37,6 @@ public class WaitKeyCancelledException extends HazelcastException {
 
     public WaitKeyCancelledException(String message, Throwable cause) {
         super(message, cause);
-    }
-
-    public static void register(ClientExceptionFactory factory) {
-        factory.register(ERROR_CODE, WaitKeyCancelledException.class, new ClientExceptionFactory.ExceptionFactory() {
-            @Override
-            public Throwable createException(String message, Throwable cause) {
-                return new WaitKeyCancelledException(message, cause);
-            }
-        });
     }
 
 }
