@@ -18,7 +18,7 @@ package com.hazelcast.raft.impl.service.proxy;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;

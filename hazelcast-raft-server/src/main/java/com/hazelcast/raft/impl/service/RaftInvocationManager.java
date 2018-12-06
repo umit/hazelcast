@@ -22,7 +22,7 @@ import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.QueryPolicy;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.exception.CannotCreateRaftGroupException;

@@ -2,7 +2,7 @@ package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICompletableFuture;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.test.HazelcastSerialClassRunner;

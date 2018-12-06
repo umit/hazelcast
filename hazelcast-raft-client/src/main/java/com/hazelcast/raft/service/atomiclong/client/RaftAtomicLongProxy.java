@@ -26,7 +26,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.nio.Bits;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;
 import com.hazelcast.spi.InternalCompletableFuture;

@@ -17,7 +17,7 @@
 package com.hazelcast.raft.exception;
 
 import com.hazelcast.core.IndeterminateOperationState;
-import com.hazelcast.raft.RaftMember;
+import com.hazelcast.cp.RaftMember;
 
 /**
  * A {@code RaftException} which is thrown when an installed snapshot causes

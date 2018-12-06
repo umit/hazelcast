@@ -18,7 +18,7 @@ package com.hazelcast.raft.impl.service.proxy;
 
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.command.DestroyRaftGroupCmd;
 import com.hazelcast.raft.impl.RaftNode;
 import com.hazelcast.raft.impl.RaftOp;

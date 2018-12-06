@@ -17,7 +17,7 @@
 package com.hazelcast.raft.service.atomiclong.operation;
 
 import com.hazelcast.raft.QueryPolicy;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongDataSerializerHook;
 import com.hazelcast.raft.service.atomiclong.proxy.RaftAtomicLongProxy;

@@ -17,6 +17,8 @@
 package com.hazelcast.raft;
 
 import com.hazelcast.core.ICompletableFuture;
+import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.RaftMember;
 
 import java.util.Collection;
 

@@ -18,7 +18,7 @@ package com.hazelcast.raft.impl;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.serialization.DataSerializable;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.spi.NodeEngine;
 
 /**

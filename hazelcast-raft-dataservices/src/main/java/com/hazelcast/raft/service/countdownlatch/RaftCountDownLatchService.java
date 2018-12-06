@@ -17,7 +17,7 @@
 package com.hazelcast.raft.service.countdownlatch;
 
 import com.hazelcast.core.ICountDownLatch;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.raft.service.blocking.AbstractBlockingService;

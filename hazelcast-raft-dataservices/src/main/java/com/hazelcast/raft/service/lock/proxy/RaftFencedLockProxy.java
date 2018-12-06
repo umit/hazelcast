@@ -16,10 +16,10 @@
 
 package com.hazelcast.raft.service.lock.proxy;
 
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
-import com.hazelcast.raft.service.lock.FencedLock;
+import com.hazelcast.cp.FencedLock;
 import com.hazelcast.raft.service.lock.RaftLockOwnershipState;
 import com.hazelcast.raft.service.lock.operation.ForceUnlockOp;
 import com.hazelcast.raft.service.lock.operation.GetLockOwnershipStateOp;

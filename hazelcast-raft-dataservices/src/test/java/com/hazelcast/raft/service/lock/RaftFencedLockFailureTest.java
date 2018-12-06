@@ -1,7 +1,7 @@
 package com.hazelcast.raft.service.lock;
 
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;

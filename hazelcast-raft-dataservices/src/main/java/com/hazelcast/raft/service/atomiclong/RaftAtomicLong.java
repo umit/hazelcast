@@ -16,7 +16,7 @@
 
 package com.hazelcast.raft.service.atomiclong;
 
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 
 /**
  * State-machine implementation of the Raft-based atomic long

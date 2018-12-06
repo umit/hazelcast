@@ -16,7 +16,7 @@
 
 package com.hazelcast.raft.impl.service;
 
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 
 /**
  * Services can implement this interface to get notified when there is a leader change in a Raft group.

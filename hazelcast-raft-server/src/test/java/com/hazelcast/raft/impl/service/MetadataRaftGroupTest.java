@@ -6,7 +6,7 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.Member;
 import com.hazelcast.nio.Address;
 import com.hazelcast.raft.RaftGroup.RaftGroupStatus;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.service.operation.metadata.CreateRaftGroupOp;

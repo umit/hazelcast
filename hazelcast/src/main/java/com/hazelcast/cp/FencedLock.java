@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,16 @@
  * limitations under the License.
  */
 
-package com.hazelcast.raft.service.lock;
+package com.hazelcast.cp;
 
 import com.hazelcast.core.DistributedObject;
-import com.hazelcast.raft.RaftGroupId;
 
-import javax.annotation.Nonnull;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 
 /**
  * TODO: Javadoc Pending...
- * TODO: Move this interface to somewhere like com.hazelcast.core
  */
 public interface FencedLock extends Lock, DistributedObject {
 
@@ -40,13 +37,11 @@ public interface FencedLock extends Lock, DistributedObject {
 
     long tryLockAndGetFence();
 
-    boolean tryLock(long time, @Nonnull TimeUnit unit);
+    boolean tryLock(long time, TimeUnit unit);
 
-    long tryLockAndGetFence(long time, @Nonnull TimeUnit unit);
+    long tryLockAndGetFence(long time, TimeUnit unit);
 
     void unlock();
-
-    @Nonnull Condition newCondition();
 
     void forceUnlock();
 
@@ -64,4 +59,9 @@ public interface FencedLock extends Lock, DistributedObject {
     RaftGroupId getGroupId();
 
     String getName();
+
+    /**
+     * TODO: Unsupported!
+     */
+    Condition newCondition();
 }

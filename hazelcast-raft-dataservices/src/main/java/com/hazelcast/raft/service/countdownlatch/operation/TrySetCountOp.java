@@ -19,7 +19,7 @@ package com.hazelcast.raft.service.countdownlatch.operation;
 import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchDataSerializerHook;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchService;
 

@@ -16,7 +16,7 @@
 
 package com.hazelcast.raft.impl.handler;
 
-import com.hazelcast.raft.RaftMember;
+import com.hazelcast.cp.RaftMember;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.raft.impl.state.LeaderState;

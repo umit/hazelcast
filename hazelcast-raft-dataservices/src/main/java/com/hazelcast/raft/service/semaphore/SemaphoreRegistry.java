@@ -17,7 +17,7 @@
 package com.hazelcast.raft.service.semaphore;
 
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.service.blocking.ResourceRegistry;
 import com.hazelcast.raft.service.semaphore.RaftSemaphore.AcquireResult;
 import com.hazelcast.raft.service.semaphore.RaftSemaphore.ReleaseResult;

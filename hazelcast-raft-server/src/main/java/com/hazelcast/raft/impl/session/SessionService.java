@@ -20,7 +20,7 @@ import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.RaftSessionManagementService;
 import com.hazelcast.raft.SessionInfo;
 import com.hazelcast.raft.SnapshotAwareService;

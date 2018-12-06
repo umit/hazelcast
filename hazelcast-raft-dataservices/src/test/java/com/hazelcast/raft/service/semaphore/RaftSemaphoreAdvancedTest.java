@@ -4,7 +4,7 @@ import com.hazelcast.config.Config;
 import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.config.raft.RaftSemaphoreConfig;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.log.LogEntry;

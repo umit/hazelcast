@@ -2,7 +2,7 @@ package com.hazelcast.raft.service.semaphore;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.service.atomiclong.operation.AddAndGetOp;
 import com.hazelcast.raft.service.semaphore.proxy.RaftSessionlessSemaphoreProxy;
 import com.hazelcast.spi.InternalCompletableFuture;

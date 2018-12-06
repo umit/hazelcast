@@ -18,7 +18,7 @@ package com.hazelcast.raft.impl.task;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.MembershipChangeType;
-import com.hazelcast.raft.RaftMember;
+import com.hazelcast.cp.RaftMember;
 import com.hazelcast.raft.exception.MemberAlreadyExistsException;
 import com.hazelcast.raft.exception.MemberDoesNotExistException;
 import com.hazelcast.raft.exception.MismatchingGroupMembersCommitIndexException;

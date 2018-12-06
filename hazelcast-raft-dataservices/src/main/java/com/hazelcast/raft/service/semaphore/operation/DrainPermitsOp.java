@@ -17,7 +17,7 @@
 package com.hazelcast.raft.service.semaphore.operation;
 
 import com.hazelcast.core.ISemaphore;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.service.semaphore.RaftSemaphore;
 import com.hazelcast.raft.service.semaphore.RaftSemaphoreDataSerializerHook;

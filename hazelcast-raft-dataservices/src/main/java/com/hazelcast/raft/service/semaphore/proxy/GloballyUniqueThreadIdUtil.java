@@ -16,7 +16,7 @@
 
 package com.hazelcast.raft.service.semaphore.proxy;
 
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.util.ConstructorFunction;
 

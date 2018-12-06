@@ -27,7 +27,7 @@ import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.service.atomicref.RaftAtomicRefService;
 import com.hazelcast.raft.service.atomicref.operation.ApplyOp.ReturnValueType;

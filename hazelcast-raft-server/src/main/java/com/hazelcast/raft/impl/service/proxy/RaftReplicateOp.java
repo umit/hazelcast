@@ -21,7 +21,7 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.RaftGroupDestroyedException;
 import com.hazelcast.raft.impl.RaftSystemOperation;

@@ -17,7 +17,7 @@
 package com.hazelcast.raft.service.spi;
 
 import com.hazelcast.core.DistributedObject;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 
 /**
  * Defines methods to create and destroy Raft data structure instances and their proxies

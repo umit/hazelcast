@@ -17,7 +17,7 @@
 package com.hazelcast.raft.service.countdownlatch.proxy;
 
 import com.hazelcast.core.ICountDownLatch;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.countdownlatch.RaftCountDownLatchService;
 import com.hazelcast.raft.service.countdownlatch.operation.AwaitOp;

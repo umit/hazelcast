@@ -17,7 +17,7 @@
 package com.hazelcast.raft.service.blocking;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftGroupLifecycleAwareService;
 import com.hazelcast.raft.impl.RaftNode;

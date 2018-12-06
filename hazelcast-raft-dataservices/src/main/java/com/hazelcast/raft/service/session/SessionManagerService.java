@@ -18,7 +18,7 @@ package com.hazelcast.raft.service.session;
 
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;
 import com.hazelcast.raft.impl.session.SessionResponse;

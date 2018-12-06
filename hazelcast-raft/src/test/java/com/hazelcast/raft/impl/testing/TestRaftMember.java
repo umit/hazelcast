@@ -1,6 +1,6 @@
 package com.hazelcast.raft.impl.testing;
 
-import com.hazelcast.raft.RaftMember;
+import com.hazelcast.cp.RaftMember;
 
 public class TestRaftMember implements RaftMember {
 

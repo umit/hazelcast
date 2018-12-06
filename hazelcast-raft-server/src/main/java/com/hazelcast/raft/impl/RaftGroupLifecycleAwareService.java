@@ -16,7 +16,7 @@
 
 package com.hazelcast.raft.impl;
 
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 
 /**
  * Contains methods that are invoked on life cycle changes of a Raft group

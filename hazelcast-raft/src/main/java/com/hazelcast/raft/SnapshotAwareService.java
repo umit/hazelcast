@@ -16,6 +16,8 @@
 
 package com.hazelcast.raft;
 
+import com.hazelcast.cp.RaftGroupId;
+
 /**
  * The service interface required to be implemented by services that behave as Raft state machine.
  * Each Raft service must be able to generate a snapshot of its committed data and restore it back.

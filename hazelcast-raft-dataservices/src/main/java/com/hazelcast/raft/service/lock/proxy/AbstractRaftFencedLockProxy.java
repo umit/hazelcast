@@ -16,10 +16,10 @@
 
 package com.hazelcast.raft.service.lock.proxy;
 
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.raft.service.exception.WaitKeyCancelledException;
-import com.hazelcast.raft.service.lock.FencedLock;
+import com.hazelcast.cp.FencedLock;
 import com.hazelcast.raft.service.lock.RaftLockOwnershipState;
 import com.hazelcast.raft.service.lock.RaftLockService;
 import com.hazelcast.raft.service.session.AbstractSessionManager;

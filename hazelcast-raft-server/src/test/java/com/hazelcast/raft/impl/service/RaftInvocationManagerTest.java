@@ -1,7 +1,7 @@
 package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.exception.RaftGroupDestroyedException;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;

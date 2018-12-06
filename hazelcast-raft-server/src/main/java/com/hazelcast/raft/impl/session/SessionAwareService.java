@@ -16,7 +16,7 @@
 
 package com.hazelcast.raft.impl.session;
 
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 
 import java.util.Collection;
 

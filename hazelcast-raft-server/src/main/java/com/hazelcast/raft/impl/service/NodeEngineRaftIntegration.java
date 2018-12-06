@@ -17,10 +17,10 @@
 package com.hazelcast.raft.impl.service;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.RaftGroupLifecycleAwareService;
-import com.hazelcast.raft.RaftMember;
+import com.hazelcast.cp.RaftMember;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.RaftIntegration;
 import com.hazelcast.raft.impl.RaftNodeStatus;

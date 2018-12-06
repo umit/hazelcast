@@ -1,9 +1,9 @@
 package com.hazelcast.raft.impl.testing;
 
 import com.hazelcast.config.raft.RaftAlgorithmConfig;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
-import com.hazelcast.raft.RaftMember;
+import com.hazelcast.cp.RaftMember;
 import com.hazelcast.raft.impl.RaftNodeImpl;
 import com.hazelcast.raft.impl.RaftUtil;
 import com.hazelcast.test.AssertTask;

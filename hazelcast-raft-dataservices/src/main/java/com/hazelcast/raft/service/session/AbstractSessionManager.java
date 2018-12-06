@@ -18,7 +18,7 @@ package com.hazelcast.raft.service.session;
 
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.session.SessionExpiredException;
 import com.hazelcast.raft.impl.session.SessionResponse;
 import com.hazelcast.util.Clock;

@@ -18,7 +18,7 @@ package com.hazelcast.raft.service.atomicref.operation;
 
 import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.IndeterminateOperationStateAware;
 import com.hazelcast.raft.service.atomicref.RaftAtomicReferenceDataSerializerHook;
 

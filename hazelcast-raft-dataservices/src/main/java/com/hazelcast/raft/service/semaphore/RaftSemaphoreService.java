@@ -18,7 +18,7 @@ package com.hazelcast.raft.service.semaphore;
 
 import com.hazelcast.config.raft.RaftSemaphoreConfig;
 import com.hazelcast.core.ISemaphore;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.service.blocking.AbstractBlockingService;
 import com.hazelcast.raft.service.exception.WaitKeyCancelledException;

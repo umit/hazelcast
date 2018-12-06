@@ -1,6 +1,6 @@
 package com.hazelcast.raft.impl.service;
 
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.SnapshotAwareService;
 import com.hazelcast.raft.impl.testing.RaftRunnable;
 

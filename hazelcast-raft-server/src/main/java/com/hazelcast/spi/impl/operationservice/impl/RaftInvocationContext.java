@@ -17,7 +17,7 @@
 package com.hazelcast.spi.impl.operationservice.impl;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.exception.RaftException;
 import com.hazelcast.raft.impl.RaftMemberImpl;
 import com.hazelcast.raft.impl.service.RaftGroupInfo;

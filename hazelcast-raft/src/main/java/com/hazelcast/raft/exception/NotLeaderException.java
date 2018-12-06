@@ -16,8 +16,8 @@
 
 package com.hazelcast.raft.exception;
 
-import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.RaftMember;
+import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.RaftMember;
 
 /**
  * A {@code RaftException} which is thrown when a leader-only request is received by a non-leader member.

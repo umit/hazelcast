@@ -17,7 +17,7 @@
 package com.hazelcast.raft.service.atomicref;
 
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 
 /**
  * State-machine implementation of the Raft-based atomic reference

@@ -18,7 +18,7 @@ package com.hazelcast.raft.service.lock.proxy;
 
 import com.hazelcast.core.ICondition;
 import com.hazelcast.core.ILock;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.RaftOp;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.session.SessionExpiredException;

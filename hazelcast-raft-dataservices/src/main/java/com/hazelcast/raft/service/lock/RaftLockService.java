@@ -17,7 +17,7 @@
 package com.hazelcast.raft.service.lock;
 
 import com.hazelcast.core.ILock;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.service.blocking.AbstractBlockingService;
 import com.hazelcast.raft.service.exception.WaitKeyCancelledException;
 import com.hazelcast.raft.service.lock.RaftLock.AcquireResult;

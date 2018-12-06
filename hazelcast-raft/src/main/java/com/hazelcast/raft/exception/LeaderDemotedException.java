@@ -16,7 +16,7 @@
 
 package com.hazelcast.raft.exception;
 
-import com.hazelcast.raft.RaftMember;
+import com.hazelcast.cp.RaftMember;
 
 /**
  * A {@code RaftException} which is thrown when an appended but not-committed entry is truncated by the new leader.

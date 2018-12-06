@@ -19,7 +19,7 @@ package com.hazelcast.raft.service.blocking;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.DataSerializable;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 import com.hazelcast.util.Clock;

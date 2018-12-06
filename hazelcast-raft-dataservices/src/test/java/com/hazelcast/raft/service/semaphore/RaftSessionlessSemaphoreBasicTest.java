@@ -20,7 +20,7 @@ import com.hazelcast.config.Config;
 import com.hazelcast.config.raft.RaftSemaphoreConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.service.semaphore.proxy.RaftSessionlessSemaphoreProxy;
 import com.hazelcast.test.AssertTask;

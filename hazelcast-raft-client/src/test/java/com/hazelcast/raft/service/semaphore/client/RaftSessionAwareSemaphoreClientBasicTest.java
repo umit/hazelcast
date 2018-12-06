@@ -3,7 +3,7 @@ package com.hazelcast.raft.service.semaphore.client;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.service.semaphore.RaftSessionAwareSemaphoreBasicTest;
 import com.hazelcast.raft.service.session.AbstractSessionManager;
 import com.hazelcast.raft.service.session.SessionManagerProvider;

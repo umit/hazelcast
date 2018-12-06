@@ -3,7 +3,7 @@ package com.hazelcast.raft.service.atomicref;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.core.IFunction;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.service.atomicref.proxy.RaftAtomicRefProxy;
 import com.hazelcast.spi.exception.DistributedObjectDestroyedException;

@@ -16,8 +16,8 @@
 
 package com.hazelcast.raft.impl.state;
 
-import com.hazelcast.raft.RaftGroupId;
-import com.hazelcast.raft.RaftMember;
+import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.RaftMember;
 import com.hazelcast.raft.impl.RaftRole;
 import com.hazelcast.raft.impl.dto.VoteRequest;
 import com.hazelcast.raft.impl.log.RaftLog;

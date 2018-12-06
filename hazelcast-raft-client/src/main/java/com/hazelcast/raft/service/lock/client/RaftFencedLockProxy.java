@@ -23,9 +23,8 @@ import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
-import com.hazelcast.raft.service.lock.FencedLock;
 import com.hazelcast.raft.service.lock.RaftLockOwnershipState;
 import com.hazelcast.raft.service.lock.proxy.AbstractRaftFencedLockProxy;
 import com.hazelcast.raft.service.session.SessionManagerProvider;
@@ -54,7 +53,7 @@ import static com.hazelcast.raft.service.util.ClientAccessor.getClient;
  */
 public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
 
-    public static FencedLock create(HazelcastInstance instance, String name) {
+    public static AbstractRaftFencedLockProxy create(HazelcastInstance instance, String name) {
         int dataSize = ClientMessage.HEADER_SIZE + calculateDataSize(name);
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
         msg.setMessageType(RaftGroupTaskFactoryProvider.CREATE_TYPE);

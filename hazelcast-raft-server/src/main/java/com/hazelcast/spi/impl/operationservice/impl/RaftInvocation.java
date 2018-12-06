@@ -19,7 +19,7 @@ package com.hazelcast.spi.impl.operationservice.impl;
 import com.hazelcast.core.IndeterminateOperationState;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.nio.Address;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.exception.LeaderDemotedException;
 import com.hazelcast.raft.exception.NotLeaderException;
 import com.hazelcast.raft.exception.StaleAppendRequestException;

@@ -22,7 +22,7 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.command.RaftGroupCmd;
 import com.hazelcast.raft.impl.RaftDataSerializerHook;
-import com.hazelcast.raft.RaftMember;
+import com.hazelcast.cp.RaftMember;
 
 import java.io.IOException;
 import java.util.Collection;

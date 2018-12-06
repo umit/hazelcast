@@ -22,7 +22,7 @@ import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.RaftGroupIdImpl;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.service.RaftService;

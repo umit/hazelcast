@@ -16,7 +16,7 @@
 
 package com.hazelcast.raft.service.session;
 
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 
 /**
  * Base class for server and client proxies that make use of Raft sessions

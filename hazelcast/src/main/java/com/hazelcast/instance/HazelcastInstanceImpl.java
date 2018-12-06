@@ -52,6 +52,7 @@ import com.hazelcast.core.Member;
 import com.hazelcast.core.MultiMap;
 import com.hazelcast.core.PartitionService;
 import com.hazelcast.core.ReplicatedMap;
+import com.hazelcast.cp.CpSubsystem;
 import com.hazelcast.crdt.pncounter.PNCounter;
 import com.hazelcast.crdt.pncounter.PNCounterService;
 import com.hazelcast.durableexecutor.DurableExecutorService;
@@ -421,6 +422,11 @@ public class HazelcastInstanceImpl implements HazelcastInstance, SerializationSe
     public IScheduledExecutorService getScheduledExecutorService(String name) {
         checkNotNull(name, "Retrieving a scheduled executor instance with a null name is not allowed!");
         return getDistributedObject(DistributedScheduledExecutorService.SERVICE_NAME, name);
+    }
+
+    @Override
+    public CpSubsystem getCpSubsystem() {
+        throw new UnsupportedOperationException();
     }
 
     @Override

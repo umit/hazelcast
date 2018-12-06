@@ -22,7 +22,7 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.raft.MembershipChangeType;
 import com.hazelcast.raft.QueryPolicy;
 import com.hazelcast.raft.RaftGroup.RaftGroupStatus;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.exception.MismatchingGroupMembersCommitIndexException;
 import com.hazelcast.raft.exception.RaftGroupDestroyedException;
 import com.hazelcast.raft.impl.RaftMemberImpl;

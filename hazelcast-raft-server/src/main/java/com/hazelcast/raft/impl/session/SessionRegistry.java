@@ -17,7 +17,7 @@
 package com.hazelcast.raft.impl.session;
 
 import com.hazelcast.nio.Address;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.SessionInfo;
 import com.hazelcast.raft.impl.util.Tuple2;
 import com.hazelcast.util.Clock;

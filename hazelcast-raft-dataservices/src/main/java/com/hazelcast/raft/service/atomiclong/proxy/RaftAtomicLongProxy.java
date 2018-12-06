@@ -21,7 +21,7 @@ import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.raft.QueryPolicy;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.raft.service.atomiclong.RaftAtomicLongService;

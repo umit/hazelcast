@@ -103,6 +103,7 @@ import com.hazelcast.core.LifecycleService;
 import com.hazelcast.core.MultiMap;
 import com.hazelcast.core.PartitionService;
 import com.hazelcast.core.ReplicatedMap;
+import com.hazelcast.cp.CpSubsystem;
 import com.hazelcast.crdt.pncounter.PNCounter;
 import com.hazelcast.crdt.pncounter.PNCounterService;
 import com.hazelcast.durableexecutor.DurableExecutorService;
@@ -874,6 +875,11 @@ public class HazelcastClientInstanceImpl implements HazelcastInstance, Serializa
     @Override
     public <T extends DistributedObject> T getDistributedObject(String serviceName, String name) {
         return (T) proxyManager.getOrCreateProxy(serviceName, name);
+    }
+
+    @Override
+    public CpSubsystem getCpSubsystem() {
+        throw new UnsupportedOperationException();
     }
 
     @Override

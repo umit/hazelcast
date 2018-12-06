@@ -19,7 +19,7 @@ package com.hazelcast.raft.service.session;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.raft.RaftGroupId;
+import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.raft.impl.service.HazelcastRaftTestSupport;
 import com.hazelcast.raft.impl.service.RaftInvocationManager;
 import com.hazelcast.raft.impl.session.SessionService;

@@ -18,6 +18,7 @@ package com.hazelcast.core;
 
 import com.hazelcast.cardinality.CardinalityEstimator;
 import com.hazelcast.config.Config;
+import com.hazelcast.cp.CpSubsystem;
 import com.hazelcast.crdt.pncounter.PNCounter;
 import com.hazelcast.durableexecutor.DurableExecutorService;
 import com.hazelcast.flakeidgen.FlakeIdGenerator;
@@ -490,6 +491,12 @@ public interface HazelcastInstance {
      * @return the scheduled executor service for the given name
      */
     IScheduledExecutorService getScheduledExecutorService(String name);
+
+    /**
+     * TODO
+     * @return
+     */
+    CpSubsystem getCpSubsystem();
 
     /**
      * Shuts down this HazelcastInstance. For more information see {@link com.hazelcast.core.LifecycleService#shutdown()}.
