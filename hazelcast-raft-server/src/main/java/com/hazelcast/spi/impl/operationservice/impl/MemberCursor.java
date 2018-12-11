@@ -16,7 +16,7 @@
 
 package com.hazelcast.spi.impl.operationservice.impl;
 
-import com.hazelcast.raft.impl.RaftMemberImpl;
+import com.hazelcast.cp.internal.RaftMemberImpl;
 
 /**
  * Iterates over Raft members

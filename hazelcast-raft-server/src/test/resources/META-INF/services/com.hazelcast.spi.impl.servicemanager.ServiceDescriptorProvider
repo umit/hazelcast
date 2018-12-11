@@ -1,1 +1,1 @@
-com.hazelcast.raft.impl.service.RaftDataServiceDescriptorProvider
+com.hazelcast.cp.internal.RaftDataServiceDescriptorProvider

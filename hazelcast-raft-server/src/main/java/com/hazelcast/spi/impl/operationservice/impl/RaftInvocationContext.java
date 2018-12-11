@@ -18,10 +18,10 @@ package com.hazelcast.spi.impl.operationservice.impl;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.raft.exception.RaftException;
-import com.hazelcast.raft.impl.RaftMemberImpl;
-import com.hazelcast.raft.impl.service.RaftGroupInfo;
-import com.hazelcast.raft.impl.service.RaftService;
+import com.hazelcast.cp.internal.raft.exception.RaftException;
+import com.hazelcast.cp.internal.RaftMemberImpl;
+import com.hazelcast.cp.internal.RaftGroupInfo;
+import com.hazelcast.cp.internal.RaftService;
 
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;

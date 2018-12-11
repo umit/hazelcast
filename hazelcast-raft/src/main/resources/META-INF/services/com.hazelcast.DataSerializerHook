@@ -1,1 +1,1 @@
-com.hazelcast.raft.impl.RaftDataSerializerHook
+com.hazelcast.cp.internal.raft.impl.RaftDataSerializerHook

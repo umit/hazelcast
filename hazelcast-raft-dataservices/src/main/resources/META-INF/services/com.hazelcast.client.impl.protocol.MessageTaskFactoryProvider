@@ -1,7 +1,7 @@
-com.hazelcast.raft.service.atomiclong.client.AtomicLongMessageTaskFactoryProvider
-com.hazelcast.raft.service.atomicref.client.AtomicRefMessageTaskFactoryProvider
-com.hazelcast.raft.service.lock.client.LockMessageTaskFactoryProvider
-com.hazelcast.raft.service.session.client.SessionMessageTaskFactoryProvider
-com.hazelcast.raft.service.countdownlatch.client.CountDownLatchMessageTaskFactoryProvider
-com.hazelcast.raft.service.semaphore.client.SemaphoreMessageTaskFactoryProvider
-com.hazelcast.raft.service.spi.client.RaftGroupTaskFactoryProvider
+com.hazelcast.cp.internal.datastructures.atomiclong.client.AtomicLongMessageTaskFactoryProvider
+com.hazelcast.cp.internal.datastructures.atomicref.client.AtomicRefMessageTaskFactoryProvider
+com.hazelcast.cp.internal.datastructures.lock.client.LockMessageTaskFactoryProvider
+com.hazelcast.cp.internal.datastructures.session.client.SessionMessageTaskFactoryProvider
+com.hazelcast.cp.internal.datastructures.countdownlatch.client.CountDownLatchMessageTaskFactoryProvider
+com.hazelcast.cp.internal.datastructures.semaphore.client.SemaphoreMessageTaskFactoryProvider
+com.hazelcast.cp.internal.datastructures.spi.client.RaftGroupTaskFactoryProvider
