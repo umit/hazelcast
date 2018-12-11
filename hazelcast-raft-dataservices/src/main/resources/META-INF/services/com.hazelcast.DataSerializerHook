@@ -1,6 +1,0 @@
-com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongDataSerializerHook
-com.hazelcast.cp.internal.datastructures.atomicref.RaftAtomicReferenceDataSerializerHook
-com.hazelcast.cp.internal.datastructures.lock.RaftLockDataSerializerHook
-com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreDataSerializerHook
-com.hazelcast.cp.internal.datastructures.RaftDataServiceDataSerializerHook
-com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchDataSerializerHook

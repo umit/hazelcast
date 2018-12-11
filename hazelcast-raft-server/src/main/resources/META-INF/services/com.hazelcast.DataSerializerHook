@@ -1,2 +1,0 @@
-com.hazelcast.cp.internal.RaftServiceDataSerializerHook
-com.hazelcast.cp.internal.session.RaftSessionServiceDataSerializerHook
