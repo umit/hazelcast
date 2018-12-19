@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.raftop.metadata;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.internal.RaftMemberImpl;
+import com.hazelcast.cp.internal.CPMember;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftSystemOperation;
 import com.hazelcast.cp.internal.RaftService;
@@ -35,14 +35,14 @@ import java.util.Collection;
  * <p/>
  * Please note that this operation is not a {@link RaftOp}, so it is not handled via the Raft layer.
  */
-public class SendActiveRaftMembersOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation {
+public class SendActiveCPMembersOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation {
 
-    private Collection<RaftMemberImpl> members;
+    private Collection<CPMember> members;
 
-    public SendActiveRaftMembersOp() {
+    public SendActiveCPMembersOp() {
     }
 
-    public SendActiveRaftMembersOp(Collection<RaftMemberImpl> members) {
+    public SendActiveCPMembersOp(Collection<CPMember> members) {
         this.members = members;
     }
 
@@ -69,14 +69,14 @@ public class SendActiveRaftMembersOp extends Operation implements IdentifiedData
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.SEND_ACTIVE_RAFT_MEMBERS_OP;
+        return RaftServiceDataSerializerHook.SEND_ACTIVE_CP_MEMBERS_OP;
     }
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeInt(members.size());
-        for (RaftMemberImpl member : members) {
+        for (CPMember member : members) {
             out.writeObject(member);
         }
     }
@@ -85,9 +85,9 @@ public class SendActiveRaftMembersOp extends Operation implements IdentifiedData
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         int len = in.readInt();
-        members = new ArrayList<RaftMemberImpl>(len);
+        members = new ArrayList<CPMember>(len);
         for (int i = 0; i < len; i++) {
-            RaftMemberImpl member = in.readObject();
+            CPMember member = in.readObject();
             members.add(member);
         }
     }

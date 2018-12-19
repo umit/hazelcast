@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.state;
 
-import com.hazelcast.cp.RaftMember;
+import com.hazelcast.core.EndpointIdentifier;
 
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -32,14 +32,14 @@ public class RaftGroupMembers {
 
     private final long index;
 
-    private final Collection<RaftMember> members;
+    private final Collection<EndpointIdentifier> members;
 
-    private final Collection<RaftMember> remoteMembers;
+    private final Collection<EndpointIdentifier> remoteMembers;
 
-    RaftGroupMembers(long index, Collection<RaftMember> endpoints, RaftMember localEndpoint) {
+    RaftGroupMembers(long index, Collection<EndpointIdentifier> endpoints, EndpointIdentifier localEndpoint) {
         this.index = index;
-        this.members = unmodifiableSet(new LinkedHashSet<RaftMember>(endpoints));
-        Set<RaftMember> remoteMembers = new LinkedHashSet<RaftMember>(endpoints);
+        this.members = unmodifiableSet(new LinkedHashSet<EndpointIdentifier>(endpoints));
+        Set<EndpointIdentifier> remoteMembers = new LinkedHashSet<EndpointIdentifier>(endpoints);
         remoteMembers.remove(localEndpoint);
         this.remoteMembers = unmodifiableSet(remoteMembers);
     }
@@ -56,14 +56,14 @@ public class RaftGroupMembers {
      *
      * @see #remoteMembers()
      */
-    public Collection<RaftMember> members() {
+    public Collection<EndpointIdentifier> members() {
         return members;
     }
 
     /**
      * Returns remote members in this group, excluding the local member.
      */
-    public Collection<RaftMember> remoteMembers() {
+    public Collection<EndpointIdentifier> remoteMembers() {
         return remoteMembers;
     }
 
@@ -84,7 +84,7 @@ public class RaftGroupMembers {
     /**
      * Returns true if the endpoint is a member of this group, false otherwise.
      */
-    public boolean isKnownMember(RaftMember endpoint) {
+    public boolean isKnownMember(EndpointIdentifier endpoint) {
         return members.contains(endpoint);
     }
 

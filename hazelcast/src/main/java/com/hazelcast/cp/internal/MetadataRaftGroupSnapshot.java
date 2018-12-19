@@ -29,7 +29,7 @@ import java.util.Collection;
  */
 public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializable {
 
-    private final Collection<RaftMemberImpl> members = new ArrayList<RaftMemberImpl>();
+    private final Collection<CPMember> members = new ArrayList<CPMember>();
     private final Collection<RaftGroup> raftGroups = new ArrayList<RaftGroup>();
     private MembershipChangeContext membershipChangeContext;
 
@@ -37,11 +37,11 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
         raftGroups.add(group);
     }
 
-    public void addMember(RaftMemberImpl member) {
+    public void addMember(CPMember member) {
         members.add(member);
     }
 
-    public Collection<RaftMemberImpl> getMembers() {
+    public Collection<CPMember> getMembers() {
         return members;
     }
 
@@ -70,7 +70,7 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeInt(members.size());
-        for (RaftMemberImpl member : members) {
+        for (CPMember member : members) {
             out.writeObject(member);
         }
         out.writeInt(raftGroups.size());
@@ -84,7 +84,7 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
     public void readData(ObjectDataInput in) throws IOException {
         int len = in.readInt();
         for (int i = 0; i < len; i++) {
-            RaftMemberImpl member = in.readObject();
+            CPMember member = in.readObject();
             members.add(member);
         }
 

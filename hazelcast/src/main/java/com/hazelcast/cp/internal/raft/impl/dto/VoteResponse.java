@@ -16,11 +16,11 @@
 
 package com.hazelcast.cp.internal.raft.impl.dto;
 
+import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.cp.internal.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.internal.raft.impl.RaftDataSerializerHook;
-import com.hazelcast.cp.RaftMember;
 
 import java.io.IOException;
 
@@ -34,20 +34,20 @@ import java.io.IOException;
  */
 public class VoteResponse implements IdentifiedDataSerializable {
 
-    private RaftMember voter;
+    private EndpointIdentifier voter;
     private int term;
     private boolean granted;
 
     public VoteResponse() {
     }
 
-    public VoteResponse(RaftMember voter, int term, boolean granted) {
+    public VoteResponse(EndpointIdentifier voter, int term, boolean granted) {
         this.voter = voter;
         this.term = term;
         this.granted = granted;
     }
 
-    public RaftMember voter() {
+    public EndpointIdentifier voter() {
         return voter;
     }
 

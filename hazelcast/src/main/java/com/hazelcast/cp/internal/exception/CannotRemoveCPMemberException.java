@@ -16,15 +16,15 @@
 
 package com.hazelcast.cp.internal.exception;
 
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.core.HazelcastException;
-import com.hazelcast.cp.RaftMember;
 import com.hazelcast.cp.CPSubsystemManagementService;
 
 /**
  * Thrown while a CP member is requested to be removed from the CP sub-system while there is an ongoing process for another member.
  * This exception will be handled internally and will not be exposed to the user.
  *
- * @see CPSubsystemManagementService#removeCPMember(RaftMember)
+ * @see CPSubsystemManagementService#removeCPMember(EndpointIdentifier)
  */
 public class CannotRemoveCPMemberException extends HazelcastException {
 

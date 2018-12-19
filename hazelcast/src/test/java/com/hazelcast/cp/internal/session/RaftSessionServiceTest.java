@@ -7,7 +7,7 @@ import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.Session;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.cp.internal.RaftInvocationManager;
-import com.hazelcast.cp.internal.RaftMemberImpl;
+import com.hazelcast.cp.internal.CPMember;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
 import com.hazelcast.cp.internal.RaftTestApplyOp;
@@ -193,7 +193,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
             }
         });
 
-        RaftMemberImpl leaderEndpoint = getLeaderMember(getRaftNode(instances[0], groupId));
+        CPMember leaderEndpoint = getLeaderMember(getRaftNode(instances[0], groupId));
         final HazelcastInstance leader = factory.getInstance(leaderEndpoint.getAddress());
         leader.getLifecycleService().terminate();
 

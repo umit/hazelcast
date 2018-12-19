@@ -20,7 +20,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.RaftMemberImpl;
+import com.hazelcast.cp.internal.CPMember;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.MetadataRaftGroupManager;
 import com.hazelcast.cp.internal.RaftService;
@@ -38,13 +38,13 @@ import java.util.List;
  */
 public class CreateMetadataRaftGroupOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
-    private List<RaftMemberImpl> initialMembers;
+    private List<CPMember> initialMembers;
     private int metadataMembersCount;
 
     public CreateMetadataRaftGroupOp() {
     }
 
-    public CreateMetadataRaftGroupOp(List<RaftMemberImpl> initialMembers, int metadataMembersCount) {
+    public CreateMetadataRaftGroupOp(List<CPMember> initialMembers, int metadataMembersCount) {
         this.initialMembers = initialMembers;
         this.metadataMembersCount = metadataMembersCount;
     }
@@ -80,7 +80,7 @@ public class CreateMetadataRaftGroupOp extends RaftOp implements IndeterminateOp
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeInt(initialMembers.size());
-        for (RaftMemberImpl member : initialMembers) {
+        for (CPMember member : initialMembers) {
             out.writeObject(member);
         }
         out.writeInt(metadataMembersCount);
@@ -89,9 +89,9 @@ public class CreateMetadataRaftGroupOp extends RaftOp implements IndeterminateOp
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         int len = in.readInt();
-        initialMembers = new ArrayList<RaftMemberImpl>(len);
+        initialMembers = new ArrayList<CPMember>(len);
         for (int i = 0; i < len; i++) {
-            RaftMemberImpl member = in.readObject();
+            CPMember member = in.readObject();
             initialMembers.add(member);
         }
         metadataMembersCount = in.readInt();

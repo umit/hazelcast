@@ -16,16 +16,16 @@
 
 package com.hazelcast.cp.internal.raftop.metadata;
 
+import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftOp;
+import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
+import com.hazelcast.cp.internal.RaftSystemOperation;
+import com.hazelcast.cp.internal.raft.impl.RaftNode;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.raft.impl.RaftNode;
-import com.hazelcast.cp.internal.RaftOp;
-import com.hazelcast.cp.internal.RaftSystemOperation;
-import com.hazelcast.cp.RaftMember;
-import com.hazelcast.cp.internal.RaftService;
-import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
 import com.hazelcast.spi.Operation;
 
 import java.io.IOException;
@@ -42,12 +42,12 @@ import java.util.Collection;
 public class CreateRaftNodeOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation {
 
     private CPGroupId groupId;
-    private Collection<RaftMember> initialMembers;
+    private Collection<EndpointIdentifier> initialMembers;
 
     public CreateRaftNodeOp() {
     }
 
-    public CreateRaftNodeOp(CPGroupId groupId, Collection<RaftMember> initialMembers) {
+    public CreateRaftNodeOp(CPGroupId groupId, Collection<EndpointIdentifier> initialMembers) {
         this.groupId = groupId;
         this.initialMembers = initialMembers;
     }
@@ -83,7 +83,7 @@ public class CreateRaftNodeOp extends Operation implements IdentifiedDataSeriali
         super.writeInternal(out);
         out.writeObject(groupId);
         out.writeInt(initialMembers.size());
-        for (RaftMember member : initialMembers) {
+        for (EndpointIdentifier member : initialMembers) {
             out.writeObject(member);
         }
     }
@@ -93,9 +93,9 @@ public class CreateRaftNodeOp extends Operation implements IdentifiedDataSeriali
         super.readInternal(in);
         groupId = in.readObject();
         int count = in.readInt();
-        initialMembers = new ArrayList<RaftMember>(count);
+        initialMembers = new ArrayList<EndpointIdentifier>(count);
         for (int i = 0; i < count; i++) {
-            RaftMember member = in.readObject();
+            EndpointIdentifier member = in.readObject();
             initialMembers.add(member);
         }
     }

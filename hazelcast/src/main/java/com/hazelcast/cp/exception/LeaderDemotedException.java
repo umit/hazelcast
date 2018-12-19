@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.exception;
 
-import com.hazelcast.cp.RaftMember;
+import com.hazelcast.core.EndpointIdentifier;
 
 /**
  * A {@code CPSubsystemException} which is thrown when
@@ -24,7 +24,7 @@ import com.hazelcast.cp.RaftMember;
  */
 public class LeaderDemotedException extends CPSubsystemException {
 
-    public LeaderDemotedException(RaftMember local, RaftMember leader) {
+    public LeaderDemotedException(EndpointIdentifier local, EndpointIdentifier leader) {
         super(local + " is not LEADER anymore. Known leader is: "
                 + (leader != null ? leader : "N/A") , leader);
     }

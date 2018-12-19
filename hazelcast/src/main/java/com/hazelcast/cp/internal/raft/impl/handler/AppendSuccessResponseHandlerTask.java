@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.handler;
 
-import com.hazelcast.cp.RaftMember;
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
@@ -89,7 +89,7 @@ public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTas
     }
 
     private void updateFollowerIndices(RaftState state) {
-        RaftMember follower = resp.follower();
+        EndpointIdentifier follower = resp.follower();
         LeaderState leaderState = state.leaderState();
         long matchIndex = leaderState.getMatchIndex(follower);
         long followerLastLogIndex = resp.lastLogIndex();
@@ -146,7 +146,7 @@ public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTas
     }
 
     @Override
-    protected RaftMember sender() {
+    protected EndpointIdentifier sender() {
         return resp.follower();
     }
 }

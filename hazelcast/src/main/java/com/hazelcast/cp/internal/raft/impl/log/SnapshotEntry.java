@@ -16,11 +16,11 @@
 
 package com.hazelcast.cp.internal.raft.impl.log;
 
+import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.cp.internal.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.internal.raft.impl.RaftDataSerializerHook;
-import com.hazelcast.cp.RaftMember;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -33,13 +33,13 @@ import java.util.HashSet;
  */
 public class SnapshotEntry extends LogEntry implements IdentifiedDataSerializable {
     private long groupMembersLogIndex;
-    private Collection<RaftMember> groupMembers;
+    private Collection<EndpointIdentifier> groupMembers;
 
     public SnapshotEntry() {
     }
 
     public SnapshotEntry(int term, long index, Object operation,
-                         long groupMembersLogIndex, Collection<RaftMember> groupMembers) {
+                         long groupMembersLogIndex, Collection<EndpointIdentifier> groupMembers) {
         super(term, index, operation);
         this.groupMembersLogIndex = groupMembersLogIndex;
         this.groupMembers = groupMembers;
@@ -49,7 +49,7 @@ public class SnapshotEntry extends LogEntry implements IdentifiedDataSerializabl
         return groupMembersLogIndex;
     }
 
-    public Collection<RaftMember> groupMembers() {
+    public Collection<EndpointIdentifier> groupMembers() {
         return groupMembers;
     }
 
@@ -58,7 +58,7 @@ public class SnapshotEntry extends LogEntry implements IdentifiedDataSerializabl
         super.writeData(out);
         out.writeLong(groupMembersLogIndex);
         out.writeInt(groupMembers.size());
-        for (RaftMember endpoint : groupMembers) {
+        for (EndpointIdentifier endpoint : groupMembers) {
             out.writeObject(endpoint);
         }
     }
@@ -68,9 +68,9 @@ public class SnapshotEntry extends LogEntry implements IdentifiedDataSerializabl
         super.readData(in);
         groupMembersLogIndex = in.readLong();
         int count = in.readInt();
-        groupMembers = new HashSet<RaftMember>(count);
+        groupMembers = new HashSet<EndpointIdentifier>(count);
         for (int i = 0; i < count; i++) {
-            RaftMember endpoint = in.readObject();
+            EndpointIdentifier endpoint = in.readObject();
             groupMembers.add(endpoint);
         }
     }

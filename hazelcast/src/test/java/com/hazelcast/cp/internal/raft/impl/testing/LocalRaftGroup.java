@@ -1,9 +1,9 @@
 package com.hazelcast.cp.internal.raft.impl.testing;
 
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
-import com.hazelcast.cp.RaftMember;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.RaftUtil;
 import com.hazelcast.test.AssertTask;
@@ -34,8 +34,8 @@ public class LocalRaftGroup {
     private final String serviceName;
     private final Class<? extends SnapshotAwareService> serviceClazz;
     private final boolean appendNopEntryOnLeaderElection;
-    private RaftMember[] initialMembers;
-    private RaftMember[] members;
+    private EndpointIdentifier[] initialMembers;
+    private EndpointIdentifier[] members;
     private LocalRaftIntegration[] integrations;
     private RaftNodeImpl[] nodes;
     private int createdNodeCount;
@@ -51,8 +51,8 @@ public class LocalRaftGroup {
     public LocalRaftGroup(int size, RaftAlgorithmConfig raftAlgorithmConfig,
                           String serviceName, Class<? extends SnapshotAwareService> serviceClazz,
                           boolean appendNopEntryOnLeaderElection) {
-        initialMembers = new RaftMember[size];
-        members = new RaftMember[size];
+        initialMembers = new EndpointIdentifier[size];
+        members = new EndpointIdentifier[size];
         integrations = new LocalRaftIntegration[size];
         groupId = new TestRaftGroupId("test");
         this.raftAlgorithmConfig = raftAlgorithmConfig;
@@ -119,7 +119,7 @@ public class LocalRaftGroup {
     public RaftNodeImpl createNewRaftNode() {
         int oldSize = this.integrations.length;
         int newSize = oldSize + 1;
-        RaftMember[] endpoints = new RaftMember[newSize];
+        EndpointIdentifier[] endpoints = new EndpointIdentifier[newSize];
         LocalRaftIntegration[] integrations = new LocalRaftIntegration[newSize];
         RaftNodeImpl[] nodes = new RaftNodeImpl[newSize];
         System.arraycopy(this.members, 0, endpoints, 0, oldSize);
@@ -127,7 +127,7 @@ public class LocalRaftGroup {
         System.arraycopy(this.nodes, 0, nodes, 0, oldSize);
         LocalRaftIntegration integration = createNewLocalRaftIntegration();
         integrations[oldSize] = integration;
-        RaftMember endpoint = integration.getLocalEndpoint();
+        EndpointIdentifier endpoint = integration.getLocalEndpoint();
         endpoints[oldSize] = endpoint;
         RaftNodeImpl node = new RaftNodeImpl(groupId, endpoint, asList(initialMembers), raftAlgorithmConfig, integration);
         nodes[oldSize] = node;
@@ -145,7 +145,7 @@ public class LocalRaftGroup {
         return nodes;
     }
 
-    public RaftNodeImpl[] getNodesExcept(RaftMember endpoint) {
+    public RaftNodeImpl[] getNodesExcept(EndpointIdentifier endpoint) {
         RaftNodeImpl[] n = new RaftNodeImpl[nodes.length - 1];
         int i = 0;
         for (RaftNodeImpl node : nodes) {
@@ -165,11 +165,11 @@ public class LocalRaftGroup {
         return nodes[index];
     }
 
-    public RaftNodeImpl getNode(RaftMember endpoint) {
+    public RaftNodeImpl getNode(EndpointIdentifier endpoint) {
         return nodes[getIndexOf(endpoint)];
     }
 
-    public RaftMember getEndpoint(int index) {
+    public EndpointIdentifier getEndpoint(int index) {
         return members[index];
     }
 
@@ -177,11 +177,11 @@ public class LocalRaftGroup {
         return integrations[index];
     }
 
-    public LocalRaftIntegration getIntegration(RaftMember endpoint) {
+    public LocalRaftIntegration getIntegration(EndpointIdentifier endpoint) {
         return getIntegration(getIndexOf(endpoint));
     }
 
-    public <T extends SnapshotAwareService> T getService(RaftMember endpoint) {
+    public <T extends SnapshotAwareService> T getService(EndpointIdentifier endpoint) {
         return getIntegration(getIndexOf(endpoint)).getService();
     }
 
@@ -216,14 +216,14 @@ public class LocalRaftGroup {
         return leaderRef[0];
     }
 
-    public RaftMember getLeaderEndpoint() {
-        RaftMember leader = null;
+    public EndpointIdentifier getLeaderEndpoint() {
+        EndpointIdentifier leader = null;
         for (int i = 0; i < size(); i++) {
             if (integrations[i].isShutdown()) {
                 continue;
             }
             RaftNodeImpl node = nodes[i];
-            RaftMember endpoint = RaftUtil.getLeaderMember(node);
+            EndpointIdentifier endpoint = RaftUtil.getLeaderMember(node);
             if (leader == null) {
                 leader = endpoint;
             } else if (!leader.equals(endpoint)) {
@@ -234,7 +234,7 @@ public class LocalRaftGroup {
     }
 
     public RaftNodeImpl getLeaderNode() {
-        RaftMember leaderEndpoint = getLeaderEndpoint();
+        EndpointIdentifier leaderEndpoint = getLeaderEndpoint();
         if (leaderEndpoint == null) {
             return null;
         }
@@ -251,7 +251,7 @@ public class LocalRaftGroup {
     }
 
     public int getLeaderIndex() {
-        RaftMember leaderEndpoint = getLeaderEndpoint();
+        EndpointIdentifier leaderEndpoint = getLeaderEndpoint();
         if (leaderEndpoint == null) {
             return -1;
         }
@@ -264,7 +264,7 @@ public class LocalRaftGroup {
     }
 
     public RaftNodeImpl getAnyFollowerNode() {
-        RaftMember leaderEndpoint = getLeaderEndpoint();
+        EndpointIdentifier leaderEndpoint = getLeaderEndpoint();
         if (leaderEndpoint == null) {
             throw new AssertionError("Group doesn't have a leader yet!");
         }
@@ -280,7 +280,7 @@ public class LocalRaftGroup {
         throw new AssertionError("There's no follower node available!");
     }
 
-    public int getIndexOf(RaftMember endpoint) {
+    public int getIndexOf(EndpointIdentifier endpoint) {
         Assert.assertNotNull(endpoint);
         for (int i = 0; i < members.length; i++) {
             if (endpoint.equals(members[i])) {
@@ -333,7 +333,7 @@ public class LocalRaftGroup {
     /**
      * Split nodes having these members from rest of the cluster.
      */
-    public void split(RaftMember...endpoints) {
+    public void split(EndpointIdentifier...endpoints) {
         int[] indexes = new int[endpoints.length];
         for (int i = 0; i < indexes.length; i++) {
             indexes[i] = getIndexOf(endpoints[i]);
@@ -379,14 +379,14 @@ public class LocalRaftGroup {
     /**
      * Drops specific message type one-way between from -> to.
      */
-    public void dropMessagesToMember(RaftMember from, RaftMember to, Class messageType) {
+    public void dropMessagesToMember(EndpointIdentifier from, EndpointIdentifier to, Class messageType) {
         getIntegration(getIndexOf(from)).dropMessagesToEndpoint(to, messageType);
     }
 
     /**
      * Allows specific message type one-way between from -> to.
      */
-    public void allowMessagesToMember(RaftMember from, RaftMember to, Class messageType) {
+    public void allowMessagesToMember(EndpointIdentifier from, EndpointIdentifier to, Class messageType) {
         LocalRaftIntegration integration = getIntegration(getIndexOf(from));
         if (!integration.isReachable(to)) {
             throw new IllegalStateException("Cannot allow " + messageType + " from " + from
@@ -398,14 +398,14 @@ public class LocalRaftGroup {
     /**
      * Drops all kind of messages one-way between from -> to.
      */
-    public void dropAllMessagesToMember(RaftMember from, RaftMember to) {
+    public void dropAllMessagesToMember(EndpointIdentifier from, EndpointIdentifier to) {
         getIntegration(getIndexOf(from)).removeNode(getNode(getIndexOf(to)));
     }
 
     /**
      * Allows all kind of messages one-way between from -> to.
      */
-    public void allowAllMessagesToMember(RaftMember from, RaftMember to) {
+    public void allowAllMessagesToMember(EndpointIdentifier from, EndpointIdentifier to) {
         LocalRaftIntegration integration = getIntegration(getIndexOf(from));
         integration.allowAllMessagesToEndpoint(to);
         integration.discoverNode(getNode(getIndexOf(to)));
@@ -414,16 +414,16 @@ public class LocalRaftGroup {
     /**
      * Drops specific message type one-way from -> to all nodes.
      */
-    public void dropMessagesToAll(RaftMember from, Class messageType) {
+    public void dropMessagesToAll(EndpointIdentifier from, Class messageType) {
         getIntegration(getIndexOf(from)).dropMessagesToAll(messageType);
     }
 
     /**
      * Allows specific message type one-way from -> to all nodes.
      */
-    public void allowMessagesToAll(RaftMember from, Class messageType) {
+    public void allowMessagesToAll(EndpointIdentifier from, Class messageType) {
         LocalRaftIntegration integration = getIntegration(getIndexOf(from));
-        for (RaftMember endpoint : members) {
+        for (EndpointIdentifier endpoint : members) {
             if (!integration.isReachable(endpoint)) {
                 throw new IllegalStateException("Cannot allow " + messageType + " from " + from
                         + " -> " + endpoint + ", since all messages are dropped between.");
@@ -435,7 +435,7 @@ public class LocalRaftGroup {
     /**
      * Resets all drop rules from endpoint.
      */
-    public void resetAllDropRulesFrom(RaftMember endpoint) {
+    public void resetAllDropRulesFrom(EndpointIdentifier endpoint) {
         getIntegration(getIndexOf(endpoint)).resetAllDropRules();
     }
 
@@ -444,7 +444,7 @@ public class LocalRaftGroup {
         getIntegration(index).shutdown();
     }
 
-    public void terminateNode(RaftMember endpoint) {
+    public void terminateNode(EndpointIdentifier endpoint) {
         terminateNode(getIndexOf(endpoint));
     }
 }

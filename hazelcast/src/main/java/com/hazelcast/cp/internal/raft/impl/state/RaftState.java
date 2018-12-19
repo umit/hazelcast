@@ -16,8 +16,8 @@
 
 package com.hazelcast.cp.internal.raft.impl.state;
 
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.RaftMember;
 import com.hazelcast.cp.internal.raft.impl.RaftRole;
 import com.hazelcast.cp.internal.raft.impl.dto.VoteRequest;
 import com.hazelcast.cp.internal.raft.impl.log.RaftLog;
@@ -36,7 +36,7 @@ public class RaftState {
     /**
      * Endpoint of this node
      */
-    private final RaftMember localEndpoint;
+    private final EndpointIdentifier localEndpoint;
 
     /**
      * Group id
@@ -46,7 +46,7 @@ public class RaftState {
     /**
      * Initial members of the group
      */
-    private final Collection<RaftMember> initialMembers;
+    private final Collection<EndpointIdentifier> initialMembers;
 
     /**
      * Latest committed group members.
@@ -71,7 +71,7 @@ public class RaftState {
     /**
      * Latest known leader endpoint (or null if not known).
      */
-    private volatile RaftMember leader;
+    private volatile EndpointIdentifier leader;
 
     /**
      * Index of highest log entry known to be committed (initialized to 0, increases monotonically)
@@ -88,7 +88,7 @@ public class RaftState {
     /**
      * Endpoint that received vote in {@link #lastVoteTerm} (or null if none)
      */
-    private RaftMember votedFor;
+    private EndpointIdentifier votedFor;
 
     /**
      * Term that granted vote for {@link #votedFor}
@@ -119,10 +119,10 @@ public class RaftState {
      */
     private CandidateState candidateState;
 
-    public RaftState(CPGroupId groupId, RaftMember localEndpoint, Collection<RaftMember> endpoints) {
+    public RaftState(CPGroupId groupId, EndpointIdentifier localEndpoint, Collection<EndpointIdentifier> endpoints) {
         this.groupId = groupId;
         this.localEndpoint = localEndpoint;
-        this.initialMembers = unmodifiableSet(new LinkedHashSet<RaftMember>(endpoints));
+        this.initialMembers = unmodifiableSet(new LinkedHashSet<EndpointIdentifier>(endpoints));
         RaftGroupMembers groupMembers = new RaftGroupMembers(0, endpoints, localEndpoint);
         this.committedGroupMembers = groupMembers;
         this.lastGroupMembers = groupMembers;
@@ -136,21 +136,21 @@ public class RaftState {
         return groupId;
     }
 
-    public Collection<RaftMember> initialMembers() {
+    public Collection<EndpointIdentifier> initialMembers() {
         return initialMembers;
     }
 
     /**
      * Returns all members in the last applied group members
      */
-    public Collection<RaftMember> members() {
+    public Collection<EndpointIdentifier> members() {
         return lastGroupMembers.members();
     }
 
     /**
      * Returns remote members in the last applied group members
      */
-    public Collection<RaftMember> remoteMembers() {
+    public Collection<EndpointIdentifier> remoteMembers() {
         return lastGroupMembers.remoteMembers();
     }
 
@@ -213,7 +213,7 @@ public class RaftState {
     /**
      * Returns the known leader
      */
-    public RaftMember leader() {
+    public EndpointIdentifier leader() {
         return leader;
     }
 
@@ -229,14 +229,14 @@ public class RaftState {
      * Returns the endpoint this note voted for
      * @see #votedFor
      */
-    public RaftMember votedFor() {
+    public EndpointIdentifier votedFor() {
         return votedFor;
     }
 
     /**
      * Updates the known leader
      */
-    public void leader(RaftMember endpoint) {
+    public void leader(EndpointIdentifier endpoint) {
         leader = endpoint;
     }
 
@@ -298,7 +298,7 @@ public class RaftState {
     /**
      * Persist a vote for the endpoint in current term during leader election.
      */
-    public void persistVote(int term, RaftMember endpoint) {
+    public void persistVote(int term, EndpointIdentifier endpoint) {
         this.lastVoteTerm = term;
         this.votedFor = endpoint;
     }
@@ -349,7 +349,7 @@ public class RaftState {
     /**
      * Returns true if the endpoint is a member of the last applied group, false otherwise.
      */
-    public boolean isKnownMember(RaftMember endpoint) {
+    public boolean isKnownMember(EndpointIdentifier endpoint) {
         return lastGroupMembers.isKnownMember(endpoint);
     }
 
@@ -379,7 +379,7 @@ public class RaftState {
      * @param logIndex log index of membership change
      * @param members latest applied members
      */
-    public void updateGroupMembers(long logIndex, Collection<RaftMember> members) {
+    public void updateGroupMembers(long logIndex, Collection<EndpointIdentifier> members) {
         assert committedGroupMembers == lastGroupMembers
                 : "Cannot update group members to: " + members + " at log index: " + logIndex + " because last group members: "
                 + lastGroupMembers + " is different than committed group members: " + committedGroupMembers;
@@ -392,13 +392,13 @@ public class RaftState {
         lastGroupMembers = newGroupMembers;
 
         if (leaderState != null) {
-            for (RaftMember endpoint : members) {
+            for (EndpointIdentifier endpoint : members) {
                 if (!committedGroupMembers.isKnownMember(endpoint)) {
                     leaderState.add(endpoint, log.lastLogOrSnapshotIndex());
                 }
             }
 
-            for (RaftMember endpoint : committedGroupMembers.remoteMembers()) {
+            for (EndpointIdentifier endpoint : committedGroupMembers.remoteMembers()) {
                 if (!members.contains(endpoint)) {
                     leaderState.remove(endpoint);
                 }
@@ -432,7 +432,7 @@ public class RaftState {
      * Restores group members from the snapshot. Both {@link #committedGroupMembers}
      * and {@link #lastGroupMembers} are overwritten and they become the same.
      */
-    public void restoreGroupMembers(long logIndex, Collection<RaftMember> members) {
+    public void restoreGroupMembers(long logIndex, Collection<EndpointIdentifier> members) {
         assert committedGroupMembers == lastGroupMembers
                 : "Cannot restore group members to: " + members + " at log index: " + logIndex + " because last group members: "
                 + lastGroupMembers + " is different than committed group members: " + committedGroupMembers;

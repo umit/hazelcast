@@ -1,14 +1,14 @@
 package com.hazelcast.cp.internal.raft.impl;
 
-import com.hazelcast.nio.Address;
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
-import com.hazelcast.cp.RaftMember;
-import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.internal.raft.impl.dataservice.RaftDataService;
+import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
 import com.hazelcast.cp.internal.raft.impl.state.LeaderState;
 import com.hazelcast.cp.internal.raft.impl.state.RaftGroupMembers;
 import com.hazelcast.cp.internal.raft.impl.testing.LocalRaftGroup;
 import com.hazelcast.cp.internal.raft.impl.testing.TestRaftMember;
+import com.hazelcast.nio.Address;
 import com.hazelcast.util.ExceptionUtil;
 
 import java.net.InetAddress;
@@ -33,10 +33,10 @@ public class RaftUtil {
         return readRaftState(node, task);
     }
 
-    public static <T extends RaftMember> T getLeaderMember(final RaftNodeImpl node) {
-        Callable<RaftMember> task = new Callable<RaftMember>() {
+    public static <T extends EndpointIdentifier> T getLeaderMember(final RaftNodeImpl node) {
+        Callable<EndpointIdentifier> task = new Callable<EndpointIdentifier>() {
             @Override
-            public RaftMember call() {
+            public EndpointIdentifier call() {
                 return node.state().leader();
             }
         };
@@ -87,7 +87,7 @@ public class RaftUtil {
         return readRaftState(node, task);
     }
 
-    public static long getNextIndex(final RaftNodeImpl leader, final RaftMember follower) {
+    public static long getNextIndex(final RaftNodeImpl leader, final EndpointIdentifier follower) {
         Callable<Long> task = new Callable<Long>() {
             @Override
             public Long call() {
@@ -99,7 +99,7 @@ public class RaftUtil {
         return readRaftState(leader, task);
     }
 
-    public static long getMatchIndex(final RaftNodeImpl leader, final RaftMember follower) {
+    public static long getMatchIndex(final RaftNodeImpl leader, final EndpointIdentifier follower) {
         Callable<Long> task = new Callable<Long>() {
             @Override
             public Long call() {

@@ -16,6 +16,7 @@
 
 package com.hazelcast.cp;
 
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.core.ICompletableFuture;
 
 import java.util.Collection;
@@ -76,7 +77,7 @@ public interface CPSubsystemManagementService {
      *                               or the given member is still member of the Hazelcast cluster
      *                               or another CP member is being removed from the CP sub-system
      */
-    ICompletableFuture<Void> removeCPMember(RaftMember member);
+    ICompletableFuture<Void> removeCPMember(EndpointIdentifier member);
 
     /**
      * Unconditionally destroys the given CP group without using the Raft algorithm mechanics.

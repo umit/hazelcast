@@ -77,7 +77,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
     }
 
     protected HazelcastInstance getRandomFollowerInstance(HazelcastInstance[] instances, RaftNodeImpl leader) {
-        Address address = ((RaftMemberImpl) leader.getLocalMember()).getAddress();
+        Address address = ((CPMember) leader.getLocalMember()).getAddress();
         for (HazelcastInstance instance : instances) {
             if (!getAddress(instance).equals(address)) {
                 return instance;
@@ -167,7 +167,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
 
         RaftNodeImpl raftNode = raftNodeRef[0];
         waitUntilLeaderElected(raftNode);
-        RaftMemberImpl leaderEndpoint = getLeaderMember(raftNode);
+        CPMember leaderEndpoint = getLeaderMember(raftNode);
 
         for (HazelcastInstance instance : instances) {
             if (getAddress(instance).equals(leaderEndpoint.getAddress())) {
@@ -196,7 +196,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
 
         RaftNodeImpl raftNode = raftNodeRef[0];
         waitUntilLeaderElected(raftNode);
-        RaftMemberImpl leaderEndpoint = getLeaderMember(raftNode);
+        CPMember leaderEndpoint = getLeaderMember(raftNode);
 
         for (HazelcastInstance instance : instances) {
             if (!getAddress(instance).equals(leaderEndpoint.getAddress())) {

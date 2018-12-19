@@ -25,14 +25,7 @@ import java.net.SocketAddress;
  * @see Member
  * @see Client
  */
-public interface Endpoint {
-
-    /**
-     * Returns the unique UUID for this endpoint.
-     *
-     * @return the unique UUID for this endpoint
-     */
-    String getUuid();
+public interface Endpoint extends EndpointIdentifier {
 
     /**
      * Returns the socket address for this endpoint.

@@ -91,17 +91,17 @@ class RaftGroupMembershipManager {
         // scheduleWithRepetition skips subsequent execution if one is already running.
         executionService.scheduleWithRepetition(new RaftGroupDestroyHandlerTask(), MANAGEMENT_TASK_PERIOD_IN_MILLIS,
                 MANAGEMENT_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
-        executionService.scheduleWithRepetition(new RaftMembershipChangeHandlerTask(), MANAGEMENT_TASK_PERIOD_IN_MILLIS,
+        executionService.scheduleWithRepetition(new RaftGroupMembershipChangeHandlerTask(), MANAGEMENT_TASK_PERIOD_IN_MILLIS,
                 MANAGEMENT_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
         executionService.scheduleWithRepetition(new CheckLocalRaftNodesTask(), CHECK_LOCAL_RAFT_NODES_TASK_PERIOD_IN_MILLIS,
                 CHECK_LOCAL_RAFT_NODES_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
     }
 
-    private RaftMemberImpl getLocalMember() {
+    private CPMember getLocalMember() {
         return raftService.getMetadataGroupManager().getLocalMember();
     }
 
-    private boolean skipRunningCleanupTask() {
+    private boolean skipRunningTask() {
         return !raftService.getMetadataGroupManager().isMetadataGroupLeader();
     }
 
@@ -144,7 +144,7 @@ class RaftGroupMembershipManager {
     private class RaftGroupDestroyHandlerTask implements Runnable {
         @Override
         public void run() {
-            if (skipRunningCleanupTask()) {
+            if (skipRunningTask()) {
                 return;
             }
 
@@ -162,7 +162,7 @@ class RaftGroupMembershipManager {
             }
 
             OperationService operationService = nodeEngine.getOperationService();
-            for (RaftMemberImpl member : raftService.getMetadataGroupManager().getActiveMembers()) {
+            for (CPMember member : raftService.getMetadataGroupManager().getActiveMembers()) {
                 if (!member.equals(raftService.getLocalMember())) {
                     operationService.send(new DestroyRaftNodesOp(destroyedGroupIds), member.getAddress());
                 }
@@ -229,13 +229,13 @@ class RaftGroupMembershipManager {
         }
     }
 
-    private class RaftMembershipChangeHandlerTask implements Runnable {
+    private class RaftGroupMembershipChangeHandlerTask implements Runnable {
 
         private static final int NA_MEMBERS_COMMIT_INDEX = -1;
 
         @Override
         public void run() {
-            if (skipRunningCleanupTask()) {
+            if (skipRunningTask()) {
                 return;
             }
 
@@ -358,7 +358,7 @@ class RaftGroupMembershipManager {
                     return NA_MEMBERS_COMMIT_INDEX;
                 }
 
-                for (RaftMemberImpl member : ctx.getMembers()) {
+                for (CPMember member : ctx.getMembers()) {
                     if (!m.getMembers().contains(member)) {
                         logger.severe(msg);
                         return NA_MEMBERS_COMMIT_INDEX;
@@ -374,7 +374,7 @@ class RaftGroupMembershipManager {
         }
 
         private long getMemberRemoveCommitIndex(CPGroupMembershipChangeContext ctx, Throwable t) {
-            RaftMemberImpl removedMember = ctx.getMemberToRemove();
+            CPMember removedMember = ctx.getMemberToRemove();
 
             if (t.getCause() instanceof MismatchingGroupMembersCommitIndexException) {
                 MismatchingGroupMembersCommitIndexException m = (MismatchingGroupMembersCommitIndexException) t.getCause();
@@ -407,7 +407,7 @@ class RaftGroupMembershipManager {
                     return NA_MEMBERS_COMMIT_INDEX;
                 }
 
-                for (RaftMemberImpl member : ctx.getMembers()) {
+                for (CPMember member : ctx.getMembers()) {
                     // Other group members except the removed one and added one must be still present...
                     if (!member.equals(removedMember) && !m.getMembers().contains(member)) {
                         logger.severe(msg);

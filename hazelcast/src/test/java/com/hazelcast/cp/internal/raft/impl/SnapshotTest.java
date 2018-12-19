@@ -1,11 +1,11 @@
 package com.hazelcast.cp.internal.raft.impl;
 
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
-import com.hazelcast.cp.RaftMember;
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.exception.StaleAppendRequestException;
-import com.hazelcast.cp.internal.raft.impl.dto.AppendRequest;
 import com.hazelcast.cp.internal.raft.impl.dataservice.ApplyRaftRunnable;
 import com.hazelcast.cp.internal.raft.impl.dataservice.RaftDataService;
+import com.hazelcast.cp.internal.raft.impl.dto.AppendRequest;
 import com.hazelcast.cp.internal.raft.impl.testing.LocalRaftGroup;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -66,7 +66,7 @@ public class SnapshotTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 for (RaftNodeImpl raftNode : group.getNodes()) {
                     assertEquals(entryCount, getCommitIndex(raftNode));
                     assertEquals(entryCount, getSnapshotEntry(raftNode).index());
@@ -95,7 +95,7 @@ public class SnapshotTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 for (RaftNodeImpl raftNode : group.getNodes()) {
                     assertEquals(entryCount, getCommitIndex(raftNode));
                     assertEquals(entryCount, getSnapshotEntry(raftNode).index());
@@ -107,7 +107,7 @@ public class SnapshotTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 for (RaftNodeImpl raftNode : group.getNodes()) {
                     assertEquals(entryCount + 1, getCommitIndex(raftNode));
                     RaftDataService service = group.getService(raftNode);
@@ -141,7 +141,7 @@ public class SnapshotTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 assertEquals(entryCount, getSnapshotEntry(leader).index());
             }
         });
@@ -152,7 +152,7 @@ public class SnapshotTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 for (RaftNodeImpl raftNode : group.getNodes()) {
                     assertEquals(entryCount + 1, getCommitIndex(raftNode));
                     RaftDataService service = group.getService(raftNode);
@@ -184,7 +184,7 @@ public class SnapshotTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 for (RaftNodeImpl follower : group.getNodesExcept(leader.getLocalMember())) {
                     assertEquals(entryCount - 1, getMatchIndex(leader, follower.getLocalMember()));
                 }
@@ -197,7 +197,7 @@ public class SnapshotTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 assertEquals(entryCount, getSnapshotEntry(leader).index());
             }
         });
@@ -208,7 +208,7 @@ public class SnapshotTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 for (RaftNodeImpl raftNode : group.getNodes()) {
                     assertEquals(entryCount + 1, getCommitIndex(raftNode));
                     RaftDataService service = group.getService(raftNode);
@@ -238,7 +238,7 @@ public class SnapshotTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 for (RaftNodeImpl raftNode : group.getNodes()) {
                     assertEquals(40, getCommitIndex(raftNode));
                 }
@@ -249,9 +249,9 @@ public class SnapshotTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 for (RaftNodeImpl raftNode : followers) {
-                    RaftMember leaderEndpoint = getLeaderMember(raftNode);
+                    EndpointIdentifier leaderEndpoint = getLeaderMember(raftNode);
                     assertNotNull(leaderEndpoint);
                     assertNotEquals(leader.getLocalMember(), leaderEndpoint);
                 }
@@ -272,7 +272,7 @@ public class SnapshotTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 for (RaftNodeImpl raftNode : followers) {
                     assertTrue(getSnapshotEntry(raftNode).index() > 0);
                 }
@@ -293,7 +293,7 @@ public class SnapshotTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 for (RaftNodeImpl raftNode : group.getNodes()) {
                     assertEquals(51, getCommitIndex(raftNode));
                     RaftDataService service = group.getService(raftNode);

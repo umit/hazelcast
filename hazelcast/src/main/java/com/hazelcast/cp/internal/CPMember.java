@@ -16,12 +16,12 @@
 
 package com.hazelcast.cp.internal;
 
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.core.Member;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftMember;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -29,31 +29,31 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
 /**
- * {@code RaftMember} represents a member in Raft group.
+ * {@code CPMember} represents a member in Raft group.
  * Each member must have a unique address and id in the group.
  */
-public class RaftMemberImpl implements RaftMember, Serializable, IdentifiedDataSerializable {
+public class CPMember implements EndpointIdentifier, Serializable, IdentifiedDataSerializable {
 
     private static final long serialVersionUID = 5628148969327743953L;
 
-    private transient String uid;
+    private transient String uuid;
     private transient Address address;
 
-    public RaftMemberImpl() {
+    public CPMember() {
     }
 
-    public RaftMemberImpl(String id, Address address) {
-        this.uid = id;
+    public CPMember(String id, Address address) {
+        this.uuid = id;
         this.address = address;
     }
 
-    public RaftMemberImpl(Member member) {
-        this.uid = member.getUuid();
+    public CPMember(Member member) {
+        this.uuid = member.getUuid();
         this.address = member.getAddress();
     }
 
-    public String getUid() {
-        return uid;
+    public String getUuid() {
+        return uuid;
     }
 
     public Address getAddress() {
@@ -62,14 +62,14 @@ public class RaftMemberImpl implements RaftMember, Serializable, IdentifiedDataS
 
     private void writeObject(ObjectOutputStream out) throws IOException {
         out.defaultWriteObject();
-        out.writeUTF(uid);
+        out.writeUTF(uuid);
         out.writeUTF(address.getHost());
         out.writeInt(address.getPort());
     }
 
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
-        uid = in.readUTF();
+        uuid = in.readUTF();
         String host = in.readUTF();
         int port = in.readInt();
         address = new Address(host, port);
@@ -77,13 +77,13 @@ public class RaftMemberImpl implements RaftMember, Serializable, IdentifiedDataS
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeUTF(uid);
+        out.writeUTF(uuid);
         out.writeObject(address);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
-        uid = in.readUTF();
+        uuid = in.readUTF();
         address = in.readObject();
     }
 
@@ -94,7 +94,7 @@ public class RaftMemberImpl implements RaftMember, Serializable, IdentifiedDataS
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.RAFT_MEMBER;
+        return RaftServiceDataSerializerHook.CP_MEMBER;
     }
 
     @Override
@@ -102,13 +102,13 @@ public class RaftMemberImpl implements RaftMember, Serializable, IdentifiedDataS
         if (this == o) {
             return true;
         }
-        if (!(o instanceof RaftMemberImpl)) {
+        if (!(o instanceof CPMember)) {
             return false;
         }
 
-        RaftMemberImpl that = (RaftMemberImpl) o;
+        CPMember that = (CPMember) o;
 
-        if (uid != null ? !uid.equals(that.uid) : that.uid != null) {
+        if (uuid != null ? !uuid.equals(that.uuid) : that.uuid != null) {
             return false;
         }
         return address != null ? address.equals(that.address) : that.address == null;
@@ -116,7 +116,7 @@ public class RaftMemberImpl implements RaftMember, Serializable, IdentifiedDataS
 
     @Override
     public int hashCode() {
-        int result = uid != null ? uid.hashCode() : 0;
+        int result = uuid != null ? uuid.hashCode() : 0;
         result = 31 * result + (address != null ? address.hashCode() : 0);
         return result;
     }
@@ -124,6 +124,6 @@ public class RaftMemberImpl implements RaftMember, Serializable, IdentifiedDataS
 
     @Override
     public String toString() {
-        return "RaftMember{" + "uid=" + uid + ", address=" + address + '}';
+        return "CPMember{" + "uuid=" + uuid + ", address=" + address + '}';
     }
 }

@@ -16,11 +16,11 @@
 
 package com.hazelcast.cp.internal.raft.impl.dto;
 
+import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.cp.internal.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.internal.raft.impl.RaftDataSerializerHook;
-import com.hazelcast.cp.RaftMember;
 
 import java.io.IOException;
 
@@ -35,20 +35,20 @@ import java.io.IOException;
  */
 public class AppendFailureResponse implements IdentifiedDataSerializable {
 
-    private RaftMember follower;
+    private EndpointIdentifier follower;
     private int term;
     private long expectedNextIndex;
 
     public AppendFailureResponse() {
     }
 
-    public AppendFailureResponse(RaftMember follower, int term, long expectedNextIndex) {
+    public AppendFailureResponse(EndpointIdentifier follower, int term, long expectedNextIndex) {
         this.follower = follower;
         this.term = term;
         this.expectedNextIndex = expectedNextIndex;
     }
 
-    public RaftMember follower() {
+    public EndpointIdentifier follower() {
         return follower;
     }
 

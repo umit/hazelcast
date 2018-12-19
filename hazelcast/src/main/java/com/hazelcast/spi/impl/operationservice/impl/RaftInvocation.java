@@ -24,7 +24,7 @@ import com.hazelcast.cp.exception.LeaderDemotedException;
 import com.hazelcast.cp.exception.NotLeaderException;
 import com.hazelcast.cp.exception.StaleAppendRequestException;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
-import com.hazelcast.cp.internal.RaftMemberImpl;
+import com.hazelcast.cp.internal.CPMember;
 import com.hazelcast.spi.ExceptionAction;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.exception.CallerNotMemberException;
@@ -43,7 +43,7 @@ public class RaftInvocation extends Invocation {
     private final RaftInvocationContext raftInvocationContext;
     private final CPGroupId groupId;
     private volatile MemberCursor memberCursor;
-    private volatile RaftMemberImpl lastInvocationEndpoint;
+    private volatile CPMember lastInvocationEndpoint;
     private volatile Throwable indeterminateException;
 
     public RaftInvocation(Context context, RaftInvocationContext raftInvocationContext, CPGroupId groupId, Operation op,
@@ -58,7 +58,7 @@ public class RaftInvocation extends Invocation {
 
     @Override
     protected Address getTarget() {
-        RaftMemberImpl targetEndpoint = getTargetEndpoint();
+        CPMember targetEndpoint = getTargetEndpoint();
         lastInvocationEndpoint = targetEndpoint;
         return targetEndpoint != null ? targetEndpoint.getAddress() : null;
     }
@@ -103,8 +103,8 @@ public class RaftInvocation extends Invocation {
                 || cause instanceof TargetNotMemberException;
     }
 
-    private RaftMemberImpl getTargetEndpoint() {
-        RaftMemberImpl target = raftInvocationContext.getKnownLeader(groupId);
+    private CPMember getTargetEndpoint() {
+        CPMember target = raftInvocationContext.getKnownLeader(groupId);
         if (target != null) {
             return target;
         }

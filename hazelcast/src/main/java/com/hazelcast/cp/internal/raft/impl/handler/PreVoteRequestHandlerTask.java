@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.handler;
 
-import com.hazelcast.cp.RaftMember;
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.dto.PreVoteRequest;
 import com.hazelcast.cp.internal.raft.impl.dto.PreVoteResponse;
@@ -47,7 +47,7 @@ public class PreVoteRequestHandlerTask extends RaftNodeStatusAwareTask implement
     @Override
     protected void innerRun() {
         RaftState state = raftNode.state();
-        RaftMember localEndpoint = raftNode.getLocalMember();
+        EndpointIdentifier localEndpoint = raftNode.getLocalMember();
 
         // Reply false if term < currentTerm (§5.1)
         if (state.term() > req.nextTerm()) {

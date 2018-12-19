@@ -1,12 +1,12 @@
 package com.hazelcast.cp.internal.raft.impl.state;
 
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.RaftMember;
 import com.hazelcast.cp.internal.raft.impl.RaftRole;
 import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
 import com.hazelcast.cp.internal.raft.impl.log.RaftLog;
-import com.hazelcast.cp.internal.raft.impl.testing.TestRaftMember;
 import com.hazelcast.cp.internal.raft.impl.testing.TestRaftGroupId;
+import com.hazelcast.cp.internal.raft.impl.testing.TestRaftMember;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
@@ -38,13 +38,13 @@ public class RaftStateTest {
     private String name = randomName();
     private CPGroupId groupId;
     private TestRaftMember localMember;
-    private Collection<RaftMember> members;
+    private Collection<EndpointIdentifier> members;
 
     @Before
     public void setup() {
         groupId = new TestRaftGroupId(name);
         localMember = newRaftMember(5000);
-        members = new HashSet<RaftMember>(asList(localMember,
+        members = new HashSet<EndpointIdentifier>(asList(localMember,
                 newRaftMember(5001),
                 newRaftMember(5002),
                 newRaftMember(5003),
@@ -61,7 +61,7 @@ public class RaftStateTest {
 
         assertEquals(members, state.members());
 
-        Collection<RaftMember> remoteMembers = new HashSet<RaftMember>(members);
+        Collection<EndpointIdentifier> remoteMembers = new HashSet<EndpointIdentifier>(members);
         remoteMembers.remove(localMember);
         assertEquals(remoteMembers, state.remoteMembers());
 
@@ -181,7 +181,7 @@ public class RaftStateTest {
         LeaderState leaderState = state.leaderState();
         assertNotNull(leaderState);
 
-        for (RaftMember endpoint : state.remoteMembers()) {
+        for (EndpointIdentifier endpoint : state.remoteMembers()) {
             assertEquals(0, leaderState.getMatchIndex(endpoint));
             assertEquals(lastLogIndex + 1, leaderState.getNextIndex(endpoint));
         }
@@ -195,13 +195,13 @@ public class RaftStateTest {
 
     @Test
     public void isKnownEndpoint() {
-        for (RaftMember endpoint : members) {
+        for (EndpointIdentifier endpoint : members) {
             assertTrue(state.isKnownMember(endpoint));
         }
 
         assertFalse(state.isKnownMember(newRaftMember(1234)));
         assertFalse(state.isKnownMember(new TestRaftMember(randomString(), localMember.getPort())));
-        assertFalse(state.isKnownMember(new TestRaftMember(localMember.getUid(), 1234)));
+        assertFalse(state.isKnownMember(new TestRaftMember(localMember.getUuid(), 1234)));
     }
 
     @Test
@@ -215,7 +215,7 @@ public class RaftStateTest {
     }
 
     private void test_majority(int count) {
-        members = new HashSet<RaftMember>();
+        members = new HashSet<EndpointIdentifier>();
         members.add(localMember);
 
         for (int i = 1; i < count; i++) {

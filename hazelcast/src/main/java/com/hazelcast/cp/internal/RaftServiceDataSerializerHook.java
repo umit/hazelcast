@@ -29,7 +29,7 @@ import com.hazelcast.cp.internal.operation.integration.PreVoteRequestOp;
 import com.hazelcast.cp.internal.operation.integration.PreVoteResponseOp;
 import com.hazelcast.cp.internal.operation.integration.VoteRequestOp;
 import com.hazelcast.cp.internal.operation.integration.VoteResponseOp;
-import com.hazelcast.cp.internal.raftop.metadata.AddRaftMemberOp;
+import com.hazelcast.cp.internal.raftop.metadata.AddCPMemberOp;
 import com.hazelcast.cp.internal.raftop.metadata.CompleteDestroyRaftGroupsOp;
 import com.hazelcast.cp.internal.raftop.metadata.CompleteRaftGroupMembershipChangesOp;
 import com.hazelcast.cp.internal.raftop.metadata.CreateMetadataRaftGroupOp;
@@ -38,15 +38,15 @@ import com.hazelcast.cp.internal.raftop.metadata.CreateRaftNodeOp;
 import com.hazelcast.cp.internal.raftop.metadata.DestroyRaftNodesOp;
 import com.hazelcast.cp.internal.raftop.metadata.ForceDestroyRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetActiveRaftGroupIdOp;
-import com.hazelcast.cp.internal.raftop.metadata.GetActiveRaftMembersOp;
+import com.hazelcast.cp.internal.raftop.metadata.GetActiveCPMembersOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetDestroyingRaftGroupIdsOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetInitialRaftGroupMembersIfCurrentGroupMemberOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetMembershipChangeContextOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.RaftServicePreJoinOp;
-import com.hazelcast.cp.internal.raftop.metadata.SendActiveRaftMembersOp;
+import com.hazelcast.cp.internal.raftop.metadata.SendActiveCPMembersOp;
 import com.hazelcast.cp.internal.raftop.metadata.TriggerDestroyRaftGroupOp;
-import com.hazelcast.cp.internal.raftop.metadata.TriggerRemoveRaftMemberOp;
+import com.hazelcast.cp.internal.raftop.metadata.TriggerRemoveCPMemberOp;
 import com.hazelcast.cp.internal.raftop.snapshot.RestoreSnapshotOp;
 import com.hazelcast.cp.internal.operation.ChangeRaftGroupMembershipOp;
 import com.hazelcast.cp.internal.operation.DefaultRaftReplicateOp;
@@ -76,13 +76,13 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int CREATE_RAFT_GROUP_OP = 13;
     public static final int TRIGGER_DESTROY_RAFT_GROUP_OP = 14;
     public static final int COMPLETE_DESTROY_RAFT_GROUPS_OP = 15;
-    public static final int TRIGGER_REMOVE_RAFT_MEMBER_OP = 16;
+    public static final int TRIGGER_REMOVE_CP_MEMBER_OP = 16;
     public static final int COMPLETE_RAFT_GROUP_MEMBERSHIP_CHANGES_OP = 17;
     public static final int MEMBERSHIP_CHANGE_REPLICATE_OP = 18;
     public static final int MEMBERSHIP_CHANGE_CTX = 19;
     public static final int DEFAULT_RAFT_GROUP_QUERY_OP = 20;
     public static final int DESTROY_RAFT_NODES_OP = 21;
-    public static final int GET_ACTIVE_RAFT_MEMBERS_OP = 22;
+    public static final int GET_ACTIVE_CP_MEMBERS_OP = 22;
     public static final int GET_DESTROYING_RAFT_GROUP_IDS_OP = 23;
     public static final int GET_MEMBERSHIP_CHANGE_CONTEXT_OP = 24;
     public static final int GET_RAFT_GROUP_OP = 25;
@@ -91,9 +91,9 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int DESTROY_RAFT_GROUP_OP = 28;
     public static final int RESTORE_SNAPSHOT_OP = 29;
     public static final int NOTIFY_TERM_CHANGE_OP = 30;
-    public static final int RAFT_MEMBER = 31;
-    public static final int SEND_ACTIVE_RAFT_MEMBERS_OP = 32;
-    public static final int ADD_RAFT_MEMBER_OP = 33;
+    public static final int CP_MEMBER = 31;
+    public static final int SEND_ACTIVE_CP_MEMBERS_OP = 32;
+    public static final int ADD_CP_MEMBER_OP = 33;
     public static final int CREATE_METADATA_RAFT_GROUP_OP = 34;
     public static final int FORCE_DESTROY_RAFT_GROUP_OP = 35;
     public static final int GET_INITIAL_RAFT_GROUP_MEMBERS_IF_CURRENT_GROUP_MEMBER_OP = 36;
@@ -140,8 +140,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new TriggerDestroyRaftGroupOp();
                     case COMPLETE_DESTROY_RAFT_GROUPS_OP:
                         return new CompleteDestroyRaftGroupsOp();
-                    case TRIGGER_REMOVE_RAFT_MEMBER_OP:
-                        return new TriggerRemoveRaftMemberOp();
+                    case TRIGGER_REMOVE_CP_MEMBER_OP:
+                        return new TriggerRemoveCPMemberOp();
                     case COMPLETE_RAFT_GROUP_MEMBERSHIP_CHANGES_OP:
                         return new CompleteRaftGroupMembershipChangesOp();
                     case MEMBERSHIP_CHANGE_REPLICATE_OP:
@@ -152,8 +152,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new RaftQueryOp();
                     case DESTROY_RAFT_NODES_OP:
                         return new DestroyRaftNodesOp();
-                    case GET_ACTIVE_RAFT_MEMBERS_OP:
-                        return new GetActiveRaftMembersOp();
+                    case GET_ACTIVE_CP_MEMBERS_OP:
+                        return new GetActiveCPMembersOp();
                     case GET_DESTROYING_RAFT_GROUP_IDS_OP:
                         return new GetDestroyingRaftGroupIdsOp();
                     case GET_MEMBERSHIP_CHANGE_CONTEXT_OP:
@@ -170,12 +170,12 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new RestoreSnapshotOp();
                     case NOTIFY_TERM_CHANGE_OP:
                         return new NotifyTermChangeOp();
-                    case RAFT_MEMBER:
-                        return new RaftMemberImpl();
-                    case SEND_ACTIVE_RAFT_MEMBERS_OP:
-                        return new SendActiveRaftMembersOp();
-                    case ADD_RAFT_MEMBER_OP:
-                        return new AddRaftMemberOp();
+                    case CP_MEMBER:
+                        return new CPMember();
+                    case SEND_ACTIVE_CP_MEMBERS_OP:
+                        return new SendActiveCPMembersOp();
+                    case ADD_CP_MEMBER_OP:
+                        return new AddCPMemberOp();
                     case CREATE_METADATA_RAFT_GROUP_OP:
                         return new CreateMetadataRaftGroupOp();
                     case FORCE_DESTROY_RAFT_GROUP_OP:

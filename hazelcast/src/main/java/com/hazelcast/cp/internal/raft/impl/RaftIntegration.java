@@ -16,8 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl;
 
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.cp.RaftMember;
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendRequest;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendSuccessResponse;
@@ -28,6 +27,7 @@ import com.hazelcast.cp.internal.raft.impl.dto.VoteRequest;
 import com.hazelcast.cp.internal.raft.impl.dto.VoteResponse;
 import com.hazelcast.cp.internal.raft.impl.log.SnapshotEntry;
 import com.hazelcast.cp.internal.raft.impl.util.SimpleCompletableFuture;
+import com.hazelcast.logging.ILogger;
 
 import java.util.concurrent.TimeUnit;
 
@@ -58,7 +58,7 @@ public interface RaftIntegration {
      * @param endpoint endpoint
      * @return true if endpoint is reachable, false otherwise
      */
-    boolean isReachable(RaftMember endpoint);
+    boolean isReachable(EndpointIdentifier endpoint);
 
     /**
      * Sends the {@link PreVoteRequest} to target endpoint to be handled by
@@ -66,7 +66,7 @@ public interface RaftIntegration {
      *
      * @return true if request is sent or scheduled to be sent to target, false otherwise
      */
-    boolean send(PreVoteRequest request, RaftMember target);
+    boolean send(PreVoteRequest request, EndpointIdentifier target);
 
     /**
      * Sends the {@link PreVoteResponse} to target endpoint to be handled by
@@ -74,7 +74,7 @@ public interface RaftIntegration {
      *
      * @return true if response is sent or scheduled to be sent to target, false otherwise
      */
-    boolean send(PreVoteResponse response, RaftMember target);
+    boolean send(PreVoteResponse response, EndpointIdentifier target);
 
     /**
      * Sends the {@link VoteRequest} to target endpoint to be handled by
@@ -82,7 +82,7 @@ public interface RaftIntegration {
      *
      * @return true if request is sent or scheduled to be sent to target, false otherwise
      */
-    boolean send(VoteRequest request, RaftMember target);
+    boolean send(VoteRequest request, EndpointIdentifier target);
 
     /**
      * Sends the {@link VoteResponse} to target endpoint to be handled by
@@ -90,7 +90,7 @@ public interface RaftIntegration {
      *
      * @return true if response is sent or scheduled to be sent to target, false otherwise
      */
-    boolean send(VoteResponse response, RaftMember target);
+    boolean send(VoteResponse response, EndpointIdentifier target);
 
     /**
      * Sends the {@link AppendRequest} to target endpoint to be handled by
@@ -98,7 +98,7 @@ public interface RaftIntegration {
      *
      * @return true if request is sent or scheduled to be sent to target, false otherwise
      */
-    boolean send(AppendRequest request, RaftMember target);
+    boolean send(AppendRequest request, EndpointIdentifier target);
 
     /**
      * Sends the {@link AppendSuccessResponse} to target endpoint to be handled by
@@ -106,7 +106,7 @@ public interface RaftIntegration {
      *
      * @return true if response is sent or scheduled to be sent to target, false otherwise
      */
-    boolean send(AppendSuccessResponse response, RaftMember target);
+    boolean send(AppendSuccessResponse response, EndpointIdentifier target);
 
     /**
      * Sends the {@link AppendFailureResponse} to target endpoint to be handled by
@@ -114,7 +114,7 @@ public interface RaftIntegration {
      *
      * @return true if response is sent or scheduled to be sent to target, false otherwise
      */
-    boolean send(AppendFailureResponse response, RaftMember target);
+    boolean send(AppendFailureResponse response, EndpointIdentifier target);
 
     /**
      * Sends the {@link InstallSnapshot} to target endpoint to be handled by
@@ -122,7 +122,7 @@ public interface RaftIntegration {
      *
      * @return true if request is sent or scheduled to be sent to target, false otherwise
      */
-    boolean send(InstallSnapshot request, RaftMember target);
+    boolean send(InstallSnapshot request, EndpointIdentifier target);
 
     /**
      * Executes the operation on underlying operation execution mechanism

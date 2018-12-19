@@ -16,8 +16,8 @@
 
 package com.hazelcast.cp.exception;
 
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.core.HazelcastException;
-import com.hazelcast.cp.RaftMember;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -31,13 +31,13 @@ import java.io.ObjectOutputStream;
  */
 public class CPSubsystemException extends HazelcastException {
 
-    private transient RaftMember leader;
+    private transient EndpointIdentifier leader;
 
-    public CPSubsystemException(RaftMember leader) {
+    public CPSubsystemException(EndpointIdentifier leader) {
         this.leader = leader;
     }
 
-    public CPSubsystemException(String message, RaftMember leader) {
+    public CPSubsystemException(String message, EndpointIdentifier leader) {
         super(message);
         this.leader = leader;
     }
@@ -46,7 +46,7 @@ public class CPSubsystemException extends HazelcastException {
      * Returns the leader endpoint of related CP group, if known/available
      * by the time this exception is thrown.
      */
-    public RaftMember getLeader() {
+    public EndpointIdentifier getLeader() {
         return leader;
     }
 
@@ -65,7 +65,7 @@ public class CPSubsystemException extends HazelcastException {
         in.defaultReadObject();
 
         if (in.readBoolean()) {
-            leader = (RaftMember) in.readObject();
+            leader = (EndpointIdentifier) in.readObject();
         }
     }
 }

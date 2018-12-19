@@ -20,7 +20,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.RaftMemberImpl;
+import com.hazelcast.cp.internal.CPMember;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
@@ -34,16 +34,16 @@ import java.util.ArrayList;
  * <p/>
  * This operation is committed to the Metadata group.
  */
-public class GetActiveRaftMembersOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
+public class GetActiveCPMembersOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
-    public GetActiveRaftMembersOp() {
+    public GetActiveCPMembersOp() {
     }
 
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftService service = getService();
         // returning array list to be able to serialize response
-        return new ArrayList<RaftMemberImpl>(service.getMetadataGroupManager().getActiveMembers());
+        return new ArrayList<CPMember>(service.getMetadataGroupManager().getActiveMembers());
     }
 
     @Override
@@ -63,7 +63,7 @@ public class GetActiveRaftMembersOp extends RaftOp implements IndeterminateOpera
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.GET_ACTIVE_RAFT_MEMBERS_OP;
+        return RaftServiceDataSerializerHook.GET_ACTIVE_CP_MEMBERS_OP;
     }
 
     @Override

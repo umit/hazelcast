@@ -16,10 +16,17 @@
 
 package com.hazelcast.cp.internal;
 
-import com.hazelcast.logging.ILogger;
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.operation.integration.AppendFailureResponseOp;
+import com.hazelcast.cp.internal.operation.integration.AppendRequestOp;
+import com.hazelcast.cp.internal.operation.integration.AppendSuccessResponseOp;
+import com.hazelcast.cp.internal.operation.integration.InstallSnapshotOp;
+import com.hazelcast.cp.internal.operation.integration.PreVoteRequestOp;
+import com.hazelcast.cp.internal.operation.integration.PreVoteResponseOp;
+import com.hazelcast.cp.internal.operation.integration.VoteRequestOp;
+import com.hazelcast.cp.internal.operation.integration.VoteResponseOp;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
-import com.hazelcast.cp.RaftMember;
 import com.hazelcast.cp.internal.raft.impl.RaftIntegration;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeStatus;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendFailureResponse;
@@ -30,18 +37,11 @@ import com.hazelcast.cp.internal.raft.impl.dto.PreVoteRequest;
 import com.hazelcast.cp.internal.raft.impl.dto.PreVoteResponse;
 import com.hazelcast.cp.internal.raft.impl.dto.VoteRequest;
 import com.hazelcast.cp.internal.raft.impl.dto.VoteResponse;
+import com.hazelcast.cp.internal.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.cp.internal.raftop.NotifyTermChangeOp;
-import com.hazelcast.cp.internal.operation.integration.AppendFailureResponseOp;
-import com.hazelcast.cp.internal.operation.integration.AppendRequestOp;
-import com.hazelcast.cp.internal.operation.integration.AppendSuccessResponseOp;
-import com.hazelcast.cp.internal.operation.integration.InstallSnapshotOp;
-import com.hazelcast.cp.internal.operation.integration.PreVoteRequestOp;
-import com.hazelcast.cp.internal.operation.integration.PreVoteResponseOp;
-import com.hazelcast.cp.internal.operation.integration.VoteRequestOp;
-import com.hazelcast.cp.internal.operation.integration.VoteResponseOp;
 import com.hazelcast.cp.internal.raftop.snapshot.RestoreSnapshotOp;
 import com.hazelcast.cp.internal.util.PartitionSpecificRunnableAdaptor;
-import com.hazelcast.cp.internal.raft.impl.util.SimpleCompletableFuture;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.TaskScheduler;
 import com.hazelcast.spi.impl.NodeEngineImpl;
@@ -128,47 +128,47 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
     }
 
     @Override
-    public boolean isReachable(RaftMember member) {
-        return nodeEngine.getClusterService().getMember(((RaftMemberImpl) member).getAddress()) != null;
+    public boolean isReachable(EndpointIdentifier member) {
+        return nodeEngine.getClusterService().getMember(((CPMember) member).getAddress()) != null;
     }
 
     @Override
-    public boolean send(PreVoteRequest request, RaftMember target) {
+    public boolean send(PreVoteRequest request, EndpointIdentifier target) {
         return send(new PreVoteRequestOp(groupId, request), target);
     }
 
     @Override
-    public boolean send(PreVoteResponse response, RaftMember target) {
+    public boolean send(PreVoteResponse response, EndpointIdentifier target) {
         return send(new PreVoteResponseOp(groupId, response), target);
     }
 
     @Override
-    public boolean send(VoteRequest request, RaftMember target) {
+    public boolean send(VoteRequest request, EndpointIdentifier target) {
         return send(new VoteRequestOp(groupId, request), target);
     }
 
     @Override
-    public boolean send(VoteResponse response, RaftMember target) {
+    public boolean send(VoteResponse response, EndpointIdentifier target) {
         return send(new VoteResponseOp(groupId, response), target);
     }
 
     @Override
-    public boolean send(AppendRequest request, RaftMember target) {
+    public boolean send(AppendRequest request, EndpointIdentifier target) {
         return send(new AppendRequestOp(groupId, request), target);
     }
 
     @Override
-    public boolean send(AppendSuccessResponse response, RaftMember target) {
+    public boolean send(AppendSuccessResponse response, EndpointIdentifier target) {
         return send(new AppendSuccessResponseOp(groupId, response), target);
     }
 
     @Override
-    public boolean send(AppendFailureResponse response, RaftMember target) {
+    public boolean send(AppendFailureResponse response, EndpointIdentifier target) {
         return send(new AppendFailureResponseOp(groupId, response), target);
     }
 
     @Override
-    public boolean send(InstallSnapshot request, RaftMember target) {
+    public boolean send(InstallSnapshot request, EndpointIdentifier target) {
         return send(new InstallSnapshotOp(groupId, request), target);
     }
 
@@ -213,8 +213,8 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
         }
     }
 
-    private boolean send(Operation operation, RaftMember target) {
-        return operationService.send(operation.setPartitionId(partitionId), ((RaftMemberImpl) target).getAddress());
+    private boolean send(Operation operation, EndpointIdentifier target) {
+        return operationService.send(operation.setPartitionId(partitionId), ((CPMember) target).getAddress());
     }
 
     @Override

@@ -20,36 +20,37 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.RaftMember;
-import com.hazelcast.cp.internal.RaftMemberImpl;
+import com.hazelcast.cp.internal.CPMember;
 import com.hazelcast.cp.internal.RaftOp;
-import com.hazelcast.cp.internal.MetadataRaftGroupManager;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 
 import java.io.IOException;
 
+import static com.hazelcast.cp.internal.MetadataRaftGroupManager.METADATA_GROUP_ID;
+
 /**
- * When a CP member is shutting down gracefully, or a crashed CP member is removed from the CP sub-system via
- * {@link RaftService#removeCPMember(RaftMember)}, this operation is committed to the Metadata Raft group.
+ * A {@link RaftOp} that adds a new CP member to the CP sub-system.
+ * Committed to the Metadata Raft group.
+ * Fails with {@link IllegalArgumentException} if the member to be added is already a CP member that is currently being removed.
  */
-public class TriggerRemoveRaftMemberOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
+public class AddCPMemberOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
-    private RaftMemberImpl member;
+    private CPMember member;
 
-    public TriggerRemoveRaftMemberOp() {
+    public AddCPMemberOp() {
     }
 
-    public TriggerRemoveRaftMemberOp(RaftMemberImpl member) {
+    public AddCPMemberOp(CPMember member) {
         this.member = member;
     }
 
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
+        assert METADATA_GROUP_ID.equals(groupId);
         RaftService service = getService();
-        MetadataRaftGroupManager metadataManager = service.getMetadataGroupManager();
-        metadataManager.triggerRemoveMember(member);
+        service.getMetadataGroupManager().addActiveMember(member);
         return null;
     }
 
@@ -70,7 +71,7 @@ public class TriggerRemoveRaftMemberOp extends RaftOp implements IndeterminateOp
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.TRIGGER_REMOVE_RAFT_MEMBER_OP;
+        return RaftServiceDataSerializerHook.ADD_CP_MEMBER_OP;
     }
 
     @Override

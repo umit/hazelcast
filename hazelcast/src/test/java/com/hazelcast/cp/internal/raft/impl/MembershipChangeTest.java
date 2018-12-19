@@ -1,16 +1,16 @@
 package com.hazelcast.cp.internal.raft.impl;
 
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
-import com.hazelcast.cp.internal.raft.MembershipChangeType;
-import com.hazelcast.cp.RaftMember;
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.exception.CannotReplicateException;
+import com.hazelcast.cp.internal.raft.MembershipChangeType;
 import com.hazelcast.cp.internal.raft.exception.MemberAlreadyExistsException;
 import com.hazelcast.cp.internal.raft.exception.MemberDoesNotExistException;
+import com.hazelcast.cp.internal.raft.impl.dataservice.ApplyRaftRunnable;
+import com.hazelcast.cp.internal.raft.impl.dataservice.RaftDataService;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendRequest;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendSuccessResponse;
-import com.hazelcast.cp.internal.raft.impl.dataservice.ApplyRaftRunnable;
-import com.hazelcast.cp.internal.raft.impl.dataservice.RaftDataService;
 import com.hazelcast.cp.internal.raft.impl.state.RaftGroupMembers;
 import com.hazelcast.cp.internal.raft.impl.testing.LocalRaftGroup;
 import com.hazelcast.test.AssertTask;
@@ -473,7 +473,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
             @Override
             public void run() {
                 for (RaftNodeImpl follower : followers) {
-                    final RaftMember newLeaderEndpoint = getLeaderMember(follower);
+                    final EndpointIdentifier newLeaderEndpoint = getLeaderMember(follower);
                     assertNotNull(newLeaderEndpoint);
                     assertNotEquals(leader.getLocalMember(), newLeaderEndpoint);
                 }

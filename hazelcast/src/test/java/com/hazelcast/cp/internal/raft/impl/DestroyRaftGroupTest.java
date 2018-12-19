@@ -1,13 +1,13 @@
 package com.hazelcast.cp.internal.raft.impl;
 
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
-import com.hazelcast.cp.RaftMember;
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.exception.CannotReplicateException;
-import com.hazelcast.cp.internal.raft.exception.RaftGroupDestroyedException;
-import com.hazelcast.cp.internal.raft.impl.dto.AppendRequest;
-import com.hazelcast.cp.internal.raft.impl.dataservice.ApplyRaftRunnable;
-import com.hazelcast.cp.internal.raft.impl.testing.LocalRaftGroup;
 import com.hazelcast.cp.internal.raft.command.DestroyRaftGroupCmd;
+import com.hazelcast.cp.internal.raft.exception.RaftGroupDestroyedException;
+import com.hazelcast.cp.internal.raft.impl.dataservice.ApplyRaftRunnable;
+import com.hazelcast.cp.internal.raft.impl.dto.AppendRequest;
+import com.hazelcast.cp.internal.raft.impl.testing.LocalRaftGroup;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
@@ -80,7 +80,7 @@ public class DestroyRaftGroupTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 assertEquals(RaftNodeStatus.TERMINATING, getStatus(leader));
                 assertEquals(RaftNodeStatus.TERMINATING, getStatus(follower));
             }
@@ -99,7 +99,7 @@ public class DestroyRaftGroupTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 assertEquals(1, getCommitIndex(leader));
                 assertEquals(1, getCommitIndex(follower));
                 assertEquals(RaftNodeStatus.TERMINATED, getStatus(leader));
@@ -137,9 +137,9 @@ public class DestroyRaftGroupTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 for (RaftNodeImpl raftNode : followers) {
-                    RaftMember leaderEndpoint = getLeaderMember(raftNode);
+                    EndpointIdentifier leaderEndpoint = getLeaderMember(raftNode);
                     assertNotNull(leaderEndpoint);
                     assertNotEquals(leader.getLocalMember(), leaderEndpoint);
                 }
@@ -156,7 +156,7 @@ public class DestroyRaftGroupTest extends HazelcastTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws Exception {
+            public void run() {
                 for (RaftNodeImpl raftNode : group.getNodes()) {
                     assertEquals(RaftNodeStatus.ACTIVE, getStatus(raftNode));
                 }

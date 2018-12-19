@@ -16,13 +16,13 @@
 
 package com.hazelcast.cp.internal.raft.impl.command;
 
-import com.hazelcast.nio.ObjectDataInput;
-import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.internal.raft.MembershipChangeType;
 import com.hazelcast.cp.internal.raft.command.RaftGroupCmd;
 import com.hazelcast.cp.internal.raft.impl.RaftDataSerializerHook;
-import com.hazelcast.cp.RaftMember;
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -34,24 +34,24 @@ import java.util.LinkedHashSet;
  */
 public class ApplyRaftGroupMembersCmd extends RaftGroupCmd implements IdentifiedDataSerializable {
 
-    private Collection<RaftMember> members;
-    private RaftMember member;
+    private Collection<EndpointIdentifier> members;
+    private EndpointIdentifier member;
     private MembershipChangeType changeType;
 
     public ApplyRaftGroupMembersCmd() {
     }
 
-    public ApplyRaftGroupMembersCmd(Collection<RaftMember> members, RaftMember member, MembershipChangeType changeType) {
+    public ApplyRaftGroupMembersCmd(Collection<EndpointIdentifier> members, EndpointIdentifier member, MembershipChangeType changeType) {
         this.members = members;
         this.member = member;
         this.changeType = changeType;
     }
 
-    public Collection<RaftMember> getMembers() {
+    public Collection<EndpointIdentifier> getMembers() {
         return members;
     }
 
-    public RaftMember getMember() {
+    public EndpointIdentifier getMember() {
         return member;
     }
 
@@ -72,7 +72,7 @@ public class ApplyRaftGroupMembersCmd extends RaftGroupCmd implements Identified
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeInt(members.size());
-        for (RaftMember member : members) {
+        for (EndpointIdentifier member : members) {
             out.writeObject(member);
         }
         out.writeObject(member);
@@ -82,9 +82,9 @@ public class ApplyRaftGroupMembersCmd extends RaftGroupCmd implements Identified
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         int count = in.readInt();
-        Collection<RaftMember> members = new LinkedHashSet<RaftMember>();
+        Collection<EndpointIdentifier> members = new LinkedHashSet<EndpointIdentifier>();
         for (int i = 0; i < count; i++) {
-            RaftMember member = in.readObject();
+            EndpointIdentifier member = in.readObject();
             members.add(member);
         }
         this.members = members;

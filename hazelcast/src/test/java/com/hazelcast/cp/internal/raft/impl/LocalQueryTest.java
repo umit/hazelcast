@@ -1,12 +1,12 @@
 package com.hazelcast.cp.internal.raft.impl;
 
-import com.hazelcast.cp.internal.raft.QueryPolicy;
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
-import com.hazelcast.cp.RaftMember;
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.exception.NotLeaderException;
-import com.hazelcast.cp.internal.raft.impl.dto.AppendRequest;
+import com.hazelcast.cp.internal.raft.QueryPolicy;
 import com.hazelcast.cp.internal.raft.impl.dataservice.ApplyRaftRunnable;
 import com.hazelcast.cp.internal.raft.impl.dataservice.QueryRaftRunnable;
+import com.hazelcast.cp.internal.raft.impl.dto.AppendRequest;
 import com.hazelcast.cp.internal.raft.impl.testing.LocalRaftGroup;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -192,7 +192,7 @@ public class LocalQueryTest extends HazelcastTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                RaftMember leaderEndpoint = getLeaderMember(followerNode);
+                EndpointIdentifier leaderEndpoint = getLeaderMember(followerNode);
                 assertNotNull(leaderEndpoint);
                 assertNotEquals(leader.getLocalMember(), leaderEndpoint);
             }
@@ -235,7 +235,7 @@ public class LocalQueryTest extends HazelcastTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                RaftMember leaderEndpoint = getLeaderMember(followerNode);
+                EndpointIdentifier leaderEndpoint = getLeaderMember(followerNode);
                 assertNotNull(leaderEndpoint);
                 assertNotEquals(leader.getLocalMember(), leaderEndpoint);
             }

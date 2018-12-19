@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,18 @@
  * limitations under the License.
  */
 
-package com.hazelcast.cp;
+package com.hazelcast.core;
 
 /**
- * {@code RaftMember} represents a member in a CP group.
- * Each member must have a unique id in the group.
+ * Provides unique identifier for an endpoint.
  */
-public interface RaftMember {
+public interface EndpointIdentifier {
 
-    String getUid();
+    /**
+     * Returns the unique UUID for this endpoint.
+     *
+     * @return the unique UUID for this endpoint
+     */
+    String getUuid();
 
 }

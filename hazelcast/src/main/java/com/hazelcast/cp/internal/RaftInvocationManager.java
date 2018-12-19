@@ -25,7 +25,7 @@ import com.hazelcast.cp.internal.raft.QueryPolicy;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.exception.CannotCreateRaftGroupException;
 import com.hazelcast.cp.internal.raftop.metadata.CreateRaftGroupOp;
-import com.hazelcast.cp.internal.raftop.metadata.GetActiveRaftMembersOp;
+import com.hazelcast.cp.internal.raftop.metadata.GetActiveCPMembersOp;
 import com.hazelcast.cp.internal.raftop.metadata.TriggerDestroyRaftGroupOp;
 import com.hazelcast.cp.internal.operation.ChangeRaftGroupMembershipOp;
 import com.hazelcast.cp.internal.operation.DefaultRaftReplicateOp;
@@ -96,12 +96,12 @@ public class RaftInvocationManager {
 
     private void invokeGetMembersToCreateRaftGroup(final String groupName, final int groupSize,
                                                    final SimpleCompletableFuture<CPGroupId> resultFuture) {
-        ICompletableFuture<List<RaftMemberImpl>> f = query(METADATA_GROUP_ID, new GetActiveRaftMembersOp(), LEADER_LOCAL);
+        ICompletableFuture<List<CPMember>> f = query(METADATA_GROUP_ID, new GetActiveCPMembersOp(), LEADER_LOCAL);
 
-        f.andThen(new ExecutionCallback<List<RaftMemberImpl>>() {
+        f.andThen(new ExecutionCallback<List<CPMember>>() {
             @Override
-            public void onResponse(List<RaftMemberImpl> members) {
-                members = new ArrayList<RaftMemberImpl>(members);
+            public void onResponse(List<CPMember> members) {
+                members = new ArrayList<CPMember>(members);
 
                 if (members.size() < groupSize) {
                     Exception result = new IllegalArgumentException("There are not enough active members to create CP group "
@@ -111,7 +111,7 @@ public class RaftInvocationManager {
                 }
 
                 Collections.shuffle(members);
-                Collections.sort(members, new RaftMemberReachabilityComparator());
+                Collections.sort(members, new CPMemberReachabilityComparator());
                 members = members.subList(0, groupSize);
                 invokeCreateRaftGroup(groupName, groupSize, members, resultFuture);
             }
@@ -124,7 +124,7 @@ public class RaftInvocationManager {
     }
 
     private void invokeCreateRaftGroup(final String groupName, final int groupSize,
-                                       final List<RaftMemberImpl> members,
+                                       final List<CPMember> members,
                                        final SimpleCompletableFuture<CPGroupId> resultFuture) {
         ICompletableFuture<CPGroupId> f = invoke(METADATA_GROUP_ID, new CreateRaftGroupOp(groupName, members));
 
@@ -154,7 +154,7 @@ public class RaftInvocationManager {
     }
 
     <T> InternalCompletableFuture<T> changeMembership(CPGroupId groupId, long membersCommitIndex,
-                                                      RaftMemberImpl member, MembershipChangeType changeType) {
+                                                      CPMember member, MembershipChangeType changeType) {
         Operation operation = new ChangeRaftGroupMembershipOp(groupId, membersCommitIndex, member, changeType);
         Invocation invocation = new RaftInvocation(operationService.getInvocationContext(), raftInvocationContext, groupId,
                 operation, invocationMaxRetryCount, invocationRetryPauseMillis, operationCallTimeout);
@@ -191,11 +191,11 @@ public class RaftInvocationManager {
         return raftInvocationContext;
     }
 
-    private class RaftMemberReachabilityComparator implements Comparator<RaftMemberImpl> {
+    private class CPMemberReachabilityComparator implements Comparator<CPMember> {
         final ClusterService clusterService = nodeEngine.getClusterService();
 
         @Override
-        public int compare(RaftMemberImpl o1, RaftMemberImpl o2) {
+        public int compare(CPMember o1, CPMember o2) {
             boolean b1 = clusterService.getMember(o1.getAddress()) != null;
             boolean b2 = clusterService.getMember(o2.getAddress()) != null;
             return b1 == b2 ? 0 : (b1 ? -1 : 1);

@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.handler;
 
-import com.hazelcast.cp.RaftMember;
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.task.RaftNodeStatusAwareTask;
 
@@ -34,7 +34,7 @@ public abstract class AbstractResponseHandlerTask extends RaftNodeStatusAwareTas
 
     @Override
     protected final void innerRun() {
-        RaftMember sender = sender();
+        EndpointIdentifier sender = sender();
         if (!raftNode.state().isKnownMember(sender)) {
             logger.warning("Won't run, since " + sender + " is unknown to us");
             return;
@@ -45,6 +45,6 @@ public abstract class AbstractResponseHandlerTask extends RaftNodeStatusAwareTas
 
     protected abstract void handleResponse();
 
-    protected abstract RaftMember sender();
+    protected abstract EndpointIdentifier sender();
 
 }

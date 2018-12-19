@@ -22,7 +22,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.internal.raft.MembershipChangeType;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.RaftMemberImpl;
+import com.hazelcast.cp.internal.CPMember;
 import com.hazelcast.cp.internal.raft.impl.RaftNode;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
@@ -39,13 +39,13 @@ public class ChangeRaftGroupMembershipOp extends RaftReplicateOp implements Inde
     private static final int NAN_MEMBERS_COMMIT_INDEX = -1;
 
     private long membersCommitIndex;
-    private RaftMemberImpl member;
+    private CPMember member;
     private MembershipChangeType changeType;
 
     public ChangeRaftGroupMembershipOp() {
     }
 
-    public ChangeRaftGroupMembershipOp(CPGroupId groupId, long membersCommitIndex, RaftMemberImpl member,
+    public ChangeRaftGroupMembershipOp(CPGroupId groupId, long membersCommitIndex, CPMember member,
                                        MembershipChangeType changeType) {
         super(groupId);
         this.membersCommitIndex = membersCommitIndex;

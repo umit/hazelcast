@@ -36,7 +36,7 @@ import static org.junit.Assert.assertTrue;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
-public class RaftMemberAutoRemoveTest extends HazelcastRaftTestSupport {
+public class CPMemberAutoRemoveTest extends HazelcastRaftTestSupport {
 
     private int missingRaftMemberRemovalSeconds;
 
@@ -47,15 +47,15 @@ public class RaftMemberAutoRemoveTest extends HazelcastRaftTestSupport {
 
         waitUntilCPDiscoveryCompleted(instances);
 
-        final RaftMemberImpl terminatedRaftMember = getRaftService(instances[2]).getLocalMember();
+        final CPMember terminatedMember = getRaftService(instances[2]).getLocalMember();
         instances[2].getLifecycleService().terminate();
 
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                Collection<RaftMemberImpl> activeMembers = getRaftService(instances[0]).getMetadataGroupManager()
-                                                                                       .getActiveMembers();
-                assertFalse(activeMembers.contains(terminatedRaftMember));
+                Collection<CPMember> activeMembers = getRaftService(instances[0]).getMetadataGroupManager()
+                                                                                 .getActiveMembers();
+                assertFalse(activeMembers.contains(terminatedMember));
                 assertTrue(getRaftService(instances[0]).getMissingMembers().isEmpty());
             }
         });
@@ -68,9 +68,9 @@ public class RaftMemberAutoRemoveTest extends HazelcastRaftTestSupport {
 
         waitUntilCPDiscoveryCompleted(instances);
 
-        final RaftMemberImpl raftMember0 = getRaftService(instances[0]).getLocalMember();
-        final RaftMemberImpl raftMember1 = getRaftService(instances[1]).getLocalMember();
-        final RaftMemberImpl raftMember2 = getRaftService(instances[2]).getLocalMember();
+        final CPMember cpMember0 = getRaftService(instances[0]).getLocalMember();
+        final CPMember cpMember1 = getRaftService(instances[1]).getLocalMember();
+        final CPMember cpMember2 = getRaftService(instances[2]).getLocalMember();
 
         blockCommunicationBetween(instances[1], instances[2]);
         blockCommunicationBetween(instances[0], instances[2]);
@@ -84,10 +84,10 @@ public class RaftMemberAutoRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                assertTrue(getRaftService(instances[0]).getMissingMembers().contains(raftMember2));
-                assertTrue(getRaftService(instances[1]).getMissingMembers().contains(raftMember2));
-                assertTrue(getRaftService(instances[2]).getMissingMembers().contains(raftMember0));
-                assertTrue(getRaftService(instances[2]).getMissingMembers().contains(raftMember1));
+                assertTrue(getRaftService(instances[0]).getMissingMembers().contains(cpMember2));
+                assertTrue(getRaftService(instances[1]).getMissingMembers().contains(cpMember2));
+                assertTrue(getRaftService(instances[2]).getMissingMembers().contains(cpMember0));
+                assertTrue(getRaftService(instances[2]).getMissingMembers().contains(cpMember1));
             }
         }, 20);
 

@@ -16,6 +16,8 @@
 
 package com.hazelcast.cp;
 
+import com.hazelcast.core.EndpointIdentifier;
+
 import java.util.Collection;
 
 /**
@@ -57,10 +59,10 @@ public interface CPGroup {
     /**
      * Returns members that the CP group is initialized with.
      */
-    Collection<RaftMember> initialMembers();
+    Collection<EndpointIdentifier> initialMembers();
 
     /**
      * Returns current members of the CP group
      */
-    Collection<RaftMember> members();
+    Collection<EndpointIdentifier> members();
 }

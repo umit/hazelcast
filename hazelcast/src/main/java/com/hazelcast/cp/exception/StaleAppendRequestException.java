@@ -16,8 +16,8 @@
 
 package com.hazelcast.cp.exception;
 
+import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.core.IndeterminateOperationState;
-import com.hazelcast.cp.RaftMember;
 
 /**
  * A {@code CPSubsystemException} which is thrown when an installed snapshot causes
@@ -25,7 +25,7 @@ import com.hazelcast.cp.RaftMember;
  */
 public class StaleAppendRequestException extends CPSubsystemException implements IndeterminateOperationState {
 
-    public StaleAppendRequestException(RaftMember leader) {
+    public StaleAppendRequestException(EndpointIdentifier leader) {
         super(leader);
     }
 }

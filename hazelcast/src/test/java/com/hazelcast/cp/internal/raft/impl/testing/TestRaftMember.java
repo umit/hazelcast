@@ -1,8 +1,8 @@
 package com.hazelcast.cp.internal.raft.impl.testing;
 
-import com.hazelcast.cp.RaftMember;
+import com.hazelcast.core.EndpointIdentifier;
 
-public class TestRaftMember implements RaftMember {
+public class TestRaftMember implements EndpointIdentifier {
 
     private String uuid;
 
@@ -14,7 +14,7 @@ public class TestRaftMember implements RaftMember {
     }
 
     @Override
-    public String getUid() {
+    public String getUuid() {
         return uuid;
     }
 
