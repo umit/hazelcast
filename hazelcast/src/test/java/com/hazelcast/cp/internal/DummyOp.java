@@ -16,13 +16,13 @@
 
 package com.hazelcast.cp.internal;
 
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 
 public class DummyOp extends RaftOp {
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         return null;
     }
 

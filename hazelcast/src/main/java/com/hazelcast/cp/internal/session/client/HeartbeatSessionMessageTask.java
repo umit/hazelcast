@@ -22,8 +22,8 @@ import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.RaftGroupIdImpl;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.session.operation.HeartbeatSessionOp;
@@ -35,7 +35,7 @@ import java.security.Permission;
  */
 public class HeartbeatSessionMessageTask extends AbstractMessageTask implements ExecutionCallback {
 
-    private RaftGroupId groupId;
+    private CPGroupId groupId;
     private long sessionId;
 
     HeartbeatSessionMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
@@ -51,7 +51,7 @@ public class HeartbeatSessionMessageTask extends AbstractMessageTask implements 
 
     @Override
     protected Object decodeClientMessage(ClientMessage clientMessage) {
-        groupId = RaftGroupIdImpl.readFrom(clientMessage);
+        groupId = RaftGroupId.readFrom(clientMessage);
         sessionId = clientMessage.getLong();
         return null;
     }

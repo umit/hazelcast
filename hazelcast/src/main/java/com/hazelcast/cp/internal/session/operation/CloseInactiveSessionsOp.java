@@ -20,7 +20,7 @@ import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.session.RaftSessionService;
@@ -48,7 +48,7 @@ public class CloseInactiveSessionsOp extends RaftOp implements IndeterminateOper
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         RaftSessionService service = getService();
         service.closeInactiveSessions(groupId, sessions);
         return null;

@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.datastructures.atomicref;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.core.IFunction;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.cp.internal.datastructures.atomicref.proxy.RaftAtomicRefProxy;
 import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
@@ -228,7 +228,7 @@ public class RaftAtomicRefBasicTest extends HazelcastRaftTestSupport {
     public void testRecreate_afterGroupDestroy() throws Exception {
         atomicRef.destroy();
 
-        final RaftGroupId groupId = getGroupId(atomicRef);
+        final CPGroupId groupId = getGroupId(atomicRef);
         getRaftInvocationManager(instances[0]).triggerDestroy(groupId).get();
 
         assertTrueEventually(new AssertTask() {
@@ -242,7 +242,7 @@ public class RaftAtomicRefBasicTest extends HazelcastRaftTestSupport {
         atomicRef.set("str1");
     }
 
-    protected RaftGroupId getGroupId(IAtomicReference ref) {
+    protected CPGroupId getGroupId(IAtomicReference ref) {
         return ((RaftAtomicRefProxy) ref).getGroupId();
     }
 

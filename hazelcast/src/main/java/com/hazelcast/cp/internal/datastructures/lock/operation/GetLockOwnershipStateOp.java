@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.datastructures.lock.operation;
 
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockDataSerializerHook;
@@ -28,7 +28,7 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import java.io.IOException;
 
 /**
- * @see com.hazelcast.raft.service.lock.RaftLock#lockOwnershipState()
+ * @see com.hazelcast.cp.internal.datastructures.lock.RaftLock#lockOwnershipState()
  */
 public class GetLockOwnershipStateOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
@@ -42,7 +42,7 @@ public class GetLockOwnershipStateOp extends RaftOp implements IndeterminateOper
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
         return service.getLockOwnershipState(groupId, name);
     }

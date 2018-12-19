@@ -3,7 +3,7 @@ package com.hazelcast.cp.internal.raft.impl;
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.cp.internal.raft.MembershipChangeType;
 import com.hazelcast.cp.RaftMember;
-import com.hazelcast.cp.internal.raft.exception.CannotReplicateException;
+import com.hazelcast.cp.exception.CannotReplicateException;
 import com.hazelcast.cp.internal.raft.exception.MemberAlreadyExistsException;
 import com.hazelcast.cp.internal.raft.exception.MemberDoesNotExistException;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendFailureResponse;

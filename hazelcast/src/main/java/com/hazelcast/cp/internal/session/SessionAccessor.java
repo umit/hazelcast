@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.session;
 
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 
 /**
  * Used by services to validate and trigger session activity
@@ -28,7 +28,7 @@ public interface SessionAccessor {
      *
      * @return true if the session is found, false otherwise
      */
-    boolean isActive(RaftGroupId groupId, long sessionId);
+    boolean isActive(CPGroupId groupId, long sessionId);
 
     /**
      * Performs a heartbeat for the given session id in the Raft group.
@@ -36,5 +36,5 @@ public interface SessionAccessor {
      * @throws IllegalStateException if there is no {@link RaftSessionRegistry} initialized for the Raft group
      * @throws SessionExpiredException if there is no active session with the given id in the Raft group
      */
-    void heartbeat(RaftGroupId groupId, long sessionId);
+    void heartbeat(CPGroupId groupId, long sessionId);
 }

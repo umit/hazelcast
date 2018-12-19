@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.raftop.metadata;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.MetadataRaftGroupManager;
 import com.hazelcast.cp.internal.RaftService;
@@ -39,17 +39,17 @@ import java.util.Map.Entry;
 public class CompleteRaftGroupMembershipChangesOp extends RaftOp implements IndeterminateOperationStateAware,
                                                                             IdentifiedDataSerializable {
 
-    private Map<RaftGroupId, Tuple2<Long, Long>> changedGroups;
+    private Map<CPGroupId, Tuple2<Long, Long>> changedGroups;
 
     public CompleteRaftGroupMembershipChangesOp() {
     }
 
-    public CompleteRaftGroupMembershipChangesOp(Map<RaftGroupId, Tuple2<Long, Long>> changedGroups) {
+    public CompleteRaftGroupMembershipChangesOp(Map<CPGroupId, Tuple2<Long, Long>> changedGroups) {
         this.changedGroups = changedGroups;
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         RaftService service = getService();
         MetadataRaftGroupManager metadataManager = service.getMetadataGroupManager();
         return metadataManager.completeRaftGroupMembershipChanges(changedGroups);
@@ -78,7 +78,7 @@ public class CompleteRaftGroupMembershipChangesOp extends RaftOp implements Inde
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeInt(changedGroups.size());
-        for (Entry<RaftGroupId, Tuple2<Long, Long>> e : changedGroups.entrySet()) {
+        for (Entry<CPGroupId, Tuple2<Long, Long>> e : changedGroups.entrySet()) {
             out.writeObject(e.getKey());
             Tuple2<Long, Long> value = e.getValue();
             out.writeLong(value.element1);
@@ -89,9 +89,9 @@ public class CompleteRaftGroupMembershipChangesOp extends RaftOp implements Inde
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         int count = in.readInt();
-        changedGroups = new HashMap<RaftGroupId, Tuple2<Long, Long>>(count);
+        changedGroups = new HashMap<CPGroupId, Tuple2<Long, Long>>(count);
         for (int i = 0; i < count; i++) {
-            RaftGroupId groupId = in.readObject();
+            CPGroupId groupId = in.readObject();
             long currMembersCommitIndex = in.readLong();
             long newMembersCommitIndex = in.readLong();
             changedGroups.put(groupId, Tuple2.of(currMembersCommitIndex, newMembersCommitIndex));

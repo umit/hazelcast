@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.hazelcast.cp.internal.raft.exception;
+package com.hazelcast.cp.exception;
 
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.cp.RaftMember;
@@ -24,26 +24,26 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
 /**
- * Base exception for Raft related failures.
+ * Base exception for failures in the CP subsystem
  * <p>
- * This exception can include the known leader of a Raft group when & where it's thrown.
+ * This exception can include the known leader of a CP group when & where it's thrown.
  * Leader endpoint can be accessed by {@link #getLeader()}, if available.
  */
-public class RaftException extends HazelcastException {
+public class CPSubsystemException extends HazelcastException {
 
     private transient RaftMember leader;
 
-    public RaftException(RaftMember leader) {
+    public CPSubsystemException(RaftMember leader) {
         this.leader = leader;
     }
 
-    public RaftException(String message, RaftMember leader) {
+    public CPSubsystemException(String message, RaftMember leader) {
         super(message);
         this.leader = leader;
     }
 
     /**
-     * Returns the leader endpoint of related Raft group, if known/available
+     * Returns the leader endpoint of related CP group, if known/available
      * by the time this exception is thrown.
      */
     public RaftMember getLeader() {

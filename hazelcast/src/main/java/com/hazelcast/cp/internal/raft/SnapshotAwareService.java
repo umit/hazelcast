@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft;
 
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 
 /**
  * The service interface required to be implemented by services that behave as Raft state machine.
@@ -27,24 +27,24 @@ import com.hazelcast.cp.RaftGroupId;
 public interface SnapshotAwareService<T> {
 
     /**
-     * Creates a snapshot for specified {@link RaftGroupId}.
+     * Creates a snapshot for specified {@link CPGroupId}.
      * The snapshot object returned from this method will be stored among the Raft log
      * and it can be sent to other Raft nodes anytime. Therefore, this method must not
      * return a snapshot object that can mutate after the takeSnapshot() call.
      *
-     * @param groupId {@link RaftGroupId} which is snapshot requested for
+     * @param groupId {@link CPGroupId} which is snapshot requested for
      * @param commitIndex commitIndex of the Raft state when the snapshot is requested
-     * @return snapshot for specified {@link RaftGroupId}.
+     * @return snapshot for specified {@link CPGroupId}.
      */
-    T takeSnapshot(RaftGroupId groupId, long commitIndex);
+    T takeSnapshot(CPGroupId groupId, long commitIndex);
 
     /**
-     * Restores the snapshot for specified {@link RaftGroupId}.
+     * Restores the snapshot for specified {@link CPGroupId}.
      *
-     * @param groupId {@link RaftGroupId} of the snapshot to be restored
+     * @param groupId {@link CPGroupId} of the snapshot to be restored
      * @param commitIndex commitIndex of the Raft state when snapshot is created
-     * @param snapshot snapshot for specified {@link RaftGroupId}
+     * @param snapshot snapshot for specified {@link CPGroupId}
      */
-    void restoreSnapshot(RaftGroupId groupId, long commitIndex, T snapshot);
+    void restoreSnapshot(CPGroupId groupId, long commitIndex, T snapshot);
 
 }

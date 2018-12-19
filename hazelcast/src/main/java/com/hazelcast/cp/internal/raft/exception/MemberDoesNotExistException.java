@@ -17,12 +17,15 @@
 package com.hazelcast.cp.internal.raft.exception;
 
 import com.hazelcast.cp.RaftMember;
+import com.hazelcast.cp.exception.CPSubsystemException;
 
 /**
- * A {@code RaftException} which is thrown when a member, which is requested to be removed from a Raft group,
+ * A {@code CPSubsystemException} which is thrown when a member,
+ * which is requested to be removed from a CP group,
  * is not a member of that group or is already removed from that group.
+ * Handled internally.
  */
-public class MemberDoesNotExistException extends RaftException {
+public class MemberDoesNotExistException extends CPSubsystemException {
 
     public MemberDoesNotExistException(RaftMember member) {
         super("Member does not exist: " + member, null);

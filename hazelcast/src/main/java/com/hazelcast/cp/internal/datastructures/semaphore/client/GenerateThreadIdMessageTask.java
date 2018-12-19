@@ -19,8 +19,8 @@ package com.hazelcast.cp.internal.datastructures.semaphore.client;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.RaftGroupIdImpl;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
@@ -36,7 +36,7 @@ import java.security.Permission;
  */
 public class GenerateThreadIdMessageTask extends AbstractMessageTask implements ExecutionCallback {
 
-    protected RaftGroupId groupId;
+    protected CPGroupId groupId;
     protected long initialValue;
 
     GenerateThreadIdMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
@@ -45,7 +45,7 @@ public class GenerateThreadIdMessageTask extends AbstractMessageTask implements 
 
     @Override
     protected Object decodeClientMessage(ClientMessage clientMessage) {
-        groupId = RaftGroupIdImpl.readFrom(clientMessage);
+        groupId = RaftGroupId.readFrom(clientMessage);
         initialValue = clientMessage.getLong();
         return null;
     }

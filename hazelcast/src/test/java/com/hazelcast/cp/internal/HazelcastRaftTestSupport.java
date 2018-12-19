@@ -20,7 +20,7 @@ import com.hazelcast.config.Config;
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.test.AssertTask;
@@ -57,7 +57,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         return createHazelcastInstanceFactory();
     }
 
-    protected RaftNodeImpl waitAllForLeaderElection(final HazelcastInstance[] instances, final RaftGroupId groupId) {
+    protected RaftNodeImpl waitAllForLeaderElection(final HazelcastInstance[] instances, final CPGroupId groupId) {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
@@ -145,11 +145,11 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
               .setProperty(MERGE_NEXT_RUN_DELAY_SECONDS.getName(), "5");
     }
 
-    protected RaftNodeImpl getLeaderNode(final HazelcastInstance[] instances, final RaftGroupId groupId) {
+    protected RaftNodeImpl getLeaderNode(final HazelcastInstance[] instances, final CPGroupId groupId) {
         return getRaftNode(getLeaderInstance(instances, groupId), groupId);
     }
 
-    protected HazelcastInstance getLeaderInstance(final HazelcastInstance[] instances, final RaftGroupId groupId) {
+    protected HazelcastInstance getLeaderInstance(final HazelcastInstance[] instances, final CPGroupId groupId) {
         final RaftNodeImpl[] raftNodeRef = new RaftNodeImpl[1];
         assertTrueEventually(new AssertTask() {
             @Override
@@ -178,7 +178,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         throw new AssertionError();
     }
 
-    protected HazelcastInstance getRandomFollowerInstance(final HazelcastInstance[] instances, final RaftGroupId groupId) {
+    protected HazelcastInstance getRandomFollowerInstance(final HazelcastInstance[] instances, final CPGroupId groupId) {
         final RaftNodeImpl[] raftNodeRef = new RaftNodeImpl[1];
         assertTrueEventually(new AssertTask() {
             @Override
@@ -217,11 +217,11 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         return getNodeEngineImpl(instance).getService(RaftService.SERVICE_NAME);
     }
 
-    public static RaftNodeImpl getRaftNode(HazelcastInstance instance, RaftGroupId groupId) {
+    public static RaftNodeImpl getRaftNode(HazelcastInstance instance, CPGroupId groupId) {
         return (RaftNodeImpl) getRaftService(instance).getRaftNode(groupId);
     }
 
-    public static RaftGroupInfo getRaftGroupLocally(HazelcastInstance instance, RaftGroupId groupId) {
+    public static RaftGroup getRaftGroupLocally(HazelcastInstance instance, CPGroupId groupId) {
         return getRaftService(instance).getMetadataGroupManager().getRaftGroup(groupId);
     }
 }

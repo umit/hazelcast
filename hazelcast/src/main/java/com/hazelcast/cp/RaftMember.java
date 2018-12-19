@@ -17,7 +17,7 @@
 package com.hazelcast.cp;
 
 /**
- * {@code RaftMember} represents a member in Raft group.
+ * {@code RaftMember} represents a member in a CP group.
  * Each member must have a unique id in the group.
  */
 public interface RaftMember {

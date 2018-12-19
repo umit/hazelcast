@@ -18,7 +18,7 @@ package com.hazelcast.cp.internal.operation;
 
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.raft.command.DestroyRaftGroupCmd;
 import com.hazelcast.cp.internal.raft.impl.RaftNode;
 import com.hazelcast.cp.internal.RaftOp;
@@ -33,7 +33,7 @@ public class DestroyRaftGroupOp extends RaftReplicateOp implements Indeterminate
     public DestroyRaftGroupOp() {
     }
 
-    public DestroyRaftGroupOp(RaftGroupId groupId) {
+    public DestroyRaftGroupOp(CPGroupId groupId) {
         super(groupId);
     }
 

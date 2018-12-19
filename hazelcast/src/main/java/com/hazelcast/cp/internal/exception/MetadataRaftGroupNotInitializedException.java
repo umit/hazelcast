@@ -16,14 +16,16 @@
 
 package com.hazelcast.cp.internal.exception;
 
-import com.hazelcast.cp.internal.raft.exception.RaftException;
+import com.hazelcast.cp.exception.CPSubsystemException;
 import com.hazelcast.spi.exception.RetryableException;
 
 /**
- * Thrown when all CP nodes have not committed their CP node list and initialization of the Metadata Raft group is not done yet.
+ * Thrown when all CP members have not committed their CP member list
+ * and initialization of the Metadata Raft group is not done yet.
  * Handled and retried internally.
  */
-public class MetadataRaftGroupNotInitializedException extends RaftException implements RetryableException {
+public class MetadataRaftGroupNotInitializedException extends CPSubsystemException
+        implements RetryableException {
     public MetadataRaftGroupNotInitializedException() {
         super(null);
     }

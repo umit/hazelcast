@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.datastructures.lock.operation;
 
 import com.hazelcast.cp.FencedLock;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockDataSerializerHook;
@@ -32,7 +32,7 @@ import java.util.UUID;
 /**
  * Operation for {@link FencedLock#forceUnlock()}
  *
- * @see com.hazelcast.raft.service.lock.RaftLock#forceRelease(long, UUID)
+ * @see com.hazelcast.cp.internal.datastructures.lock.RaftLock#forceRelease(long, UUID)
  */
 public class ForceUnlockOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
@@ -50,7 +50,7 @@ public class ForceUnlockOp extends RaftOp implements IndeterminateOperationState
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
         service.forceRelease(groupId, name, expectedFence, invocationUid);
         return true;

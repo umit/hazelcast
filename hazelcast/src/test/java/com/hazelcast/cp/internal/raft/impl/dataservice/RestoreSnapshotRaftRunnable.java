@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.dataservice;
 
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
 import com.hazelcast.cp.internal.raft.impl.testing.RaftRunnable;
 
@@ -24,11 +24,11 @@ import static com.hazelcast.util.Preconditions.checkTrue;
 
 public class RestoreSnapshotRaftRunnable implements RaftRunnable {
 
-    private RaftGroupId groupId;
+    private CPGroupId groupId;
     private long commitIndex;
     private Object snapshot;
 
-    public RestoreSnapshotRaftRunnable(RaftGroupId groupId, long commitIndex, Object snapshot) {
+    public RestoreSnapshotRaftRunnable(CPGroupId groupId, long commitIndex, Object snapshot) {
         this.groupId = groupId;
         this.commitIndex = commitIndex;
         this.snapshot = snapshot;

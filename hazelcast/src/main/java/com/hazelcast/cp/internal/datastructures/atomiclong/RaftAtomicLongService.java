@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.datastructures.atomiclong;
 
 import com.hazelcast.core.IAtomicLong;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.datastructures.atomiclong.proxy.RaftAtomicLongProxy;
 import com.hazelcast.cp.internal.datastructures.spi.RaftRemoteService;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
@@ -52,10 +52,10 @@ public class RaftAtomicLongService implements ManagedService, RaftRemoteService,
      */
     public static final String SERVICE_NAME = "hz:raft:atomicLongService";
 
-    private final Map<Tuple2<RaftGroupId, String>, RaftAtomicLong> atomicLongs =
-            new ConcurrentHashMap<Tuple2<RaftGroupId, String>, RaftAtomicLong>();
-    private final Set<Tuple2<RaftGroupId, String>> destroyedLongs =
-            newSetFromMap(new ConcurrentHashMap<Tuple2<RaftGroupId, String>, Boolean>());
+    private final Map<Tuple2<CPGroupId, String>, RaftAtomicLong> atomicLongs =
+            new ConcurrentHashMap<Tuple2<CPGroupId, String>, RaftAtomicLong>();
+    private final Set<Tuple2<CPGroupId, String>> destroyedLongs =
+            newSetFromMap(new ConcurrentHashMap<Tuple2<CPGroupId, String>, Boolean>());
     private final NodeEngine nodeEngine;
     private volatile RaftService raftService;
 
@@ -78,7 +78,7 @@ public class RaftAtomicLongService implements ManagedService, RaftRemoteService,
     }
 
     @Override
-    public RaftAtomicLongSnapshot takeSnapshot(RaftGroupId groupId, long commitIndex) {
+    public RaftAtomicLongSnapshot takeSnapshot(CPGroupId groupId, long commitIndex) {
         checkNotNull(groupId);
         Map<String, Long> longs = new HashMap<String, Long>();
         for (RaftAtomicLong atomicLong : atomicLongs.values()) {
@@ -88,7 +88,7 @@ public class RaftAtomicLongService implements ManagedService, RaftRemoteService,
         }
 
         Set<String> destroyed = new HashSet<String>();
-        for (Tuple2<RaftGroupId, String> tuple : destroyedLongs) {
+        for (Tuple2<CPGroupId, String> tuple : destroyedLongs) {
             if (groupId.equals(tuple.element1)) {
                 destroyed.add(tuple.element2);
             }
@@ -98,7 +98,7 @@ public class RaftAtomicLongService implements ManagedService, RaftRemoteService,
     }
 
     @Override
-    public void restoreSnapshot(RaftGroupId groupId, long commitIndex, RaftAtomicLongSnapshot snapshot) {
+    public void restoreSnapshot(CPGroupId groupId, long commitIndex, RaftAtomicLongSnapshot snapshot) {
         checkNotNull(groupId);
         for (Map.Entry<String, Long> e : snapshot.getLongs()) {
             String name = e.getKey();
@@ -114,7 +114,7 @@ public class RaftAtomicLongService implements ManagedService, RaftRemoteService,
     @Override
     public IAtomicLong createRaftObjectProxy(String name) {
         try {
-            RaftGroupId groupId = raftService.createRaftGroupForProxy(name);
+            CPGroupId groupId = raftService.createRaftGroupForProxy(name);
             return new RaftAtomicLongProxy(raftService.getInvocationManager(), groupId, getObjectNameForProxy(name));
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
@@ -122,17 +122,17 @@ public class RaftAtomicLongService implements ManagedService, RaftRemoteService,
     }
 
     @Override
-    public boolean destroyRaftObject(RaftGroupId groupId, String name) {
-        Tuple2<RaftGroupId, String> key = Tuple2.of(groupId, name);
+    public boolean destroyRaftObject(CPGroupId groupId, String name) {
+        Tuple2<CPGroupId, String> key = Tuple2.of(groupId, name);
         destroyedLongs.add(key);
         return atomicLongs.remove(key) != null;
     }
 
     @Override
-    public void onGroupDestroy(RaftGroupId groupId) {
-        Iterator<Tuple2<RaftGroupId, String>> iter = atomicLongs.keySet().iterator();
+    public void onGroupDestroy(CPGroupId groupId) {
+        Iterator<Tuple2<CPGroupId, String>> iter = atomicLongs.keySet().iterator();
         while (iter.hasNext()) {
-            Tuple2<RaftGroupId, String> next = iter.next();
+            Tuple2<CPGroupId, String> next = iter.next();
             if (groupId.equals(next.element1)) {
                 destroyedLongs.add(next);
                 iter.remove();
@@ -140,10 +140,10 @@ public class RaftAtomicLongService implements ManagedService, RaftRemoteService,
         }
     }
 
-    public RaftAtomicLong getAtomicLong(RaftGroupId groupId, String name) {
+    public RaftAtomicLong getAtomicLong(CPGroupId groupId, String name) {
         checkNotNull(groupId);
         checkNotNull(name);
-        Tuple2<RaftGroupId, String> key = Tuple2.of(groupId, name);
+        Tuple2<CPGroupId, String> key = Tuple2.of(groupId, name);
         if (destroyedLongs.contains(key)) {
             throw new DistributedObjectDestroyedException("AtomicLong[" + name + "] is already destroyed!");
         }

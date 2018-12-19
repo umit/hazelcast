@@ -29,7 +29,7 @@ import com.hazelcast.cp.internal.datastructures.atomiclong.operation.GetAndSetOp
 import com.hazelcast.cp.internal.datastructures.atomiclong.operation.LocalGetOp;
 import com.hazelcast.cp.internal.datastructures.spi.operation.DestroyRaftObjectOp;
 import com.hazelcast.cp.internal.raft.QueryPolicy;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongService;
@@ -45,10 +45,10 @@ import java.util.concurrent.Future;
 public class RaftAtomicLongProxy implements IAtomicLong {
 
     private final String name;
-    private final RaftGroupId groupId;
+    private final CPGroupId groupId;
     private final RaftInvocationManager invocationManager;
 
-    public RaftAtomicLongProxy(RaftInvocationManager invocationManager, RaftGroupId groupId, String name) {
+    public RaftAtomicLongProxy(RaftInvocationManager invocationManager, CPGroupId groupId, String name) {
         this.name = name;
         this.groupId = groupId;
         this.invocationManager = invocationManager;
@@ -254,7 +254,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
         invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
     }
 
-    public RaftGroupId getGroupId() {
+    public CPGroupId getGroupId() {
         return groupId;
     }
 

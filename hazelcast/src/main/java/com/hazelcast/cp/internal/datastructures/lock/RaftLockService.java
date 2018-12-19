@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.datastructures.lock;
 
 import com.hazelcast.cp.FencedLock;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLock.AcquireResult;
@@ -61,7 +61,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
     @Override
     public FencedLock createRaftObjectProxy(String name) {
         try {
-            RaftGroupId groupId = raftService.createRaftGroupForProxy(name);
+            CPGroupId groupId = raftService.createRaftGroupForProxy(name);
             RaftInvocationManager invocationManager = raftService.getInvocationManager();
             ProxySessionManagerService sessionManager = nodeEngine.getService(ProxySessionManagerService.SERVICE_NAME);
             return new RaftFencedLockProxy(invocationManager, sessionManager, groupId, getObjectNameForProxy(name));
@@ -70,7 +70,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         }
     }
 
-    public RaftLockOwnershipState acquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex,
+    public RaftLockOwnershipState acquire(CPGroupId groupId, String name, LockEndpoint endpoint, long commitIndex,
                                           UUID invocationUid) {
         heartbeatSession(groupId, endpoint.sessionId());
         AcquireResult result = getOrInitRegistry(groupId).acquire(name, endpoint, commitIndex, invocationUid);
@@ -87,7 +87,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         return result.ownership;
     }
 
-    public RaftLockOwnershipState tryAcquire(RaftGroupId groupId, String name, LockEndpoint endpoint, long commitIndex,
+    public RaftLockOwnershipState tryAcquire(CPGroupId groupId, String name, LockEndpoint endpoint, long commitIndex,
                                              UUID invocationUid, long timeoutMs) {
         heartbeatSession(groupId, endpoint.sessionId());
         AcquireResult result = getOrInitRegistry(groupId).tryAcquire(name, endpoint, commitIndex, invocationUid, timeoutMs);
@@ -105,7 +105,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         return result.ownership;
     }
 
-    public void release(RaftGroupId groupId, String name, LockEndpoint endpoint, UUID invocationUid, int lockCount) {
+    public void release(CPGroupId groupId, String name, LockEndpoint endpoint, UUID invocationUid, int lockCount) {
         heartbeatSession(groupId, endpoint.sessionId());
         RaftLockRegistry registry = getLockRegistryOrFail(groupId, name);
         ReleaseResult result = registry.release(name, endpoint, invocationUid, lockCount);
@@ -122,7 +122,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         }
     }
 
-    public void forceRelease(RaftGroupId groupId, String name, long expectedFence, UUID invocationUid) {
+    public void forceRelease(CPGroupId groupId, String name, long expectedFence, UUID invocationUid) {
         RaftLockRegistry registry = getLockRegistryOrFail(groupId, name);
         ReleaseResult result = registry.forceRelease(name, expectedFence, invocationUid);
 
@@ -139,7 +139,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         }
     }
 
-    private void notifySucceededWaitKeys(RaftGroupId groupId, String name, RaftLockOwnershipState ownership,
+    private void notifySucceededWaitKeys(CPGroupId groupId, String name, RaftLockOwnershipState ownership,
                                          Collection<LockInvocationKey> waitKeys) {
         if (waitKeys.isEmpty()) {
             return;
@@ -156,7 +156,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         notifyWaitKeys(groupId, waitKeys, ownership);
     }
 
-    private void notifyCancelledWaitKeys(RaftGroupId groupId, String name, Collection<LockInvocationKey> waitKeys) {
+    private void notifyCancelledWaitKeys(CPGroupId groupId, String name, Collection<LockInvocationKey> waitKeys) {
         if (waitKeys.isEmpty()) {
             return;
         }
@@ -166,7 +166,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         notifyWaitKeys(groupId, waitKeys, new WaitKeyCancelledException());
     }
 
-    public RaftLockOwnershipState getLockOwnershipState(RaftGroupId groupId, String name) {
+    public RaftLockOwnershipState getLockOwnershipState(CPGroupId groupId, String name) {
         checkNotNull(groupId);
         checkNotNull(name);
 
@@ -174,7 +174,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         return registry != null ? registry.getLockOwnershipState(name) : RaftLockOwnershipState.NOT_LOCKED;
     }
 
-    private RaftLockRegistry getLockRegistryOrFail(RaftGroupId groupId, String name) {
+    private RaftLockRegistry getLockRegistryOrFail(CPGroupId groupId, String name) {
         checkNotNull(groupId);
         RaftLockRegistry registry = getRegistryOrNull(groupId);
         if (registry == null) {
@@ -185,7 +185,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
     }
 
     @Override
-    protected RaftLockRegistry createNewRegistry(RaftGroupId groupId) {
+    protected RaftLockRegistry createNewRegistry(CPGroupId groupId) {
         return new RaftLockRegistry(groupId);
     }
 

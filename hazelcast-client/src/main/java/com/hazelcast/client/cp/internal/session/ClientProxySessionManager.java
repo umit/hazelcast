@@ -25,8 +25,8 @@ import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.core.ICompletableFuture;
-import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.RaftGroupIdImpl;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.cp.internal.session.SessionExpiredException;
@@ -70,14 +70,14 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     }
 
     @Override
-    protected long generateThreadId(RaftGroupId groupId) {
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
+    protected long generateThreadId(CPGroupId groupId) {
+        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
 
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
         msg.setMessageType(GENERATE_THREAD_ID_TYPE);
         msg.setRetryable(false);
         msg.setOperationName("");
-        RaftGroupIdImpl.writeTo(groupId, msg);
+        RaftGroupId.writeTo(groupId, msg);
         msg.set(System.currentTimeMillis());
         msg.updateFrameLength();
 
@@ -91,13 +91,13 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     }
 
     @Override
-    protected SessionResponse requestNewSession(RaftGroupId groupId) {
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId);
+    protected SessionResponse requestNewSession(CPGroupId groupId) {
+        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId);
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
         msg.setMessageType(SessionMessageTaskFactoryProvider.CREATE_TYPE);
         msg.setRetryable(false);
         msg.setOperationName("");
-        RaftGroupIdImpl.writeTo(groupId, msg);
+        RaftGroupId.writeTo(groupId, msg);
         msg.updateFrameLength();
 
         InternalCompletableFuture<SessionResponse> future = invoke(msg, SESSION_RESPONSE_DECODER);
@@ -110,13 +110,13 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     }
 
     @Override
-    protected ICompletableFuture<Object> heartbeat(RaftGroupId groupId, long sessionId) {
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
+    protected ICompletableFuture<Object> heartbeat(CPGroupId groupId, long sessionId) {
+        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
         msg.setMessageType(SessionMessageTaskFactoryProvider.HEARTBEAT_TYPE);
         msg.setRetryable(false);
         msg.setOperationName("");
-        RaftGroupIdImpl.writeTo(groupId, msg);
+        RaftGroupId.writeTo(groupId, msg);
         msg.set(sessionId);
         msg.updateFrameLength();
 
@@ -124,13 +124,13 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     }
 
     @Override
-    protected ICompletableFuture<Object> closeSession(RaftGroupId groupId, Long sessionId) {
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
+    protected ICompletableFuture<Object> closeSession(CPGroupId groupId, Long sessionId) {
+        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
         msg.setMessageType(SessionMessageTaskFactoryProvider.CLOSE_SESSION_TYPE);
         msg.setRetryable(false);
         msg.setOperationName("");
-        RaftGroupIdImpl.writeTo(groupId, msg);
+        RaftGroupId.writeTo(groupId, msg);
         msg.set(sessionId);
         msg.updateFrameLength();
 

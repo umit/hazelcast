@@ -17,6 +17,7 @@
 package com.hazelcast.cp.internal.raft.exception;
 
 import com.hazelcast.cp.RaftMember;
+import com.hazelcast.cp.exception.CPSubsystemException;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -25,10 +26,11 @@ import java.util.Collection;
 import java.util.HashSet;
 
 /**
- * A {@code RaftException} which is thrown when a membership change is requested
+ * A {@code CPSubsystemException} which is thrown when a membership change is requested
  * but expected members commitIndex doesn't match the actual members commitIndex in the Raft state.
+ * Handled internally.
  */
-public class MismatchingGroupMembersCommitIndexException extends RaftException {
+public class MismatchingGroupMembersCommitIndexException extends CPSubsystemException {
 
     private transient long commitIndex;
 

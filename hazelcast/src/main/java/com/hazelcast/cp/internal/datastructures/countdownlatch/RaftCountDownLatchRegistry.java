@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.datastructures.countdownlatch;
 
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
 import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
@@ -34,12 +34,12 @@ public class RaftCountDownLatchRegistry extends ResourceRegistry<AwaitInvocation
     RaftCountDownLatchRegistry() {
     }
 
-    RaftCountDownLatchRegistry(RaftGroupId groupId) {
+    RaftCountDownLatchRegistry(CPGroupId groupId) {
         super(groupId);
     }
 
     @Override
-    protected RaftCountDownLatch createNewResource(RaftGroupId groupId, String name) {
+    protected RaftCountDownLatch createNewResource(CPGroupId groupId, String name) {
         return new RaftCountDownLatch(groupId, name);
     }
 

@@ -3,7 +3,7 @@ package com.hazelcast.cp.internal.raft.impl;
 import com.hazelcast.cp.internal.raft.QueryPolicy;
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.cp.RaftMember;
-import com.hazelcast.cp.internal.raft.exception.NotLeaderException;
+import com.hazelcast.cp.exception.NotLeaderException;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendRequest;
 import com.hazelcast.cp.internal.raft.impl.dataservice.ApplyRaftRunnable;
 import com.hazelcast.cp.internal.raft.impl.dataservice.QueryRaftRunnable;

@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.datastructures.atomiclong.operation;
 
 import com.hazelcast.cp.internal.raft.QueryPolicy;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongDataSerializerHook;
 import com.hazelcast.cp.internal.datastructures.atomiclong.proxy.RaftAtomicLongProxy;
@@ -36,7 +36,7 @@ public class LocalGetOp extends AbstractAtomicLongOp implements IndeterminateOpe
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         return getAtomicLong(groupId).value();
     }
 

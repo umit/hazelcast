@@ -22,7 +22,7 @@ import com.hazelcast.cp.internal.datastructures.atomicref.RaftAtomicReferenceDat
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftOp;
 
 import java.io.IOException;
@@ -41,7 +41,7 @@ public abstract class AbstractAtomicRefOp extends RaftOp implements IdentifiedDa
         this.name = name;
     }
 
-    RaftAtomicRef getAtomicRef(RaftGroupId groupId) {
+    RaftAtomicRef getAtomicRef(CPGroupId groupId) {
         RaftAtomicRefService service = getService();
         return service.getAtomicRef(groupId, name);
     }

@@ -24,7 +24,7 @@ import com.hazelcast.cp.internal.datastructures.spi.blocking.WaitKey;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftOp;
 
 import java.io.IOException;
@@ -52,7 +52,7 @@ public class ExpireWaitKeysOp<W extends WaitKey> extends RaftOp implements Ident
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         AbstractBlockingService<W, BlockingResource<W>, ResourceRegistry<W, BlockingResource<W>>> service = getService();
         service.expireWaitKeys(groupId, keys);
         return null;

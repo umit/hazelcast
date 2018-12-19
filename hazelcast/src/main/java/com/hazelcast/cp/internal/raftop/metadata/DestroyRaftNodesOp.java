@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.raftop.metadata;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.raft.impl.RaftNode;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftSystemOperation;
@@ -39,19 +39,19 @@ import java.util.Collection;
  */
 public class DestroyRaftNodesOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation {
 
-    private Collection<RaftGroupId> groupIds;
+    private Collection<CPGroupId> groupIds;
 
     public DestroyRaftNodesOp() {
     }
 
-    public DestroyRaftNodesOp(Collection<RaftGroupId> groupIds) {
+    public DestroyRaftNodesOp(Collection<CPGroupId> groupIds) {
         this.groupIds = groupIds;
     }
 
     @Override
     public void run() {
         RaftService service = getService();
-        for (RaftGroupId groupId : groupIds) {
+        for (CPGroupId groupId : groupIds) {
             service.destroyRaftNode(groupId);
         }
     }
@@ -80,7 +80,7 @@ public class DestroyRaftNodesOp extends Operation implements IdentifiedDataSeria
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeInt(groupIds.size());
-        for (RaftGroupId groupId : groupIds) {
+        for (CPGroupId groupId : groupIds) {
             out.writeObject(groupId);
         }
     }
@@ -89,9 +89,9 @@ public class DestroyRaftNodesOp extends Operation implements IdentifiedDataSeria
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         int count = in.readInt();
-        groupIds = new ArrayList<RaftGroupId>();
+        groupIds = new ArrayList<CPGroupId>();
         for (int i = 0; i < count; i++) {
-            RaftGroupId groupId = in.readObject();
+            CPGroupId groupId = in.readObject();
             groupIds.add(groupId);
         }
     }

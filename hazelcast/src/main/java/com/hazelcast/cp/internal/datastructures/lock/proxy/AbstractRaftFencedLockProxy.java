@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.datastructures.lock.proxy;
 
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.cp.internal.session.SessionExpiredException;
 import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
@@ -51,7 +51,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
     // thread id -> lock state
     private final ConcurrentMap<Long, LockState> lockStates = new ConcurrentHashMap<Long, LockState>();
 
-    public AbstractRaftFencedLockProxy(AbstractProxySessionManager sessionManager, RaftGroupId groupId, String name) {
+    public AbstractRaftFencedLockProxy(AbstractProxySessionManager sessionManager, CPGroupId groupId, String name) {
         super(sessionManager, groupId);
         this.name = name;
     }
@@ -334,22 +334,22 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
         return RaftLockService.SERVICE_NAME;
     }
 
-    protected abstract InternalCompletableFuture<RaftLockOwnershipState> doLock(RaftGroupId groupId, String name,
+    protected abstract InternalCompletableFuture<RaftLockOwnershipState> doLock(CPGroupId groupId, String name,
                                                                                 long sessionId, long threadId,
                                                                                 UUID invocationUid);
 
-    protected abstract InternalCompletableFuture<RaftLockOwnershipState> doTryLock(RaftGroupId groupId, String name,
+    protected abstract InternalCompletableFuture<RaftLockOwnershipState> doTryLock(CPGroupId groupId, String name,
                                                                                    long sessionId, long threadId,
                                                                                    UUID invocationUid, long timeoutMillis);
 
-    protected abstract InternalCompletableFuture<Object> doUnlock(RaftGroupId groupId, String name,
+    protected abstract InternalCompletableFuture<Object> doUnlock(CPGroupId groupId, String name,
                                                                   long sessionId, long threadId,
                                                                   UUID invocationUid, int releaseCount);
 
-    protected abstract InternalCompletableFuture<Object> doForceUnlock(RaftGroupId groupId, String name,
+    protected abstract InternalCompletableFuture<Object> doForceUnlock(CPGroupId groupId, String name,
                                                                        UUID invocationUid, long expectedFence);
 
-    protected abstract InternalCompletableFuture<RaftLockOwnershipState> doGetLockOwnershipState(RaftGroupId groupId,
+    protected abstract InternalCompletableFuture<RaftLockOwnershipState> doGetLockOwnershipState(CPGroupId groupId,
                                                                                                  String name);
 
     private static class LockState {

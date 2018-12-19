@@ -19,7 +19,7 @@ package com.hazelcast.client.cp.internal.datastructures.semaphore;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSessionAwareSemaphoreBasicTest;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.client.cp.internal.session.SessionManagerProvider;
@@ -65,7 +65,7 @@ public class RaftSessionAwareSemaphoreClientBasicTest extends RaftSessionAwareSe
     }
 
     @Override
-    protected RaftGroupId getGroupId(ISemaphore semaphore) {
+    protected CPGroupId getGroupId(ISemaphore semaphore) {
         return ((RaftSessionAwareSemaphoreProxy) semaphore).getGroupId();
     }
 

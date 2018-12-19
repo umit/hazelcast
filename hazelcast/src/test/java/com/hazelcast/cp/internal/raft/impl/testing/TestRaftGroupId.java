@@ -1,8 +1,8 @@
 package com.hazelcast.cp.internal.raft.impl.testing;
 
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 
-public class TestRaftGroupId implements RaftGroupId {
+public class TestRaftGroupId implements CPGroupId {
 
     private String name;
 

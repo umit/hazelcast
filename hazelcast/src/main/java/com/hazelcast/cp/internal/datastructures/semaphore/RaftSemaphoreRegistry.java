@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.datastructures.semaphore;
 
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphore.AcquireResult;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphore.ReleaseResult;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
@@ -40,12 +40,12 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
     RaftSemaphoreRegistry() {
     }
 
-    RaftSemaphoreRegistry(RaftGroupId groupId) {
+    RaftSemaphoreRegistry(CPGroupId groupId) {
         super(groupId);
     }
 
     @Override
-    protected RaftSemaphore createNewResource(RaftGroupId groupId, String name) {
+    protected RaftSemaphore createNewResource(CPGroupId groupId, String name) {
         return new RaftSemaphore(groupId, name);
     }
 

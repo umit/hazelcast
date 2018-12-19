@@ -27,9 +27,9 @@ import java.util.Collection;
 public interface SessionManagementService {
 
     /**
-     * Returns a non-null collection of sessions that are currently active in the given Raft group.
+     * Returns a non-null collection of sessions that are currently active in the given CP group.
      */
-    Collection<Session> getAllSessions(RaftGroupId groupId);
+    Collection<Session> getAllSessions(CPGroupId groupId);
 
     /**
      * If owner of a session crashes, its session is not terminated immediately.
@@ -37,6 +37,6 @@ public interface SessionManagementService {
      * If it is known for sure that the session owner is gone and will not come back,
      * this method can be used for closing the session and releasing its resources immediately.
      */
-    ICompletableFuture<Boolean> forceCloseSession(RaftGroupId groupId, long sessionId);
+    ICompletableFuture<Boolean> forceCloseSession(CPGroupId groupId, long sessionId);
 
 }

@@ -19,8 +19,8 @@ package com.hazelcast.cp.internal.raftop.metadata;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroup.RaftGroupStatus;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroup.CPGroupStatus;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.MetadataRaftGroupManager;
 import com.hazelcast.cp.internal.RaftService;
@@ -32,21 +32,21 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Marks the given Raft groups as {@link RaftGroupStatus#DESTROYED} and notifies its CP nodes
+ * Marks the given Raft groups as {@link CPGroupStatus#DESTROYED} and notifies its CP members
  */
 public class CompleteDestroyRaftGroupsOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
-    private Set<RaftGroupId> groupIds;
+    private Set<CPGroupId> groupIds;
 
     public CompleteDestroyRaftGroupsOp() {
     }
 
-    public CompleteDestroyRaftGroupsOp(Set<RaftGroupId> groupIds) {
+    public CompleteDestroyRaftGroupsOp(Set<CPGroupId> groupIds) {
         this.groupIds = groupIds;
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         RaftService service = getService();
         MetadataRaftGroupManager metadataManager = service.getMetadataGroupManager();
         metadataManager.completeDestroyRaftGroups(groupIds);
@@ -76,7 +76,7 @@ public class CompleteDestroyRaftGroupsOp extends RaftOp implements Indeterminate
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeInt(groupIds.size());
-        for (RaftGroupId groupId : groupIds) {
+        for (CPGroupId groupId : groupIds) {
             out.writeObject(groupId);
         }
     }
@@ -84,9 +84,9 @@ public class CompleteDestroyRaftGroupsOp extends RaftOp implements Indeterminate
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         int count = in.readInt();
-        groupIds = new HashSet<RaftGroupId>();
+        groupIds = new HashSet<CPGroupId>();
         for (int i = 0; i < count; i++) {
-            RaftGroupId groupId = in.readObject();
+            CPGroupId groupId = in.readObject();
             groupIds.add(groupId);
         }
     }

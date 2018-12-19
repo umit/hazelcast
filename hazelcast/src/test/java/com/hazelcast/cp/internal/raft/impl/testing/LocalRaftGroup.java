@@ -1,7 +1,7 @@
 package com.hazelcast.cp.internal.raft.impl.testing;
 
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
 import com.hazelcast.cp.RaftMember;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
@@ -29,7 +29,7 @@ import static org.junit.Assert.assertThat;
  */
 public class LocalRaftGroup {
 
-    private final RaftGroupId groupId;
+    private final CPGroupId groupId;
     private final RaftAlgorithmConfig raftAlgorithmConfig;
     private final String serviceName;
     private final Class<? extends SnapshotAwareService> serviceClazz;

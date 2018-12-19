@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.raft.impl.task;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.cp.internal.raft.QueryPolicy;
 import com.hazelcast.cp.internal.raft.command.RaftGroupCmd;
-import com.hazelcast.cp.internal.raft.exception.NotLeaderException;
+import com.hazelcast.cp.exception.NotLeaderException;
 import com.hazelcast.cp.internal.raft.exception.RaftGroupDestroyedException;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeStatus;

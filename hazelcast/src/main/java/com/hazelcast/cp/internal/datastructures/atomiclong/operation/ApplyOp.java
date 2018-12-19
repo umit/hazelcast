@@ -20,7 +20,7 @@ import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongDataSerializerHook;
 import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLong;
 
@@ -49,7 +49,7 @@ public class ApplyOp<R> extends AbstractAtomicLongOp {
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         RaftAtomicLong atomic = getAtomicLong(groupId);
         long val = atomic.getAndAdd(0);
         return function.apply(val);

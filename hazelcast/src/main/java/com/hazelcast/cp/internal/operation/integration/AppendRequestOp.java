@@ -20,7 +20,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendRequest;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
 
 import java.io.IOException;
@@ -35,7 +35,7 @@ public class AppendRequestOp extends AsyncRaftOp {
     public AppendRequestOp() {
     }
 
-    public AppendRequestOp(RaftGroupId groupId, AppendRequest appendRequest) {
+    public AppendRequestOp(CPGroupId groupId, AppendRequest appendRequest) {
         super(groupId);
         this.appendRequest = appendRequest;
     }

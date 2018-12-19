@@ -18,7 +18,7 @@ package com.hazelcast.cp.internal;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.raft.impl.dataservice.RaftDataService;
 
 import java.io.IOException;
@@ -26,7 +26,7 @@ import java.io.IOException;
 public class RaftTestQueryOp extends RaftOp {
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         RaftDataService service = getService();
         return service.get(commitIndex);
     }

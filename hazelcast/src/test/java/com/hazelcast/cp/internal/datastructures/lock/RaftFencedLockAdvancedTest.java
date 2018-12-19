@@ -20,7 +20,7 @@ import com.hazelcast.config.Config;
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.cp.FencedLock;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
@@ -86,7 +86,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
         RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
 
         try {
-            RaftGroupId groupId = raftService.createRaftGroupForProxy(name);
+            CPGroupId groupId = raftService.createRaftGroupForProxy(name);
             String objectName = getObjectNameForProxy(name);
             ProxySessionManagerService sessionManager = nodeEngine.getService(ProxySessionManagerService.SERVICE_NAME);
             return new RaftFencedLockProxy(raftService.getInvocationManager(), sessionManager, groupId, objectName);
@@ -114,7 +114,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
     public void testSuccessfulTryLockClearsWaitTimeouts() {
         lock.lock();
 
-        RaftGroupId groupId = lock.getGroupId();
+        CPGroupId groupId = lock.getGroupId();
         HazelcastInstance leader = getLeaderInstance(instances, groupId);
         RaftLockService service = getNodeEngineImpl(leader).getService(RaftLockService.SERVICE_NAME);
         final RaftLockRegistry registry = service.getRegistryOrNull(groupId);
@@ -146,7 +146,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
     public void testFailedTryLockClearsWaitTimeouts() {
         RaftFencedLockBasicTest.lockByOtherThread(lock);
 
-        RaftGroupId groupId = lock.getGroupId();
+        CPGroupId groupId = lock.getGroupId();
         HazelcastInstance leader = getLeaderInstance(instances, groupId);
         RaftLockService service = getNodeEngineImpl(leader).getService(RaftLockService.SERVICE_NAME);
         RaftLockRegistry registry = service.getRegistryOrNull(groupId);
@@ -161,7 +161,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
     public void testDestroyClearsWaitTimeouts() {
         RaftFencedLockBasicTest.lockByOtherThread(lock);
 
-        RaftGroupId groupId = lock.getGroupId();
+        CPGroupId groupId = lock.getGroupId();
         HazelcastInstance leader = getLeaderInstance(instances, groupId);
         RaftLockService service = getNodeEngineImpl(leader).getService(RaftLockService.SERVICE_NAME);
         final RaftLockRegistry registry = service.getRegistryOrNull(groupId);
@@ -197,7 +197,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
             }
         });
 
-        final RaftGroupId groupId = this.lock.getGroupId();
+        final CPGroupId groupId = this.lock.getGroupId();
 
         spawn(new Runnable() {
             @Override
@@ -269,7 +269,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
     public void testInactiveSessionsAreEventuallyClosed() {
         lock.lock();
 
-        final RaftGroupId groupId = lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
 
         assertTrueEventually(new AssertTask() {
             @Override

@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.datastructures.semaphore.proxy;
 
 import com.hazelcast.core.ISemaphore;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
@@ -45,10 +45,10 @@ import static java.lang.Math.max;
 public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements ISemaphore {
 
     private final RaftInvocationManager invocationManager;
-    private final RaftGroupId groupId;
+    private final CPGroupId groupId;
     private final String name;
 
-    public RaftSessionlessSemaphoreProxy(RaftInvocationManager invocationManager, AbstractProxySessionManager sessionManager, RaftGroupId groupId, String name) {
+    public RaftSessionlessSemaphoreProxy(RaftInvocationManager invocationManager, AbstractProxySessionManager sessionManager, CPGroupId groupId, String name) {
         super(sessionManager, groupId);
         this.invocationManager = invocationManager;
         this.groupId = groupId;

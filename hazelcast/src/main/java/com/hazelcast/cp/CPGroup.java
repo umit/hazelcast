@@ -19,48 +19,48 @@ package com.hazelcast.cp;
 import java.util.Collection;
 
 /**
- * Contains information about a Raft group
+ * Contains information about a CP group
  */
-public interface RaftGroup {
+public interface CPGroup {
 
     /**
-     * Represents status of a Raft group
+     * Represents status of a CP group
      */
-    enum RaftGroupStatus {
+    enum CPGroupStatus {
         /**
-         * A Raft group is active after it is initialized with the first request it has received,
+         * A CP group is active after it is initialized with the first request it has received,
          * and before its destroy process is initialized.
          */
         ACTIVE,
 
         /**
-         * A Raft group moves into this state after its destroy process is initialized but not completed yet.
+         * A CP group moves into this state after its destroy process is initialized but not completed yet.
          */
         DESTROYING,
 
         /**
-         * A Raft group moves into this state after its destroy process is completed.
+         * A CP group moves into this state after its destroy process is completed.
          */
         DESTROYED
     }
 
     /**
-     * Returns unique id of the Raft group
+     * Returns unique id of the CP group
      */
-    RaftGroupId id();
+    CPGroupId id();
 
     /**
-     * Returns status of the Raft group
+     * Returns status of the CP group
      */
-    RaftGroupStatus status();
+    CPGroupStatus status();
 
     /**
-     * Returns members that the Raft group is initialized with.
+     * Returns members that the CP group is initialized with.
      */
     Collection<RaftMember> initialMembers();
 
     /**
-     * Returns current members of the Raft group
+     * Returns current members of the CP group
      */
     Collection<RaftMember> members();
 }

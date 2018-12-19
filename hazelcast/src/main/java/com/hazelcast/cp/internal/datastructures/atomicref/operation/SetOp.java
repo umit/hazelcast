@@ -23,7 +23,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 
 import java.io.IOException;
 
@@ -45,7 +45,7 @@ public class SetOp extends AbstractAtomicRefOp implements IdentifiedDataSerializ
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         RaftAtomicRef ref = getAtomicRef(groupId);
         Data oldValue = ref.get();
         ref.set(newValue);

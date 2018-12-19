@@ -21,8 +21,8 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.raft.exception.NotLeaderException;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.exception.NotLeaderException;
 import com.hazelcast.cp.internal.raft.exception.RaftGroupDestroyedException;
 import com.hazelcast.cp.internal.RaftSystemOperation;
 import com.hazelcast.cp.internal.raft.impl.RaftNode;
@@ -40,12 +40,12 @@ import java.io.IOException;
 public abstract class RaftReplicateOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation,
                                                                    ExecutionCallback {
 
-    private RaftGroupId groupId;
+    private CPGroupId groupId;
 
     RaftReplicateOp() {
     }
 
-    RaftReplicateOp(RaftGroupId groupId) {
+    RaftReplicateOp(CPGroupId groupId) {
         this.groupId = groupId;
     }
 

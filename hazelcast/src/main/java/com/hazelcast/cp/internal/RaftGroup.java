@@ -19,8 +19,8 @@ package com.hazelcast.cp.internal;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroup;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroup;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.RaftMember;
 
 import java.io.IOException;
@@ -29,31 +29,31 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import static com.hazelcast.cp.RaftGroup.RaftGroupStatus.ACTIVE;
-import static com.hazelcast.cp.RaftGroup.RaftGroupStatus.DESTROYED;
-import static com.hazelcast.cp.RaftGroup.RaftGroupStatus.DESTROYING;
+import static com.hazelcast.cp.CPGroup.CPGroupStatus.ACTIVE;
+import static com.hazelcast.cp.CPGroup.CPGroupStatus.DESTROYED;
+import static com.hazelcast.cp.CPGroup.CPGroupStatus.DESTROYING;
 import static com.hazelcast.util.Preconditions.checkState;
 
 /**
  * Contains metadata information for Raft groups, such as group id, group members, etc.
  * Maintained within the Metadata Raft group.
  */
-public final class RaftGroupInfo implements RaftGroup, IdentifiedDataSerializable {
+public final class RaftGroup implements CPGroup, IdentifiedDataSerializable {
 
-    private RaftGroupId id;
+    private CPGroupId id;
     private Set<RaftMemberImpl> initialMembers;
     private Set<RaftMemberImpl> members;
     private long membersCommitIndex;
 
     // read outside of Raft
-    private volatile RaftGroupStatus status;
+    private volatile CPGroupStatus status;
 
     private transient RaftMemberImpl[] membersArray;
 
-    public RaftGroupInfo() {
+    public RaftGroup() {
     }
 
-    public RaftGroupInfo(RaftGroupId id, Collection<RaftMemberImpl> members) {
+    public RaftGroup(CPGroupId id, Collection<RaftMemberImpl> members) {
         this.id = id;
         this.status = ACTIVE;
         this.initialMembers = Collections.unmodifiableSet(new LinkedHashSet<RaftMemberImpl>(members));
@@ -62,7 +62,7 @@ public final class RaftGroupInfo implements RaftGroup, IdentifiedDataSerializabl
     }
 
     @Override
-    public RaftGroupId id() {
+    public CPGroupId id() {
         return id;
     }
 
@@ -107,7 +107,7 @@ public final class RaftGroupInfo implements RaftGroup, IdentifiedDataSerializabl
     }
 
     @Override
-    public RaftGroupStatus status() {
+    public CPGroupStatus status() {
         return status;
     }
 
@@ -201,7 +201,7 @@ public final class RaftGroupInfo implements RaftGroup, IdentifiedDataSerializabl
         }
         membersArray = members.toArray(new RaftMemberImpl[0]);
         members = Collections.unmodifiableSet(members);
-        status = RaftGroupStatus.valueOf(in.readUTF());
+        status = CPGroupStatus.valueOf(in.readUTF());
     }
 
     @Override
@@ -216,7 +216,7 @@ public final class RaftGroupInfo implements RaftGroup, IdentifiedDataSerializabl
 
     @Override
     public String toString() {
-        return "RaftGroupInfo{" + "id=" + id + ", initialMembers=" + initialMembers + ", membersCommitIndex=" + membersCommitIndex
+        return "CPGroup{" + "id=" + id + ", initialMembers=" + initialMembers + ", membersCommitIndex=" + membersCommitIndex
                 + ", members=" + members() + ", status=" + status + '}';
     }
 }

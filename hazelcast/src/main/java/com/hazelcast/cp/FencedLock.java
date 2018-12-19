@@ -56,7 +56,7 @@ public interface FencedLock extends Lock, DistributedObject {
     // returns 0 otherwise
     int getLockCount();
 
-    RaftGroupId getGroupId();
+    CPGroupId getGroupId();
 
     String getName();
 

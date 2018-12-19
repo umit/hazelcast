@@ -15,6 +15,6 @@
  */
 
 /**
- * Contains exception classes that can be thrown by the core Raft algorithm implementation
+ * Contains exception classes that can be thrown by the CP subsystem
  */
 package com.hazelcast.cp.internal.raft.exception;

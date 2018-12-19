@@ -16,21 +16,21 @@
 
 package com.hazelcast.cp.internal.datastructures.lock.operation;
 
-import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
-import com.hazelcast.cp.internal.raft.impl.util.PostponedResponse;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.FencedLock;
+import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.datastructures.lock.LockEndpoint;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockDataSerializerHook;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockOwnershipState;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockService;
+import com.hazelcast.cp.internal.raft.impl.util.PostponedResponse;
 
 import java.util.UUID;
 
 /**
  * Operation for {@link FencedLock#lock()}
  *
- * @see com.hazelcast.raft.service.lock.RaftLock#acquire(LockEndpoint, long, UUID, boolean)
+ * @see com.hazelcast.cp.internal.datastructures.lock.RaftLock#acquire(LockEndpoint, long, UUID, boolean)
  */
 public class LockOp extends AbstractLockOp implements IndeterminateOperationStateAware {
 
@@ -42,7 +42,7 @@ public class LockOp extends AbstractLockOp implements IndeterminateOperationStat
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
         LockEndpoint endpoint = getLockEndpoint();
         RaftLockOwnershipState ownership = service.acquire(groupId, name, endpoint, commitIndex, invocationUid);

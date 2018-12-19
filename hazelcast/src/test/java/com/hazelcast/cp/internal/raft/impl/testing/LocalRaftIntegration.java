@@ -5,7 +5,7 @@ import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.internal.cluster.Versions;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.LoggingServiceImpl;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
 import com.hazelcast.cp.RaftMember;
 import com.hazelcast.cp.internal.raft.impl.RaftIntegration;
@@ -48,7 +48,7 @@ import static org.junit.Assert.assertThat;
 public class LocalRaftIntegration implements RaftIntegration {
 
     private final RaftMember localEndpoint;
-    private final RaftGroupId raftGroupId;
+    private final CPGroupId groupId;
     private final SnapshotAwareService service;
     private final boolean appendNopEntryOnLeaderElection;
     private final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
@@ -58,10 +58,10 @@ public class LocalRaftIntegration implements RaftIntegration {
     private final Set<EndpointDropEntry> endpointDropRules = Collections.newSetFromMap(new ConcurrentHashMap<EndpointDropEntry, Boolean>());
     private final Set<Class> dropAllRules = Collections.newSetFromMap(new ConcurrentHashMap<Class, Boolean>());
 
-    LocalRaftIntegration(TestRaftMember localEndpoint, RaftGroupId raftGroupId, SnapshotAwareService service,
+    LocalRaftIntegration(TestRaftMember localEndpoint, CPGroupId groupId, SnapshotAwareService service,
                          boolean appendNopEntryOnLeaderElection) {
         this.localEndpoint = localEndpoint;
-        this.raftGroupId = raftGroupId;
+        this.groupId = groupId;
         this.service = service;
         this.appendNopEntryOnLeaderElection = appendNopEntryOnLeaderElection;
         this.loggingService = new LoggingServiceImpl("dev", "log4j2", BuildInfoProvider.getBuildInfo());
@@ -264,8 +264,8 @@ public class LocalRaftIntegration implements RaftIntegration {
     @Override
     public Object takeSnapshot(long commitIndex) {
         try {
-            Object snapshot = service.takeSnapshot(raftGroupId, commitIndex);
-            return new RestoreSnapshotRaftRunnable(raftGroupId, commitIndex, snapshot);
+            Object snapshot = service.takeSnapshot(groupId, commitIndex);
+            return new RestoreSnapshotRaftRunnable(groupId, commitIndex, snapshot);
         } catch (Throwable t) {
             return t;
         }

@@ -22,22 +22,22 @@ import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 
 import java.io.IOException;
 
 /**
- * Implementation of {@link RaftGroupId}.
+ * Implementation of {@link CPGroupId}.
  */
-public final class RaftGroupIdImpl implements RaftGroupId, IdentifiedDataSerializable {
+public final class RaftGroupId implements CPGroupId, IdentifiedDataSerializable {
 
     private String name;
     private long commitIndex;
 
-    public RaftGroupIdImpl() {
+    public RaftGroupId() {
     }
 
-    public RaftGroupIdImpl(String name, long commitIndex) {
+    public RaftGroupId(String name, long commitIndex) {
         assert name != null;
         this.name = name;
         this.commitIndex = commitIndex;
@@ -80,11 +80,11 @@ public final class RaftGroupIdImpl implements RaftGroupId, IdentifiedDataSeriali
         if (this == o) {
             return true;
         }
-        if (!(o instanceof RaftGroupIdImpl)) {
+        if (!(o instanceof RaftGroupId)) {
             return false;
         }
 
-        RaftGroupIdImpl that = (RaftGroupIdImpl) o;
+        RaftGroupId that = (RaftGroupId) o;
         return commitIndex == that.commitIndex && name.equals(that.name);
     }
 
@@ -97,22 +97,22 @@ public final class RaftGroupIdImpl implements RaftGroupId, IdentifiedDataSeriali
 
     @Override
     public String toString() {
-        return "RaftGroupId{" + "name='" + name + '\'' + ", commitIndex=" + commitIndex + '}';
+        return "CPGroupId{" + "name='" + name + '\'' + ", commitIndex=" + commitIndex + '}';
     }
 
     // ----- CLIENT CONVENIENCE METHODS -----
-    public static RaftGroupId readFrom(ClientMessage message) {
+    public static CPGroupId readFrom(ClientMessage message) {
         String name = message.getStringUtf8();
         long commitIndex = message.getLong();
-        return new RaftGroupIdImpl(name, commitIndex);
+        return new RaftGroupId(name, commitIndex);
     }
 
-    public static void writeTo(RaftGroupId groupId, ClientMessage message) {
+    public static void writeTo(CPGroupId groupId, ClientMessage message) {
         message.set(groupId.name());
         message.set(groupId.commitIndex());
     }
 
-    public static int dataSize(RaftGroupId groupId) {
+    public static int dataSize(CPGroupId groupId) {
         return ParameterUtil.calculateDataSize(groupId.name()) + Bits.LONG_SIZE_IN_BYTES;
     }
 }

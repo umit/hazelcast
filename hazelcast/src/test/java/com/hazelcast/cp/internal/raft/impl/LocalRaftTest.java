@@ -2,9 +2,9 @@ package com.hazelcast.cp.internal.raft.impl;
 
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.cp.RaftMember;
-import com.hazelcast.cp.internal.raft.exception.CannotReplicateException;
-import com.hazelcast.cp.internal.raft.exception.LeaderDemotedException;
-import com.hazelcast.cp.internal.raft.exception.NotLeaderException;
+import com.hazelcast.cp.exception.CannotReplicateException;
+import com.hazelcast.cp.exception.LeaderDemotedException;
+import com.hazelcast.cp.exception.NotLeaderException;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendRequest;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.cp.internal.raft.impl.dto.VoteRequest;

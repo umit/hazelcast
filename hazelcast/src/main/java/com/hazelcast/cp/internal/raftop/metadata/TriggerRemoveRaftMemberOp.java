@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.raftop.metadata;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.RaftMember;
 import com.hazelcast.cp.internal.RaftMemberImpl;
 import com.hazelcast.cp.internal.RaftOp;
@@ -31,7 +31,7 @@ import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import java.io.IOException;
 
 /**
- * When a CP node is shutting down gracefully, or a crashed CP node is removed from the CP sub-system via
+ * When a CP member is shutting down gracefully, or a crashed CP member is removed from the CP sub-system via
  * {@link RaftService#removeCPMember(RaftMember)}, this operation is committed to the Metadata Raft group.
  */
 public class TriggerRemoveRaftMemberOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
@@ -46,7 +46,7 @@ public class TriggerRemoveRaftMemberOp extends RaftOp implements IndeterminateOp
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         RaftService service = getService();
         MetadataRaftGroupManager metadataManager = service.getMetadataGroupManager();
         metadataManager.triggerRemoveMember(member);

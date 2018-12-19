@@ -16,11 +16,10 @@
 
 package com.hazelcast.client.cp.internal.datastructures.atomiclong;
 
-import com.hazelcast.client.cp.internal.datastructures.atomiclong.RaftAtomicLongProxy;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongBasicTest;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
@@ -62,7 +61,7 @@ public class RaftAtomicLongClientBasicTest extends RaftAtomicLongBasicTest {
     }
 
     @Override
-    protected RaftGroupId getGroupId(IAtomicLong atomicLong) {
+    protected CPGroupId getGroupId(IAtomicLong atomicLong) {
         return ((RaftAtomicLongProxy) atomicLong).getGroupId();
     }
 

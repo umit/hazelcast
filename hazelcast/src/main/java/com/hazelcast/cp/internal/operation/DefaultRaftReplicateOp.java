@@ -18,7 +18,7 @@ package com.hazelcast.cp.internal.operation;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.RaftInvocationManager;
@@ -37,7 +37,7 @@ public class DefaultRaftReplicateOp extends RaftReplicateOp implements Indetermi
     public DefaultRaftReplicateOp() {
     }
 
-    public DefaultRaftReplicateOp(RaftGroupId groupId, RaftOp raftOp) {
+    public DefaultRaftReplicateOp(CPGroupId groupId, RaftOp raftOp) {
         super(groupId);
         this.raftOp = raftOp;
     }

@@ -20,7 +20,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.DataSerializable;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -41,12 +41,12 @@ import static java.util.Collections.unmodifiableList;
 public class MembershipChangeContext implements IdentifiedDataSerializable {
 
     private RaftMemberImpl leavingMember;
-    private final List<RaftGroupMembershipChangeContext> changes = new ArrayList<RaftGroupMembershipChangeContext>();
+    private final List<CPGroupMembershipChangeContext> changes = new ArrayList<CPGroupMembershipChangeContext>();
 
     MembershipChangeContext() {
     }
 
-    MembershipChangeContext(RaftMemberImpl leavingMember, List<RaftGroupMembershipChangeContext> changes) {
+    MembershipChangeContext(RaftMemberImpl leavingMember, List<CPGroupMembershipChangeContext> changes) {
         this.leavingMember = leavingMember;
         this.changes.addAll(changes);
     }
@@ -55,17 +55,17 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
         return leavingMember;
     }
 
-    List<RaftGroupMembershipChangeContext> getChanges() {
+    List<CPGroupMembershipChangeContext> getChanges() {
         return unmodifiableList(changes);
     }
 
-    MembershipChangeContext excludeCompletedChanges(Collection<RaftGroupId> completedGroupIds) {
+    MembershipChangeContext excludeCompletedChanges(Collection<CPGroupId> completedGroupIds) {
         checkNotNull(completedGroupIds);
 
-        List<RaftGroupMembershipChangeContext> remainingChanges = new ArrayList<RaftGroupMembershipChangeContext>(changes);
-        Iterator<RaftGroupMembershipChangeContext> it = remainingChanges.iterator();
+        List<CPGroupMembershipChangeContext> remainingChanges = new ArrayList<CPGroupMembershipChangeContext>(changes);
+        Iterator<CPGroupMembershipChangeContext> it = remainingChanges.iterator();
         while (it.hasNext()) {
-            RaftGroupMembershipChangeContext ctx = it.next();
+            CPGroupMembershipChangeContext ctx = it.next();
             if (completedGroupIds.contains(ctx.groupId)) {
                 it.remove();
             }
@@ -75,9 +75,9 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
     }
 
 
-    public static class RaftGroupMembershipChangeContext implements DataSerializable {
+    public static class CPGroupMembershipChangeContext implements DataSerializable {
 
-        private RaftGroupId groupId;
+        private CPGroupId groupId;
 
         private long membersCommitIndex;
 
@@ -87,11 +87,11 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
 
         private RaftMemberImpl memberToRemove;
 
-        RaftGroupMembershipChangeContext() {
+        CPGroupMembershipChangeContext() {
         }
 
-        RaftGroupMembershipChangeContext(RaftGroupId groupId, long membersCommitIndex, Collection<RaftMemberImpl> members,
-                                         RaftMemberImpl memberToAdd, RaftMemberImpl memberToRemove) {
+        CPGroupMembershipChangeContext(CPGroupId groupId, long membersCommitIndex, Collection<RaftMemberImpl> members,
+                                       RaftMemberImpl memberToAdd, RaftMemberImpl memberToRemove) {
             this.groupId = groupId;
             this.membersCommitIndex = membersCommitIndex;
             this.members = members;
@@ -99,7 +99,7 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
             this.memberToRemove = memberToRemove;
         }
 
-        RaftGroupId getGroupId() {
+        CPGroupId getGroupId() {
             return groupId;
         }
 
@@ -145,7 +145,7 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
 
         @Override
         public String toString() {
-            return "RaftGroupMembershipChangeContext{" + "groupId=" + groupId + ", membersCommitIndex=" + membersCommitIndex
+            return "CPGroupMembershipChangeContext{" + "groupId=" + groupId + ", membersCommitIndex=" + membersCommitIndex
                     + ", members=" + members + ", memberToAdd=" + memberToAdd + ", memberToRemove=" + memberToRemove + '}';
         }
     }
@@ -164,7 +164,7 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeObject(leavingMember);
         out.writeInt(changes.size());
-        for (RaftGroupMembershipChangeContext ctx : changes) {
+        for (CPGroupMembershipChangeContext ctx : changes) {
             ctx.writeData(out);
         }
     }
@@ -174,7 +174,7 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
         leavingMember = in.readObject();
         int groupCount = in.readInt();
         for (int i = 0; i < groupCount; i++) {
-            RaftGroupMembershipChangeContext context = new RaftGroupMembershipChangeContext();
+            CPGroupMembershipChangeContext context = new CPGroupMembershipChangeContext();
             context.readData(in);
             changes.add(context);
         }

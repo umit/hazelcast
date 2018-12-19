@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.datastructures.semaphore.operation;
 
 import com.hazelcast.core.ISemaphore;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphore;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreDataSerializerHook;
@@ -49,7 +49,7 @@ public class ChangePermitsOp extends AbstractSemaphoreOp implements Indeterminat
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         RaftSemaphoreService service = getService();
         return service.changePermits(groupId, name, sessionId, threadId, invocationUid, permits);
     }

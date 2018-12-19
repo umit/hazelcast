@@ -28,8 +28,8 @@ import com.hazelcast.core.OperationTimeoutException;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
 import com.hazelcast.client.cp.internal.ClientAccessor;
 import com.hazelcast.nio.Bits;
-import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.RaftGroupIdImpl;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.spi.client.RaftGroupTaskFactoryProvider;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.util.UuidUtil;
@@ -38,7 +38,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
-import static com.hazelcast.cp.internal.RaftGroupIdImpl.dataSize;
+import static com.hazelcast.cp.internal.RaftGroupId.dataSize;
 import static com.hazelcast.cp.internal.RaftService.getObjectNameForProxy;
 import static com.hazelcast.cp.internal.datastructures.countdownlatch.client.CountDownLatchMessageTaskFactoryProvider.AWAIT_TYPE;
 import static com.hazelcast.cp.internal.datastructures.countdownlatch.client.CountDownLatchMessageTaskFactoryProvider.COUNT_DOWN_TYPE;
@@ -69,23 +69,23 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
         HazelcastClientInstanceImpl client = ClientAccessor.getClient(instance);
         ClientInvocationFuture f = new ClientInvocation(client, msg, objectName).invoke();
 
-        InternalCompletableFuture<RaftGroupId> future = new ClientDelegatingFuture<RaftGroupId>(f, client.getSerializationService(),
+        InternalCompletableFuture<CPGroupId> future = new ClientDelegatingFuture<CPGroupId>(f, client.getSerializationService(),
                 new ClientMessageDecoder() {
                     @Override
-                    public RaftGroupId decodeClientMessage(ClientMessage msg) {
-                        return RaftGroupIdImpl.readFrom(msg);
+                    public CPGroupId decodeClientMessage(ClientMessage msg) {
+                        return RaftGroupId.readFrom(msg);
                     }
                 });
 
-        RaftGroupId groupId = future.join();
+        CPGroupId groupId = future.join();
         return new RaftCountDownLatchProxy(instance, groupId, objectName);
     }
 
     private final HazelcastClientInstanceImpl client;
-    private final RaftGroupId groupId;
+    private final CPGroupId groupId;
     private final String name;
 
-    public RaftCountDownLatchProxy(HazelcastInstance instance, RaftGroupId groupId, String name) {
+    public RaftCountDownLatchProxy(HazelcastInstance instance, CPGroupId groupId, String name) {
         this.client = ClientAccessor.getClient(instance);
         this.groupId = groupId;
         this.name = name;
@@ -172,7 +172,7 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
         return RaftCountDownLatchService.SERVICE_NAME;
     }
 
-    public RaftGroupId getGroupId() {
+    public CPGroupId getGroupId() {
         return groupId;
     }
 
@@ -190,12 +190,12 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
         return new ClientDelegatingFuture<T>(future, client.getSerializationService(), decoder);
     }
 
-    private ClientMessage prepareClientMessage(RaftGroupId groupId, String name, int dataSize, int messageTypeId) {
+    private ClientMessage prepareClientMessage(CPGroupId groupId, String name, int dataSize, int messageTypeId) {
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
         msg.setMessageType(messageTypeId);
         msg.setRetryable(false);
         msg.setOperationName("");
-        RaftGroupIdImpl.writeTo(groupId, msg);
+        RaftGroupId.writeTo(groupId, msg);
         msg.set(name);
         return msg;
     }

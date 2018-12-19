@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.datastructures.atomicref;
 import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.cp.internal.datastructures.spi.RaftRemoteService;
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
 import com.hazelcast.cp.internal.RaftGroupLifecycleAwareService;
 import com.hazelcast.cp.internal.RaftInvocationManager;
@@ -55,10 +55,10 @@ public class RaftAtomicRefService implements ManagedService, RaftRemoteService, 
      */
     public static final String SERVICE_NAME = "hz:raft:atomicRefService";
 
-    private final Map<Tuple2<RaftGroupId, String>, RaftAtomicRef> atomicRefs =
-            new ConcurrentHashMap<Tuple2<RaftGroupId, String>, RaftAtomicRef>();
-    private final Set<Tuple2<RaftGroupId, String>> destroyedRefs =
-            newSetFromMap(new ConcurrentHashMap<Tuple2<RaftGroupId, String>, Boolean>());
+    private final Map<Tuple2<CPGroupId, String>, RaftAtomicRef> atomicRefs =
+            new ConcurrentHashMap<Tuple2<CPGroupId, String>, RaftAtomicRef>();
+    private final Set<Tuple2<CPGroupId, String>> destroyedRefs =
+            newSetFromMap(new ConcurrentHashMap<Tuple2<CPGroupId, String>, Boolean>());
     private final NodeEngine nodeEngine;
     private volatile RaftService raftService;
 
@@ -82,7 +82,7 @@ public class RaftAtomicRefService implements ManagedService, RaftRemoteService, 
     }
 
     @Override
-    public RaftAtomicRefSnapshot takeSnapshot(RaftGroupId groupId, long commitIndex) {
+    public RaftAtomicRefSnapshot takeSnapshot(CPGroupId groupId, long commitIndex) {
         checkNotNull(groupId);
         Map<String, Data> refs = new HashMap<String, Data>();
         for (RaftAtomicRef ref : atomicRefs.values()) {
@@ -92,7 +92,7 @@ public class RaftAtomicRefService implements ManagedService, RaftRemoteService, 
         }
 
         Set<String> destroyed = new HashSet<String>();
-        for (Tuple2<RaftGroupId, String> tuple : destroyedRefs) {
+        for (Tuple2<CPGroupId, String> tuple : destroyedRefs) {
             if (groupId.equals(tuple.element1)) {
                 destroyed.add(tuple.element2);
             }
@@ -102,7 +102,7 @@ public class RaftAtomicRefService implements ManagedService, RaftRemoteService, 
     }
 
     @Override
-    public void restoreSnapshot(RaftGroupId groupId, long commitIndex, RaftAtomicRefSnapshot snapshot) {
+    public void restoreSnapshot(CPGroupId groupId, long commitIndex, RaftAtomicRefSnapshot snapshot) {
         checkNotNull(groupId);
         for (Map.Entry<String, Data> e : snapshot.getRefs()) {
             String name = e.getKey();
@@ -116,10 +116,10 @@ public class RaftAtomicRefService implements ManagedService, RaftRemoteService, 
     }
 
     @Override
-    public void onGroupDestroy(RaftGroupId groupId) {
-        Iterator<Tuple2<RaftGroupId, String>> iter = atomicRefs.keySet().iterator();
+    public void onGroupDestroy(CPGroupId groupId) {
+        Iterator<Tuple2<CPGroupId, String>> iter = atomicRefs.keySet().iterator();
         while (iter.hasNext()) {
-            Tuple2<RaftGroupId, String> next = iter.next();
+            Tuple2<CPGroupId, String> next = iter.next();
             if (groupId.equals(next.element1)) {
                 destroyedRefs.add(next);
                 iter.remove();
@@ -130,7 +130,7 @@ public class RaftAtomicRefService implements ManagedService, RaftRemoteService, 
     @Override
     public IAtomicReference createRaftObjectProxy(String name) {
         try {
-            RaftGroupId groupId = raftService.createRaftGroupForProxy(name);
+            CPGroupId groupId = raftService.createRaftGroupForProxy(name);
             RaftInvocationManager invocationManager = raftService.getInvocationManager();
             SerializationService serializationService = nodeEngine.getSerializationService();
             return new RaftAtomicRefProxy(invocationManager, serializationService, groupId, getObjectNameForProxy(name));
@@ -140,16 +140,16 @@ public class RaftAtomicRefService implements ManagedService, RaftRemoteService, 
     }
 
     @Override
-    public boolean destroyRaftObject(RaftGroupId groupId, String name) {
-        Tuple2<RaftGroupId, String> key = Tuple2.of(groupId, name);
+    public boolean destroyRaftObject(CPGroupId groupId, String name) {
+        Tuple2<CPGroupId, String> key = Tuple2.of(groupId, name);
         destroyedRefs.add(key);
         return atomicRefs.remove(key) != null;
     }
 
-    public RaftAtomicRef getAtomicRef(RaftGroupId groupId, String name) {
+    public RaftAtomicRef getAtomicRef(CPGroupId groupId, String name) {
         checkNotNull(groupId);
         checkNotNull(name);
-        Tuple2<RaftGroupId, String> key = Tuple2.of(groupId, name);
+        Tuple2<CPGroupId, String> key = Tuple2.of(groupId, name);
         if (destroyedRefs.contains(key)) {
             throw new DistributedObjectDestroyedException("AtomicReference[" + name + "] is already destroyed!");
         }

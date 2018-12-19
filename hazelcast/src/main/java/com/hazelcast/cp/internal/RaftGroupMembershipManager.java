@@ -21,13 +21,13 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.cp.internal.raft.MembershipChangeType;
 import com.hazelcast.cp.internal.raft.QueryPolicy;
-import com.hazelcast.cp.RaftGroup.RaftGroupStatus;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroup.CPGroupStatus;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.raft.exception.MismatchingGroupMembersCommitIndexException;
 import com.hazelcast.cp.internal.raft.exception.RaftGroupDestroyedException;
 import com.hazelcast.cp.internal.raft.impl.RaftNode;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeStatus;
-import com.hazelcast.cp.internal.MembershipChangeContext.RaftGroupMembershipChangeContext;
+import com.hazelcast.cp.internal.MembershipChangeContext.CPGroupMembershipChangeContext;
 import com.hazelcast.cp.internal.raftop.metadata.CompleteDestroyRaftGroupsOp;
 import com.hazelcast.cp.internal.raftop.metadata.CompleteRaftGroupMembershipChangesOp;
 import com.hazelcast.cp.internal.raftop.metadata.DestroyRaftNodesOp;
@@ -61,7 +61,8 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
- * Realizes pending Raft group membership changes and periodically checks validity of local {@link RaftNode} instances on CP nodes
+ * Realizes pending Raft group membership changes
+ * and periodically checks validity of local {@link RaftNode} instances on CP members
  */
 class RaftGroupMembershipManager {
 
@@ -108,7 +109,7 @@ class RaftGroupMembershipManager {
 
         public void run() {
             for (RaftNode raftNode : raftService.getAllRaftNodes()) {
-                final RaftGroupId groupId = raftNode.getGroupId();
+                final CPGroupId groupId = raftNode.getGroupId();
                 if (groupId.equals(METADATA_GROUP_ID)) {
                     continue;
                 }
@@ -118,21 +119,21 @@ class RaftGroupMembershipManager {
                     continue;
                 }
 
-                ICompletableFuture<RaftGroupInfo> f = queryMetadata(new GetRaftGroupOp(groupId));
+                ICompletableFuture<RaftGroup> f = queryMetadata(new GetRaftGroupOp(groupId));
 
-                f.andThen(new ExecutionCallback<RaftGroupInfo>() {
+                f.andThen(new ExecutionCallback<RaftGroup>() {
                     @Override
-                    public void onResponse(RaftGroupInfo group) {
+                    public void onResponse(RaftGroup group) {
                         if (group == null) {
-                            logger.severe("Could not find raft group for local raft node of " + groupId);
-                        } else if (group.status() == RaftGroupStatus.DESTROYED) {
+                            logger.severe("Could not find CP group for local raft node of " + groupId);
+                        } else if (group.status() == CPGroupStatus.DESTROYED) {
                             raftService.destroyRaftNode(groupId);
                         }
                     }
 
                     @Override
                     public void onFailure(Throwable t) {
-                        logger.warning("Could not get raft group info of " + groupId, t);
+                        logger.warning("Could not get CP group info of " + groupId, t);
                     }
                 });
             }
@@ -147,7 +148,7 @@ class RaftGroupMembershipManager {
                 return;
             }
 
-            Set<RaftGroupId> destroyedGroupIds = destroyRaftGroups();
+            Set<CPGroupId> destroyedGroupIds = destroyRaftGroups();
             if (destroyedGroupIds.isEmpty()) {
                 return;
             }
@@ -156,7 +157,7 @@ class RaftGroupMembershipManager {
                 return;
             }
 
-            for (RaftGroupId groupId : destroyedGroupIds) {
+            for (CPGroupId groupId : destroyedGroupIds) {
                 raftService.destroyRaftNode(groupId);
             }
 
@@ -168,20 +169,20 @@ class RaftGroupMembershipManager {
             }
         }
 
-        private Set<RaftGroupId> destroyRaftGroups() {
-            Collection<RaftGroupId> destroyingRaftGroupIds = getDestroyingRaftGroupIds();
+        private Set<CPGroupId> destroyRaftGroups() {
+            Collection<CPGroupId> destroyingRaftGroupIds = getDestroyingRaftGroupIds();
             if (destroyingRaftGroupIds.isEmpty()) {
                 return Collections.emptySet();
             }
 
-            Map<RaftGroupId, Future<Object>> futures = new HashMap<RaftGroupId, Future<Object>>();
-            for (RaftGroupId groupId : destroyingRaftGroupIds) {
+            Map<CPGroupId, Future<Object>> futures = new HashMap<CPGroupId, Future<Object>>();
+            for (CPGroupId groupId : destroyingRaftGroupIds) {
                 Future<Object> future = invocationManager.destroy(groupId);
                 futures.put(groupId, future);
             }
 
-            Set<RaftGroupId> destroyedGroupIds = new HashSet<RaftGroupId>();
-            for (Entry<RaftGroupId, Future<Object>> e : futures.entrySet()) {
+            Set<CPGroupId> destroyedGroupIds = new HashSet<CPGroupId>();
+            for (Entry<CPGroupId, Future<Object>> e : futures.entrySet()) {
                 if (isRaftGroupDestroyed(e.getKey(), e.getValue())) {
                     destroyedGroupIds.add(e.getKey());
                 }
@@ -190,12 +191,12 @@ class RaftGroupMembershipManager {
             return destroyedGroupIds;
         }
 
-        private Collection<RaftGroupId> getDestroyingRaftGroupIds() {
-            InternalCompletableFuture<Collection<RaftGroupId>> f = queryMetadata(new GetDestroyingRaftGroupIdsOp());
+        private Collection<CPGroupId> getDestroyingRaftGroupIds() {
+            InternalCompletableFuture<Collection<CPGroupId>> f = queryMetadata(new GetDestroyingRaftGroupIdsOp());
             return f.join();
         }
 
-        private boolean isRaftGroupDestroyed(RaftGroupId groupId, Future<Object> future) {
+        private boolean isRaftGroupDestroyed(CPGroupId groupId, Future<Object> future) {
             try {
                 future.get();
                 return true;
@@ -213,16 +214,16 @@ class RaftGroupMembershipManager {
             }
         }
 
-        private boolean commitDestroyedRaftGroups(Set<RaftGroupId> destroyedGroupIds) {
+        private boolean commitDestroyedRaftGroups(Set<CPGroupId> destroyedGroupIds) {
             RaftOp op = new CompleteDestroyRaftGroupsOp(destroyedGroupIds);
-            Future<Collection<RaftGroupId>> f = invocationManager.invoke(METADATA_GROUP_ID, op);
+            Future<Collection<CPGroupId>> f = invocationManager.invoke(METADATA_GROUP_ID, op);
 
             try {
                 f.get();
-                logger.info("Terminated raft groups: " + destroyedGroupIds + " are committed.");
+                logger.info("Terminated CP groups: " + destroyedGroupIds + " are committed.");
                 return true;
             } catch (Exception e) {
-                logger.severe("Cannot commit terminated raft groups: " + destroyedGroupIds, e);
+                logger.severe("Cannot commit terminated CP groups: " + destroyedGroupIds, e);
                 return false;
             }
         }
@@ -245,11 +246,11 @@ class RaftGroupMembershipManager {
 
             logger.fine("Handling " + membershipChangeContext);
 
-            List<RaftGroupMembershipChangeContext> changes = membershipChangeContext.getChanges();
-            Map<RaftGroupId, Tuple2<Long, Long>> changedGroups = new ConcurrentHashMap<RaftGroupId, Tuple2<Long, Long>>();
+            List<CPGroupMembershipChangeContext> changes = membershipChangeContext.getChanges();
+            Map<CPGroupId, Tuple2<Long, Long>> changedGroups = new ConcurrentHashMap<CPGroupId, Tuple2<Long, Long>>();
             CountDownLatch latch = new CountDownLatch(changes.size());
 
-            for (RaftGroupMembershipChangeContext ctx : changes) {
+            for (CPGroupMembershipChangeContext ctx : changes) {
                 addMember(changedGroups, latch, ctx);
             }
 
@@ -268,10 +269,10 @@ class RaftGroupMembershipManager {
             return f.join();
         }
 
-        private void addMember(final Map<RaftGroupId, Tuple2<Long, Long>> changedGroups,
+        private void addMember(final Map<CPGroupId, Tuple2<Long, Long>> changedGroups,
                                final CountDownLatch latch,
-                               final RaftGroupMembershipChangeContext ctx) {
-            final RaftGroupId groupId = ctx.getGroupId();
+                               final CPGroupMembershipChangeContext ctx) {
+            final CPGroupId groupId = ctx.getGroupId();
             ICompletableFuture<Long> future;
             if (ctx.getMemberToAdd() == null) {
                 future = newCompletedFuture(ctx.getMembersCommitIndex());
@@ -305,9 +306,9 @@ class RaftGroupMembershipManager {
             });
         }
 
-        private void removeMember(final Map<RaftGroupId, Tuple2<Long, Long>> changedGroups,
+        private void removeMember(final Map<CPGroupId, Tuple2<Long, Long>> changedGroups,
                                   final CountDownLatch latch,
-                                  final RaftGroupMembershipChangeContext ctx,
+                                  final CPGroupMembershipChangeContext ctx,
                                   final long currentCommitIndex) {
             ICompletableFuture<Long> future = invocationManager.changeMembership(ctx.getGroupId(), currentCommitIndex,
                     ctx.getMemberToRemove(), MembershipChangeType.REMOVE);
@@ -337,7 +338,7 @@ class RaftGroupMembershipManager {
             return f;
         }
 
-        private long getMemberAddCommitIndex(RaftGroupMembershipChangeContext ctx, Throwable t) {
+        private long getMemberAddCommitIndex(CPGroupMembershipChangeContext ctx, Throwable t) {
             if (t.getCause() instanceof MismatchingGroupMembersCommitIndexException) {
                 MismatchingGroupMembersCommitIndexException m = (MismatchingGroupMembersCommitIndexException) t.getCause();
 
@@ -372,7 +373,7 @@ class RaftGroupMembershipManager {
             return NA_MEMBERS_COMMIT_INDEX;
         }
 
-        private long getMemberRemoveCommitIndex(RaftGroupMembershipChangeContext ctx, Throwable t) {
+        private long getMemberRemoveCommitIndex(CPGroupMembershipChangeContext ctx, Throwable t) {
             RaftMemberImpl removedMember = ctx.getMemberToRemove();
 
             if (t.getCause() instanceof MismatchingGroupMembersCommitIndexException) {
@@ -421,14 +422,14 @@ class RaftGroupMembershipManager {
             return NA_MEMBERS_COMMIT_INDEX;
         }
 
-        private void completeMembershipChanges(Map<RaftGroupId, Tuple2<Long, Long>> changedGroups) {
+        private void completeMembershipChanges(Map<CPGroupId, Tuple2<Long, Long>> changedGroups) {
             RaftOp op = new CompleteRaftGroupMembershipChangesOp(changedGroups);
             ICompletableFuture<Object> future = invocationManager.invoke(METADATA_GROUP_ID, op);
 
             try {
                 future.get();
             } catch (Exception e) {
-                logger.severe("Cannot commit raft group membership changes: " + changedGroups, e);
+                logger.severe("Cannot commit CP group membership changes: " + changedGroups, e);
             }
         }
     }

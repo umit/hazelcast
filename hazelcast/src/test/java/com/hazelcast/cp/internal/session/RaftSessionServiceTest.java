@@ -3,7 +3,7 @@ package com.hazelcast.cp.internal.session;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.Session;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.cp.internal.RaftInvocationManager;
@@ -56,7 +56,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
 
     private HazelcastInstance[] instances;
     private RaftInvocationManager invocationManager;
-    private RaftGroupId groupId;
+    private CPGroupId groupId;
 
     @Before
     public void setup() throws ExecutionException, InterruptedException {
@@ -345,7 +345,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
         return config;
     }
 
-    private RaftSession getSession(HazelcastInstance instance, RaftGroupId groupId, long sessionId) {
+    private RaftSession getSession(HazelcastInstance instance, CPGroupId groupId, long sessionId) {
         RaftSessionService sessionService = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
         RaftSessionRegistry registry = sessionService.getSessionRegistryOrNull(groupId);
         if (registry == null) {

@@ -17,29 +17,29 @@
 package com.hazelcast.cp.internal.datastructures.atomicref;
 
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 
 /**
  * State-machine implementation of the Raft-based atomic reference
  */
 public class RaftAtomicRef {
 
-    private final RaftGroupId groupId;
+    private final CPGroupId groupId;
     private final String name;
     private Data value;
 
-    RaftAtomicRef(RaftGroupId groupId, String name) {
+    RaftAtomicRef(CPGroupId groupId, String name) {
         this.groupId = groupId;
         this.name = name;
     }
 
-    RaftAtomicRef(RaftGroupId groupId, String name, Data value) {
+    RaftAtomicRef(CPGroupId groupId, String name, Data value) {
         this.groupId = groupId;
         this.name = name;
         this.value = value;
     }
 
-    public RaftGroupId groupId() {
+    public CPGroupId groupId() {
         return groupId;
     }
 

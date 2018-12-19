@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.raft.impl;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.internal.raft.MembershipChangeType;
 import com.hazelcast.cp.internal.raft.QueryPolicy;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.RaftMember;
 import com.hazelcast.cp.internal.raft.exception.MismatchingGroupMembersCommitIndexException;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendFailureResponse;
@@ -43,7 +43,7 @@ public interface RaftNode {
     /**
      * Returns the groupId which this node belongs to.
      */
-    RaftGroupId getGroupId();
+    CPGroupId getGroupId();
 
     /**
      * Returns the Raft endpoint for this node.
@@ -61,7 +61,7 @@ public interface RaftNode {
     RaftNodeStatus getStatus();
 
     /**
-     * Returns the initial member list of the raft group this node belongs to.
+     * Returns the initial member list of the Raft group this node belongs to.
      */
     Collection<RaftMember> getInitialMembers();
 

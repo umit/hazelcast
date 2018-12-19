@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
 import com.hazelcast.cp.RaftMember;
 import com.hazelcast.cp.internal.raft.impl.RaftIntegration;
@@ -68,13 +68,13 @@ import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 final class NodeEngineRaftIntegration implements RaftIntegration {
 
     private final NodeEngineImpl nodeEngine;
-    private final RaftGroupId groupId;
+    private final CPGroupId groupId;
     private final InternalOperationService operationService;
     private final TaskScheduler taskScheduler;
     private final int partitionId;
     private final int threadId;
 
-    NodeEngineRaftIntegration(NodeEngineImpl nodeEngine, RaftGroupId groupId) {
+    NodeEngineRaftIntegration(NodeEngineImpl nodeEngine, CPGroupId groupId) {
         this.nodeEngine = nodeEngine;
         this.groupId = groupId;
         OperationServiceImpl operationService = (OperationServiceImpl) nodeEngine.getOperationService();

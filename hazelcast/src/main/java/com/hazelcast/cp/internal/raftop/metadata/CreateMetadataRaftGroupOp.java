@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.raftop.metadata;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftMemberImpl;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.MetadataRaftGroupManager;
@@ -32,9 +32,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Used during cluster startup by CP nodes to commit their CP node list to the Metadata group.
- * in order to guarantee that each CP node discovers the same list.
- * Fails with {@link IllegalArgumentException} if a CP node commits a different list.
+ * Used during cluster startup by CP members to commit their CP member list to the Metadata group.
+ * in order to guarantee that each CP member discovers the same list.
+ * Fails with {@link IllegalArgumentException} if a CP member commits a different list.
  */
 public class CreateMetadataRaftGroupOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
@@ -50,7 +50,7 @@ public class CreateMetadataRaftGroupOp extends RaftOp implements IndeterminateOp
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         RaftService service = getService();
         MetadataRaftGroupManager metadataManager = service.getMetadataGroupManager();
         metadataManager.createInitialMetadataRaftGroup(initialMembers, metadataMembersCount);

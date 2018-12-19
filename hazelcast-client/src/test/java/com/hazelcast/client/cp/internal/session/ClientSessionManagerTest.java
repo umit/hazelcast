@@ -19,7 +19,7 @@ package com.hazelcast.client.cp.internal.session;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICompletableFuture;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.client.cp.internal.ClientAccessor;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManagerTest;
@@ -69,10 +69,10 @@ public class ClientSessionManagerTest extends AbstractProxySessionManagerTest {
         SessionProxyImpl proxy = new SessionProxyImpl(sessionManager, groupId);
         proxy.createSession();
 
-        Map<RaftGroupId, ICompletableFuture<Object>> futures = sessionManager.shutdown();
+        Map<CPGroupId, ICompletableFuture<Object>> futures = sessionManager.shutdown();
         assertEquals(1, futures.size());
 
-        Entry<RaftGroupId, ICompletableFuture<Object>> e = futures.entrySet().iterator().next();
+        Entry<CPGroupId, ICompletableFuture<Object>> e = futures.entrySet().iterator().next();
         assertEquals(groupId, e.getKey());
         e.getValue().get();
 
@@ -92,7 +92,7 @@ public class ClientSessionManagerTest extends AbstractProxySessionManagerTest {
 
     private static class SessionProxyImpl extends SessionAwareProxy {
 
-        SessionProxyImpl(AbstractProxySessionManager sessionManager, RaftGroupId groupId) {
+        SessionProxyImpl(AbstractProxySessionManager sessionManager, CPGroupId groupId) {
             super(sessionManager, groupId);
         }
 

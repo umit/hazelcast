@@ -24,8 +24,8 @@ import com.hazelcast.cp.internal.datastructures.spi.operation.DestroyRaftObjectO
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.RaftGroupIdImpl;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftService;
 
@@ -36,7 +36,7 @@ import java.security.Permission;
  */
 public class DestroySemaphoreMessageTask extends AbstractMessageTask implements ExecutionCallback {
 
-    private RaftGroupId groupId;
+    private CPGroupId groupId;
     private String name;
 
     DestroySemaphoreMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
@@ -52,7 +52,7 @@ public class DestroySemaphoreMessageTask extends AbstractMessageTask implements 
 
     @Override
     protected Object decodeClientMessage(ClientMessage clientMessage) {
-        groupId = RaftGroupIdImpl.readFrom(clientMessage);
+        groupId = RaftGroupId.readFrom(clientMessage);
         name = clientMessage.getStringUtf8();
         return null;
     }

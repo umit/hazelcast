@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.datastructures.countdownlatch.operation;
 
 import com.hazelcast.core.ICountDownLatch;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchDataSerializerHook;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
@@ -35,7 +35,7 @@ public class GetRoundOp extends AbstractCountDownLatchOp implements Indeterminat
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         RaftCountDownLatchService service = getService();
         return service.getRound(groupId, name);
     }

@@ -17,10 +17,10 @@
 package com.hazelcast.spi.impl.operationservice.impl;
 
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.raft.exception.RaftException;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.exception.CPSubsystemException;
 import com.hazelcast.cp.internal.RaftMemberImpl;
-import com.hazelcast.cp.internal.RaftGroupInfo;
+import com.hazelcast.cp.internal.RaftGroup;
 import com.hazelcast.cp.internal.RaftService;
 
 import java.util.Collection;
@@ -34,8 +34,8 @@ public class RaftInvocationContext {
 
     private final ILogger logger;
     private final RaftService raftService;
-    private final ConcurrentMap<RaftGroupId, RaftMemberImpl> knownLeaders =
-            new ConcurrentHashMap<RaftGroupId, RaftMemberImpl>();
+    private final ConcurrentMap<CPGroupId, RaftMemberImpl> knownLeaders =
+            new ConcurrentHashMap<CPGroupId, RaftMemberImpl>();
     private final boolean failOnIndeterminateOperationState;
 
     private volatile RaftMemberImpl[] members = {};
@@ -55,11 +55,11 @@ public class RaftInvocationContext {
         this.members = members.toArray(new RaftMemberImpl[0]);
     }
 
-    RaftMemberImpl getKnownLeader(RaftGroupId groupId) {
+    RaftMemberImpl getKnownLeader(CPGroupId groupId) {
         return knownLeaders.get(groupId);
     }
 
-    boolean setKnownLeader(RaftGroupId groupId, RaftMemberImpl leader) {
+    boolean setKnownLeader(CPGroupId groupId, RaftMemberImpl leader) {
         if (leader != null) {
             logger.fine("Setting known leader for raft: " + groupId + " to " + leader);
             knownLeaders.put(groupId, leader);
@@ -69,9 +69,9 @@ public class RaftInvocationContext {
         return false;
     }
 
-    void updateKnownLeaderOnFailure(RaftGroupId groupId, Throwable cause) {
-        if (cause instanceof RaftException) {
-            RaftException e = (RaftException) cause;
+    void updateKnownLeaderOnFailure(CPGroupId groupId, Throwable cause) {
+        if (cause instanceof CPSubsystemException) {
+            CPSubsystemException e = (CPSubsystemException) cause;
             RaftMemberImpl leader = (RaftMemberImpl) e.getLeader();
             if (!setKnownLeader(groupId, leader)) {
                 resetKnownLeader(groupId);
@@ -85,13 +85,13 @@ public class RaftInvocationContext {
         return failOnIndeterminateOperationState;
     }
 
-    private void resetKnownLeader(RaftGroupId groupId) {
+    private void resetKnownLeader(CPGroupId groupId) {
         logger.fine("Resetting known leader for raft: " + groupId);
         knownLeaders.remove(groupId);
     }
 
-    MemberCursor newMemberCursor(RaftGroupId groupId) {
-        RaftGroupInfo group = raftService.getRaftGroup(groupId);
+    MemberCursor newMemberCursor(CPGroupId groupId) {
+        RaftGroup group = raftService.getCPGroup(groupId);
         RaftMemberImpl[] endpoints = group != null ? group.membersArray() : members;
         return new MemberCursor(endpoints);
     }

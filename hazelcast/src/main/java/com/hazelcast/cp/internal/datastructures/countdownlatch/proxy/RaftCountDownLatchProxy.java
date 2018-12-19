@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.datastructures.countdownlatch.proxy;
 
 import com.hazelcast.core.ICountDownLatch;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.AwaitOp;
@@ -37,11 +37,11 @@ import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
  */
 public class RaftCountDownLatchProxy implements ICountDownLatch {
 
-    private final RaftGroupId groupId;
+    private final CPGroupId groupId;
     private final String name;
     private final RaftInvocationManager invocationManager;
 
-    public RaftCountDownLatchProxy(RaftInvocationManager invocationManager, RaftGroupId groupId, String name) {
+    public RaftCountDownLatchProxy(RaftInvocationManager invocationManager, CPGroupId groupId, String name) {
         this.invocationManager = invocationManager;
         this.groupId = groupId;
         this.name = name;
@@ -86,7 +86,7 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
         return RaftCountDownLatchService.SERVICE_NAME;
     }
 
-    public RaftGroupId getGroupId() {
+    public CPGroupId getGroupId() {
         return groupId;
     }
 

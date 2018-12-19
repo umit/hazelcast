@@ -20,7 +20,7 @@ import com.hazelcast.config.Config;
 import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.cp.internal.datastructures.semaphore.proxy.RaftSessionlessSemaphoreProxy;
 import com.hazelcast.test.AssertTask;
@@ -461,7 +461,7 @@ public class RaftSessionlessSemaphoreBasicTest extends HazelcastRaftTestSupport 
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                RaftGroupId groupId = getGroupId(semaphore);
+                CPGroupId groupId = getGroupId(semaphore);
                 HazelcastInstance leader = getLeaderInstance(instances, groupId);
                 RaftSemaphoreService service = getNodeEngineImpl(leader).getService(RaftSemaphoreService.SERVICE_NAME);
                 RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
@@ -474,7 +474,7 @@ public class RaftSessionlessSemaphoreBasicTest extends HazelcastRaftTestSupport 
         assertOpenEventually(latch);
     }
 
-    protected RaftGroupId getGroupId(ISemaphore semaphore) {
+    protected CPGroupId getGroupId(ISemaphore semaphore) {
         return ((RaftSessionlessSemaphoreProxy) semaphore).getGroupId();
     }
 

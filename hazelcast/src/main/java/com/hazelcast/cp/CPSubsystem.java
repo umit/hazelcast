@@ -27,7 +27,7 @@ import com.hazelcast.spi.annotation.Beta;
  *
  */
 @Beta
-public interface CpSubsystem {
+public interface CPSubsystem {
 
     /**
      * TODO
@@ -70,7 +70,7 @@ public interface CpSubsystem {
      * TODO
      * @return
      */
-    CpSubsystemManagementService getCpSubsystemManagementService();
+    CPSubsystemManagementService getCPSubsystemManagementService();
 
     /**
      * TODO

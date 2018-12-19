@@ -1,6 +1,6 @@
 package com.hazelcast.cp.internal.raft.impl.state;
 
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.RaftMember;
 import com.hazelcast.cp.internal.raft.impl.RaftRole;
 import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
@@ -36,7 +36,7 @@ public class RaftStateTest {
 
     private RaftState state;
     private String name = randomName();
-    private RaftGroupId groupId;
+    private CPGroupId groupId;
     private TestRaftMember localMember;
     private Collection<RaftMember> members;
 

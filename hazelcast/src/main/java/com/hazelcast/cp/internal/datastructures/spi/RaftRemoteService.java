@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.datastructures.spi;
 
 import com.hazelcast.core.DistributedObject;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 
 /**
  * Defines methods to create and destroy Raft data structure instances and their proxies
@@ -33,5 +33,5 @@ public interface RaftRemoteService {
     /**
      * Destroys the given Raft data structure on the Raft group.
      */
-    boolean destroyRaftObject(RaftGroupId groupId, String objectName);
+    boolean destroyRaftObject(CPGroupId groupId, String objectName);
 }

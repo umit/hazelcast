@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.raftop.snapshot;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
 import com.hazelcast.cp.internal.RaftOp;
@@ -27,7 +27,7 @@ import com.hazelcast.cp.internal.RaftOp;
 import java.io.IOException;
 
 /**
- * {@code RaftOp} to restore snapshot using related {@link SnapshotAwareService#takeSnapshot(RaftGroupId, long)}.
+ * {@code RaftOp} to restore snapshot using related {@link SnapshotAwareService#takeSnapshot(CPGroupId, long)}.
  * <p>
  * This operation is appended to Raft log in {@link com.hazelcast.cp.internal.raft.impl.log.SnapshotEntry} and send to followers
  * via {@link com.hazelcast.cp.internal.raft.impl.dto.InstallSnapshot} RPC.
@@ -50,7 +50,7 @@ public class RestoreSnapshotOp extends RaftOp implements IdentifiedDataSerializa
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         SnapshotAwareService service = getService();
         service.restoreSnapshot(groupId, commitIndex, snapshot);
         return null;

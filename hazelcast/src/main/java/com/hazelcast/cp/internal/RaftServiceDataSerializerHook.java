@@ -111,9 +111,9 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
             public IdentifiedDataSerializable create(int typeId) {
                 switch (typeId) {
                     case GROUP_ID:
-                        return new RaftGroupIdImpl();
+                        return new RaftGroupId();
                     case RAFT_GROUP_INFO:
-                        return new RaftGroupInfo();
+                        return new RaftGroup();
                     case PRE_VOTE_REQUEST_OP:
                         return new PreVoteRequestOp();
                     case PRE_VOTE_RESPONSE_OP:

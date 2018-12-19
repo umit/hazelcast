@@ -26,8 +26,8 @@ import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
-import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.RaftGroupIdImpl;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
 import com.hazelcast.cp.internal.datastructures.spi.client.RaftGroupTaskFactoryProvider;
 import com.hazelcast.cp.internal.session.SessionAwareProxy;
@@ -40,7 +40,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
-import static com.hazelcast.cp.internal.RaftGroupIdImpl.dataSize;
+import static com.hazelcast.cp.internal.RaftGroupId.dataSize;
 import static com.hazelcast.cp.internal.RaftService.getObjectNameForProxy;
 import static com.hazelcast.cp.internal.datastructures.semaphore.client.SemaphoreMessageTaskFactoryProvider.ACQUIRE_PERMITS_TYPE;
 import static com.hazelcast.cp.internal.datastructures.semaphore.client.SemaphoreMessageTaskFactoryProvider.AVAILABLE_PERMITS_TYPE;
@@ -78,22 +78,22 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
         HazelcastClientInstanceImpl client = ClientAccessor.getClient(instance);
         ClientInvocationFuture f = new ClientInvocation(client, msg, objectName).invoke();
 
-        InternalCompletableFuture<RaftGroupId> future = new ClientDelegatingFuture<RaftGroupId>(f, client.getSerializationService(),
+        InternalCompletableFuture<CPGroupId> future = new ClientDelegatingFuture<CPGroupId>(f, client.getSerializationService(),
                 new ClientMessageDecoder() {
                     @Override
-                    public RaftGroupId decodeClientMessage(ClientMessage msg) {
-                        return RaftGroupIdImpl.readFrom(msg);
+                    public CPGroupId decodeClientMessage(ClientMessage msg) {
+                        return RaftGroupId.readFrom(msg);
                     }
                 });
 
-        RaftGroupId groupId = future.join();
+        CPGroupId groupId = future.join();
         return new RaftSessionAwareSemaphoreProxy(instance, groupId, objectName);
     }
 
     private final HazelcastClientInstanceImpl client;
     private final String name;
 
-    private RaftSessionAwareSemaphoreProxy(HazelcastInstance instance, RaftGroupId groupId, String name) {
+    private RaftSessionAwareSemaphoreProxy(HazelcastInstance instance, CPGroupId groupId, String name) {
         super(SessionManagerProvider.get(ClientAccessor.getClient(instance)), groupId);
         this.client = ClientAccessor.getClient(instance);
         this.name = name;
@@ -348,24 +348,24 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
 
     @Override
     public void destroy() {
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(name);
+        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + calculateDataSize(name);
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
         msg.setMessageType(DESTROY_TYPE);
         msg.setRetryable(false);
         msg.setOperationName("");
-        RaftGroupIdImpl.writeTo(groupId, msg);
+        RaftGroupId.writeTo(groupId, msg);
         msg.set(name);
         msg.updateFrameLength();
 
         invoke(msg, BOOLEAN_RESPONSE_DECODER).join();
     }
 
-    private ClientMessage prepareClientMessage(RaftGroupId groupId, String name, long sessionId, int dataSize, int messageTypeId) {
+    private ClientMessage prepareClientMessage(CPGroupId groupId, String name, long sessionId, int dataSize, int messageTypeId) {
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
         msg.setMessageType(messageTypeId);
         msg.setRetryable(false);
         msg.setOperationName("");
-        RaftGroupIdImpl.writeTo(groupId, msg);
+        RaftGroupId.writeTo(groupId, msg);
         msg.set(name);
         msg.set(sessionId);
         return msg;

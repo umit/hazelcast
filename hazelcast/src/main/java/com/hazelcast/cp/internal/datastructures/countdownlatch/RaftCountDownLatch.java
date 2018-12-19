@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.datastructures.countdownlatch;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.BlockingResource;
 import com.hazelcast.util.collection.Long2ObjectHashMap;
@@ -47,7 +47,7 @@ public class RaftCountDownLatch extends BlockingResource<AwaitInvocationKey> imp
     RaftCountDownLatch() {
     }
 
-    RaftCountDownLatch(RaftGroupId groupId, String name) {
+    RaftCountDownLatch(CPGroupId groupId, String name) {
         super(groupId, name);
     }
 

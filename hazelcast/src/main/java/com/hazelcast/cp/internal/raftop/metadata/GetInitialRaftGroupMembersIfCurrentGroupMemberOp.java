@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.raftop.metadata;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.RaftMember;
 import com.hazelcast.cp.internal.raft.impl.RaftNode;
 import com.hazelcast.cp.internal.RaftOp;
@@ -35,7 +35,7 @@ import java.util.Collection;
 import static com.hazelcast.util.Preconditions.checkState;
 
 /**
- * When a CP node is added to a Raft group, a new member list is committed to the Raft group first.
+ * When a CP member is added to a Raft group, a new member list is committed to the Raft group first.
  * Then, new member list of the Raft group will be also committed to the Raft group.
  * After the new member list is committed to the Raft group itself, the new member can receive append requests
  * and it can try to initialize its local {@link RaftNode} instance. In order to the initialize itself,
@@ -64,7 +64,7 @@ public class GetInitialRaftGroupMembersIfCurrentGroupMemberOp extends RaftOp imp
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         checkState(raftNode != null, "RaftNode is not injected in " + groupId);
         Collection<RaftMember> members = raftNode.getCommittedMembers();
         checkState(members.contains(raftMember), raftMember

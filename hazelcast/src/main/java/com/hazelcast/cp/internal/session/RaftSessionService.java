@@ -18,7 +18,7 @@ package com.hazelcast.cp.internal.session;
 
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.ICompletableFuture;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.Session;
 import com.hazelcast.cp.SessionManagementService;
 import com.hazelcast.cp.internal.RaftGroupLifecycleAwareService;
@@ -82,7 +82,7 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
     private final ILogger logger;
     private volatile RaftService raftService;
 
-    private final Map<RaftGroupId, RaftSessionRegistry> registries = new ConcurrentHashMap<RaftGroupId, RaftSessionRegistry>();
+    private final Map<CPGroupId, RaftSessionRegistry> registries = new ConcurrentHashMap<CPGroupId, RaftSessionRegistry>();
 
     public RaftSessionService(NodeEngine nodeEngine) {
         this.nodeEngine = (NodeEngineImpl) nodeEngine;
@@ -112,20 +112,20 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
     }
 
     @Override
-    public RaftSessionRegistry takeSnapshot(RaftGroupId groupId, long commitIndex) {
+    public RaftSessionRegistry takeSnapshot(CPGroupId groupId, long commitIndex) {
         RaftSessionRegistry registry = registries.get(groupId);
         return registry != null ? registry.cloneForSnapshot() : null;
     }
 
     @Override
-    public void restoreSnapshot(RaftGroupId groupId, long commitIndex, RaftSessionRegistry registry) {
+    public void restoreSnapshot(CPGroupId groupId, long commitIndex, RaftSessionRegistry registry) {
         if (registry != null) {
             registries.put(groupId, registry);
         }
     }
 
     @Override
-    public void onNewTermCommit(RaftGroupId groupId, long commitIndex) {
+    public void onNewTermCommit(CPGroupId groupId, long commitIndex) {
         RaftSessionRegistry registry = registries.get(groupId);
         if (registry != null) {
             registry.shiftExpirationTimes(getHeartbeatIntervalMillis());
@@ -134,21 +134,21 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
     }
 
     @Override
-    public void onGroupDestroy(RaftGroupId groupId) {
+    public void onGroupDestroy(CPGroupId groupId) {
         registries.remove(groupId);
     }
 
     @Override
-    public Collection<Session> getAllSessions(RaftGroupId groupId) {
+    public Collection<Session> getAllSessions(CPGroupId groupId) {
         return raftService.getInvocationManager().<Collection<Session>>invoke(groupId, new GetSessionsOp()).join();
     }
 
     @Override
-    public ICompletableFuture<Boolean> forceCloseSession(RaftGroupId groupId, long sessionId) {
+    public ICompletableFuture<Boolean> forceCloseSession(CPGroupId groupId, long sessionId) {
         return raftService.getInvocationManager().invoke(groupId, new CloseSessionOp(sessionId));
     }
 
-    public SessionResponse createNewSession(RaftGroupId groupId, Address endpoint) {
+    public SessionResponse createNewSession(CPGroupId groupId, Address endpoint) {
         RaftSessionRegistry registry = registries.get(groupId);
         if (registry == null) {
             registry = new RaftSessionRegistry(groupId);
@@ -162,17 +162,17 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
         return new SessionResponse(sessionId, sessionTTLMillis, getHeartbeatIntervalMillis());
     }
 
-    public void heartbeat(RaftGroupId groupId, long sessionId) {
+    public void heartbeat(CPGroupId groupId, long sessionId) {
         RaftSessionRegistry registry = registries.get(groupId);
         if (registry == null) {
-            throw new IllegalStateException("No session: " + sessionId + " for raft group: " + groupId);
+            throw new IllegalStateException("No session: " + sessionId + " for CP group: " + groupId);
         }
 
         registry.heartbeat(sessionId, getSessionTTLMillis());
         logger.info("Session: " + sessionId + " heartbeat in " + groupId);
     }
 
-    public boolean closeSession(RaftGroupId groupId, long sessionId) {
+    public boolean closeSession(CPGroupId groupId, long sessionId) {
         RaftSessionRegistry registry = registries.get(groupId);
         if (registry == null) {
             return false;
@@ -186,7 +186,7 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
         return false;
     }
 
-    public void expireSessions(RaftGroupId groupId, Collection<Tuple2<Long, Long>> sessionsToExpire) {
+    public void expireSessions(CPGroupId groupId, Collection<Tuple2<Long, Long>> sessionsToExpire) {
         RaftSessionRegistry registry = registries.get(groupId);
         if (registry == null) {
             return;
@@ -207,7 +207,7 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
         }
     }
 
-    public void closeInactiveSessions(RaftGroupId groupId, Collection<Long> inactiveSessions) {
+    public void closeInactiveSessions(CPGroupId groupId, Collection<Long> inactiveSessions) {
         RaftSessionRegistry registry = registries.get(groupId);
         if (registry == null) {
             return;
@@ -228,7 +228,7 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
         }
     }
 
-    public Collection<Session> getSessionsLocally(RaftGroupId groupId) {
+    public Collection<Session> getSessionsLocally(CPGroupId groupId) {
         RaftSessionRegistry registry = getSessionRegistryOrNull(groupId);
         if (registry == null) {
             return Collections.emptyList();
@@ -238,7 +238,7 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
     }
 
     // queried locally in tests
-    RaftSessionRegistry getSessionRegistryOrNull(RaftGroupId groupId) {
+    RaftSessionRegistry getSessionRegistryOrNull(CPGroupId groupId) {
         return registries.get(groupId);
     }
 
@@ -250,7 +250,7 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
         return SECONDS.toMillis(raftService.getConfig().getSessionTimeToLiveSeconds());
     }
 
-    private void notifyServices(RaftGroupId groupId, Collection<Long> sessionIds) {
+    private void notifyServices(CPGroupId groupId, Collection<Long> sessionIds) {
         Collection<SessionAwareService> services = nodeEngine.getServices(SessionAwareService.class);
         for (SessionAwareService sessionAwareService : services) {
             for (long sessionId : sessionIds) {
@@ -260,7 +260,7 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
     }
 
     @Override
-    public boolean isActive(RaftGroupId groupId, long sessionId) {
+    public boolean isActive(CPGroupId groupId, long sessionId) {
         RaftSessionRegistry sessionRegistry = registries.get(groupId);
         if (sessionRegistry == null) {
             return false;
@@ -270,8 +270,8 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
     }
 
     // queried locally
-    private Map<RaftGroupId, Collection<Tuple2<Long, Long>>> getSessionsToExpire() {
-        Map<RaftGroupId, Collection<Tuple2<Long, Long>>> expired = new HashMap<RaftGroupId, Collection<Tuple2<Long, Long>>>();
+    private Map<CPGroupId, Collection<Tuple2<Long, Long>>> getSessionsToExpire() {
+        Map<CPGroupId, Collection<Tuple2<Long, Long>>> expired = new HashMap<CPGroupId, Collection<Tuple2<Long, Long>>>();
         for (RaftSessionRegistry registry : registries.values()) {
             Collection<Tuple2<Long, Long>> e = registry.getSessionsToExpire();
             if (!e.isEmpty()) {
@@ -282,15 +282,15 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
         return expired;
     }
 
-    private Map<RaftGroupId, Collection<Long>> getInactiveSessions() {
-        final Map<RaftGroupId, Collection<Long>> response = new ConcurrentHashMap<RaftGroupId, Collection<Long>>();
+    private Map<CPGroupId, Collection<Long>> getInactiveSessions() {
+        final Map<CPGroupId, Collection<Long>> response = new ConcurrentHashMap<CPGroupId, Collection<Long>>();
         final Semaphore semaphore = new Semaphore(0);
 
         OperationServiceImpl operationService = (OperationServiceImpl) nodeEngine.getOperationService();
         Collection<RaftSessionRegistry> registries = new ArrayList<RaftSessionRegistry>(this.registries.values());
 
         for (final RaftSessionRegistry registry : registries) {
-            final RaftGroupId groupId = registry.groupId();
+            final CPGroupId groupId = registry.groupId();
             operationService.execute(new PartitionSpecificRunnableAdaptor(new Runnable() {
                 @Override
                 public void run() {
@@ -328,9 +328,9 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
     private class CheckSessionsToExpire implements Runnable {
         @Override
         public void run() {
-            Map<RaftGroupId, Collection<Tuple2<Long, Long>>> sessionsToExpire = getSessionsToExpire();
-            for (Entry<RaftGroupId, Collection<Tuple2<Long, Long>>> entry : sessionsToExpire.entrySet()) {
-                RaftGroupId groupId = entry.getKey();
+            Map<CPGroupId, Collection<Tuple2<Long, Long>>> sessionsToExpire = getSessionsToExpire();
+            for (Entry<CPGroupId, Collection<Tuple2<Long, Long>>> entry : sessionsToExpire.entrySet()) {
+                CPGroupId groupId = entry.getKey();
                 RaftNode raftNode = raftService.getRaftNode(groupId);
                 if (raftNode != null) {
                     Collection<Tuple2<Long, Long>> sessions = entry.getValue();
@@ -350,9 +350,9 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
     private class CheckInactiveSessions implements Runnable {
         @Override
         public void run() {
-            Map<RaftGroupId, Collection<Long>> inactiveSessions = getInactiveSessions();
-            for (Entry<RaftGroupId, Collection<Long>> entry : inactiveSessions.entrySet()) {
-                RaftGroupId groupId = entry.getKey();
+            Map<CPGroupId, Collection<Long>> inactiveSessions = getInactiveSessions();
+            for (Entry<CPGroupId, Collection<Long>> entry : inactiveSessions.entrySet()) {
+                CPGroupId groupId = entry.getKey();
                 RaftNode raftNode = raftService.getRaftNode(groupId);
                 if (raftNode != null) {
                     Collection<Long> sessions = entry.getValue();

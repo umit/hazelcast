@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package com.hazelcast.cp.internal.raft.exception;
+package com.hazelcast.cp.exception;
 
 import com.hazelcast.core.IndeterminateOperationState;
 import com.hazelcast.cp.RaftMember;
 
 /**
- * A {@code RaftException} which is thrown when an installed snapshot causes
- * an appended entry to be truncated from the Raft log before its commit status is learnt.
+ * A {@code CPSubsystemException} which is thrown when an installed snapshot causes
+ * an appended entry to be truncated from the Raft log before its commit status is discovered.
  */
-public class StaleAppendRequestException extends RaftException implements IndeterminateOperationState {
+public class StaleAppendRequestException extends CPSubsystemException implements IndeterminateOperationState {
 
     public StaleAppendRequestException(RaftMember leader) {
         super(leader);

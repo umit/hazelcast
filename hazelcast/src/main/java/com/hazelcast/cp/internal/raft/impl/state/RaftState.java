@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.state;
 
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.RaftMember;
 import com.hazelcast.cp.internal.raft.impl.RaftRole;
 import com.hazelcast.cp.internal.raft.impl.dto.VoteRequest;
@@ -41,7 +41,7 @@ public class RaftState {
     /**
      * Group id
      */
-    private final RaftGroupId groupId;
+    private final CPGroupId groupId;
 
     /**
      * Initial members of the group
@@ -119,7 +119,7 @@ public class RaftState {
      */
     private CandidateState candidateState;
 
-    public RaftState(RaftGroupId groupId, RaftMember localEndpoint, Collection<RaftMember> endpoints) {
+    public RaftState(CPGroupId groupId, RaftMember localEndpoint, Collection<RaftMember> endpoints) {
         this.groupId = groupId;
         this.localEndpoint = localEndpoint;
         this.initialMembers = unmodifiableSet(new LinkedHashSet<RaftMember>(endpoints));
@@ -132,7 +132,7 @@ public class RaftState {
         return groupId.name();
     }
 
-    public RaftGroupId groupId() {
+    public CPGroupId groupId() {
         return groupId;
     }
 

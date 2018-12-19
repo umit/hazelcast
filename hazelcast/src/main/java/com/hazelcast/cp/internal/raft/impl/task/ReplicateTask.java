@@ -18,8 +18,8 @@ package com.hazelcast.cp.internal.raft.impl.task;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.cp.internal.raft.command.DestroyRaftGroupCmd;
-import com.hazelcast.cp.internal.raft.exception.CannotReplicateException;
-import com.hazelcast.cp.internal.raft.exception.NotLeaderException;
+import com.hazelcast.cp.exception.CannotReplicateException;
+import com.hazelcast.cp.exception.NotLeaderException;
 import com.hazelcast.cp.internal.raft.exception.RaftGroupDestroyedException;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeStatus;
@@ -106,7 +106,7 @@ public class ReplicateTask implements Runnable {
             ApplyRaftGroupMembersCmd op = (ApplyRaftGroupMembersCmd) operation;
             raftNode.updateGroupMembers(logIndex, op.getMembers());
             // TODO update quorum match indices...
-            // TODO if the raft group shrinks, we can move the commit index forward...
+            // TODO if the Raft group shrinks, we can move the commit index forward...
         }
     }
 

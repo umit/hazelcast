@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,21 @@
  * limitations under the License.
  */
 
-package com.hazelcast.cp.internal.raft.exception;
-
-import com.hazelcast.cp.exception.CPSubsystemException;
+package com.hazelcast.cp;
 
 /**
- * A {@code CPSubsystemException} which is thrown when a request is sent to a destroyed CP group.
- * Handled internally.
+ * Identifier for CP groups.
+ * Each CP group is denoted by a unique name and a commitIndex in Raft log.
  */
-public class RaftGroupDestroyedException extends CPSubsystemException {
-    public RaftGroupDestroyedException() {
-        super(null);
-    }
+public interface CPGroupId {
+
+    /**
+     * Returns the name of the CP group.
+     */
+    String name();
+
+    /**
+     * Returns the commit index of the log when this CP group is created.
+     */
+    long commitIndex();
 }

@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal;
 
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 
 /**
  * Services can implement this interface to get notified when there is a leader change in a Raft group.
@@ -30,6 +30,6 @@ public interface TermChangeAwareService {
      * @param groupId id of the Raft group in which a new leader is elected
      * @param commitIndex index of the commit in the Raft log
      */
-    void onNewTermCommit(RaftGroupId groupId, long commitIndex);
+    void onNewTermCommit(CPGroupId groupId, long commitIndex);
 
 }

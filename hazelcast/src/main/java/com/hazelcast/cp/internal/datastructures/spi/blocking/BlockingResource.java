@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.datastructures.spi.blocking;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.DataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.session.SessionExpiredException;
 import com.hazelcast.util.collection.Long2ObjectHashMap;
 
@@ -41,19 +41,19 @@ import static java.util.Collections.unmodifiableList;
  */
 public abstract class BlockingResource<W extends WaitKey> implements DataSerializable {
 
-    protected RaftGroupId groupId;
+    protected CPGroupId groupId;
     protected String name;
     protected LinkedList<W> waitKeys = new LinkedList<W>();
 
     protected BlockingResource() {
     }
 
-    protected BlockingResource(RaftGroupId groupId, String name) {
+    protected BlockingResource(CPGroupId groupId, String name) {
         this.groupId = groupId;
         this.name = name;
     }
 
-    public final RaftGroupId getGroupId() {
+    public final CPGroupId getGroupId() {
         return groupId;
     }
 

@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.datastructures.countdownlatch;
 
 import com.hazelcast.core.ICountDownLatch;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.AbstractBlockingService;
@@ -49,18 +49,18 @@ public class RaftCountDownLatchService
     public ICountDownLatch createRaftObjectProxy(String name) {
         try {
             RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
-            RaftGroupId groupId = service.createRaftGroupForProxy(name);
+            CPGroupId groupId = service.createRaftGroupForProxy(name);
             return new RaftCountDownLatchProxy(raftService.getInvocationManager(), groupId, getObjectNameForProxy(name));
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
     }
 
-    public boolean trySetCount(RaftGroupId groupId, String name, int count) {
+    public boolean trySetCount(CPGroupId groupId, String name, int count) {
         return getOrInitRegistry(groupId).trySetCount(name, count);
     }
 
-    public int countDown(RaftGroupId groupId, String name, int expectedRound, UUID invocationUuid) {
+    public int countDown(CPGroupId groupId, String name, int expectedRound, UUID invocationUuid) {
         RaftCountDownLatchRegistry registry = getOrInitRegistry(groupId);
         Tuple2<Integer, Collection<AwaitInvocationKey>> t = registry.countDown(name, expectedRound, invocationUuid);
         notifyWaitKeys(groupId, t.element2, true);
@@ -68,7 +68,7 @@ public class RaftCountDownLatchService
         return t.element1;
     }
 
-    public boolean await(RaftGroupId groupId, String name, long commitIndex, long timeoutMillis) {
+    public boolean await(CPGroupId groupId, String name, long commitIndex, long timeoutMillis) {
         boolean success = getOrInitRegistry(groupId).await(name, commitIndex, timeoutMillis);
         if (!success) {
             scheduleTimeout(groupId, new AwaitInvocationKey(name, commitIndex), timeoutMillis);
@@ -77,16 +77,16 @@ public class RaftCountDownLatchService
         return success;
     }
 
-    public int getRemainingCount(RaftGroupId groupId, String name) {
+    public int getRemainingCount(CPGroupId groupId, String name) {
         return getOrInitRegistry(groupId).getRemainingCount(name);
     }
 
-    public int getRound(RaftGroupId groupId, String name) {
+    public int getRound(CPGroupId groupId, String name) {
         return getOrInitRegistry(groupId).getRound(name);
     }
 
     @Override
-    protected RaftCountDownLatchRegistry createNewRegistry(RaftGroupId groupId) {
+    protected RaftCountDownLatchRegistry createNewRegistry(CPGroupId groupId) {
         return new RaftCountDownLatchRegistry(groupId);
     }
 

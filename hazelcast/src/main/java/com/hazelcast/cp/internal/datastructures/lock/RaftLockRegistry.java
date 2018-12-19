@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.datastructures.lock;
 
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLock.AcquireResult;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLock.ReleaseResult;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
@@ -33,12 +33,12 @@ class RaftLockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> imp
     RaftLockRegistry() {
     }
 
-    RaftLockRegistry(RaftGroupId groupId) {
+    RaftLockRegistry(CPGroupId groupId) {
         super(groupId);
     }
 
     @Override
-    protected RaftLock createNewResource(RaftGroupId groupId, String name) {
+    protected RaftLock createNewResource(CPGroupId groupId, String name) {
         return new RaftLock(groupId, name);
     }
 

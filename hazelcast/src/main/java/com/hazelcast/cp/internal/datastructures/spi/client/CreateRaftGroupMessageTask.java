@@ -21,8 +21,8 @@ import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.RaftGroupIdImpl;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftService;
 
 import java.security.Permission;
@@ -41,7 +41,7 @@ public class CreateRaftGroupMessageTask extends AbstractMessageTask {
     @Override
     protected void processMessage() {
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
-        RaftGroupId groupId = service.createRaftGroupForProxy(name);
+        CPGroupId groupId = service.createRaftGroupForProxy(name);
         sendResponse(groupId);
     }
 
@@ -53,11 +53,11 @@ public class CreateRaftGroupMessageTask extends AbstractMessageTask {
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        if (response instanceof RaftGroupId) {
-            RaftGroupId groupId = (RaftGroupId) response;
-            int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
+        if (response instanceof CPGroupId) {
+            CPGroupId groupId = (CPGroupId) response;
+            int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
             ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
-            RaftGroupIdImpl.writeTo(groupId, clientMessage);
+            RaftGroupId.writeTo(groupId, clientMessage);
             clientMessage.updateFrameLength();
             return clientMessage;
         }

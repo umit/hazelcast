@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.datastructures.atomiclong.operation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongDataSerializerHook;
 import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLong;
@@ -41,7 +41,7 @@ public abstract class AbstractAtomicLongOp extends RaftOp implements IdentifiedD
         this.name = name;
     }
 
-    RaftAtomicLong getAtomicLong(RaftGroupId groupId) {
+    RaftAtomicLong getAtomicLong(CPGroupId groupId) {
         RaftAtomicLongService service = getService();
         return service.getAtomicLong(groupId, name);
     }

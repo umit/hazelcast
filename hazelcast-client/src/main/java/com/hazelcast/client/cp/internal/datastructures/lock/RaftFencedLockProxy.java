@@ -24,8 +24,8 @@ import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.RaftGroupIdImpl;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockOwnershipState;
 import com.hazelcast.cp.internal.datastructures.lock.proxy.AbstractRaftFencedLockProxy;
 import com.hazelcast.cp.internal.datastructures.spi.client.RaftGroupTaskFactoryProvider;
@@ -36,7 +36,7 @@ import java.util.UUID;
 
 import static com.hazelcast.client.cp.internal.ClientAccessor.getClient;
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
-import static com.hazelcast.cp.internal.RaftGroupIdImpl.dataSize;
+import static com.hazelcast.cp.internal.RaftGroupId.dataSize;
 import static com.hazelcast.cp.internal.RaftService.getObjectNameForProxy;
 import static com.hazelcast.cp.internal.datastructures.lock.client.LockMessageTaskFactoryProvider.DESTROY_TYPE;
 import static com.hazelcast.cp.internal.datastructures.lock.client.LockMessageTaskFactoryProvider.FORCE_UNLOCK_TYPE;
@@ -66,35 +66,35 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
         HazelcastClientInstanceImpl client = getClient(instance);
         ClientInvocationFuture f = new ClientInvocation(client, msg, objectName).invoke();
 
-        InternalCompletableFuture<RaftGroupId> future = new ClientDelegatingFuture<RaftGroupId>(f, client.getSerializationService(),
+        InternalCompletableFuture<CPGroupId> future = new ClientDelegatingFuture<CPGroupId>(f, client.getSerializationService(),
                 new ClientMessageDecoder() {
                     @Override
-                    public RaftGroupId decodeClientMessage(ClientMessage msg) {
-                        return RaftGroupIdImpl.readFrom(msg);
+                    public CPGroupId decodeClientMessage(ClientMessage msg) {
+                        return RaftGroupId.readFrom(msg);
                     }
                 });
 
-        RaftGroupId groupId = future.join();
+        CPGroupId groupId = future.join();
         return new RaftFencedLockProxy(instance, groupId, objectName);
     }
 
     private final HazelcastClientInstanceImpl client;
 
-    private RaftFencedLockProxy(HazelcastInstance instance, RaftGroupId groupId, String name) {
+    private RaftFencedLockProxy(HazelcastInstance instance, CPGroupId groupId, String name) {
         super(SessionManagerProvider.get(getClient(instance)), groupId, name);
         this.client = getClient(instance);
     }
 
     @Override
-    protected final InternalCompletableFuture<RaftLockOwnershipState> doLock(RaftGroupId groupId, String name,
-                                                                       long sessionId, long threadId,
-                                                                       UUID invocationUid) {
+    protected final InternalCompletableFuture<RaftLockOwnershipState> doLock(CPGroupId groupId, String name,
+                                                                             long sessionId, long threadId,
+                                                                             UUID invocationUid) {
         ClientMessage msg = encodeRequest(LOCK_TYPE, groupId, name, sessionId, threadId, invocationUid);
         return invoke(client, name, msg, LOCK_OWNERSHIP_STATE_RESPONSE_DECODER);
     }
 
     @Override
-    protected final InternalCompletableFuture<RaftLockOwnershipState> doTryLock(RaftGroupId groupId, String name,
+    protected final InternalCompletableFuture<RaftLockOwnershipState> doTryLock(CPGroupId groupId, String name,
                                                                                 long sessionId, long threadId,
                                                                                 UUID invocationUid, long timeoutMillis) {
         ClientMessage msg = encodeRequest(TRY_LOCK_TYPE, groupId, name, sessionId, threadId, invocationUid, timeoutMillis);
@@ -102,7 +102,7 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
     }
 
     @Override
-    protected final InternalCompletableFuture<Object> doUnlock(RaftGroupId groupId, String name,
+    protected final InternalCompletableFuture<Object> doUnlock(CPGroupId groupId, String name,
                                                                long sessionId, long threadId,
                                                                UUID invocationUid, int releaseCount) {
         ClientMessage msg = encodeRequest(UNLOCK_TYPE, groupId, name, sessionId, threadId, invocationUid, releaseCount);
@@ -110,14 +110,14 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
     }
 
     @Override
-    protected final InternalCompletableFuture<Object> doForceUnlock(RaftGroupId groupId, String name,
+    protected final InternalCompletableFuture<Object> doForceUnlock(CPGroupId groupId, String name,
                                                                     UUID invocationUid, long expectedFence) {
         ClientMessage msg = encodeRequest(FORCE_UNLOCK_TYPE, groupId, name, -1, -1, invocationUid, expectedFence);
         return invoke(client, name, msg, BOOLEAN_RESPONSE_DECODER);
     }
 
     @Override
-    protected final InternalCompletableFuture<RaftLockOwnershipState> doGetLockOwnershipState(RaftGroupId groupId,
+    protected final InternalCompletableFuture<RaftLockOwnershipState> doGetLockOwnershipState(CPGroupId groupId,
                                                                                               String name) {
         ClientMessage msg = encodeRequest(LOCK_OWNERSHIP_STATE, groupId, name, -1, -1);
         return invoke(client, name, msg, LOCK_OWNERSHIP_STATE_RESPONSE_DECODER);
@@ -125,7 +125,7 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
 
     @Override
     public void destroy() {
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + calculateDataSize(name);
+        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + calculateDataSize(name);
         ClientMessage msg = prepareClientMessage(groupId, name, dataSize, DESTROY_TYPE);
         msg.updateFrameLength();
 
@@ -138,7 +138,7 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
         return new ClientDelegatingFuture<T>(future, client.getSerializationService(), decoder);
     }
 
-    static ClientMessage encodeRequest(int messageTypeId, RaftGroupId groupId, String name, long sessionId,
+    static ClientMessage encodeRequest(int messageTypeId, CPGroupId groupId, String name, long sessionId,
                                        long threadId, UUID invUid) {
         int dataSize = ClientMessage.HEADER_SIZE
                 + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4;
@@ -148,7 +148,7 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
         return msg;
     }
 
-    static ClientMessage encodeRequest(int messageTypeId, RaftGroupId groupId, String name, long sessionId,
+    static ClientMessage encodeRequest(int messageTypeId, CPGroupId groupId, String name, long sessionId,
                                        long threadId, UUID invUid, int val) {
         int dataSize = ClientMessage.HEADER_SIZE
                 + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4 + Bits.INT_SIZE_IN_BYTES;
@@ -159,7 +159,7 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
         return msg;
     }
 
-    static ClientMessage encodeRequest(int messageTypeId, RaftGroupId groupId, String name, long sessionId,
+    static ClientMessage encodeRequest(int messageTypeId, CPGroupId groupId, String name, long sessionId,
                                        long threadId, UUID invUid, long val) {
 
         int dataSize = ClientMessage.HEADER_SIZE
@@ -178,7 +178,7 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
         msg.set(invUid.getMostSignificantBits());
     }
 
-    static ClientMessage encodeRequest(int messageTypeId, RaftGroupId groupId, String name, long sessionId, long threadId) {
+    static ClientMessage encodeRequest(int messageTypeId, CPGroupId groupId, String name, long sessionId, long threadId) {
         int dataSize = ClientMessage.HEADER_SIZE
                 + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 2;
         ClientMessage msg = prepareClientMessage(groupId, name, dataSize, messageTypeId);
@@ -188,12 +188,12 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
         return msg;
     }
 
-    static ClientMessage prepareClientMessage(RaftGroupId groupId, String name, int dataSize, int messageTypeId) {
+    static ClientMessage prepareClientMessage(CPGroupId groupId, String name, int dataSize, int messageTypeId) {
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
         msg.setMessageType(messageTypeId);
         msg.setRetryable(false);
         msg.setOperationName("");
-        RaftGroupIdImpl.writeTo(groupId, msg);
+        RaftGroupId.writeTo(groupId, msg);
         msg.set(name);
         return msg;
     }

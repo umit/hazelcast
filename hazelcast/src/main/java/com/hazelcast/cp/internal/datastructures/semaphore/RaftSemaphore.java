@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.datastructures.semaphore;
 
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.BlockingResource;
 import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.nio.ObjectDataInput;
@@ -55,7 +55,7 @@ public class RaftSemaphore extends BlockingResource<AcquireInvocationKey> implem
     RaftSemaphore() {
     }
 
-    RaftSemaphore(RaftGroupId groupId, String name) {
+    RaftSemaphore(CPGroupId groupId, String name) {
         super(groupId, name);
     }
 

@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.raftop.metadata;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftMemberImpl;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftInvocationManager;
@@ -40,8 +40,9 @@ import java.util.Collection;
  * If an active Raft group exists for the same name, we check if the Raft group contains the same number of members.
  * If group size is same, we return ID of the existing Raft group.
  * Otherwise, we fail with {@link IllegalStateException} and this exception will be exposed to the user.
- * If a member in the given member list is not an active CP node, the operation fails with {@link CannotCreateRaftGroupException}.
- * This exception will be handled by {@link RaftInvocationManager} and another attempt will be made with a new member list.
+ * If a member in the given member list is not an active CP member, the operation fails with
+ * {@link CannotCreateRaftGroupException}. This exception will be handled by {@link RaftInvocationManager}
+ * and another attempt will be made with a new member list.
  * <p/>
  * This operation is committed to the Metadata group.
  */
@@ -59,7 +60,7 @@ public class CreateRaftGroupOp extends RaftOp implements IndeterminateOperationS
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         RaftService service = getService();
         MetadataRaftGroupManager metadataManager = service.getMetadataGroupManager();
         return metadataManager.createRaftGroup(groupName, members, commitIndex);

@@ -21,12 +21,12 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.cp.internal.raft.MembershipChangeType;
 import com.hazelcast.cp.internal.raft.QueryPolicy;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.RaftMember;
 import com.hazelcast.cp.internal.raft.command.RaftGroupCmd;
 import com.hazelcast.cp.internal.raft.command.DestroyRaftGroupCmd;
-import com.hazelcast.cp.internal.raft.exception.LeaderDemotedException;
-import com.hazelcast.cp.internal.raft.exception.StaleAppendRequestException;
+import com.hazelcast.cp.exception.LeaderDemotedException;
+import com.hazelcast.cp.exception.StaleAppendRequestException;
 import com.hazelcast.cp.internal.raft.impl.command.ApplyRaftGroupMembersCmd;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendRequest;
@@ -87,7 +87,7 @@ public class RaftNodeImpl implements RaftNode {
     private static final int LEADER_ELECTION_TIMEOUT_RANGE = 1000;
     private static final long RAFT_NODE_INIT_DELAY_MILLIS = 500;
 
-    private final RaftGroupId groupId;
+    private final CPGroupId groupId;
     private final ILogger logger;
     private final RaftState state;
     private final RaftIntegration raftIntegration;
@@ -103,7 +103,7 @@ public class RaftNodeImpl implements RaftNode {
     private long lastAppendEntriesTimestamp;
     private volatile RaftNodeStatus status = ACTIVE;
 
-    public RaftNodeImpl(RaftGroupId groupId, RaftMember localMember, Collection<RaftMember> members,
+    public RaftNodeImpl(CPGroupId groupId, RaftMember localMember, Collection<RaftMember> members,
                         RaftAlgorithmConfig raftAlgorithmConfig, RaftIntegration raftIntegration) {
         this.groupId = groupId;
         this.raftIntegration = raftIntegration;
@@ -123,7 +123,7 @@ public class RaftNodeImpl implements RaftNode {
     }
 
     @Override
-    public RaftGroupId getGroupId() {
+    public CPGroupId getGroupId() {
         return groupId;
     }
 
@@ -683,7 +683,7 @@ public class RaftNodeImpl implements RaftNode {
      * Takes a snapshot if {@code commitIndex} advanced equal to or more than
      * {@link RaftAlgorithmConfig#commitIndexAdvanceCountToSnapshot}.
      * <p>
-     * Snapshot is not created if there's an ongoing membership change or raft group is being destroyed.
+     * Snapshot is not created if there's an ongoing membership change or Raft group is being destroyed.
      */
     private void takeSnapshotIfCommitIndexAdvanced() {
         long commitIndex = state.commitIndex();
@@ -691,7 +691,7 @@ public class RaftNodeImpl implements RaftNode {
             return;
         }
 
-        // We don't support snapshots while there's a membership change or the raft group is being destroyed...
+        // We don't support snapshots while there's a membership change or the Raft group is being destroyed...
         if (status != ACTIVE) {
             return;
         }
@@ -752,7 +752,7 @@ public class RaftNodeImpl implements RaftNode {
     }
 
     public void printMemberState() {
-        RaftGroupId groupId = state.groupId();
+        CPGroupId groupId = state.groupId();
         StringBuilder sb = new StringBuilder("\n\nRaft Members {")
                 .append("groupId: ").append(groupId.name()).append("(").append(groupId.commitIndex()).append(")")
                 .append(", size:").append(state.memberCount())

@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-package com.hazelcast.cp.internal.raft.exception;
+package com.hazelcast.cp.exception;
 
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.RaftMember;
 
 /**
- * A {@code RaftException} which is thrown when an appended but not-committed entry is truncated by the new leader.
+ * A {@code CPSubsystemException} which is thrown when
+ * a leader-only request is received by a non-leader member.
  */
-public class LeaderDemotedException extends RaftException {
-
-    public LeaderDemotedException(RaftMember local, RaftMember leader) {
-        super(local + " is not LEADER anymore. Known leader is: "
+public class NotLeaderException extends CPSubsystemException {
+    public NotLeaderException(CPGroupId groupId, RaftMember local, RaftMember leader) {
+        super(local + " is not LEADER of " + groupId + ". Known leader is: "
                 + (leader != null ? leader : "N/A") , leader);
     }
 }

@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.datastructures.lock;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.BlockingResource;
 import com.hazelcast.util.collection.Long2ObjectHashMap;
 
@@ -61,7 +61,7 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
     RaftLock() {
     }
 
-    RaftLock(RaftGroupId groupId, String name) {
+    RaftLock(CPGroupId groupId, String name) {
         super(groupId, name);
     }
 

@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.datastructures.spi.blocking;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.DataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 import com.hazelcast.util.Clock;
@@ -49,7 +49,7 @@ import static java.util.Collections.unmodifiableMap;
  */
 public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingResource<W>> implements DataSerializable {
 
-    protected RaftGroupId groupId;
+    protected CPGroupId groupId;
     protected final Map<String, R> resources = new ConcurrentHashMap<String, R>();
     protected final Set<String> destroyedNames = new HashSet<String>();
     // value.element1: timeout duration (persisted in the snapshot), value.element2: deadline timestamp (transient)
@@ -58,11 +58,11 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
     public ResourceRegistry() {
     }
 
-    protected ResourceRegistry(RaftGroupId groupId) {
+    protected ResourceRegistry(CPGroupId groupId) {
         this.groupId = groupId;
     }
 
-    protected abstract R createNewResource(RaftGroupId groupId, String name);
+    protected abstract R createNewResource(CPGroupId groupId, String name);
 
     protected abstract ResourceRegistry<W, R> cloneForSnapshot();
 
@@ -172,7 +172,7 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
         return indices;
     }
 
-    public final RaftGroupId getGroupId() {
+    public final CPGroupId getGroupId() {
         return groupId;
     }
 

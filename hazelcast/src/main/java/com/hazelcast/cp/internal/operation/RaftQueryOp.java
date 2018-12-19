@@ -23,8 +23,8 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.internal.raft.QueryPolicy;
-import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.raft.exception.NotLeaderException;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.exception.NotLeaderException;
 import com.hazelcast.cp.internal.raft.exception.RaftGroupDestroyedException;
 import com.hazelcast.cp.internal.raft.impl.RaftNode;
 import com.hazelcast.cp.internal.RaftOp;
@@ -46,14 +46,14 @@ import java.io.IOException;
 public class RaftQueryOp extends Operation implements IndeterminateOperationStateAware, RaftSystemOperation, ExecutionCallback,
                                                       IdentifiedDataSerializable {
 
-    private RaftGroupId groupId;
+    private CPGroupId groupId;
     private QueryPolicy queryPolicy;
     private Object op;
 
     public RaftQueryOp() {
     }
 
-    public RaftQueryOp(RaftGroupId groupId, RaftOp raftOp, QueryPolicy queryPolicy) {
+    public RaftQueryOp(CPGroupId groupId, RaftOp raftOp, QueryPolicy queryPolicy) {
         this.groupId = groupId;
         this.op = raftOp;
         this.queryPolicy = queryPolicy;

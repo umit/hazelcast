@@ -20,7 +20,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.cp.internal.raft.impl.dto.InstallSnapshot;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
 
 import java.io.IOException;
@@ -35,7 +35,7 @@ public class InstallSnapshotOp extends AsyncRaftOp {
     public InstallSnapshotOp() {
     }
 
-    public InstallSnapshotOp(RaftGroupId groupId, InstallSnapshot installSnapshot) {
+    public InstallSnapshotOp(CPGroupId groupId, InstallSnapshot installSnapshot) {
         super(groupId);
         this.installSnapshot = installSnapshot;
     }

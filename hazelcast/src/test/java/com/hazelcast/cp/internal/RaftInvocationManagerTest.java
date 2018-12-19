@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal;
 
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.raft.exception.RaftGroupDestroyedException;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -43,7 +43,7 @@ public class RaftInvocationManagerTest extends HazelcastRaftTestSupport {
         instances = newInstances(nodeCount);
 
         RaftInvocationManager invocationService = getRaftInvocationManager(instances[0]);
-        final RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
+        final CPGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
 
         for (int i = 0; i < 100; i++) {
             invocationService.invoke(groupId, new RaftTestApplyOp("val" + i)).get();
@@ -56,7 +56,7 @@ public class RaftInvocationManagerTest extends HazelcastRaftTestSupport {
         instances = newInstances(cpNodeCount, 3, 1);
 
         RaftInvocationManager invocationService = getRaftInvocationManager(instances[instances.length - 1]);
-        final RaftGroupId groupId = invocationService.createRaftGroup("test", cpNodeCount).get();
+        final CPGroupId groupId = invocationService.createRaftGroup("test", cpNodeCount).get();
 
         for (int i = 0; i < 100; i++) {
             invocationService.invoke(groupId, new RaftTestApplyOp("val" + i)).get();
@@ -69,7 +69,7 @@ public class RaftInvocationManagerTest extends HazelcastRaftTestSupport {
         instances = newInstances(nodeCount);
 
         final RaftInvocationManager invocationService = getRaftInvocationManager(instances[0]);
-        final RaftGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
+        final CPGroupId groupId = invocationService.createRaftGroup("test", nodeCount).get();
 
         invocationService.invoke(groupId, new RaftTestApplyOp("val")).get();
 

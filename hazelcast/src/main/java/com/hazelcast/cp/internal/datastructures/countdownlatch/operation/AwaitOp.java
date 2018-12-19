@@ -16,19 +16,20 @@
 
 package com.hazelcast.cp.internal.datastructures.countdownlatch.operation;
 
+import com.hazelcast.core.ICountDownLatch;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchDataSerializerHook;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
+import com.hazelcast.cp.internal.raft.impl.util.PostponedResponse;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
-import com.hazelcast.cp.internal.raft.impl.util.PostponedResponse;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Operation for {@link com.hazelcast.core.ICountDownLatch#await(long, TimeUnit)}
+ * Operation for {@link ICountDownLatch#await(long, TimeUnit)}
  */
 public class AwaitOp extends AbstractCountDownLatchOp implements IndeterminateOperationStateAware {
 
@@ -43,7 +44,7 @@ public class AwaitOp extends AbstractCountDownLatchOp implements IndeterminateOp
     }
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         RaftCountDownLatchService service = getService();
         if (service.await(groupId, name, commitIndex, timeoutMillis)) {
             return true;

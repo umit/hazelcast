@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,18 @@
  * limitations under the License.
  */
 
-package com.hazelcast.cp;
+package com.hazelcast.cp.exception;
+
+import com.hazelcast.cp.RaftMember;
 
 /**
- * Identifier for a specific Raft group. Each Raft group is denoted by
- * a unique name and a commitIndex in Raft log.
+ * A {@code CPSubsystemException} which is thrown when
+ * an appended but not-committed entry is truncated by the new leader.
  */
-public interface RaftGroupId {
+public class LeaderDemotedException extends CPSubsystemException {
 
-    /**
-     * Returns the name of the Raft group.
-     */
-    String name();
-
-    /**
-     * Returns the commit index of the log when this Raft group is created.
-     */
-    long commitIndex();
+    public LeaderDemotedException(RaftMember local, RaftMember leader) {
+        super(local + " is not LEADER anymore. Known leader is: "
+                + (leader != null ? leader : "N/A") , leader);
+    }
 }

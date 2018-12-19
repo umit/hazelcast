@@ -14,23 +14,23 @@
  * limitations under the License.
  */
 
-package com.hazelcast.cp.internal.raft.exception;
+package com.hazelcast.cp.exception;
 
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.cp.RaftMember;
 import com.hazelcast.spi.exception.RetryableException;
 
 /**
- * A {@code RaftException} which is thrown when an entry cannot be replicated.
+ * A {@code CPSubsystemException} which is thrown when an entry cannot be replicated.
  * An append request can be rejected when,
  * <ul>
- * <li>a member leaves the Raft group</li>
- * <li>Raft group itself is terminated</li>
+ * <li>a member leaves the CP group</li>
+ * <li>CP group itself is terminated</li>
  * <li>uncommitted entry count reaches to max (see {@link RaftAlgorithmConfig#uncommittedEntryCountToRejectNewAppends})</li>
  * <li>a membership change is requested before an entry is committed on a term</li>
  * </ul>
  */
-public class CannotReplicateException extends RaftException implements RetryableException {
+public class CannotReplicateException extends CPSubsystemException implements RetryableException {
 
     public CannotReplicateException(RaftMember leader) {
         super("Cannot replicate new operations for now", leader);

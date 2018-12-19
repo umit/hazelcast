@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.session;
 
 import com.hazelcast.core.ICompletableFuture;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.GenerateThreadIdOp;
@@ -32,6 +32,7 @@ import com.hazelcast.util.ExceptionUtil;
 
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -57,14 +58,14 @@ public class ProxySessionManagerService extends AbstractProxySessionManager impl
     }
 
     @Override
-    protected long generateThreadId(RaftGroupId groupId) {
+    protected long generateThreadId(CPGroupId groupId) {
         InternalCompletableFuture<Long> f = getInvocationManager()
                 .invoke(groupId, new GenerateThreadIdOp(System.currentTimeMillis()));
         return f.join();
     }
 
     @Override
-    protected SessionResponse requestNewSession(RaftGroupId groupId) {
+    protected SessionResponse requestNewSession(CPGroupId groupId) {
         CreateSessionOp op = new CreateSessionOp(nodeEngine.getThisAddress());
         ICompletableFuture<SessionResponse> future = getInvocationManager().invoke(groupId, op);
         try {
@@ -75,12 +76,12 @@ public class ProxySessionManagerService extends AbstractProxySessionManager impl
     }
 
     @Override
-    protected ICompletableFuture<Object> heartbeat(RaftGroupId groupId, long sessionId) {
+    protected ICompletableFuture<Object> heartbeat(CPGroupId groupId, long sessionId) {
         return getInvocationManager().invoke(groupId, new HeartbeatSessionOp(sessionId));
     }
 
     @Override
-    protected ICompletableFuture<Object> closeSession(RaftGroupId groupId, Long sessionId) {
+    protected ICompletableFuture<Object> closeSession(CPGroupId groupId, Long sessionId) {
         return getInvocationManager().invoke(groupId, new CloseSessionOp(sessionId));
     }
 
@@ -93,15 +94,15 @@ public class ProxySessionManagerService extends AbstractProxySessionManager impl
     public boolean onShutdown(long timeout, TimeUnit unit) {
         ILogger logger = nodeEngine.getLogger(getClass());
 
-        Map<RaftGroupId, ICompletableFuture<Object>> futures = shutdown();
+        Map<CPGroupId, ICompletableFuture<Object>> futures = shutdown();
         long remainingTimeNanos = unit.toNanos(timeout);
         boolean successful = true;
 
         while (remainingTimeNanos > 0 && futures.size() > 0) {
-            Iterator<Map.Entry<RaftGroupId, ICompletableFuture<Object>>> it = futures.entrySet().iterator();
+            Iterator<Entry<CPGroupId, ICompletableFuture<Object>>> it = futures.entrySet().iterator();
             while (it.hasNext()) {
-                Map.Entry<RaftGroupId, ICompletableFuture<Object>> entry = it.next();
-                RaftGroupId groupId = entry.getKey();
+                Entry<CPGroupId, ICompletableFuture<Object>> entry = it.next();
+                CPGroupId groupId = entry.getKey();
                 ICompletableFuture<Object> f = entry.getValue();
                 if (f.isDone()) {
                     it.remove();

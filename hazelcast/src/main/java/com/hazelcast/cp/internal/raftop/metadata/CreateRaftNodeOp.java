@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.raftop.metadata;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.raft.impl.RaftNode;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftSystemOperation;
@@ -41,13 +41,13 @@ import java.util.Collection;
  */
 public class CreateRaftNodeOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation {
 
-    private RaftGroupId groupId;
+    private CPGroupId groupId;
     private Collection<RaftMember> initialMembers;
 
     public CreateRaftNodeOp() {
     }
 
-    public CreateRaftNodeOp(RaftGroupId groupId, Collection<RaftMember> initialMembers) {
+    public CreateRaftNodeOp(CPGroupId groupId, Collection<RaftMember> initialMembers) {
         this.groupId = groupId;
         this.initialMembers = initialMembers;
     }

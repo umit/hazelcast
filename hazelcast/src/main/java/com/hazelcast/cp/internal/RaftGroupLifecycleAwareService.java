@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal;
 
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 
 /**
  * Contains methods that are invoked on life cycle changes of a Raft group
@@ -26,5 +26,5 @@ public interface RaftGroupLifecycleAwareService {
     /**
      * Called on the thread of the Raft group when the given Raft group is destroyed, either gracefully or forcefully.
      */
-    void onGroupDestroy(RaftGroupId groupId);
+    void onGroupDestroy(CPGroupId groupId);
 }

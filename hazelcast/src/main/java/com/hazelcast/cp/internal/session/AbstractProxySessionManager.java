@@ -18,7 +18,7 @@ package com.hazelcast.cp.internal.session;
 
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.util.Clock;
 
@@ -50,10 +50,10 @@ public abstract class AbstractProxySessionManager {
      */
     public static final long NO_SESSION_ID = -1;
 
-    private final ConcurrentMap<RaftGroupId, Object> mutexes = new ConcurrentHashMap<RaftGroupId, Object>();
-    private final ConcurrentMap<RaftGroupId, SessionState> sessions = new ConcurrentHashMap<RaftGroupId, SessionState>();
-    private final ConcurrentMap<Tuple2<RaftGroupId, Long>, Long> threadIds
-            = new ConcurrentHashMap<Tuple2<RaftGroupId, Long>, Long>();
+    private final ConcurrentMap<CPGroupId, Object> mutexes = new ConcurrentHashMap<CPGroupId, Object>();
+    private final ConcurrentMap<CPGroupId, SessionState> sessions = new ConcurrentHashMap<CPGroupId, SessionState>();
+    private final ConcurrentMap<Tuple2<CPGroupId, Long>, Long> threadIds
+            = new ConcurrentHashMap<Tuple2<CPGroupId, Long>, Long>();
     private final AtomicBoolean scheduleHeartbeat = new AtomicBoolean(false);
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private boolean running = true;
@@ -61,22 +61,22 @@ public abstract class AbstractProxySessionManager {
     /**
      * Generates a cluster-wide unique thread id for the caller
      */
-    protected abstract long generateThreadId(RaftGroupId groupId);
+    protected abstract long generateThreadId(CPGroupId groupId);
 
     /**
      * Creates a new session on the Raft group
      */
-    protected abstract SessionResponse requestNewSession(RaftGroupId groupId);
+    protected abstract SessionResponse requestNewSession(CPGroupId groupId);
 
     /**
      * Commits a heartbeat for the session on the Raft group
      */
-    protected abstract ICompletableFuture<Object> heartbeat(RaftGroupId groupId, long sessionId);
+    protected abstract ICompletableFuture<Object> heartbeat(CPGroupId groupId, long sessionId);
 
     /**
      * Closes the given session on the Raft group
      */
-    protected abstract ICompletableFuture<Object> closeSession(RaftGroupId groupId, Long sessionId);
+    protected abstract ICompletableFuture<Object> closeSession(CPGroupId groupId, Long sessionId);
 
     /**
      * Schedules the given task for repeating execution
@@ -84,8 +84,8 @@ public abstract class AbstractProxySessionManager {
     protected abstract ScheduledFuture<?> scheduleWithRepetition(Runnable task, long period, TimeUnit unit);
 
 
-    public final Long getOrCreateUniqueThreadId(RaftGroupId groupId) {
-        Tuple2<RaftGroupId, Long> key = Tuple2.of(groupId, getThreadId());
+    public final Long getOrCreateUniqueThreadId(CPGroupId groupId) {
+        Tuple2<CPGroupId, Long> key = Tuple2.of(groupId, getThreadId());
         Long globalThreadId = threadIds.get(key);
         if (globalThreadId != null) {
             return globalThreadId;
@@ -101,7 +101,7 @@ public abstract class AbstractProxySessionManager {
      * Increments acquire count of the session.
      * Creates a new session if there is no session yet.
      */
-    final long acquireSession(RaftGroupId groupId) {
+    final long acquireSession(CPGroupId groupId) {
         return getOrCreateSession(groupId).acquire(1);
     }
 
@@ -109,7 +109,7 @@ public abstract class AbstractProxySessionManager {
      * Increments acquire count of the session.
      * Creates a new session if there is no session yet.
      */
-    final long acquireSession(RaftGroupId groupId, int count) {
+    final long acquireSession(CPGroupId groupId, int count) {
         return getOrCreateSession(groupId).acquire(count);
     }
 
@@ -117,7 +117,7 @@ public abstract class AbstractProxySessionManager {
      * Decrements acquire count of the session.
      * Returns silently if no session exists for the given id.
      */
-    final void releaseSession(RaftGroupId groupId, long id) {
+    final void releaseSession(CPGroupId groupId, long id) {
         releaseSession(groupId, id, 1);
     }
 
@@ -125,7 +125,7 @@ public abstract class AbstractProxySessionManager {
      * Decrements acquire count of the session.
      * Returns silently if no session exists for the given id.
      */
-    final void releaseSession(RaftGroupId groupId, long id, int count) {
+    final void releaseSession(CPGroupId groupId, long id, int count) {
         SessionState session = sessions.get(groupId);
         if (session != null && session.id == id) {
             session.release(count);
@@ -136,7 +136,7 @@ public abstract class AbstractProxySessionManager {
      * Invalidates the given session.
      * No more heartbeats will be sent for the given session.
      */
-    final void invalidateSession(RaftGroupId groupId, long id) {
+    final void invalidateSession(CPGroupId groupId, long id) {
         SessionState session = sessions.get(groupId);
         if (session != null && session.id == id) {
             sessions.remove(groupId, session);
@@ -147,7 +147,7 @@ public abstract class AbstractProxySessionManager {
      * Returns id of the session opened for the given Raft group.
      * Returns {@link #NO_SESSION_ID} if no session exists.
      */
-    public final long getSession(RaftGroupId groupId) {
+    public final long getSession(CPGroupId groupId) {
         SessionState session = sessions.get(groupId);
         return session != null ? session.id : NO_SESSION_ID;
     }
@@ -155,12 +155,12 @@ public abstract class AbstractProxySessionManager {
     /**
      * Invokes a shutdown call on server to close all existing sessions.
      */
-    public final Map<RaftGroupId, ICompletableFuture<Object>> shutdown() {
+    public final Map<CPGroupId, ICompletableFuture<Object>> shutdown() {
         lock.writeLock().lock();
         try {
-            Map<RaftGroupId, ICompletableFuture<Object>> futures = new HashMap<RaftGroupId, ICompletableFuture<Object>>();
-            for (Entry<RaftGroupId, SessionState> e : sessions.entrySet()) {
-                RaftGroupId groupId = e.getKey();
+            Map<CPGroupId, ICompletableFuture<Object>> futures = new HashMap<CPGroupId, ICompletableFuture<Object>>();
+            for (Entry<CPGroupId, SessionState> e : sessions.entrySet()) {
+                CPGroupId groupId = e.getKey();
                 long sessionId = e.getValue().id;
                 ICompletableFuture<Object> f = closeSession(groupId, sessionId);
                 futures.put(groupId, f);
@@ -173,7 +173,7 @@ public abstract class AbstractProxySessionManager {
         }
     }
 
-    private SessionState getOrCreateSession(RaftGroupId groupId) {
+    private SessionState getOrCreateSession(CPGroupId groupId) {
         lock.readLock().lock();
         try {
             checkState(running, "Session manager is already shut down!");
@@ -193,7 +193,7 @@ public abstract class AbstractProxySessionManager {
         }
     }
 
-    private SessionState createNewSession(RaftGroupId groupId) {
+    private SessionState createNewSession(CPGroupId groupId) {
         synchronized (mutex(groupId)) {
             SessionResponse response = requestNewSession(groupId);
             SessionState session = new SessionState(response.getSessionId(), response.getTtlMillis());
@@ -203,7 +203,7 @@ public abstract class AbstractProxySessionManager {
         }
     }
 
-    private Object mutex(RaftGroupId groupId) {
+    private Object mutex(CPGroupId groupId) {
         Object mutex = mutexes.get(groupId);
         if (mutex != null) {
             return mutex;
@@ -220,7 +220,7 @@ public abstract class AbstractProxySessionManager {
     }
 
     // For testing
-    public final long getSessionAcquireCount(RaftGroupId groupId, long sessionId) {
+    public final long getSessionAcquireCount(CPGroupId groupId, long sessionId) {
         SessionState session = sessions.get(groupId);
         return session != null && session.id == sessionId ? session.acquireCount.get() : 0;
     }
@@ -294,8 +294,8 @@ public abstract class AbstractProxySessionManager {
             }
             prevHeartbeats.clear();
 
-            for (Entry<RaftGroupId, SessionState> entry : sessions.entrySet()) {
-                final RaftGroupId groupId = entry.getKey();
+            for (Entry<CPGroupId, SessionState> entry : sessions.entrySet()) {
+                final CPGroupId groupId = entry.getKey();
                 final SessionState session = entry.getValue();
                 if (session.isInUse()) {
                     ICompletableFuture<Object> f = heartbeat(groupId, session.id);

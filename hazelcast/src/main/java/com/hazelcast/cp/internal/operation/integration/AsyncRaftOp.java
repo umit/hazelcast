@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.operation.integration;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftSystemOperation;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
@@ -32,12 +32,12 @@ import java.io.IOException;
  */
 abstract class AsyncRaftOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation {
 
-    protected RaftGroupId groupId;
+    protected CPGroupId groupId;
 
     AsyncRaftOp() {
     }
 
-    AsyncRaftOp(RaftGroupId groupId) {
+    AsyncRaftOp(CPGroupId groupId) {
         this.groupId = groupId;
     }
 

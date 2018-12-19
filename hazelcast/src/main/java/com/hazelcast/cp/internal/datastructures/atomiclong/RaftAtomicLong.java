@@ -16,30 +16,30 @@
 
 package com.hazelcast.cp.internal.datastructures.atomiclong;
 
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 
 /**
  * State-machine implementation of the Raft-based atomic long
  */
 public class RaftAtomicLong {
 
-    private final RaftGroupId groupId;
+    private final CPGroupId groupId;
     private final String name;
 
     private long value;
 
-    RaftAtomicLong(RaftGroupId groupId, String name) {
+    RaftAtomicLong(CPGroupId groupId, String name) {
         this.groupId = groupId;
         this.name = name;
     }
 
-    RaftAtomicLong(RaftGroupId groupId, String name, long value) {
+    RaftAtomicLong(CPGroupId groupId, String name, long value) {
         this.groupId = groupId;
         this.name = name;
         this.value = value;
     }
 
-    public RaftGroupId groupId() {
+    public CPGroupId groupId() {
         return groupId;
     }
 

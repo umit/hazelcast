@@ -21,7 +21,7 @@ import com.hazelcast.core.IFunction;
 import com.hazelcast.cp.internal.datastructures.atomicref.RaftAtomicRefService;
 import com.hazelcast.cp.internal.datastructures.spi.operation.DestroyRaftObjectOp;
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.datastructures.atomicref.operation.ApplyOp;
 import com.hazelcast.cp.internal.datastructures.atomicref.operation.CompareAndSetOp;
@@ -44,12 +44,12 @@ import static com.hazelcast.util.Preconditions.checkTrue;
 public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
 
     private final String name;
-    private final RaftGroupId groupId;
+    private final CPGroupId groupId;
     private final RaftInvocationManager invocationManager;
     private final SerializationService serializationService;
 
     public RaftAtomicRefProxy(RaftInvocationManager invocationManager, SerializationService serializationService,
-                              RaftGroupId groupId, String name) {
+                              CPGroupId groupId, String name) {
         this.name = name;
         this.groupId = groupId;
         this.invocationManager = invocationManager;
@@ -196,7 +196,7 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
         invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
     }
 
-    public RaftGroupId getGroupId() {
+    public CPGroupId getGroupId() {
         return groupId;
     }
 

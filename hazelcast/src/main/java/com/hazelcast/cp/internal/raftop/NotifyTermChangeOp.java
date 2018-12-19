@@ -20,7 +20,7 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
 import com.hazelcast.cp.internal.TermChangeAwareService;
@@ -34,14 +34,14 @@ import java.io.IOException;
 public class NotifyTermChangeOp extends RaftOp implements IdentifiedDataSerializable {
 
     @Override
-    public Object run(RaftGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) {
         ILogger logger = getLogger();
         for (TermChangeAwareService service : getNodeEngine().getServices(TermChangeAwareService.class)) {
             try {
                 service.onNewTermCommit(groupId, commitIndex);
             } catch (Exception e) {
                 logger.severe("onNewTermCommit() failed for service: " + service.getClass().getSimpleName()
-                        + " and raft group: " + groupId, e);
+                        + " and CP group: " + groupId, e);
             }
         }
 

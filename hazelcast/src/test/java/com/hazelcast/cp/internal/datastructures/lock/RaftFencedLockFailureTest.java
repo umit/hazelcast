@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.datastructures.lock;
 
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftService;
@@ -77,7 +77,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
 
         try {
-            RaftGroupId groupId = raftService.createRaftGroupForProxy(name);
+            CPGroupId groupId = raftService.createRaftGroupForProxy(name);
             String objectName = RaftService.getObjectNameForProxy(name);
             ProxySessionManagerService sessionManager = nodeEngine.getService(ProxySessionManagerService.SERVICE_NAME);
             return new RaftFencedLockProxy(raftService.getInvocationManager(), sessionManager, groupId, objectName);
@@ -96,7 +96,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
 
         // there is a session id now
 
-        final RaftGroupId groupId = lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid = newUnsecureUUID();
@@ -131,7 +131,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
 
         // there is a session id now
 
-        final RaftGroupId groupId = lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid1 = newUnsecureUUID();
@@ -165,7 +165,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
 
         // there is a session id now
 
-        final RaftGroupId groupId = lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid = newUnsecureUUID();
@@ -200,7 +200,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
 
         // there is a session id now
 
-        final RaftGroupId groupId = lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid1 = newUnsecureUUID();
@@ -234,7 +234,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
 
         // there is a session id now
 
-        final RaftGroupId groupId = lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid = newUnsecureUUID();
@@ -269,7 +269,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
 
         // there is a session id now
 
-        final RaftGroupId groupId = lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid = newUnsecureUUID();
@@ -307,7 +307,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
 
         // there is a session id now
 
-        RaftGroupId groupId = lock.getGroupId();
+        CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 
@@ -327,7 +327,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
 
         // there is a session id now
 
-        RaftGroupId groupId = lock.getGroupId();
+        CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 
@@ -346,7 +346,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
     public void testRetriedUnlockIsSuccessfulAfterLockedByAnotherEndpoint() {
         lock.lock();
 
-        RaftGroupId groupId = lock.getGroupId();
+        CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid = newUnsecureUUID();
@@ -365,7 +365,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
 
         // there is a session id now
 
-        final RaftGroupId groupId = lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 
@@ -386,7 +386,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
 
         // there is a session id now
 
-        final RaftGroupId groupId = lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 
@@ -408,7 +408,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
 
         // there is a session id now
 
-        final RaftGroupId groupId = lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 
@@ -429,7 +429,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
 
         // there is a session id now
 
-        final RaftGroupId groupId = lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 
@@ -465,7 +465,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
 
         // there is a session id now
 
-        final RaftGroupId groupId = lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 

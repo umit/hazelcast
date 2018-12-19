@@ -19,10 +19,10 @@ package com.hazelcast.spi.impl.operationservice.impl;
 import com.hazelcast.core.IndeterminateOperationState;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.nio.Address;
-import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.raft.exception.LeaderDemotedException;
-import com.hazelcast.cp.internal.raft.exception.NotLeaderException;
-import com.hazelcast.cp.internal.raft.exception.StaleAppendRequestException;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.exception.LeaderDemotedException;
+import com.hazelcast.cp.exception.NotLeaderException;
+import com.hazelcast.cp.exception.StaleAppendRequestException;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.RaftMemberImpl;
 import com.hazelcast.spi.ExceptionAction;
@@ -41,12 +41,12 @@ import static com.hazelcast.spi.InvocationBuilder.DEFAULT_DESERIALIZE_RESULT;
 public class RaftInvocation extends Invocation {
 
     private final RaftInvocationContext raftInvocationContext;
-    private final RaftGroupId groupId;
+    private final CPGroupId groupId;
     private volatile MemberCursor memberCursor;
     private volatile RaftMemberImpl lastInvocationEndpoint;
     private volatile Throwable indeterminateException;
 
-    public RaftInvocation(Context context, RaftInvocationContext raftInvocationContext, RaftGroupId groupId, Operation op,
+    public RaftInvocation(Context context, RaftInvocationContext raftInvocationContext, CPGroupId groupId, Operation op,
                           int retryCount, long retryPauseMillis, long callTimeoutMillis) {
         super(context, op, null, retryCount, retryPauseMillis, callTimeoutMillis, DEFAULT_DESERIALIZE_RESULT);
         this.raftInvocationContext = raftInvocationContext;

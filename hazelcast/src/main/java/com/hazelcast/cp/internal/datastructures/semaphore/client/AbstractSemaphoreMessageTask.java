@@ -23,8 +23,8 @@ import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.RaftGroupIdImpl;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftService;
 
@@ -35,7 +35,7 @@ import java.security.Permission;
  */
 public abstract class AbstractSemaphoreMessageTask extends AbstractMessageTask implements ExecutionCallback {
 
-    protected RaftGroupId groupId;
+    protected CPGroupId groupId;
     protected String name;
     protected long sessionId;
 
@@ -45,7 +45,7 @@ public abstract class AbstractSemaphoreMessageTask extends AbstractMessageTask i
 
     @Override
     protected Object decodeClientMessage(ClientMessage clientMessage) {
-        groupId = RaftGroupIdImpl.readFrom(clientMessage);
+        groupId = RaftGroupId.readFrom(clientMessage);
         name = clientMessage.getStringUtf8();
         sessionId = clientMessage.getLong();
         return null;

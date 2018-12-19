@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.session;
 
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.Session;
 import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.nio.Address;
@@ -39,18 +39,18 @@ import static com.hazelcast.cp.internal.session.RaftSession.toExpirationTime;
  */
 class RaftSessionRegistry implements IdentifiedDataSerializable {
 
-    private RaftGroupId groupId;
+    private CPGroupId groupId;
     private final Map<Long, RaftSession> sessions = new ConcurrentHashMap<Long, RaftSession>();
     private long nextSessionId;
 
     RaftSessionRegistry() {
     }
 
-    RaftSessionRegistry(RaftGroupId groupId) {
+    RaftSessionRegistry(CPGroupId groupId) {
         this.groupId = groupId;
     }
 
-    RaftGroupId groupId() {
+    CPGroupId groupId() {
         return groupId;
     }
 

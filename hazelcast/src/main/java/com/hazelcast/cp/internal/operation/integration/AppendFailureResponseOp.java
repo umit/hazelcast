@@ -18,7 +18,7 @@ package com.hazelcast.cp.internal.operation.integration;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendRequest;
 import com.hazelcast.cp.internal.RaftService;
@@ -36,7 +36,7 @@ public class AppendFailureResponseOp extends AsyncRaftOp {
     public AppendFailureResponseOp() {
     }
 
-    public AppendFailureResponseOp(RaftGroupId groupId, AppendFailureResponse appendResponse) {
+    public AppendFailureResponseOp(CPGroupId groupId, AppendFailureResponse appendResponse) {
         super(groupId);
         this.appendResponse = appendResponse;
     }

@@ -19,8 +19,8 @@ package com.hazelcast.cp.internal;
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
-import com.hazelcast.cp.CpSubsystemManagementService;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPSubsystemManagementService;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.RaftMember;
 import com.hazelcast.cp.internal.exception.CannotRemoveCPMemberException;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
@@ -89,17 +89,17 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  */
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:classfanoutcomplexity", "checkstyle:classdataabstractioncoupling"})
 public class RaftService implements ManagedService, SnapshotAwareService<MetadataRaftGroupSnapshot>, GracefulShutdownAwareService,
-                                    MembershipAwareService, CpSubsystemManagementService, PreJoinAwareService {
+                                    MembershipAwareService, CPSubsystemManagementService, PreJoinAwareService {
 
     public static final String SERVICE_NAME = "hz:core:raft";
 
     private static final long REMOVE_MISSING_MEMBER_TASK_PERIOD_SECONDS = 1;
 
-    private final ConcurrentMap<RaftGroupId, RaftNode> nodes = new ConcurrentHashMap<RaftGroupId, RaftNode>();
+    private final ConcurrentMap<CPGroupId, RaftNode> nodes = new ConcurrentHashMap<CPGroupId, RaftNode>();
     private final NodeEngineImpl nodeEngine;
     private final ILogger logger;
 
-    private final Set<RaftGroupId> destroyedGroupIds = newSetFromMap(new ConcurrentHashMap<RaftGroupId, Boolean>());
+    private final Set<CPGroupId> destroyedGroupIds = newSetFromMap(new ConcurrentHashMap<CPGroupId, Boolean>());
 
     private final CPSubsystemConfig config;
     private final RaftInvocationManager invocationManager;
@@ -134,22 +134,22 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     }
 
     @Override
-    public MetadataRaftGroupSnapshot takeSnapshot(RaftGroupId groupId, long commitIndex) {
+    public MetadataRaftGroupSnapshot takeSnapshot(CPGroupId groupId, long commitIndex) {
         return metadataGroupManager.takeSnapshot(groupId, commitIndex);
     }
 
     @Override
-    public void restoreSnapshot(RaftGroupId groupId, long commitIndex, MetadataRaftGroupSnapshot snapshot) {
+    public void restoreSnapshot(CPGroupId groupId, long commitIndex, MetadataRaftGroupSnapshot snapshot) {
         metadataGroupManager.restoreSnapshot(groupId, commitIndex, snapshot);
     }
 
     @Override
-    public Collection<RaftGroupId> getRaftGroupIds() {
+    public Collection<CPGroupId> getCPGroupIds() {
         return Collections.unmodifiableCollection(metadataGroupManager.getRaftGroupIds());
     }
 
     @Override
-    public RaftGroupInfo getRaftGroup(RaftGroupId id) {
+    public RaftGroup getCPGroup(CPGroupId id) {
         return metadataGroupManager.getRaftGroup(id);
     }
 
@@ -228,7 +228,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
      * this method is idempotent
      */
     @Override
-    public ICompletableFuture<Void> forceDestroyRaftGroup(RaftGroupId groupId) {
+    public ICompletableFuture<Void> forceDestroyCPGroup(CPGroupId groupId) {
         return invocationManager.invoke(METADATA_GROUP_ID, new ForceDestroyRaftGroupOp(groupId));
     }
 
@@ -349,7 +349,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return invocationManager;
     }
 
-    public void handlePreVoteRequest(RaftGroupId groupId, PreVoteRequest request) {
+    public void handlePreVoteRequest(CPGroupId groupId, PreVoteRequest request) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
@@ -358,7 +358,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         node.handlePreVoteRequest(request);
     }
 
-    public void handlePreVoteResponse(RaftGroupId groupId, PreVoteResponse response) {
+    public void handlePreVoteResponse(CPGroupId groupId, PreVoteResponse response) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
@@ -367,7 +367,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         node.handlePreVoteResponse(response);
     }
 
-    public void handleVoteRequest(RaftGroupId groupId, VoteRequest request) {
+    public void handleVoteRequest(CPGroupId groupId, VoteRequest request) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
@@ -376,7 +376,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         node.handleVoteRequest(request);
     }
 
-    public void handleVoteResponse(RaftGroupId groupId, VoteResponse response) {
+    public void handleVoteResponse(CPGroupId groupId, VoteResponse response) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
@@ -385,7 +385,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         node.handleVoteResponse(response);
     }
 
-    public void handleAppendEntries(RaftGroupId groupId, AppendRequest request) {
+    public void handleAppendEntries(CPGroupId groupId, AppendRequest request) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
@@ -394,7 +394,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         node.handleAppendRequest(request);
     }
 
-    public void handleAppendResponse(RaftGroupId groupId, AppendSuccessResponse response) {
+    public void handleAppendResponse(CPGroupId groupId, AppendSuccessResponse response) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
@@ -403,7 +403,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         node.handleAppendResponse(response);
     }
 
-    public void handleAppendResponse(RaftGroupId groupId, AppendFailureResponse response) {
+    public void handleAppendResponse(CPGroupId groupId, AppendFailureResponse response) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
@@ -412,7 +412,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         node.handleAppendResponse(response);
     }
 
-    public void handleSnapshot(RaftGroupId groupId, InstallSnapshot request) {
+    public void handleSnapshot(CPGroupId groupId, InstallSnapshot request) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
@@ -425,11 +425,11 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return new ArrayList<RaftNode>(nodes.values());
     }
 
-    public RaftNode getRaftNode(RaftGroupId groupId) {
+    public RaftNode getRaftNode(CPGroupId groupId) {
         return nodes.get(groupId);
     }
 
-    public RaftNode getOrInitRaftNode(RaftGroupId groupId) {
+    public RaftNode getOrInitRaftNode(CPGroupId groupId) {
         RaftNode node = nodes.get(groupId);
         if (node == null && !destroyedGroupIds.contains(groupId)) {
             logger.fine("There is no RaftNode for " + groupId + ". Asking to the metadata group...");
@@ -438,7 +438,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return node;
     }
 
-    public boolean isRaftGroupDestroyed(RaftGroupId groupId) {
+    public boolean isRaftGroupDestroyed(CPGroupId groupId) {
         return destroyedGroupIds.contains(groupId);
     }
 
@@ -450,7 +450,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return metadataGroupManager.getLocalMember();
     }
 
-    public void createRaftNode(RaftGroupId groupId, Collection<RaftMember> members) {
+    public void createRaftNode(CPGroupId groupId, Collection<RaftMember> members) {
         if (nodes.containsKey(groupId)) {
             logger.fine("Not creating RaftNode for " + groupId + " since it is already created...");
             return;
@@ -476,7 +476,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
     }
 
-    public void destroyRaftNode(RaftGroupId groupId) {
+    public void destroyRaftNode(CPGroupId groupId) {
         destroyedGroupIds.add(groupId);
         RaftNode node = nodes.remove(groupId);
         if (node != null) {
@@ -485,12 +485,12 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
     }
 
-    public RaftGroupId createRaftGroupForProxy(String name) {
+    public CPGroupId createRaftGroupForProxy(String name) {
         String groupName = getGroupNameForProxy(name);
 
         try {
-            RaftGroupId groupId = invocationManager
-                    .<RaftGroupId>invoke(MetadataRaftGroupManager.METADATA_GROUP_ID, new GetActiveRaftGroupIdOp(groupName)).get();
+            CPGroupId groupId = invocationManager
+                    .<CPGroupId>invoke(MetadataRaftGroupManager.METADATA_GROUP_ID, new GetActiveRaftGroupIdOp(groupName)).get();
             if (groupId != null) {
                 return groupId;
             }
@@ -498,9 +498,9 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             return invocationManager.createRaftGroup(groupName).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("Could not create raft group: " + groupName);
+            throw new IllegalStateException("Could not create CP group: " + groupName);
         } catch (ExecutionException e) {
-            throw new IllegalStateException("Could not create raft group: " + groupName);
+            throw new IllegalStateException("Could not create CP group: " + groupName);
         }
     }
 
@@ -542,9 +542,9 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     }
 
     private class InitializeRaftNodeTask implements Runnable {
-        private final RaftGroupId groupId;
+        private final CPGroupId groupId;
 
-        InitializeRaftNodeTask(RaftGroupId groupId) {
+        InitializeRaftNodeTask(CPGroupId groupId) {
             this.groupId = groupId;
         }
 
@@ -555,10 +555,10 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
         private void queryInitialMembersFromMetadataRaftGroup() {
             RaftOp op = new GetRaftGroupOp(groupId);
-            ICompletableFuture<RaftGroupInfo> f = invocationManager.query(METADATA_GROUP_ID, op, LEADER_LOCAL);
-            f.andThen(new ExecutionCallback<RaftGroupInfo>() {
+            ICompletableFuture<RaftGroup> f = invocationManager.query(METADATA_GROUP_ID, op, LEADER_LOCAL);
+            f.andThen(new ExecutionCallback<RaftGroup>() {
                 @Override
-                public void onResponse(RaftGroupInfo group) {
+                public void onResponse(RaftGroup group) {
                     if (group != null) {
                         if (group.members().contains(getLocalMember())) {
                             createRaftNode(groupId, group.initialMembers());

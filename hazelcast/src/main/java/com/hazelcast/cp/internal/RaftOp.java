@@ -18,7 +18,7 @@ package com.hazelcast.cp.internal;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.serialization.DataSerializable;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.spi.NodeEngine;
 
 /**
@@ -33,7 +33,7 @@ import com.hazelcast.spi.NodeEngine;
  * They should perform the same action and produce the same result always,
  * independent of where and when they are executed.
  * <p>
- * {@link #run(RaftGroupId, long)} method must be implemented by subclasses.
+ * {@link #run(CPGroupId, long)} method must be implemented by subclasses.
  */
 public abstract class RaftOp implements DataSerializable {
 
@@ -47,7 +47,7 @@ public abstract class RaftOp implements DataSerializable {
      * @param commitIndex commitIndex of the log entry containing this operation
      * @return result of the operation execution
      */
-    public abstract Object run(RaftGroupId groupId, long commitIndex) throws Exception;
+    public abstract Object run(CPGroupId groupId, long commitIndex) throws Exception;
 
     public NodeEngine getNodeEngine() {
         return nodeEngine;

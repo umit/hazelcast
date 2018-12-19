@@ -31,7 +31,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * CP nodes use this operation to broadcast their current active CP node list to the AP Hazelcast nodes.
+ * CP members use this operation to broadcast their current active CP member list to the AP Hazelcast members.
  * <p/>
  * Please note that this operation is not a {@link RaftOp}, so it is not handled via the Raft layer.
  */

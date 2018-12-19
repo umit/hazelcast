@@ -21,25 +21,25 @@ import com.hazelcast.core.ICompletableFuture;
 import java.util.Collection;
 
 /**
- * The public API used for managing CP nodes and Raft groups.
+ * The public API used for managing CP members and groups.
  */
-public interface CpSubsystemManagementService {
+public interface CPSubsystemManagementService {
 
     /**
-     * Returns all Raft group ids.
+     * Returns all CP group ids.
      */
-    Collection<RaftGroupId> getRaftGroupIds();
+    Collection<CPGroupId> getCPGroupIds();
 
     /**
-     * Returns the Raft group associated with the group id.
+     * Returns the CP group associated with the group id.
      */
-    RaftGroup getRaftGroup(RaftGroupId groupId);
+    CPGroup getCPGroup(CPGroupId groupId);
 
     /**
-     * Wipes & resets the local Raft state and initializes it as if this node starting up initially.
-     * This method must be used only when the Metadata Raft group loses its majority and cannot make progress anymore.
+     * Wipes & resets the local CP state and initializes it as if this node starting up initially.
+     * This method must be used only when the Metadata CP group loses its majority and cannot make progress anymore.
      * <p>
-     * After this method is called, all Raft state and data will be wiped and Raft members will start empty.
+     * After this method is called, all CP state and data will be wiped and CP members will start empty.
      * <p>
      * <strong>Use with caution:
      * This method is NOT idempotent and multiple invocations on the same member can break the whole system!</strong>
@@ -61,9 +61,9 @@ public interface CpSubsystemManagementService {
     ICompletableFuture<Void> promoteToCPMember();
 
     /**
-     * Removes the given unreachable member from the active CP members list and all Raft groups it belongs to.
-     * If other active CP members are available, they will replace the removed member in Raft groups.
-     * Otherwise, the Raft groups which the removed member is a member of will shrink
+     * Removes the given unreachable member from the active CP members list and all CP groups it belongs to.
+     * If other active CP members are available, they will replace the removed member in CP groups.
+     * Otherwise, CP groups which the removed member is a member of will shrink
      * and their majority values will be recalculated.
      * <p>
      * This method can be invoked only from the Hazelcast master node.
@@ -79,15 +79,15 @@ public interface CpSubsystemManagementService {
     ICompletableFuture<Void> removeCPMember(RaftMember member);
 
     /**
-     * Unconditionally destroys the Raft group without using the Raft algorithm mechanics.
-     * This method must be used only when the given Raft group loses its majority and cannot make progress anymore.
-     * Normally, membership changes in Raft groups are done via the Raft algorithm.
-     * However, this method forcefully terminates the remaining nodes of the given Raft group.
+     * Unconditionally destroys the given CP group without using the Raft algorithm mechanics.
+     * This method must be used only when the given CP group loses its majority and cannot make progress anymore.
+     * Normally, membership changes in CP groups are done via the Raft algorithm.
+     * However, this method forcefully terminates the remaining nodes of the given CP group.
      * It also performs a Raft commit to the Metadata group in order to update status of the destroyed group.
      * <p>
-     * This method is idempotent. It has no effect if the given Raft group is already destroyed.
+     * This method is idempotent. It has no effect if the given CP group is already destroyed.
      *
      * @return a Future representing pending completion of the operation
      */
-    ICompletableFuture<Void> forceDestroyRaftGroup(RaftGroupId groupId);
+    ICompletableFuture<Void> forceDestroyCPGroup(CPGroupId groupId);
 }

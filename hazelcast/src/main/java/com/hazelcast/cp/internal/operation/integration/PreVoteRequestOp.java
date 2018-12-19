@@ -20,7 +20,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.cp.internal.raft.impl.dto.PreVoteRequest;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
-import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
 
 import java.io.IOException;
@@ -35,7 +35,7 @@ public class PreVoteRequestOp extends AsyncRaftOp {
     public PreVoteRequestOp() {
     }
 
-    public PreVoteRequestOp(RaftGroupId groupId, PreVoteRequest voteRequest) {
+    public PreVoteRequestOp(CPGroupId groupId, PreVoteRequest voteRequest) {
         super(groupId);
         this.voteRequest = voteRequest;
     }
