@@ -22,9 +22,10 @@ import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphore;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
-import com.hazelcast.cp.internal.session.AbstractSessionManager;
 
 import java.util.UUID;
+
+import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 
 /**
  * Operation for {@link ISemaphore#drainPermits()}}
@@ -48,7 +49,7 @@ public class DrainPermitsOp extends AbstractSemaphoreOp implements Indeterminate
 
     @Override
     public boolean isRetryableOnIndeterminateOperationState() {
-        return sessionId != AbstractSessionManager.NO_SESSION_ID;
+        return sessionId != NO_SESSION_ID;
     }
 
     @Override

@@ -20,7 +20,7 @@ import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.SessionInfo;
+import com.hazelcast.cp.Session;
 import com.hazelcast.util.Clock;
 
 import java.io.IOException;
@@ -31,7 +31,7 @@ import static java.lang.Math.max;
 /**
  * Represents state of a Raft session.
  */
-public class Session implements SessionInfo, IdentifiedDataSerializable {
+public class RaftSession implements Session, IdentifiedDataSerializable {
 
     private long id;
 
@@ -44,14 +44,14 @@ public class Session implements SessionInfo, IdentifiedDataSerializable {
     // used for diagnostics
     private Address endpoint;
 
-    public Session() {
+    public RaftSession() {
     }
 
-    Session(long id, long creationTime, long expirationTime, Address endpoint) {
+    RaftSession(long id, long creationTime, long expirationTime, Address endpoint) {
         this(id, creationTime, expirationTime, 0, endpoint);
     }
 
-    Session(long id, long creationTime, long expirationTime, long version, Address endpoint) {
+    RaftSession(long id, long creationTime, long expirationTime, long version, Address endpoint) {
         checkTrue(version >= 0, "Session: " + id + " cannot have a negative version: " + version);
         this.id = id;
         this.creationTime = creationTime;
@@ -99,7 +99,7 @@ public class Session implements SessionInfo, IdentifiedDataSerializable {
             return false;
         }
 
-        Session session = (Session) o;
+        RaftSession session = (RaftSession) o;
 
         if (id != session.id) {
             return false;
@@ -118,18 +118,18 @@ public class Session implements SessionInfo, IdentifiedDataSerializable {
         return result;
     }
 
-    Session heartbeat(long ttlMs) {
+    RaftSession heartbeat(long ttlMs) {
         long newExpirationTime = max(expirationTime, toExpirationTime(Clock.currentTimeMillis(), ttlMs));
         return newSession(newExpirationTime);
     }
 
-    Session shiftExpirationTime(long durationMs) {
+    RaftSession shiftExpirationTime(long durationMs) {
         long newExpirationTime = toExpirationTime(expirationTime, durationMs);
         return newSession(newExpirationTime);
     }
 
-    private Session newSession(long newExpirationTime) {
-        return new Session(id, creationTime, newExpirationTime, version + 1, endpoint);
+    private RaftSession newSession(long newExpirationTime) {
+        return new RaftSession(id, creationTime, newExpirationTime, version + 1, endpoint);
     }
 
     static long toExpirationTime(long timestamp, long ttlMillis) {
@@ -150,7 +150,7 @@ public class Session implements SessionInfo, IdentifiedDataSerializable {
 
     @Override
     public int getId() {
-        return RaftSessionServiceDataSerializerHook.SESSION;
+        return RaftSessionServiceDataSerializerHook.RAFT_SESSION;
     }
 
     @Override

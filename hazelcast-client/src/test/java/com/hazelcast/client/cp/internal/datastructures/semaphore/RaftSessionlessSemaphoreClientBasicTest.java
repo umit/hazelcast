@@ -16,7 +16,6 @@
 
 package com.hazelcast.client.cp.internal.datastructures.semaphore;
 
-import com.hazelcast.client.cp.internal.datastructures.semaphore.RaftSessionlessSemaphoreProxy;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
@@ -27,8 +26,11 @@ import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.After;
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+
+import static org.junit.Assert.assertFalse;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
@@ -62,6 +64,21 @@ public class RaftSessionlessSemaphoreClientBasicTest extends RaftSessionlessSema
     @Override
     protected RaftGroupId getGroupId(ISemaphore semaphore) {
         return ((RaftSessionlessSemaphoreProxy) semaphore).getGroupId();
+    }
+
+    @Test
+    public void testAcquireOnMultipleProxies() {
+        ISemaphore semaphore2 = RaftSessionlessSemaphoreProxy.create(client, name);
+
+        semaphore.init(1);
+        semaphore.tryAcquire(1);
+
+        assertFalse(semaphore2.tryAcquire());
+    }
+
+    @Test
+    public void testAcquire() throws InterruptedException {
+        super.testAcquire();
     }
 
 }

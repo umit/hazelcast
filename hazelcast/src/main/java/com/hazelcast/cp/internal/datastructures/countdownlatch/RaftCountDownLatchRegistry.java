@@ -16,24 +16,25 @@
 
 package com.hazelcast.cp.internal.datastructures.countdownlatch;
 
-import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
+import com.hazelcast.cp.internal.util.Tuple2;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
 import java.util.Collection;
+import java.util.Map.Entry;
 import java.util.UUID;
 
 /**
  * Contains {@link RaftCountDownLatch} resources and manages wait timeouts
  */
-public class CountDownLatchRegistry extends ResourceRegistry<CountDownLatchInvocationKey, RaftCountDownLatch>
+public class RaftCountDownLatchRegistry extends ResourceRegistry<AwaitInvocationKey, RaftCountDownLatch>
         implements IdentifiedDataSerializable {
 
-    CountDownLatchRegistry() {
+    RaftCountDownLatchRegistry() {
     }
 
-    CountDownLatchRegistry(RaftGroupId groupId) {
+    RaftCountDownLatchRegistry(RaftGroupId groupId) {
         super(groupId);
     }
 
@@ -42,14 +43,27 @@ public class CountDownLatchRegistry extends ResourceRegistry<CountDownLatchInvoc
         return new RaftCountDownLatch(groupId, name);
     }
 
+    @Override
+    protected RaftCountDownLatchRegistry cloneForSnapshot() {
+        RaftCountDownLatchRegistry clone = new RaftCountDownLatchRegistry();
+        clone.groupId = this.groupId;
+        for (Entry<String, RaftCountDownLatch> e : this.resources.entrySet()) {
+            clone.resources.put(e.getKey(), e.getValue().cloneForSnapshot());
+        }
+        clone.destroyedNames.addAll(this.destroyedNames);
+        clone.waitTimeouts.putAll(this.waitTimeouts);
+
+        return clone;
+    }
+
     boolean trySetCount(String name, int count) {
         return getOrInitResource(name).trySetCount(count);
     }
 
-    Tuple2<Integer, Collection<CountDownLatchInvocationKey>> countDown(String name, int expectedRound, UUID invocationUuid) {
+    Tuple2<Integer, Collection<AwaitInvocationKey>> countDown(String name, int expectedRound, UUID invocationUuid) {
         RaftCountDownLatch latch = getOrInitResource(name);
-        Tuple2<Integer, Collection<CountDownLatchInvocationKey>> t = latch.countDown(expectedRound, invocationUuid);
-        for (CountDownLatchInvocationKey key : t.element2) {
+        Tuple2<Integer, Collection<AwaitInvocationKey>> t = latch.countDown(expectedRound, invocationUuid);
+        for (AwaitInvocationKey key : t.element2) {
             removeWaitKey(key);
         }
 
@@ -59,7 +73,7 @@ public class CountDownLatchRegistry extends ResourceRegistry<CountDownLatchInvoc
     boolean await(String name, long commitIndex, long timeoutMs) {
         boolean success = getOrInitResource(name).await(commitIndex, timeoutMs > 0);
         if (!success) {
-            addWaitKey(new CountDownLatchInvocationKey(name, commitIndex), timeoutMs);
+            addWaitKey(new AwaitInvocationKey(name, commitIndex), timeoutMs);
         }
 
         return success;

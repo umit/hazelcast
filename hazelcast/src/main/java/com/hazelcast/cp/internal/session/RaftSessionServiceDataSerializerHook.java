@@ -34,16 +34,15 @@ public class RaftSessionServiceDataSerializerHook implements DataSerializerHook 
 
     public static final int F_ID = FactoryIdHelper.getFactoryId(RAFT_SESSION_DS_FACTORY, RAFT_SESSION_DS_FACTORY_ID);
 
-    public static final int SESSION = 1;
-    public static final int SESSION_REGISTRY_SNAPSHOT = 2;
+    public static final int RAFT_SESSION = 1;
+    public static final int RAFT_SESSION_REGISTRY = 2;
     public static final int SESSION_RESPONSE = 3;
-    public static final int CREATE_SESSION = 4;
-    public static final int HEARTBEAT_SESSION = 5;
-    public static final int CLOSE_SESSION = 6;
-    public static final int EXPIRE_SESSIONS = 7;
-    public static final int CLOSE_INACTIVE_SESSIONS = 8;
-    public static final int GET_SESSIONS = 9;
-
+    public static final int CREATE_SESSION_OP = 4;
+    public static final int HEARTBEAT_SESSION_OP = 5;
+    public static final int CLOSE_SESSION_OP = 6;
+    public static final int EXPIRE_SESSIONS_OP = 7;
+    public static final int CLOSE_INACTIVE_SESSIONS_OP = 8;
+    public static final int GET_SESSIONS_OP = 9;
 
     @Override
     public int getFactoryId() {
@@ -56,23 +55,23 @@ public class RaftSessionServiceDataSerializerHook implements DataSerializerHook 
             @Override
             public IdentifiedDataSerializable create(int typeId) {
                 switch (typeId) {
-                    case SESSION:
-                        return new Session();
-                    case SESSION_REGISTRY_SNAPSHOT:
-                        return new SessionRegistrySnapshot();
+                    case RAFT_SESSION:
+                        return new RaftSession();
+                    case RAFT_SESSION_REGISTRY:
+                        return new RaftSessionRegistry();
                     case SESSION_RESPONSE:
                         return new SessionResponse();
-                    case CREATE_SESSION:
+                    case CREATE_SESSION_OP:
                         return new CreateSessionOp();
-                    case HEARTBEAT_SESSION:
+                    case HEARTBEAT_SESSION_OP:
                         return new HeartbeatSessionOp();
-                    case CLOSE_SESSION:
+                    case CLOSE_SESSION_OP:
                         return new CloseSessionOp();
-                    case EXPIRE_SESSIONS:
+                    case EXPIRE_SESSIONS_OP:
                         return new ExpireSessionsOp();
-                    case CLOSE_INACTIVE_SESSIONS:
+                    case CLOSE_INACTIVE_SESSIONS_OP:
                         return new CloseInactiveSessionsOp();
-                    case GET_SESSIONS:
+                    case GET_SESSIONS_OP:
                         return new GetSessionsOp();
                     default:
                         throw new IllegalArgumentException("Undefined type: " + typeId);

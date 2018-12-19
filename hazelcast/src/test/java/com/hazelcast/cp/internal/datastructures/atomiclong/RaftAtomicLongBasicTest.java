@@ -38,7 +38,7 @@ import org.junit.runner.RunWith;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import static com.hazelcast.config.raft.RaftConfig.DEFAULT_RAFT_GROUP_NAME;
+import static com.hazelcast.config.cp.CPSubsystemConfig.DEFAULT_GROUP_NAME;
 import static com.hazelcast.cp.internal.datastructures.spi.RaftProxyFactory.create;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -224,7 +224,7 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
     @Test
     public void testCreate_withDefaultGroup() {
         IAtomicLong atomicLong = createAtomicLong(randomName());
-        assertEquals(DEFAULT_RAFT_GROUP_NAME, getGroupId(atomicLong).name());
+        assertEquals(DEFAULT_GROUP_NAME, getGroupId(atomicLong).name());
     }
 
     @Test(expected = DistributedObjectDestroyedException.class)

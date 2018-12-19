@@ -17,8 +17,8 @@
 package com.hazelcast.config;
 
 import com.hazelcast.config.matcher.MatchingPointConfigPatternMatcher;
-import com.hazelcast.config.raft.RaftConfig;
-import com.hazelcast.config.raft.RaftSemaphoreConfig;
+import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ManagedContext;
 import com.hazelcast.flakeidgen.FlakeIdGenerator;
@@ -167,9 +167,9 @@ public class Config {
 
     private boolean liteMember;
 
-    private RaftConfig raftConfig;
+    private CPSubsystemConfig cpSubsystemConfig;
 
-    private final Map<String, RaftSemaphoreConfig> raftSemaphoreConfigs = new ConcurrentHashMap<String, RaftSemaphoreConfig>();
+    private final Map<String, CPSemaphoreConfig> cpSemaphoreConfigs = new ConcurrentHashMap<String, CPSemaphoreConfig>();
 
     public Config() {
     }
@@ -3447,21 +3447,21 @@ public class Config {
         return this;
     }
 
-    public RaftConfig getRaftConfig() {
-        return raftConfig;
+    public CPSubsystemConfig getCpSubsystemConfig() {
+        return cpSubsystemConfig;
     }
 
-    public Config setRaftConfig(RaftConfig raftConfig) {
-        this.raftConfig = raftConfig;
+    public Config setCpSubsystemConfig(CPSubsystemConfig cpSubsystemConfig) {
+        this.cpSubsystemConfig = cpSubsystemConfig;
         return this;
     }
 
-    public RaftSemaphoreConfig findRaftSemaphoreConfig(String name) {
-        return lookupByPattern(configPatternMatcher, raftSemaphoreConfigs, getBaseName(name));
+    public CPSemaphoreConfig findCPSemaphoreConfig(String name) {
+        return lookupByPattern(configPatternMatcher, cpSemaphoreConfigs, getBaseName(name));
     }
 
-    public Config addRaftSemaphoreConfig(RaftSemaphoreConfig config) {
-        raftSemaphoreConfigs.put(config.getName(), config);
+    public Config addCPSemaphoreConfig(CPSemaphoreConfig config) {
+        cpSemaphoreConfigs.put(config.getName(), config);
         return this;
     }
 

@@ -16,20 +16,19 @@
 
 package com.hazelcast.cp.internal.datastructures.spi.blocking;
 
-import com.hazelcast.cp.internal.session.AbstractSessionManager;
-import com.hazelcast.cp.internal.datastructures.spi.RaftRemoteService;
-import com.hazelcast.logging.ILogger;
 import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.raft.SnapshotAwareService;
 import com.hazelcast.cp.internal.RaftGroupLifecycleAwareService;
+import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.datastructures.spi.RaftRemoteService;
+import com.hazelcast.cp.internal.datastructures.spi.blocking.operation.ExpireWaitKeysOp;
+import com.hazelcast.cp.internal.raft.SnapshotAwareService;
 import com.hazelcast.cp.internal.raft.impl.RaftNode;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
-import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.session.SessionAccessor;
 import com.hazelcast.cp.internal.session.SessionAwareService;
 import com.hazelcast.cp.internal.session.SessionExpiredException;
 import com.hazelcast.cp.internal.util.Tuple2;
-import com.hazelcast.cp.internal.datastructures.spi.blocking.operation.ExpireWaitKeysOp;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
@@ -49,6 +48,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 
+import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -139,7 +139,8 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
 
     @Override
     public final RR takeSnapshot(RaftGroupId groupId, long commitIndex) {
-        return getRegistryOrNull(groupId);
+        RR registry = getRegistryOrNull(groupId);
+        return registry != null ? (RR) registry.cloneForSnapshot() : null;
     }
 
     @Override
@@ -233,7 +234,7 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
     }
 
     protected final void heartbeatSession(RaftGroupId groupId, long sessionId) {
-        if (sessionId == AbstractSessionManager.NO_SESSION_ID) {
+        if (sessionId == NO_SESSION_ID) {
             return;
         }
 

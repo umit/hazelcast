@@ -21,8 +21,8 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.client.cp.internal.ClientAccessor;
-import com.hazelcast.cp.internal.session.AbstractSessionManager;
-import com.hazelcast.cp.internal.session.AbstractSessionManagerTest;
+import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
+import com.hazelcast.cp.internal.session.AbstractProxySessionManagerTest;
 import com.hazelcast.cp.internal.session.SessionAwareProxy;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
@@ -45,7 +45,7 @@ import static org.mockito.Mockito.spy;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
-public class ClientSessionManagerTest extends AbstractSessionManagerTest {
+public class ClientSessionManagerTest extends AbstractProxySessionManagerTest {
 
     @Rule
     public ExpectedException exception = ExpectedException.none();
@@ -65,7 +65,7 @@ public class ClientSessionManagerTest extends AbstractSessionManagerTest {
 
     @Test
     public void testClientSessionManagerShutdown() throws ExecutionException, InterruptedException {
-        AbstractSessionManager sessionManager = getSessionManager();
+        AbstractProxySessionManager sessionManager = getSessionManager();
         SessionProxyImpl proxy = new SessionProxyImpl(sessionManager, groupId);
         proxy.createSession();
 
@@ -85,14 +85,14 @@ public class ClientSessionManagerTest extends AbstractSessionManagerTest {
         factory.terminateAll();
     }
 
-    protected AbstractSessionManager getSessionManager() {
-        ClientSessionManager service = SessionManagerProvider.get(ClientAccessor.getClient(client));
+    protected AbstractProxySessionManager getSessionManager() {
+        ClientProxySessionManager service = SessionManagerProvider.get(ClientAccessor.getClient(client));
         return spy(service);
     }
 
     private static class SessionProxyImpl extends SessionAwareProxy {
 
-        SessionProxyImpl(AbstractSessionManager sessionManager, RaftGroupId groupId) {
+        SessionProxyImpl(AbstractProxySessionManager sessionManager, RaftGroupId groupId) {
             super(sessionManager, groupId);
         }
 

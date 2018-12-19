@@ -16,6 +16,7 @@
 
 package com.hazelcast.cp.internal.datastructures.semaphore;
 
+import com.hazelcast.cp.internal.datastructures.semaphore.operation.GenerateThreadIdOp;
 import com.hazelcast.internal.serialization.DataSerializerHook;
 import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
@@ -34,15 +35,16 @@ public class RaftSemaphoreDataSerializerHook implements DataSerializerHook {
 
     public static final int F_ID = FactoryIdHelper.getFactoryId(DS_FACTORY, DS_FACTORY_ID);
 
-    public static final int SEMAPHORE_REGISTRY = 1;
+    public static final int RAFT_SEMAPHORE_REGISTRY = 1;
     public static final int RAFT_SEMAPHORE = 2;
-    public static final int SEMAPHORE_INVOCATION_KEY = 3;
+    public static final int ACQUIRE_INVOCATION_KEY = 3;
     public static final int ACQUIRE_PERMITS_OP = 4;
     public static final int AVAILABLE_PERMITS_OP = 5;
     public static final int CHANGE_PERMITS_OP = 6;
     public static final int DRAIN_PERMITS_OP = 7;
     public static final int INIT_SEMAPHORE_OP = 8;
     public static final int RELEASE_PERMITS_OP = 9;
+    public static final int GENERATE_THREAD_ID_OP = 10;
 
     @Override
     public int getFactoryId() {
@@ -55,12 +57,12 @@ public class RaftSemaphoreDataSerializerHook implements DataSerializerHook {
             @Override
             public IdentifiedDataSerializable create(int typeId) {
                 switch (typeId) {
-                    case SEMAPHORE_REGISTRY:
-                        return new SemaphoreRegistry();
+                    case RAFT_SEMAPHORE_REGISTRY:
+                        return new RaftSemaphoreRegistry();
                     case RAFT_SEMAPHORE:
                         return new RaftSemaphore();
-                    case SEMAPHORE_INVOCATION_KEY:
-                        return new SemaphoreInvocationKey();
+                    case ACQUIRE_INVOCATION_KEY:
+                        return new AcquireInvocationKey();
                     case ACQUIRE_PERMITS_OP:
                         return new AcquirePermitsOp();
                     case AVAILABLE_PERMITS_OP:
@@ -73,6 +75,8 @@ public class RaftSemaphoreDataSerializerHook implements DataSerializerHook {
                         return new InitSemaphoreOp();
                     case RELEASE_PERMITS_OP:
                         return new ReleasePermitsOp();
+                    case GENERATE_THREAD_ID_OP:
+                        return new GenerateThreadIdOp();
                     default:
                         throw new IllegalArgumentException("Undefined type: " + typeId);
                 }

@@ -18,17 +18,17 @@ package com.hazelcast.cp.internal.exception;
 
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.cp.RaftMember;
-import com.hazelcast.cp.RaftManagementService;
+import com.hazelcast.cp.CpSubsystemManagementService;
 
 /**
- * Thrown while a CP node is requested to be removed from the CP sub-system while there is an ongoing process for another member.
+ * Thrown while a CP member is requested to be removed from the CP sub-system while there is an ongoing process for another member.
  * This exception will be handled internally and will not be exposed to the user.
  *
- * @see RaftManagementService#triggerRemoveRaftMember(RaftMember)
+ * @see CpSubsystemManagementService#removeCPMember(RaftMember)
  */
-public class CannotRemoveMemberException extends HazelcastException {
+public class CannotRemoveCPMemberException extends HazelcastException {
 
-    public CannotRemoveMemberException(String message) {
+    public CannotRemoveCPMemberException(String message) {
         super(message, null);
     }
 

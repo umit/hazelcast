@@ -20,50 +20,74 @@ import com.hazelcast.client.impl.clientside.ClientExceptionFactory;
 import com.hazelcast.client.impl.clientside.ClientMessageDecoder;
 import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.core.ICompletableFuture;
-import com.hazelcast.cp.internal.session.AbstractSessionManager;
-import com.hazelcast.nio.Bits;
 import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.cp.internal.RaftGroupIdImpl;
+import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
+import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.cp.internal.session.SessionExpiredException;
 import com.hazelcast.cp.internal.session.SessionResponse;
-import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
 import com.hazelcast.cp.internal.session.client.SessionMessageTaskFactoryProvider;
+import com.hazelcast.nio.Bits;
 import com.hazelcast.spi.InternalCompletableFuture;
 
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+
+import static com.hazelcast.cp.internal.datastructures.semaphore.client.SemaphoreMessageTaskFactoryProvider.GENERATE_THREAD_ID_TYPE;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
 // TODO [basri] integrate shutdown() to graceful shutdown of the client
-public class ClientSessionManager extends AbstractSessionManager {
+public class ClientProxySessionManager extends AbstractProxySessionManager {
 
     private static final ClientMessageDecoder SESSION_RESPONSE_DECODER = new SessionResponseDecoder();
     private static final ClientMessageDecoder BOOLEAN_RESPONSE_DECODER = new BooleanResponseDecoder();
 
     private final HazelcastClientInstanceImpl client;
 
-    public ClientSessionManager(HazelcastClientInstanceImpl client) {
+    public ClientProxySessionManager(HazelcastClientInstanceImpl client) {
         this.client = client;
         ClientExceptionFactory factory = client.getClientExceptionFactory();
-        factory.register(SessionExpiredException.ERROR_CODE, SessionExpiredException.class, new ClientExceptionFactory.ExceptionFactory() {
+        factory.register(ClientProtocolErrorCodes.SESSION_EXPIRED_EXCEPTION, SessionExpiredException.class, new ClientExceptionFactory.ExceptionFactory() {
             @Override
             public Throwable createException(String message, Throwable cause) {
                 return new SessionExpiredException(message, cause);
             }
         });
-        factory.register(WaitKeyCancelledException.ERROR_CODE, WaitKeyCancelledException.class, new ClientExceptionFactory.ExceptionFactory() {
+        factory.register(ClientProtocolErrorCodes.WAIT_KEY_CANCELLED_EXCEPTION, WaitKeyCancelledException.class, new ClientExceptionFactory.ExceptionFactory() {
             @Override
             public Throwable createException(String message, Throwable cause) {
                 return new WaitKeyCancelledException(message, cause);
             }
         });
+    }
+
+    @Override
+    protected long generateThreadId(RaftGroupId groupId) {
+        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupIdImpl.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
+
+        ClientMessage msg = ClientMessage.createForEncode(dataSize);
+        msg.setMessageType(GENERATE_THREAD_ID_TYPE);
+        msg.setRetryable(false);
+        msg.setOperationName("");
+        RaftGroupIdImpl.writeTo(groupId, msg);
+        msg.set(System.currentTimeMillis());
+        msg.updateFrameLength();
+
+        ClientInvocationFuture future = new ClientInvocation(client, msg, null).invoke();
+        return new ClientDelegatingFuture<Long>(future, client.getSerializationService(), new ClientMessageDecoder() {
+            @Override
+            public Long decodeClientMessage(ClientMessage msg) {
+                return msg.getLong();
+            }
+        }).join();
     }
 
     @Override

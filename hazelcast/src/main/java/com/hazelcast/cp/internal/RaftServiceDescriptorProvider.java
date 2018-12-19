@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal;
 
-import com.hazelcast.cp.internal.session.SessionService;
+import com.hazelcast.cp.internal.session.RaftSessionService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.impl.servicemanager.ServiceDescriptor;
 import com.hazelcast.spi.impl.servicemanager.ServiceDescriptorProvider;
@@ -49,12 +49,12 @@ public class RaftServiceDescriptorProvider implements ServiceDescriptorProvider 
     private static class RaftSessionServiceDescriptor implements ServiceDescriptor {
         @Override
         public String getServiceName() {
-            return SessionService.SERVICE_NAME;
+            return RaftSessionService.SERVICE_NAME;
         }
 
         @Override
         public Object getService(NodeEngine nodeEngine) {
-            return new SessionService(nodeEngine);
+            return new RaftSessionService(nodeEngine);
         }
     }
 }

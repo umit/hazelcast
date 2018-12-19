@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.datastructures.semaphore;
 
 import com.hazelcast.config.Config;
-import com.hazelcast.config.raft.RaftSemaphoreConfig;
+import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.RaftGroupId;
@@ -50,8 +50,8 @@ import static org.junit.Assert.fail;
 public class RaftSessionlessSemaphoreBasicTest extends HazelcastRaftTestSupport {
 
     private HazelcastInstance[] instances;
-    private String name = "semaphore";
-    private ISemaphore semaphore;
+    protected ISemaphore semaphore;
+    protected String name = "semaphore";
 
     @Before
     public void setup() {
@@ -464,7 +464,7 @@ public class RaftSessionlessSemaphoreBasicTest extends HazelcastRaftTestSupport 
                 RaftGroupId groupId = getGroupId(semaphore);
                 HazelcastInstance leader = getLeaderInstance(instances, groupId);
                 RaftSemaphoreService service = getNodeEngineImpl(leader).getService(RaftSemaphoreService.SERVICE_NAME);
-                SemaphoreRegistry registry = service.getRegistryOrNull(groupId);
+                RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
                 assertFalse(registry.getWaitTimeouts().isEmpty());
             }
         });
@@ -482,8 +482,8 @@ public class RaftSessionlessSemaphoreBasicTest extends HazelcastRaftTestSupport 
     protected Config createConfig(int cpNodeCount, int groupSize) {
         Config config = super.createConfig(cpNodeCount, groupSize);
 
-        RaftSemaphoreConfig semaphoreConfig = new RaftSemaphoreConfig(name, false);
-        config.addRaftSemaphoreConfig(semaphoreConfig);
+        CPSemaphoreConfig semaphoreConfig = new CPSemaphoreConfig(name, true);
+        config.addCPSemaphoreConfig(semaphoreConfig);
         return config;
     }
 }

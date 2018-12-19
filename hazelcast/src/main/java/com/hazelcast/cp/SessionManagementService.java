@@ -16,24 +16,24 @@
 
 package com.hazelcast.cp;
 
-import com.hazelcast.config.raft.RaftConfig;
+import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.ICompletableFuture;
 
 import java.util.Collection;
 
 /**
- * The public API used for managing Raft sessions.
+ * The public API used for managing CP sessions.
  */
-public interface RaftSessionManagementService {
+public interface SessionManagementService {
 
     /**
      * Returns a non-null collection of sessions that are currently active in the given Raft group.
      */
-    Collection<SessionInfo> getAllSessions(RaftGroupId groupId);
+    Collection<Session> getAllSessions(RaftGroupId groupId);
 
     /**
-     * If caller of a Raft session crashes, its session is not automatically terminated immediately.
-     * The session will be closed after {@link RaftConfig#sessionTimeToLiveSeconds} sessions.
+     * If owner of a session crashes, its session is not terminated immediately.
+     * Instead, the session will be closed after {@link CPSubsystemConfig#setSessionTimeToLiveSeconds(int)} sessions.
      * If it is known for sure that the session owner is gone and will not come back,
      * this method can be used for closing the session and releasing its resources immediately.
      */

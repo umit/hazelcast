@@ -19,9 +19,9 @@ package com.hazelcast.cp;
 import com.hazelcast.nio.Address;
 
 /**
- * Represents state of a Raft session.
+ * Represents state of a CP session.
  */
-public interface SessionInfo {
+public interface Session {
 
     /**
      * Returns id of the session

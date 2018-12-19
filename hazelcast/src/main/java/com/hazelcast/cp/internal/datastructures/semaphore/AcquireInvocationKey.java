@@ -33,7 +33,7 @@ import static com.hazelcast.util.Preconditions.checkTrue;
  * When it sends a request X, it can either retry this request X, or send a new request Y.
  * After it sends request Y, it will not retry request X anymore.
  */
-public class SemaphoreInvocationKey implements WaitKey, IdentifiedDataSerializable {
+public class AcquireInvocationKey implements WaitKey, IdentifiedDataSerializable {
 
     private String name;
     private long commitIndex;
@@ -42,10 +42,10 @@ public class SemaphoreInvocationKey implements WaitKey, IdentifiedDataSerializab
     private UUID invocationUid;
     private int permits;
 
-    SemaphoreInvocationKey() {
+    AcquireInvocationKey() {
     }
 
-    SemaphoreInvocationKey(String name, long commitIndex, long sessionId, long threadId, UUID invocationUid, int permits) {
+    AcquireInvocationKey(String name, long commitIndex, long sessionId, long threadId, UUID invocationUid, int permits) {
         checkTrue(permits > 0, "permits must be positive");
         this.name = name;
         this.commitIndex = commitIndex;
@@ -89,7 +89,7 @@ public class SemaphoreInvocationKey implements WaitKey, IdentifiedDataSerializab
 
     @Override
     public int getId() {
-        return RaftSemaphoreDataSerializerHook.SEMAPHORE_INVOCATION_KEY;
+        return RaftSemaphoreDataSerializerHook.ACQUIRE_INVOCATION_KEY;
     }
 
     @Override
@@ -125,7 +125,7 @@ public class SemaphoreInvocationKey implements WaitKey, IdentifiedDataSerializab
             return false;
         }
 
-        SemaphoreInvocationKey that = (SemaphoreInvocationKey) o;
+        AcquireInvocationKey that = (AcquireInvocationKey) o;
 
         if (commitIndex != that.commitIndex) {
             return false;

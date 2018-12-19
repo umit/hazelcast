@@ -19,6 +19,7 @@ package com.hazelcast.cp.internal.session;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.util.Clock;
 
 import java.util.ArrayList;
@@ -37,11 +38,12 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static com.hazelcast.util.ExceptionUtil.peel;
 import static com.hazelcast.util.Preconditions.checkState;
+import static com.hazelcast.util.ThreadUtil.getThreadId;
 
 /**
  * Implements session management APIs for Raft-based server and client proxies
  */
-public abstract class AbstractSessionManager {
+public abstract class AbstractProxySessionManager {
 
     /**
      * Represents absence of a Raft session
@@ -50,9 +52,16 @@ public abstract class AbstractSessionManager {
 
     private final ConcurrentMap<RaftGroupId, Object> mutexes = new ConcurrentHashMap<RaftGroupId, Object>();
     private final ConcurrentMap<RaftGroupId, SessionState> sessions = new ConcurrentHashMap<RaftGroupId, SessionState>();
+    private final ConcurrentMap<Tuple2<RaftGroupId, Long>, Long> threadIds
+            = new ConcurrentHashMap<Tuple2<RaftGroupId, Long>, Long>();
     private final AtomicBoolean scheduleHeartbeat = new AtomicBoolean(false);
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private boolean running = true;
+
+    /**
+     * Generates a cluster-wide unique thread id for the caller
+     */
+    protected abstract long generateThreadId(RaftGroupId groupId);
 
     /**
      * Creates a new session on the Raft group
@@ -73,6 +82,20 @@ public abstract class AbstractSessionManager {
      * Schedules the given task for repeating execution
      */
     protected abstract ScheduledFuture<?> scheduleWithRepetition(Runnable task, long period, TimeUnit unit);
+
+
+    public final Long getOrCreateUniqueThreadId(RaftGroupId groupId) {
+        Tuple2<RaftGroupId, Long> key = Tuple2.of(groupId, getThreadId());
+        Long globalThreadId = threadIds.get(key);
+        if (globalThreadId != null) {
+            return globalThreadId;
+        }
+
+        globalThreadId = generateThreadId(groupId);
+        Long existing = threadIds.putIfAbsent(key, globalThreadId);
+
+        return existing != null ? existing : globalThreadId;
+    }
 
     /**
      * Increments acquire count of the session.

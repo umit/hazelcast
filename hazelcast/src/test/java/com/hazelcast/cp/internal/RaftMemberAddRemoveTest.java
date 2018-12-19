@@ -64,7 +64,7 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
         HazelcastInstance[] instances = newInstances(2, 2, 1);
 
         final RaftService service = getRaftService(instances[instances.length - 1]);
-        service.triggerRaftMemberPromotion().get();
+        service.promoteToCPMember().get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -87,7 +87,7 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertClusterSizeEventually(2, instances[1]);
 
         final RaftMemberImpl removedEndpoint = new RaftMemberImpl(member);
-        service.triggerRemoveRaftMember(removedEndpoint).get();
+        service.removeCPMember(removedEndpoint).get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -116,8 +116,8 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertClusterSizeEventually(2, instances[1]);
 
         final RaftMemberImpl removedEndpoint = new RaftMemberImpl(member);
-        service.triggerRemoveRaftMember(removedEndpoint).get();
-        service.triggerRemoveRaftMember(removedEndpoint).get();
+        service.removeCPMember(removedEndpoint).get();
+        service.removeCPMember(removedEndpoint).get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -149,7 +149,7 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         RaftService raftService = getRaftService(runningInstance);
         raftService.forceDestroyRaftGroup(groupId).get();
-        raftService.triggerRemoveRaftMember(crashedMember).get();
+        raftService.removeCPMember(crashedMember).get();
 
         final RaftInvocationManager invocationManager = getRaftInvocationManager(runningInstance);
         assertTrueEventually(new AssertTask() {
@@ -188,7 +188,7 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
         RaftService raftService = getRaftService(runningInstance);
 
         // we triggered removal of the crashed member but we won't be able to commit to the "test" group
-        raftService.triggerRemoveRaftMember(crashedMember).get();
+        raftService.removeCPMember(crashedMember).get();
 
         // wait until RaftCleanupHandler kicks in and appends ApplyRaftGroupMembersCmd to the leader of the "test" group
         assertTrueEventually(new AssertTask() {
@@ -217,7 +217,7 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         HazelcastInstance master = instances[0];
         final HazelcastInstance promoted = instances[instances.length - 1];
-        getRaftService(promoted).triggerRaftMemberPromotion().get();
+        getRaftService(promoted).promoteToCPMember().get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -229,7 +229,7 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
         RaftMemberImpl promotedRaftMember = getRaftService(promoted).getLocalMember();
         promoted.getLifecycleService().terminate();
 
-        getRaftService(master).triggerRemoveRaftMember(promotedRaftMember).get();
+        getRaftService(master).removeCPMember(promotedRaftMember).get();
 
         MembershipChangeContext ctx = getRaftInvocationManager(master).<MembershipChangeContext>query(METADATA_GROUP_ID, new GetMembershipChangeContextOp(), LEADER_LOCAL).get();
         assertNull(ctx);
@@ -241,7 +241,7 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         HazelcastInstance master = instances[0];
         final HazelcastInstance promoted = instances[instances.length - 1];
-        getRaftService(promoted).triggerRaftMemberPromotion().get();
+        getRaftService(promoted).promoteToCPMember().get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -269,8 +269,8 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
         newInstances[0] = instances[0];
         newInstances[1] = instances[3];
 
-        getRaftService(newInstances[0]).resetAndInitRaftState();
-        getRaftService(newInstances[1]).resetAndInitRaftState();
+        getRaftService(newInstances[0]).resetAndInit();
+        getRaftService(newInstances[1]).resetAndInit();
 
         Config config = createConfig(3, 3);
         newInstances[2] = factory.newHazelcastInstance(config);
@@ -313,7 +313,7 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
         instances[2] = factory.newHazelcastInstance(config);
 
         for (HazelcastInstance hz : instances) {
-            getRaftService(hz).resetAndInitRaftState();
+            getRaftService(hz).resetAndInit();
         }
 
         List<RaftMember> newEndpoints = getRaftInvocationManager(instance).<List<RaftMember>>invoke(METADATA_GROUP_ID, new GetActiveRaftMembersOp()).get();
@@ -330,8 +330,8 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
         instances[0].getLifecycleService().terminate();
         assertClusterSizeEventually(2, instances[1], instances[2]);
 
-        getRaftService(instances[1]).resetAndInitRaftState();
-        getRaftService(instances[2]).resetAndInitRaftState();
+        getRaftService(instances[1]).resetAndInit();
+        getRaftService(instances[2]).resetAndInit();
 
         Config config = createConfig(3, 3);
         instances[0] = factory.newHazelcastInstance(config);
@@ -371,7 +371,7 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         instances[0].shutdown();
 
-        getRaftService(instances[3]).triggerRaftMemberPromotion().get(30, TimeUnit.SECONDS);
+        getRaftService(instances[3]).promoteToCPMember().get(30, TimeUnit.SECONDS);
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -396,7 +396,7 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
         instances[1].shutdown();
         instances[2].shutdown();
 
-        getRaftService(instances[5]).triggerRaftMemberPromotion().get();
+        getRaftService(instances[5]).promoteToCPMember().get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -409,7 +409,7 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
             }
         });
 
-        getRaftService(instances[6]).triggerRaftMemberPromotion().get();
+        getRaftService(instances[6]).promoteToCPMember().get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -422,7 +422,7 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
             }
         });
 
-        getRaftService(instances[7]).triggerRaftMemberPromotion().get();
+        getRaftService(instances[7]).promoteToCPMember().get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -453,7 +453,7 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
             factory.getInstance(address).shutdown();
         }
 
-        getRaftService(instances[5]).triggerRaftMemberPromotion().get();
+        getRaftService(instances[5]).promoteToCPMember().get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -468,7 +468,7 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
             }
         });
 
-        getRaftService(instances[6]).triggerRaftMemberPromotion().get();
+        getRaftService(instances[6]).promoteToCPMember().get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -511,7 +511,7 @@ public class RaftMemberAddRemoveTest extends HazelcastRaftTestSupport {
         try {
             Config config = createConfig(3, 3);
             final HazelcastInstance instance = factory.newHazelcastInstance(config);
-            getRaftService(instance).resetAndInitRaftState();
+            getRaftService(instance).resetAndInit();
 
             assertTrueEventually(new AssertTask() {
                 @Override

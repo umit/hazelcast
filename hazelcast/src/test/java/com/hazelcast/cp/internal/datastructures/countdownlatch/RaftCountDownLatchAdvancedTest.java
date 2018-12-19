@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.datastructures.countdownlatch;
 
 import com.hazelcast.config.Config;
-import com.hazelcast.config.raft.RaftConfig;
+import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.cp.RaftGroupId;
@@ -80,8 +80,8 @@ public class RaftCountDownLatchAdvancedTest extends HazelcastRaftTestSupport {
     @Override
     protected Config createConfig(int cpNodeCount, int groupSize) {
         Config config = super.createConfig(cpNodeCount, groupSize);
-        RaftConfig raftConfig = config.getRaftConfig();
-        raftConfig.getRaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(LOG_ENTRY_COUNT_TO_SNAPSHOT);
+        CPSubsystemConfig cpSubsystemConfig = config.getCpSubsystemConfig();
+        cpSubsystemConfig.getRaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(LOG_ENTRY_COUNT_TO_SNAPSHOT);
 
         return config;
     }
@@ -93,7 +93,7 @@ public class RaftCountDownLatchAdvancedTest extends HazelcastRaftTestSupport {
         RaftGroupId groupId = getGroupId(latch);
         HazelcastInstance leader = getLeaderInstance(instances, groupId);
         RaftCountDownLatchService service = getNodeEngineImpl(leader).getService(RaftCountDownLatchService.SERVICE_NAME);
-        final CountDownLatchRegistry registry = service.getRegistryOrNull(groupId);
+        final RaftCountDownLatchRegistry registry = service.getRegistryOrNull(groupId);
 
         final CountDownLatch threadLatch = new CountDownLatch(1);
         spawn(new Runnable() {
@@ -129,7 +129,7 @@ public class RaftCountDownLatchAdvancedTest extends HazelcastRaftTestSupport {
         RaftGroupId groupId = getGroupId(latch);
         HazelcastInstance leader = getLeaderInstance(instances, groupId);
         RaftCountDownLatchService service = getNodeEngineImpl(leader).getService(RaftCountDownLatchService.SERVICE_NAME);
-        final CountDownLatchRegistry registry = service.getRegistryOrNull(groupId);
+        final RaftCountDownLatchRegistry registry = service.getRegistryOrNull(groupId);
 
         boolean success = latch.await(1, TimeUnit.SECONDS);
 
@@ -144,7 +144,7 @@ public class RaftCountDownLatchAdvancedTest extends HazelcastRaftTestSupport {
         RaftGroupId groupId = getGroupId(latch);
         HazelcastInstance leader = getLeaderInstance(instances, groupId);
         RaftCountDownLatchService service = getNodeEngineImpl(leader).getService(RaftCountDownLatchService.SERVICE_NAME);
-        final CountDownLatchRegistry registry = service.getRegistryOrNull(groupId);
+        final RaftCountDownLatchRegistry registry = service.getRegistryOrNull(groupId);
 
         spawn(new Runnable() {
             @Override
@@ -224,14 +224,14 @@ public class RaftCountDownLatchAdvancedTest extends HazelcastRaftTestSupport {
         instances[1].shutdown();
 
         final HazelcastInstance newInstance = factory.newHazelcastInstance(createConfig(groupSize, groupSize));
-        getRaftService(newInstance).triggerRaftMemberPromotion().get();
+        getRaftService(newInstance).promoteToCPMember().get();
 //        getRaftService(newInstance).triggerRebalanceRaftGroups().get();
 
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
                 RaftCountDownLatchService service = getNodeEngineImpl(newInstance).getService(RaftCountDownLatchService.SERVICE_NAME);
-                CountDownLatchRegistry registry = service.getRegistryOrNull(groupId);
+                RaftCountDownLatchRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertFalse(registry.getWaitTimeouts().isEmpty());
                 Assert.assertEquals(1, registry.getRemainingCount(name));

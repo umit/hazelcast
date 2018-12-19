@@ -16,13 +16,13 @@
 
 package com.hazelcast.cp.internal.datastructures.lock;
 
-import com.hazelcast.cp.internal.session.AbstractSessionManager;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
 import java.io.IOException;
 
+import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 import static com.hazelcast.util.Preconditions.checkTrue;
 
 /**
@@ -40,7 +40,7 @@ public class LockEndpoint implements IdentifiedDataSerializable {
     }
 
     public LockEndpoint(long sessionId, long threadId) {
-        checkTrue(sessionId != AbstractSessionManager.NO_SESSION_ID, "a session id must be provided");
+        checkTrue(sessionId != NO_SESSION_ID, "a session id must be provided");
         this.sessionId = sessionId;
         this.threadId = threadId;
     }

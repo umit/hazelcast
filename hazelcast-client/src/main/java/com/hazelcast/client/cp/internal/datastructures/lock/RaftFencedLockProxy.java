@@ -16,6 +16,7 @@
 
 package com.hazelcast.client.cp.internal.datastructures.lock;
 
+import com.hazelcast.client.cp.internal.session.SessionManagerProvider;
 import com.hazelcast.client.impl.clientside.ClientMessageDecoder;
 import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.protocol.ClientMessage;
@@ -27,13 +28,15 @@ import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.cp.internal.RaftGroupIdImpl;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockOwnershipState;
 import com.hazelcast.cp.internal.datastructures.lock.proxy.AbstractRaftFencedLockProxy;
-import com.hazelcast.client.cp.internal.session.SessionManagerProvider;
 import com.hazelcast.cp.internal.datastructures.spi.client.RaftGroupTaskFactoryProvider;
+import com.hazelcast.nio.Bits;
 import com.hazelcast.spi.InternalCompletableFuture;
 
 import java.util.UUID;
 
+import static com.hazelcast.client.cp.internal.ClientAccessor.getClient;
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
+import static com.hazelcast.cp.internal.RaftGroupIdImpl.dataSize;
 import static com.hazelcast.cp.internal.RaftService.getObjectNameForProxy;
 import static com.hazelcast.cp.internal.datastructures.lock.client.LockMessageTaskFactoryProvider.DESTROY_TYPE;
 import static com.hazelcast.cp.internal.datastructures.lock.client.LockMessageTaskFactoryProvider.FORCE_UNLOCK_TYPE;
@@ -41,17 +44,14 @@ import static com.hazelcast.cp.internal.datastructures.lock.client.LockMessageTa
 import static com.hazelcast.cp.internal.datastructures.lock.client.LockMessageTaskFactoryProvider.LOCK_TYPE;
 import static com.hazelcast.cp.internal.datastructures.lock.client.LockMessageTaskFactoryProvider.TRY_LOCK_TYPE;
 import static com.hazelcast.cp.internal.datastructures.lock.client.LockMessageTaskFactoryProvider.UNLOCK_TYPE;
-import static com.hazelcast.client.cp.internal.datastructures.lock.RaftLockProxy.BOOLEAN_RESPONSE_DECODER;
-import static com.hazelcast.client.cp.internal.datastructures.lock.RaftLockProxy.LOCK_OWNERSHIP_STATE_RESPONSE_DECODER;
-import static com.hazelcast.client.cp.internal.datastructures.lock.RaftLockProxy.encodeRequest;
-import static com.hazelcast.client.cp.internal.datastructures.lock.RaftLockProxy.invoke;
-import static com.hazelcast.client.cp.internal.datastructures.lock.RaftLockProxy.prepareClientMessage;
-import static com.hazelcast.client.cp.internal.ClientAccessor.getClient;
 
 /**
  * TODO: Javadoc Pending...
  */
 public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
+
+    static final ClientMessageDecoder BOOLEAN_RESPONSE_DECODER = new BooleanResponseDecoder();
+    static final ClientMessageDecoder LOCK_OWNERSHIP_STATE_RESPONSE_DECODER = new RaftLockOwnershipStateResponseDecoder();
 
     public static AbstractRaftFencedLockProxy create(HazelcastInstance instance, String name) {
         int dataSize = ClientMessage.HEADER_SIZE + calculateDataSize(name);
@@ -130,6 +130,90 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
         msg.updateFrameLength();
 
         invoke(client, name, msg, BOOLEAN_RESPONSE_DECODER).join();
+    }
+
+    static <T> InternalCompletableFuture<T> invoke(HazelcastClientInstanceImpl client, String name, ClientMessage msg,
+                                                   ClientMessageDecoder decoder) {
+        ClientInvocationFuture future = new ClientInvocation(client, msg, name).invoke();
+        return new ClientDelegatingFuture<T>(future, client.getSerializationService(), decoder);
+    }
+
+    static ClientMessage encodeRequest(int messageTypeId, RaftGroupId groupId, String name, long sessionId,
+                                       long threadId, UUID invUid) {
+        int dataSize = ClientMessage.HEADER_SIZE
+                + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4;
+        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, messageTypeId);
+        setRequestParams(msg, sessionId, threadId, invUid);
+        msg.updateFrameLength();
+        return msg;
+    }
+
+    static ClientMessage encodeRequest(int messageTypeId, RaftGroupId groupId, String name, long sessionId,
+                                       long threadId, UUID invUid, int val) {
+        int dataSize = ClientMessage.HEADER_SIZE
+                + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4 + Bits.INT_SIZE_IN_BYTES;
+        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, messageTypeId);
+        setRequestParams(msg, sessionId, threadId, invUid);
+        msg.set(val);
+        msg.updateFrameLength();
+        return msg;
+    }
+
+    static ClientMessage encodeRequest(int messageTypeId, RaftGroupId groupId, String name, long sessionId,
+                                       long threadId, UUID invUid, long val) {
+
+        int dataSize = ClientMessage.HEADER_SIZE
+                + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 5;
+        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, messageTypeId);
+        setRequestParams(msg, sessionId, threadId, invUid);
+        msg.set(val);
+        msg.updateFrameLength();
+        return msg;
+    }
+
+    private static void setRequestParams(ClientMessage msg, long sessionId, long threadId, UUID invUid) {
+        msg.set(sessionId);
+        msg.set(threadId);
+        msg.set(invUid.getLeastSignificantBits());
+        msg.set(invUid.getMostSignificantBits());
+    }
+
+    static ClientMessage encodeRequest(int messageTypeId, RaftGroupId groupId, String name, long sessionId, long threadId) {
+        int dataSize = ClientMessage.HEADER_SIZE
+                + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 2;
+        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, messageTypeId);
+        msg.set(sessionId);
+        msg.set(threadId);
+        msg.updateFrameLength();
+        return msg;
+    }
+
+    static ClientMessage prepareClientMessage(RaftGroupId groupId, String name, int dataSize, int messageTypeId) {
+        ClientMessage msg = ClientMessage.createForEncode(dataSize);
+        msg.setMessageType(messageTypeId);
+        msg.setRetryable(false);
+        msg.setOperationName("");
+        RaftGroupIdImpl.writeTo(groupId, msg);
+        msg.set(name);
+        return msg;
+    }
+
+    private static class BooleanResponseDecoder implements ClientMessageDecoder {
+        @Override
+        public Boolean decodeClientMessage(ClientMessage msg) {
+            return msg.getBoolean();
+        }
+    }
+
+    private static class RaftLockOwnershipStateResponseDecoder implements ClientMessageDecoder {
+        @Override
+        public RaftLockOwnershipState decodeClientMessage(ClientMessage msg) {
+            long fence = msg.getLong();
+            int lockCount = msg.getInt();
+            long sessionId = msg.getLong();
+            long threadId = msg.getLong();
+            return new RaftLockOwnershipState(fence, lockCount, sessionId, threadId);
+        }
     }
 
 }

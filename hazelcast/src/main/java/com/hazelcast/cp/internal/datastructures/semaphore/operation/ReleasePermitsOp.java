@@ -17,17 +17,18 @@
 package com.hazelcast.cp.internal.datastructures.semaphore.operation;
 
 import com.hazelcast.core.ISemaphore;
+import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphore;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
-import com.hazelcast.cp.internal.session.AbstractSessionManager;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 
 import java.io.IOException;
 import java.util.UUID;
+
+import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 
 /**
  * Operation for {@link ISemaphore#release()}
@@ -55,7 +56,7 @@ public class ReleasePermitsOp extends AbstractSemaphoreOp implements Indetermina
 
     @Override
     public boolean isRetryableOnIndeterminateOperationState() {
-        return sessionId != AbstractSessionManager.NO_SESSION_ID;
+        return sessionId != NO_SESSION_ID;
     }
 
     @Override

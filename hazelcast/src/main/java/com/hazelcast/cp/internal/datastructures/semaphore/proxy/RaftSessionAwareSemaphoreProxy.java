@@ -18,26 +18,26 @@ package com.hazelcast.cp.internal.datastructures.semaphore.proxy;
 
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftInvocationManager;
+import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
-import com.hazelcast.cp.internal.session.AbstractSessionManager;
-import com.hazelcast.cp.internal.session.SessionAwareProxy;
-import com.hazelcast.cp.internal.session.SessionManagerService;
-import com.hazelcast.cp.internal.datastructures.spi.operation.DestroyRaftObjectOp;
-import com.hazelcast.cp.internal.session.SessionExpiredException;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.AcquirePermitsOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.AvailablePermitsOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.ChangePermitsOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.DrainPermitsOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.InitSemaphoreOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.ReleasePermitsOp;
+import com.hazelcast.cp.internal.datastructures.spi.operation.DestroyRaftObjectOp;
+import com.hazelcast.cp.internal.session.ProxySessionManagerService;
+import com.hazelcast.cp.internal.session.SessionAwareProxy;
+import com.hazelcast.cp.internal.session.SessionExpiredException;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.util.Clock;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 import static com.hazelcast.util.Preconditions.checkNotNegative;
 import static com.hazelcast.util.Preconditions.checkPositive;
 import static com.hazelcast.util.ThreadUtil.getThreadId;
@@ -59,7 +59,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
     private final String name;
     private final RaftInvocationManager invocationManager;
 
-    public RaftSessionAwareSemaphoreProxy(RaftInvocationManager invocationManager, SessionManagerService sessionManager,
+    public RaftSessionAwareSemaphoreProxy(RaftInvocationManager invocationManager, ProxySessionManagerService sessionManager,
                                           RaftGroupId groupId, String name) {
         super(sessionManager, groupId);
         this.name = name;
@@ -146,7 +146,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
     public void release(int permits) {
         checkPositive(permits, "Permits must be positive!");
         long sessionId = getSession();
-        if (sessionId == AbstractSessionManager.NO_SESSION_ID) {
+        if (sessionId == NO_SESSION_ID) {
             throw new IllegalStateException("No valid session!");
         }
 
@@ -193,7 +193,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
             return;
         }
         long sessionId = acquireSession();
-        if (sessionId == AbstractSessionManager.NO_SESSION_ID) {
+        if (sessionId == NO_SESSION_ID) {
             throw new IllegalStateException("No valid session!");
         }
 
@@ -216,7 +216,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
             return;
         }
         long sessionId = acquireSession();
-        if (sessionId == AbstractSessionManager.NO_SESSION_ID) {
+        if (sessionId == NO_SESSION_ID) {
             throw new IllegalStateException("No valid session!");
         }
 

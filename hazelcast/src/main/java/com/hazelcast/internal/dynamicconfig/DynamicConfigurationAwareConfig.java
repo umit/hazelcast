@@ -16,10 +16,6 @@
 
 package com.hazelcast.internal.dynamicconfig;
 
-import static com.hazelcast.internal.dynamicconfig.AggregatingMap.aggregate;
-import static com.hazelcast.internal.dynamicconfig.search.ConfigSearch.supplierFor;
-import static com.hazelcast.spi.properties.GroupProperty.SEARCH_DYNAMIC_CONFIG_FIRST;
-
 import com.hazelcast.config.AtomicLongConfig;
 import com.hazelcast.config.AtomicReferenceConfig;
 import com.hazelcast.config.CRDTReplicationConfig;
@@ -62,8 +58,8 @@ import com.hazelcast.config.SetConfig;
 import com.hazelcast.config.TopicConfig;
 import com.hazelcast.config.UserCodeDeploymentConfig;
 import com.hazelcast.config.WanReplicationConfig;
-import com.hazelcast.config.raft.RaftConfig;
-import com.hazelcast.config.raft.RaftSemaphoreConfig;
+import com.hazelcast.config.cp.CPSemaphoreConfig;
+import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.ManagedContext;
 import com.hazelcast.internal.dynamicconfig.search.ConfigSearch;
 import com.hazelcast.internal.dynamicconfig.search.ConfigSupplier;
@@ -71,6 +67,8 @@ import com.hazelcast.internal.dynamicconfig.search.Searcher;
 import com.hazelcast.security.SecurityService;
 import com.hazelcast.spi.properties.HazelcastProperties;
 import com.hazelcast.util.StringUtil;
+
+import javax.annotation.Nonnull;
 import java.io.File;
 import java.net.URL;
 import java.util.ArrayList;
@@ -79,7 +77,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentMap;
-import javax.annotation.Nonnull;
+
+import static com.hazelcast.internal.dynamicconfig.AggregatingMap.aggregate;
+import static com.hazelcast.internal.dynamicconfig.search.ConfigSearch.supplierFor;
+import static com.hazelcast.spi.properties.GroupProperty.SEARCH_DYNAMIC_CONFIG_FIRST;
 
 @SuppressWarnings({"unchecked", "checkstyle:methodcount", "checkstyle:classfanoutcomplexity"})
 public class DynamicConfigurationAwareConfig extends Config {
@@ -1445,22 +1446,22 @@ public class DynamicConfigurationAwareConfig extends Config {
     }
 
     @Override
-    public RaftConfig getRaftConfig() {
-        return staticConfig.getRaftConfig();
+    public CPSubsystemConfig getCpSubsystemConfig() {
+        return staticConfig.getCpSubsystemConfig();
     }
 
     @Override
-    public Config setRaftConfig(RaftConfig raftConfig) {
+    public Config setCpSubsystemConfig(CPSubsystemConfig cpSubsystemConfig) {
         throw new UnsupportedOperationException("Unsupported operation");
     }
 
     @Override
-    public RaftSemaphoreConfig findRaftSemaphoreConfig(String name) {
-        return staticConfig.findRaftSemaphoreConfig(name);
+    public CPSemaphoreConfig findCPSemaphoreConfig(String name) {
+        return staticConfig.findCPSemaphoreConfig(name);
     }
 
     @Override
-    public Config addRaftSemaphoreConfig(RaftSemaphoreConfig config) {
+    public Config addCPSemaphoreConfig(CPSemaphoreConfig config) {
         throw new UnsupportedOperationException("Unsupported operation");
     }
 }

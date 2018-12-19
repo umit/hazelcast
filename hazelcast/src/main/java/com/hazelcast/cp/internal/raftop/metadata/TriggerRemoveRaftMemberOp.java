@@ -32,7 +32,7 @@ import java.io.IOException;
 
 /**
  * When a CP node is shutting down gracefully, or a crashed CP node is removed from the CP sub-system via
- * {@link RaftService#triggerRemoveRaftMember(RaftMember)}, this operation is committed to the Metadata Raft group.
+ * {@link RaftService#removeCPMember(RaftMember)}, this operation is committed to the Metadata Raft group.
  */
 public class TriggerRemoveRaftMemberOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 

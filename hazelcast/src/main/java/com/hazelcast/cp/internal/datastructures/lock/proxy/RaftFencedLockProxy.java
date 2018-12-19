@@ -21,7 +21,7 @@ import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.FencedLock;
 import com.hazelcast.cp.internal.datastructures.lock.operation.LockOp;
-import com.hazelcast.cp.internal.session.SessionManagerService;
+import com.hazelcast.cp.internal.session.ProxySessionManagerService;
 import com.hazelcast.cp.internal.datastructures.spi.operation.DestroyRaftObjectOp;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockOwnershipState;
 import com.hazelcast.cp.internal.datastructures.lock.operation.ForceUnlockOp;
@@ -39,7 +39,7 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
 
     private final RaftInvocationManager invocationManager;
 
-    public RaftFencedLockProxy(RaftInvocationManager invocationManager, SessionManagerService sessionManager,
+    public RaftFencedLockProxy(RaftInvocationManager invocationManager, ProxySessionManagerService sessionManager,
                                RaftGroupId groupId, String name) {
         super(sessionManager, groupId, name);
         this.invocationManager = invocationManager;

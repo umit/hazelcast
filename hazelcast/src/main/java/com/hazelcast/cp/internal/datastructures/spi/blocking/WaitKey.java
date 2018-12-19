@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.datastructures.spi.blocking;
 
-import com.hazelcast.cp.internal.session.AbstractSessionManager;
+import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 
 /**
  * This abstraction is used when an operation does not return a response at commit-time.
@@ -32,7 +32,7 @@ public interface WaitKey {
 
     /**
      * Returns id of the session to which the corresponding operation is attached.
-     * Returns {@link AbstractSessionManager#NO_SESSION_ID} If no session is attached.
+     * Returns {@link AbstractProxySessionManager#NO_SESSION_ID} If no session is attached.
      */
     long sessionId();
 

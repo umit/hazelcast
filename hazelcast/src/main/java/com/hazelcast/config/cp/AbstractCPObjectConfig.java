@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-package com.hazelcast.config.raft;
+package com.hazelcast.config.cp;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public abstract class AbstractRaftObjectConfig {
+abstract class AbstractCPObjectConfig {
 
     protected String name;
 
-    public AbstractRaftObjectConfig() {
+    AbstractCPObjectConfig() {
     }
 
-    public AbstractRaftObjectConfig(String name) {
+    AbstractCPObjectConfig(String name) {
         this.name = name;
     }
 

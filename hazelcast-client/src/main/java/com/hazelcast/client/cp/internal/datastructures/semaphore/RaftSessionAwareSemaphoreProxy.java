@@ -16,6 +16,8 @@
 
 package com.hazelcast.client.cp.internal.datastructures.semaphore;
 
+import com.hazelcast.client.cp.internal.ClientAccessor;
+import com.hazelcast.client.cp.internal.session.SessionManagerProvider;
 import com.hazelcast.client.impl.clientside.ClientMessageDecoder;
 import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.protocol.ClientMessage;
@@ -24,16 +26,13 @@ import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
-import com.hazelcast.cp.internal.session.AbstractSessionManager;
-import com.hazelcast.client.cp.internal.session.SessionManagerProvider;
-import com.hazelcast.client.cp.internal.ClientAccessor;
-import com.hazelcast.nio.Bits;
 import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.cp.internal.RaftGroupIdImpl;
-import com.hazelcast.cp.internal.session.SessionExpiredException;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
-import com.hazelcast.cp.internal.session.SessionAwareProxy;
 import com.hazelcast.cp.internal.datastructures.spi.client.RaftGroupTaskFactoryProvider;
+import com.hazelcast.cp.internal.session.SessionAwareProxy;
+import com.hazelcast.cp.internal.session.SessionExpiredException;
+import com.hazelcast.nio.Bits;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.util.Clock;
 
@@ -51,6 +50,7 @@ import static com.hazelcast.cp.internal.datastructures.semaphore.client.Semaphor
 import static com.hazelcast.cp.internal.datastructures.semaphore.client.SemaphoreMessageTaskFactoryProvider.INIT_SEMAPHORE_TYPE;
 import static com.hazelcast.cp.internal.datastructures.semaphore.client.SemaphoreMessageTaskFactoryProvider.RELEASE_PERMITS_TYPE;
 import static com.hazelcast.cp.internal.datastructures.semaphore.proxy.RaftSessionAwareSemaphoreProxy.DRAIN_SESSION_ACQ_COUNT;
+import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 import static com.hazelcast.util.Preconditions.checkNotNegative;
 import static com.hazelcast.util.Preconditions.checkPositive;
 import static com.hazelcast.util.ThreadUtil.getThreadId;
@@ -105,7 +105,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
 
         int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES
                 + Bits.INT_SIZE_IN_BYTES;
-        ClientMessage msg = prepareClientMessage(groupId, name, AbstractSessionManager.NO_SESSION_ID, dataSize, INIT_SEMAPHORE_TYPE);
+        ClientMessage msg = prepareClientMessage(groupId, name, NO_SESSION_ID, dataSize, INIT_SEMAPHORE_TYPE);
         msg.set(permits);
         msg.updateFrameLength();
 
@@ -205,7 +205,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
     public void release(int permits) {
         checkPositive(permits, "Permits must be positive!");
         long sessionId = getSession();
-        if (sessionId == AbstractSessionManager.NO_SESSION_ID) {
+        if (sessionId == NO_SESSION_ID) {
             throw new IllegalStateException("No valid session!");
         }
 
@@ -232,7 +232,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
     @Override
     public int availablePermits() {
         int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES;
-        ClientMessage msg = prepareClientMessage(groupId, name, AbstractSessionManager.NO_SESSION_ID, dataSize, AVAILABLE_PERMITS_TYPE);
+        ClientMessage msg = prepareClientMessage(groupId, name, NO_SESSION_ID, dataSize, AVAILABLE_PERMITS_TYPE);
         msg.updateFrameLength();
 
         InternalCompletableFuture<Integer> future = invoke(msg, INT_RESPONSE_DECODER);
@@ -271,7 +271,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
         }
 
         long sessionId = acquireSession();
-        if (sessionId == AbstractSessionManager.NO_SESSION_ID) {
+        if (sessionId == NO_SESSION_ID) {
             throw new IllegalStateException("No valid session!");
         }
 
@@ -305,7 +305,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
         }
 
         long sessionId = acquireSession();
-        if (sessionId == AbstractSessionManager.NO_SESSION_ID) {
+        if (sessionId == NO_SESSION_ID) {
             throw new IllegalStateException("No valid session!");
         }
 

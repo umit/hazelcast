@@ -22,7 +22,7 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
-import com.hazelcast.cp.internal.session.SessionService;
+import com.hazelcast.cp.internal.session.RaftSessionService;
 import com.hazelcast.cp.internal.session.RaftSessionServiceDataSerializerHook;
 import com.hazelcast.cp.internal.session.SessionExpiredException;
 
@@ -45,7 +45,7 @@ public class HeartbeatSessionOp extends RaftOp implements IndeterminateOperation
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
-        SessionService service = getService();
+        RaftSessionService service = getService();
         service.heartbeat(groupId, sessionId);
         return null;
     }
@@ -57,7 +57,7 @@ public class HeartbeatSessionOp extends RaftOp implements IndeterminateOperation
 
     @Override
     public String getServiceName() {
-        return SessionService.SERVICE_NAME;
+        return RaftSessionService.SERVICE_NAME;
     }
 
     @Override
@@ -67,7 +67,7 @@ public class HeartbeatSessionOp extends RaftOp implements IndeterminateOperation
 
     @Override
     public int getId() {
-        return RaftSessionServiceDataSerializerHook.HEARTBEAT_SESSION;
+        return RaftSessionServiceDataSerializerHook.HEARTBEAT_SESSION_OP;
     }
 
     @Override

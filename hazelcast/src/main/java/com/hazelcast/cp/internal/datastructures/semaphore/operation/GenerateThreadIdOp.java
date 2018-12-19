@@ -16,10 +16,9 @@
 
 package com.hazelcast.cp.internal.datastructures.semaphore.operation;
 
-import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
-import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphore;
+import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
 import com.hazelcast.nio.ObjectDataInput;
@@ -27,36 +26,30 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
 import java.io.IOException;
-import java.util.UUID;
-
-import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 
 /**
- * Operation for {@link ISemaphore#increasePermits(int)} and {@link ISemaphore#reducePermits(int)}
- *
- * @see RaftSemaphore#change(long, long, UUID, int)
+ * Operation for generating a cluster-wide unique thread id for the caller.
  */
-public class ChangePermitsOp extends AbstractSemaphoreOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
+public class GenerateThreadIdOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
-    private int permits;
+    private long initialValue;
 
-    public ChangePermitsOp() {
+    public GenerateThreadIdOp() {
     }
 
-    public ChangePermitsOp(String name, long sessionId, long threadId, UUID invocationUid, int permits) {
-        super(name, sessionId, threadId, invocationUid);
-        this.permits = permits;
+    public GenerateThreadIdOp(long initialValue) {
+        this.initialValue = initialValue;
     }
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
         RaftSemaphoreService service = getService();
-        return service.changePermits(groupId, name, sessionId, threadId, invocationUid, permits);
+        return service.generateThreadId(groupId, initialValue);
     }
 
     @Override
     public boolean isRetryableOnIndeterminateOperationState() {
-        return sessionId != NO_SESSION_ID;
+        return false;
     }
 
     @Override
@@ -71,24 +64,23 @@ public class ChangePermitsOp extends AbstractSemaphoreOp implements Indeterminat
 
     @Override
     public int getId() {
-        return RaftSemaphoreDataSerializerHook.CHANGE_PERMITS_OP;
+        return RaftSemaphoreDataSerializerHook.GENERATE_THREAD_ID_OP;
     }
 
     @Override
-    public void writeData(ObjectDataOutput out) throws IOException {
-        super.writeData(out);
-        out.writeInt(permits);
+    public void writeData(ObjectDataOutput out)
+            throws IOException {
+        out.writeLong(initialValue);
     }
 
     @Override
-    public void readData(ObjectDataInput in) throws IOException {
-        super.readData(in);
-        permits = in.readInt();
+    public void readData(ObjectDataInput in)
+            throws IOException {
+        initialValue = in.readLong();
     }
 
     @Override
     protected void toString(StringBuilder sb) {
-        super.toString(sb);
-        sb.append(", permits=").append(permits);
+        sb.append(", initialValue=").append(initialValue);
     }
 }

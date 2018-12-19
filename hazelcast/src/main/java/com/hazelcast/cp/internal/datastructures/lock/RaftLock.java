@@ -192,6 +192,18 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
         return new RaftLockOwnershipState(owner.commitIndex(), lockCount, owner.sessionId(), owner.endpoint().threadId());
     }
 
+    RaftLock cloneForSnapshot() {
+        RaftLock clone = new RaftLock();
+        clone.groupId = this.groupId;
+        clone.name = this.name;
+        clone.waitKeys.addAll(this.waitKeys);
+        clone.owner = this.owner;
+        clone.lockCount = this.lockCount;
+        clone.invocationRefUids.putAll(this.invocationRefUids);
+
+        return clone;
+    }
+
     /**
      * Releases the lock if the current lock holder's session is closed.
      */

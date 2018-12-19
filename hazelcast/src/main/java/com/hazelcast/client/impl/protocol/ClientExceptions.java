@@ -31,6 +31,8 @@ import com.hazelcast.core.IndeterminateOperationStateException;
 import com.hazelcast.core.LocalMemberResetException;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.core.OperationTimeoutException;
+import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
+import com.hazelcast.cp.internal.session.SessionExpiredException;
 import com.hazelcast.crdt.MutationDisallowedException;
 import com.hazelcast.crdt.TargetNotReplicaException;
 import com.hazelcast.durableexecutor.StaleTaskIdException;
@@ -198,6 +200,8 @@ public class ClientExceptions {
         register(ClientProtocolErrorCodes.TARGET_NOT_REPLICA_EXCEPTION, TargetNotReplicaException.class);
         register(ClientProtocolErrorCodes.MUTATION_DISALLOWED_EXCEPTION, MutationDisallowedException.class);
         register(ClientProtocolErrorCodes.CONSISTENCY_LOST_EXCEPTION, ConsistencyLostException.class);
+        register(ClientProtocolErrorCodes.SESSION_EXPIRED_EXCEPTION, SessionExpiredException.class);
+        register(ClientProtocolErrorCodes.WAIT_KEY_CANCELLED_EXCEPTION, WaitKeyCancelledException.class);
     }
 
 

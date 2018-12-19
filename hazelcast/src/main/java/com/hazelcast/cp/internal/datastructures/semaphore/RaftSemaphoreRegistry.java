@@ -16,25 +16,31 @@
 
 package com.hazelcast.cp.internal.datastructures.semaphore;
 
-import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
-import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphore.AcquireResult;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphore.ReleaseResult;
+import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
+import java.io.IOException;
 import java.util.Collection;
+import java.util.Map.Entry;
 import java.util.UUID;
 
 /**
  * Contains {@link RaftSemaphore} resources and manages wait timeouts based on acquire / release requests
  */
-public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, RaftSemaphore>
+public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey, RaftSemaphore>
         implements IdentifiedDataSerializable {
 
-    SemaphoreRegistry() {
+    private Long generatedThreadId;
+
+    RaftSemaphoreRegistry() {
     }
 
-    SemaphoreRegistry(RaftGroupId groupId) {
+    RaftSemaphoreRegistry(RaftGroupId groupId) {
         super(groupId);
     }
 
@@ -43,11 +49,25 @@ public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, 
         return new RaftSemaphore(groupId, name);
     }
 
-    Collection<SemaphoreInvocationKey> init(String name, int permits) {
-        Collection<SemaphoreInvocationKey> acquired = getOrInitResource(name).init(permits);
+    @Override
+    protected RaftSemaphoreRegistry cloneForSnapshot() {
+        RaftSemaphoreRegistry clone = new RaftSemaphoreRegistry();
+        clone.groupId = this.groupId;
+        for (Entry<String, RaftSemaphore> e : this.resources.entrySet()) {
+            clone.resources.put(e.getKey(), e.getValue().cloneForSnapshot());
+        }
+        clone.destroyedNames.addAll(this.destroyedNames);
+        clone.waitTimeouts.putAll(this.waitTimeouts);
+        clone.generatedThreadId = this.generatedThreadId;
 
-        for (SemaphoreInvocationKey waitKey : acquired) {
-            removeWaitKey(waitKey);
+        return clone;
+    }
+
+    Collection<AcquireInvocationKey> init(String name, int permits) {
+        Collection<AcquireInvocationKey> acquired = getOrInitResource(name).init(permits);
+
+        for (AcquireInvocationKey key : acquired) {
+            removeWaitKey(key);
         }
 
         return acquired;
@@ -58,10 +78,10 @@ public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, 
         return semaphore != null ? semaphore.getAvailable() : 0;
     }
 
-    AcquireResult acquire(String name, SemaphoreInvocationKey key, long timeoutMs) {
+    AcquireResult acquire(String name, AcquireInvocationKey key, long timeoutMs) {
         AcquireResult result = getOrInitResource(name).acquire(key, (timeoutMs != 0));
 
-        for (SemaphoreInvocationKey waitKey : result.cancelled) {
+        for (AcquireInvocationKey waitKey : result.cancelled) {
             removeWaitKey(waitKey);
         }
 
@@ -74,11 +94,11 @@ public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, 
 
     ReleaseResult release(String name, long sessionId, long threadId, UUID invocationUid, int permits) {
         ReleaseResult result = getOrInitResource(name).release(sessionId, threadId, invocationUid, permits);
-        for (SemaphoreInvocationKey key : result.acquired) {
+        for (AcquireInvocationKey key : result.acquired) {
             removeWaitKey(key);
         }
 
-        for (SemaphoreInvocationKey key : result.cancelled) {
+        for (AcquireInvocationKey key : result.cancelled) {
             removeWaitKey(key);
         }
 
@@ -87,8 +107,8 @@ public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, 
 
     AcquireResult drainPermits(String name, long sessionId, long threadId, UUID invocationUid) {
         AcquireResult result = getOrInitResource(name).drain(sessionId, threadId, invocationUid);
-        for (SemaphoreInvocationKey waitKey : result.cancelled) {
-            removeWaitKey(waitKey);
+        for (AcquireInvocationKey key : result.cancelled) {
+            removeWaitKey(key);
         }
 
         return result;
@@ -96,15 +116,23 @@ public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, 
 
     ReleaseResult changePermits(String name, long sessionId, long threadId, UUID invocationUid, int permits) {
         ReleaseResult result = getOrInitResource(name).change(sessionId, threadId, invocationUid, permits);
-        for (SemaphoreInvocationKey key : result.acquired) {
+        for (AcquireInvocationKey key : result.acquired) {
             removeWaitKey(key);
         }
 
-        for (SemaphoreInvocationKey key : result.cancelled) {
+        for (AcquireInvocationKey key : result.cancelled) {
             removeWaitKey(key);
         }
 
         return result;
+    }
+
+    long generateThreadId(long initialValue) {
+        if (generatedThreadId == null) {
+            generatedThreadId = initialValue;
+        }
+
+        return ++generatedThreadId;
     }
 
     @Override
@@ -114,6 +142,27 @@ public class SemaphoreRegistry extends ResourceRegistry<SemaphoreInvocationKey, 
 
     @Override
     public int getId() {
-        return RaftSemaphoreDataSerializerHook.SEMAPHORE_REGISTRY;
+        return RaftSemaphoreDataSerializerHook.RAFT_SEMAPHORE_REGISTRY;
+    }
+
+    @Override
+    public void writeData(ObjectDataOutput out)
+            throws IOException {
+        super.writeData(out);
+        boolean generatedThreadIdExists = (generatedThreadId != null);
+        out.writeBoolean(generatedThreadIdExists);
+        if (generatedThreadIdExists) {
+            out.writeLong(generatedThreadId);
+        }
+    }
+
+    @Override
+    public void readData(ObjectDataInput in)
+            throws IOException {
+        super.readData(in);
+        boolean generatedThreadIdExists = in.readBoolean();
+        if (generatedThreadIdExists) {
+            generatedThreadId = in.readLong();
+        }
     }
 }

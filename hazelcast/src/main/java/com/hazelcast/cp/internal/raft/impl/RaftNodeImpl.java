@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl;
 
-import com.hazelcast.config.raft.RaftAlgorithmConfig;
+import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.cp.internal.raft.MembershipChangeType;

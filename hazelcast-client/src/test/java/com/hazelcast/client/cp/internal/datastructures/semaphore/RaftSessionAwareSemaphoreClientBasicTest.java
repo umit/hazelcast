@@ -21,7 +21,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSessionAwareSemaphoreBasicTest;
-import com.hazelcast.cp.internal.session.AbstractSessionManager;
+import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.client.cp.internal.session.SessionManagerProvider;
 import com.hazelcast.client.cp.internal.ClientAccessor;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -60,7 +60,7 @@ public class RaftSessionAwareSemaphoreClientBasicTest extends RaftSessionAwareSe
     }
 
     @Override
-    protected AbstractSessionManager getSessionManager(HazelcastInstance instance) {
+    protected AbstractProxySessionManager getSessionManager(HazelcastInstance instance) {
         return SessionManagerProvider.get(ClientAccessor.getClient(instance));
     }
 

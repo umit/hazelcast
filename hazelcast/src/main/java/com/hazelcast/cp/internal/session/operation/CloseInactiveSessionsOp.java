@@ -16,14 +16,14 @@
 
 package com.hazelcast.cp.internal.session.operation;
 
-import com.hazelcast.config.raft.RaftConfig;
+import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
-import com.hazelcast.cp.internal.session.SessionService;
+import com.hazelcast.cp.internal.session.RaftSessionService;
 import com.hazelcast.cp.internal.session.RaftSessionServiceDataSerializerHook;
 
 import java.io.IOException;
@@ -32,7 +32,7 @@ import java.util.Collection;
 
 /**
  * Closes inactive sessions. A session is considered to be inactive if it is committing heartbeats
- * but has not acquired any resource for {@link RaftConfig#getSessionTimeToLiveSeconds()}.
+ * but has not acquired any resource for {@link CPSubsystemConfig#getSessionTimeToLiveSeconds()}.
  * There is no point for committing heartbeats for such sessions. If clients commit a new session-based operation afterwards,
  * they can create a new session.
  */
@@ -49,7 +49,7 @@ public class CloseInactiveSessionsOp extends RaftOp implements IndeterminateOper
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
-        SessionService service = getService();
+        RaftSessionService service = getService();
         service.closeInactiveSessions(groupId, sessions);
         return null;
     }
@@ -61,7 +61,7 @@ public class CloseInactiveSessionsOp extends RaftOp implements IndeterminateOper
 
     @Override
     public String getServiceName() {
-        return SessionService.SERVICE_NAME;
+        return RaftSessionService.SERVICE_NAME;
     }
 
     @Override
@@ -71,7 +71,7 @@ public class CloseInactiveSessionsOp extends RaftOp implements IndeterminateOper
 
     @Override
     public int getId() {
-        return RaftSessionServiceDataSerializerHook.CLOSE_INACTIVE_SESSIONS;
+        return RaftSessionServiceDataSerializerHook.CLOSE_INACTIVE_SESSIONS_OP;
     }
 
 

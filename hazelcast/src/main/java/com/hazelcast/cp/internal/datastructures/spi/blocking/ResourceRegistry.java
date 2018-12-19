@@ -49,11 +49,11 @@ import static java.util.Collections.unmodifiableMap;
  */
 public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingResource<W>> implements DataSerializable {
 
-    private RaftGroupId groupId;
-    private final Map<String, R> resources = new ConcurrentHashMap<String, R>();
-    private final Set<String> destroyedNames = new HashSet<String>();
+    protected RaftGroupId groupId;
+    protected final Map<String, R> resources = new ConcurrentHashMap<String, R>();
+    protected final Set<String> destroyedNames = new HashSet<String>();
     // value.element1: timeout duration (persisted in the snapshot), value.element2: deadline timestamp (transient)
-    private final Map<W, Tuple2<Long, Long>> waitTimeouts = new ConcurrentHashMap<W, Tuple2<Long, Long>>();
+    protected final Map<W, Tuple2<Long, Long>> waitTimeouts = new ConcurrentHashMap<W, Tuple2<Long, Long>>();
 
     public ResourceRegistry() {
     }
@@ -63,6 +63,8 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
     }
 
     protected abstract R createNewResource(RaftGroupId groupId, String name);
+
+    protected abstract ResourceRegistry<W, R> cloneForSnapshot();
 
     protected final R getResourceOrNull(String name) {
         checkNotDestroyed(name);

@@ -20,7 +20,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.semaphore.proxy.RaftSessionAwareSemaphoreProxy;
-import com.hazelcast.cp.internal.session.SessionManagerService;
+import com.hazelcast.cp.internal.session.ProxySessionManagerService;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
@@ -28,8 +28,8 @@ import com.hazelcast.util.ThreadUtil;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import static com.hazelcast.cp.internal.session.SessionManagerService.NO_SESSION_ID;
-import static com.hazelcast.cp.internal.session.SessionManagerService.SERVICE_NAME;
+import static com.hazelcast.cp.internal.session.ProxySessionManagerService.NO_SESSION_ID;
+import static com.hazelcast.cp.internal.session.ProxySessionManagerService.SERVICE_NAME;
 import static org.junit.Assert.assertNotEquals;
 
 @RunWith(HazelcastSerialClassRunner.class)
@@ -37,8 +37,8 @@ import static org.junit.Assert.assertNotEquals;
 public class RaftSessionAwareSemaphoreFailureTest extends RaftSemaphoreFailureTest {
 
     @Override
-    boolean isStrictModeEnabled() {
-        return true;
+    boolean isJDKCompatible() {
+        return false;
     }
 
     @Override
@@ -48,7 +48,7 @@ public class RaftSessionAwareSemaphoreFailureTest extends RaftSemaphoreFailureTe
 
     @Override
     long getSessionId(HazelcastInstance semaphoreInstance, RaftGroupId groupId) {
-        SessionManagerService service = getNodeEngineImpl(semaphoreInstance).getService(SERVICE_NAME);
+        ProxySessionManagerService service = getNodeEngineImpl(semaphoreInstance).getService(SERVICE_NAME);
         long sessionId = service.getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 
@@ -56,7 +56,7 @@ public class RaftSessionAwareSemaphoreFailureTest extends RaftSemaphoreFailureTe
     }
 
     @Override
-    long getThreadId(HazelcastInstance semaphoreInstance, RaftGroupId groupId) {
+    long getThreadId(RaftGroupId groupId) {
         return ThreadUtil.getThreadId();
     }
 

@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal;
 
-import com.hazelcast.config.raft.RaftConfig;
+import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.Member;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
@@ -24,7 +24,7 @@ import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
 import com.hazelcast.cp.internal.raft.impl.RaftNode;
 import com.hazelcast.cp.internal.exception.CannotCreateRaftGroupException;
-import com.hazelcast.cp.internal.exception.CannotRemoveMemberException;
+import com.hazelcast.cp.internal.exception.CannotRemoveCPMemberException;
 import com.hazelcast.cp.internal.exception.MetadataRaftGroupNotInitializedException;
 import com.hazelcast.cp.internal.raftop.metadata.CreateMetadataRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.CreateRaftNodeOp;
@@ -79,7 +79,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     private final NodeEngine nodeEngine;
     private final RaftService raftService;
     private final ILogger logger;
-    private final RaftConfig config;
+    private final CPSubsystemConfig config;
 
     private final AtomicReference<RaftMemberImpl> localMember = new AtomicReference<RaftMemberImpl>();
     // groups are read outside of Raft
@@ -90,7 +90,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     private Collection<RaftMemberImpl> initialRaftMembers;
     private MembershipChangeContext membershipChangeContext;
 
-    MetadataRaftGroupManager(NodeEngine nodeEngine, RaftService raftService, RaftConfig config) {
+    MetadataRaftGroupManager(NodeEngine nodeEngine, RaftService raftService, CPSubsystemConfig config) {
         this.nodeEngine = nodeEngine;
         this.raftService = raftService;
         this.logger = nodeEngine.getLogger(getClass());
@@ -448,7 +448,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
                 return true;
             }
 
-            throw new CannotRemoveMemberException("There is already an ongoing raft group membership change process. "
+            throw new CannotRemoveCPMemberException("There is already an ongoing raft group membership change process. "
                     + "Cannot process remove request of " + leavingMember);
         }
 
@@ -719,8 +719,8 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             }
             latestMembers = members;
 
-            if (members.size() < config.getCpNodeCount()) {
-                logger.warning("Waiting for " + config.getCpNodeCount() + " Raft members to join the cluster. "
+            if (members.size() < config.getCpMemberCount()) {
+                logger.warning("Waiting for " + config.getCpMemberCount() + " Raft members to join the cluster. "
                         + "Current Raft members count: " + members.size());
                 ExecutionService executionService = nodeEngine.getExecutionService();
                 executionService.schedule(this, DISCOVER_INITIAL_RAFT_MEMBERS_TASK_DELAY_MILLIS, MILLISECONDS);
@@ -774,9 +774,9 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         }
 
         private List<RaftMemberImpl> getInitialRaftMembers(Collection<Member> members) {
-            assert members.size() >= config.getCpNodeCount();
-            List<Member> memberList = new ArrayList<Member>(members).subList(0, config.getCpNodeCount());
-            List<RaftMemberImpl> raftMembers = new ArrayList<RaftMemberImpl>(config.getCpNodeCount());
+            assert members.size() >= config.getCpMemberCount();
+            List<Member> memberList = new ArrayList<Member>(members).subList(0, config.getCpMemberCount());
+            List<RaftMemberImpl> raftMembers = new ArrayList<RaftMemberImpl>(config.getCpMemberCount());
             for (Member member : memberList) {
                 RaftMemberImpl raftMember = new RaftMemberImpl(member);
                 raftMembers.add(raftMember);

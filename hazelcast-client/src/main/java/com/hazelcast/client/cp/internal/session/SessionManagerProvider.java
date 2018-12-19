@@ -27,18 +27,18 @@ import java.util.concurrent.ConcurrentMap;
  */
 public final class SessionManagerProvider {
 
-    private static final ConcurrentMap<String, ClientSessionManager> sessionManagers
-        = new ConcurrentHashMap<String, ClientSessionManager>();
+    private static final ConcurrentMap<String, ClientProxySessionManager> sessionManagers
+        = new ConcurrentHashMap<String, ClientProxySessionManager>();
 
 
-    public static ClientSessionManager get(HazelcastClientInstanceImpl client) {
-        ClientSessionManager sessionManager = sessionManagers.get(client.getName());
+    public static ClientProxySessionManager get(HazelcastClientInstanceImpl client) {
+        ClientProxySessionManager sessionManager = sessionManagers.get(client.getName());
         if (sessionManager != null) {
             return sessionManager;
         }
 
-        sessionManager = new ClientSessionManager(client);
-        ClientSessionManager current = sessionManagers.putIfAbsent(client.getName(), sessionManager);
+        sessionManager = new ClientProxySessionManager(client);
+        ClientProxySessionManager current = sessionManagers.putIfAbsent(client.getName(), sessionManager);
         return current != null ? current : sessionManager;
     }
 

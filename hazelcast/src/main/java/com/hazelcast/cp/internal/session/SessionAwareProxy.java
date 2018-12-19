@@ -24,15 +24,19 @@ import com.hazelcast.cp.RaftGroupId;
 public abstract class SessionAwareProxy {
 
     protected final RaftGroupId groupId;
-    private final AbstractSessionManager sessionManager;
+    private final AbstractProxySessionManager sessionManager;
 
-    protected SessionAwareProxy(AbstractSessionManager sessionManager, RaftGroupId groupId) {
+    protected SessionAwareProxy(AbstractProxySessionManager sessionManager, RaftGroupId groupId) {
         this.sessionManager = sessionManager;
         this.groupId = groupId;
     }
 
     public final RaftGroupId getGroupId() {
         return groupId;
+    }
+
+    protected final Long getOrCreateUniqueThreadId(RaftGroupId groupId) {
+        return sessionManager.getOrCreateUniqueThreadId(groupId);
     }
 
     /**
@@ -77,7 +81,7 @@ public abstract class SessionAwareProxy {
 
     /**
      * Returns id of the session opened for the given Raft group.
-     * Returns {@link AbstractSessionManager#NO_SESSION_ID} if no session exists.
+     * Returns {@link AbstractProxySessionManager#NO_SESSION_ID} if no session exists.
      */
     protected final long getSession() {
         return sessionManager.getSession(groupId);

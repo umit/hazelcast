@@ -24,10 +24,6 @@ import com.hazelcast.core.HazelcastException;
  */
 public class WaitKeyCancelledException extends HazelcastException {
 
-    // TODO [basri] fixit
-    public static final int ERROR_CODE = 6768;
-
-
     public WaitKeyCancelledException() {
     }
 

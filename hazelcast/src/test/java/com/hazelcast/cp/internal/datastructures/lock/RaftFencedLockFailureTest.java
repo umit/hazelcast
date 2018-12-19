@@ -26,8 +26,8 @@ import com.hazelcast.cp.internal.datastructures.lock.operation.LockOp;
 import com.hazelcast.cp.internal.datastructures.lock.operation.TryLockOp;
 import com.hazelcast.cp.internal.datastructures.lock.operation.UnlockOp;
 import com.hazelcast.cp.internal.datastructures.lock.proxy.RaftFencedLockProxy;
-import com.hazelcast.cp.internal.session.AbstractSessionManager;
-import com.hazelcast.cp.internal.session.SessionManagerService;
+import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
+import com.hazelcast.cp.internal.session.ProxySessionManagerService;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.test.AssertTask;
@@ -44,7 +44,7 @@ import org.junit.runner.RunWith;
 import java.util.UUID;
 
 import static com.hazelcast.cp.internal.datastructures.lock.RaftLockService.INVALID_FENCE;
-import static com.hazelcast.cp.internal.session.AbstractSessionManager.NO_SESSION_ID;
+import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 import static com.hazelcast.util.ThreadUtil.getThreadId;
 import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.util.concurrent.TimeUnit.MINUTES;
@@ -79,15 +79,15 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         try {
             RaftGroupId groupId = raftService.createRaftGroupForProxy(name);
             String objectName = RaftService.getObjectNameForProxy(name);
-            SessionManagerService sessionManager = nodeEngine.getService(SessionManagerService.SERVICE_NAME);
+            ProxySessionManagerService sessionManager = nodeEngine.getService(ProxySessionManagerService.SERVICE_NAME);
             return new RaftFencedLockProxy(raftService.getInvocationManager(), sessionManager, groupId, objectName);
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
     }
 
-    private AbstractSessionManager getSessionManager() {
-        return getNodeEngineImpl(lockInstance).getService(SessionManagerService.SERVICE_NAME);
+    private AbstractProxySessionManager getSessionManager() {
+        return getNodeEngineImpl(lockInstance).getService(ProxySessionManagerService.SERVICE_NAME);
     }
 
     @Test
@@ -107,7 +107,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
-                LockRegistry registry = service.getRegistryOrNull(groupId);
+                RaftLockRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
@@ -119,7 +119,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
-                LockRegistry registry = service.getRegistryOrNull(groupId);
+                RaftLockRegistry registry = service.getRegistryOrNull(groupId);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
         }, 10);
@@ -144,7 +144,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
-                LockRegistry registry = service.getRegistryOrNull(groupId);
+                RaftLockRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
@@ -176,7 +176,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
-                LockRegistry registry = service.getRegistryOrNull(groupId);
+                RaftLockRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
@@ -188,7 +188,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
-                LockRegistry registry = service.getRegistryOrNull(groupId);
+                RaftLockRegistry registry = service.getRegistryOrNull(groupId);
                 assertEquals(2, registry.getWaitTimeouts().size());
             }
         });
@@ -213,7 +213,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
-                LockRegistry registry = service.getRegistryOrNull(groupId);
+                RaftLockRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
@@ -245,7 +245,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
-                LockRegistry registry = service.getRegistryOrNull(groupId);
+                RaftLockRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
@@ -257,7 +257,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
-                LockRegistry registry = service.getRegistryOrNull(groupId);
+                RaftLockRegistry registry = service.getRegistryOrNull(groupId);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
         }, 10);
@@ -281,7 +281,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
-                LockRegistry registry = service.getRegistryOrNull(groupId);
+                RaftLockRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
@@ -452,7 +452,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
-                LockRegistry registry = service.getRegistryOrNull(groupId);
+                RaftLockRegistry registry = service.getRegistryOrNull(groupId);
                 assertFalse(registry.getLockOwnershipState(name).isLocked());
             }
         });
@@ -483,7 +483,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
-                LockRegistry registry = service.getRegistryOrNull(groupId);
+                RaftLockRegistry registry = service.getRegistryOrNull(groupId);
                 assertFalse(registry.getLockOwnershipState(name).isLocked());
             }
         });

@@ -23,10 +23,6 @@ import com.hazelcast.core.HazelcastException;
  */
 public class SessionExpiredException extends HazelcastException {
 
-    // TODO [basri] fixit
-    public static final int ERROR_CODE = 6767;
-
-
     public SessionExpiredException() {
     }
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.hazelcast.config.raft;
+package com.hazelcast.config.cp;
 
 import static com.hazelcast.util.Preconditions.checkPositive;
 import static com.hazelcast.util.Preconditions.checkTrue;
@@ -23,19 +23,25 @@ import static com.hazelcast.util.Preconditions.checkTrue;
  * TODO: Javadoc Pending...
  *
  */
-public class RaftConfig {
+public class CPSubsystemConfig {
 
     /**
-     * Name of the default group if no group name is specified by Raft data structures.
+     * Name of the default group if no group name is specified by CP data structures.
      */
-    public static final String DEFAULT_RAFT_GROUP_NAME = "default";
+    public static final String DEFAULT_GROUP_NAME = "default";
 
-    private static final int DEFAULT_SESSION_TTL_SECONDS = 30;
+    /**
+     * Default value for session time to live duration after its last heartbeat
+     */
+    public static final int DEFAULT_SESSION_TTL_SECONDS = 30;
 
-    private static final int DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 5;
+    /**
+     * Default value for session heartbeat intervals
+     */
+    public static final int DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 5;
 
 
-    private int cpNodeCount;
+    private int cpMemberCount;
 
     private int groupSize;
 
@@ -52,41 +58,41 @@ public class RaftConfig {
      */
     private boolean failOnIndeterminateOperationState;
 
-    private long missingRaftMemberRemovalSeconds;
+    private long missingCpMemberAutoRemovalSeconds;
 
-    public RaftConfig() {
+    public CPSubsystemConfig() {
     }
 
-    public RaftConfig(RaftConfig config) {
-        this.cpNodeCount = config.cpNodeCount;
+    public CPSubsystemConfig(CPSubsystemConfig config) {
+        this.cpMemberCount = config.cpMemberCount;
         this.groupSize = config.groupSize;
         this.raftAlgorithmConfig = new RaftAlgorithmConfig(config.raftAlgorithmConfig);
         this.sessionTimeToLiveSeconds = config.sessionTimeToLiveSeconds;
         this.sessionHeartbeatIntervalSeconds = config.sessionHeartbeatIntervalSeconds;
         this.failOnIndeterminateOperationState = config.failOnIndeterminateOperationState;
-        this.missingRaftMemberRemovalSeconds = config.missingRaftMemberRemovalSeconds;
+        this.missingCpMemberAutoRemovalSeconds = config.missingCpMemberAutoRemovalSeconds;
     }
 
-    public int getCpNodeCount() {
-        return cpNodeCount;
+    public int getCpMemberCount() {
+        return cpMemberCount;
     }
 
-    public RaftConfig setCpNodeCount(int cpNodeCount) {
-        checkTrue(cpNodeCount >= 2, "CP subsystem must have at least 2 members");
-        checkTrue(groupSize <= cpNodeCount,
-                "The group size parameter cannot be bigger than the number of the cp node count");
-        this.cpNodeCount = cpNodeCount;
+    public CPSubsystemConfig setCpMemberCount(int cpMemberCount) {
+        checkTrue(cpMemberCount >= 2, "CP subsystem must have at least 2 members");
+        checkTrue(groupSize <= cpMemberCount,
+                "The group size parameter cannot be bigger than the number of the cp member count");
+        this.cpMemberCount = cpMemberCount;
         return this;
     }
 
     public int getGroupSize() {
-        return groupSize > 0 ? groupSize : cpNodeCount;
+        return groupSize > 0 ? groupSize : cpMemberCount;
     }
 
-    public RaftConfig setGroupSize(int groupSize) {
+    public CPSubsystemConfig setGroupSize(int groupSize) {
         checkTrue(groupSize == 0 || groupSize >= 2, "Raft groups must have at least 2 members");
-        checkTrue(groupSize <= cpNodeCount,
-                "The group size parameter cannot be bigger than the number of the cp node count");
+        checkTrue(groupSize <= cpMemberCount,
+                "The group size parameter cannot be bigger than the number of the cp member count");
         this.groupSize = groupSize;
         return this;
     }
@@ -95,7 +101,7 @@ public class RaftConfig {
         return raftAlgorithmConfig;
     }
 
-    public RaftConfig setRaftAlgorithmConfig(RaftAlgorithmConfig raftAlgorithmConfig) {
+    public CPSubsystemConfig setRaftAlgorithmConfig(RaftAlgorithmConfig raftAlgorithmConfig) {
         this.raftAlgorithmConfig = raftAlgorithmConfig;
         return this;
     }
@@ -104,7 +110,7 @@ public class RaftConfig {
         return sessionTimeToLiveSeconds;
     }
 
-    public RaftConfig setSessionTimeToLiveSeconds(int sessionTimeToLiveSeconds) {
+    public CPSubsystemConfig setSessionTimeToLiveSeconds(int sessionTimeToLiveSeconds) {
         checkPositive(sessionTimeToLiveSeconds, "Session TTL should be greater than zero!");
         checkTrue(sessionTimeToLiveSeconds > sessionHeartbeatIntervalSeconds,
                 "Session timeout must be greater than heartbeat interval!");
@@ -116,12 +122,12 @@ public class RaftConfig {
         return sessionHeartbeatIntervalSeconds;
     }
 
-    public RaftConfig setSessionHeartbeatIntervalSeconds(int sessionHeartbeatIntervalSeconds) {
+    public CPSubsystemConfig setSessionHeartbeatIntervalSeconds(int sessionHeartbeatIntervalSeconds) {
         checkPositive(sessionTimeToLiveSeconds, "Session heartbeat interval should be greater than zero!");
         checkTrue(sessionTimeToLiveSeconds > sessionHeartbeatIntervalSeconds,
                 "Session TTL must be greater than heartbeat interval!");
-        checkTrue(missingRaftMemberRemovalSeconds == 0 || sessionTimeToLiveSeconds <= missingRaftMemberRemovalSeconds,
-                "Session TTL must be smaller than or equal to missingRaftMemberRemovalSeconds!");
+        checkTrue(missingCpMemberAutoRemovalSeconds == 0 || sessionTimeToLiveSeconds <= missingCpMemberAutoRemovalSeconds,
+                "Session TTL must be smaller than or equal to missingCpMemberAutoRemovalSeconds!");
         this.sessionHeartbeatIntervalSeconds = sessionHeartbeatIntervalSeconds;
         return this;
     }
@@ -130,19 +136,19 @@ public class RaftConfig {
         return failOnIndeterminateOperationState;
     }
 
-    public RaftConfig setFailOnIndeterminateOperationState(boolean failOnIndeterminateOperationState) {
+    public CPSubsystemConfig setFailOnIndeterminateOperationState(boolean failOnIndeterminateOperationState) {
         this.failOnIndeterminateOperationState = failOnIndeterminateOperationState;
         return this;
     }
 
-    public long getMissingRaftMemberRemovalSeconds() {
-        return missingRaftMemberRemovalSeconds;
+    public long getMissingCpMemberAutoRemovalSeconds() {
+        return missingCpMemberAutoRemovalSeconds;
     }
 
-    public RaftConfig setMissingRaftMemberRemovalSeconds(long missingRaftMemberRemovalSeconds) {
-        checkTrue(missingRaftMemberRemovalSeconds == 0 || missingRaftMemberRemovalSeconds >= sessionTimeToLiveSeconds,
-                "missingRaftMemberRemovalSeconds must be either 0 or greater than or equal to session TTL");
-        this.missingRaftMemberRemovalSeconds = missingRaftMemberRemovalSeconds;
+    public CPSubsystemConfig setMissingCpMemberAutoRemovalSeconds(long missingCpMemberAutoRemovalSeconds) {
+        checkTrue(missingCpMemberAutoRemovalSeconds == 0 || missingCpMemberAutoRemovalSeconds >= sessionTimeToLiveSeconds,
+                "missingCpMemberAutoRemovalSeconds must be either 0 or greater than or equal to session TTL");
+        this.missingCpMemberAutoRemovalSeconds = missingCpMemberAutoRemovalSeconds;
         return this;
     }
 }

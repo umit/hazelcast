@@ -111,9 +111,9 @@ public class RaftMemberAutoRemoveTest extends HazelcastRaftTestSupport {
         Config config = super.createConfig(cpNodeCount, groupSize);
         config.setProperty(GroupProperty.MERGE_FIRST_RUN_DELAY_SECONDS.getName(), "5")
               .setProperty(GroupProperty.MERGE_NEXT_RUN_DELAY_SECONDS.getName(), "5")
-              .getRaftConfig()
+              .getCpSubsystemConfig()
               .setSessionTimeToLiveSeconds(missingRaftMemberRemovalSeconds)
-              .setMissingRaftMemberRemovalSeconds(missingRaftMemberRemovalSeconds);
+              .setMissingCpMemberAutoRemovalSeconds(missingRaftMemberRemovalSeconds);
 
         return config;
     }

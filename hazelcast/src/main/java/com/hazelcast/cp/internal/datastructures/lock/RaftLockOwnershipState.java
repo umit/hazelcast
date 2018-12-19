@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.datastructures.lock;
 
-import com.hazelcast.cp.internal.session.AbstractSessionManager;
+import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
@@ -65,7 +65,7 @@ public class RaftLockOwnershipState implements IdentifiedDataSerializable {
     }
 
     /**
-     * Returns the session id that currently holds the lock. Returns {@link AbstractSessionManager#NO_SESSION_ID} if not held
+     * Returns the session id that currently holds the lock. Returns {@link AbstractProxySessionManager#NO_SESSION_ID} if not held
      */
     public long getSessionId() {
         return sessionId;
@@ -86,7 +86,7 @@ public class RaftLockOwnershipState implements IdentifiedDataSerializable {
 
     @Override
     public int getId() {
-        return RaftLockDataSerializerHook.RAFT_LOCK_OWNERSHIP;
+        return RaftLockDataSerializerHook.RAFT_LOCK_OWNERSHIP_STATE;
     }
 
     @Override

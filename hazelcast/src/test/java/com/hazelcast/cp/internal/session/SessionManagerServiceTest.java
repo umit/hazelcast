@@ -26,11 +26,11 @@ import static org.mockito.Mockito.spy;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
-public class SessionManagerServiceTest extends AbstractSessionManagerTest {
+public class SessionManagerServiceTest extends AbstractProxySessionManagerTest {
 
     @Override
-    protected SessionManagerService getSessionManager() {
-        SessionManagerService service = getNodeEngineImpl(members[0]).getService(SessionManagerService.SERVICE_NAME);
+    protected ProxySessionManagerService getSessionManager() {
+        ProxySessionManagerService service = getNodeEngineImpl(members[0]).getService(ProxySessionManagerService.SERVICE_NAME);
         return spy(service);
     }
 }

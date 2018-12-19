@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.datastructures.semaphore;
 
 import com.hazelcast.config.Config;
-import com.hazelcast.config.raft.RaftSemaphoreConfig;
+import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.RaftGroupId;
@@ -25,6 +25,7 @@ import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.AcquirePermitsOp;
+import com.hazelcast.cp.internal.session.ProxySessionManagerService;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.util.RandomPicker;
@@ -39,6 +40,7 @@ import static com.hazelcast.cp.internal.datastructures.spi.RaftProxyFactory.crea
 import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
@@ -46,6 +48,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
 
     private HazelcastInstance[] instances;
     private HazelcastInstance semaphoreInstance;
+    private ProxySessionManagerService sessionManagerService;
     private ISemaphore semaphore;
     private String name = "semaphore";
 
@@ -62,6 +65,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
 
     private ISemaphore createSemaphore(String name) {
         semaphoreInstance = instances[RandomPicker.getInt(instances.length)];
+        sessionManagerService = getNodeEngineImpl(semaphoreInstance).getService(ProxySessionManagerService.SERVICE_NAME);
         return create(semaphoreInstance, RaftSemaphoreService.SERVICE_NAME, name);
     }
 
@@ -69,18 +73,20 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
     protected Config createConfig(int cpNodeCount, int groupSize) {
         Config config = super.createConfig(cpNodeCount, groupSize);
 
-        RaftSemaphoreConfig semaphoreConfig = new RaftSemaphoreConfig(name, isStrictModeEnabled());
-        config.addRaftSemaphoreConfig(semaphoreConfig);
+        CPSemaphoreConfig semaphoreConfig = new CPSemaphoreConfig(name, isJDKCompatible());
+        config.addCPSemaphoreConfig(semaphoreConfig);
         return config;
     }
 
-    abstract boolean isStrictModeEnabled();
+    abstract boolean isJDKCompatible();
 
     abstract RaftGroupId getGroupId(ISemaphore semaphore);
 
     abstract long getSessionId(HazelcastInstance semaphoreInstance, RaftGroupId groupId);
 
-    abstract long getThreadId(HazelcastInstance semaphoreInstance, RaftGroupId groupId);
+    long getThreadId(RaftGroupId groupId) {
+        return sessionManagerService.getOrCreateUniqueThreadId(groupId);
+    }
 
     @Test
     public void testRetriedAcquireDoesNotCancelPendingAcquireRequestWhenAlreadyAcquired() throws InterruptedException {
@@ -89,7 +95,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
 
         final RaftGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
-        long threadId = getThreadId(semaphoreInstance, groupId);
+        long threadId = getThreadId(groupId);
         UUID invUid = newUnsecureUUID();
         RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
 
@@ -99,7 +105,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
             @Override
             public void run() {
                 RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
-                SemaphoreRegistry registry = service.getRegistryOrNull(groupId);
+                RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
@@ -111,7 +117,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
             @Override
             public void run() {
                 RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
-                SemaphoreRegistry registry = service.getRegistryOrNull(groupId);
+                RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
         }, 10);
@@ -124,7 +130,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
 
         final RaftGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
-        long threadId = getThreadId(semaphoreInstance, groupId);
+        long threadId = getThreadId(groupId);
         UUID invUid1 = newUnsecureUUID();
         UUID invUid2 = newUnsecureUUID();
         RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
@@ -136,7 +142,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
             @Override
             public void run() {
                 RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
-                SemaphoreRegistry registry = service.getRegistryOrNull(groupId);
+                RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
@@ -160,7 +166,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
 
         final RaftGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
-        long threadId = getThreadId(semaphoreInstance, groupId);
+        long threadId = getThreadId(groupId);
         UUID invUid1 = newUnsecureUUID();
         UUID invUid2 = newUnsecureUUID();
         RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
@@ -172,7 +178,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
             @Override
             public void run() {
                 RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
-                SemaphoreRegistry registry = service.getRegistryOrNull(groupId);
+                RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
@@ -194,7 +200,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
 
         final RaftGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
-        long threadId = getThreadId(semaphoreInstance, groupId);
+        long threadId = getThreadId(groupId);
         UUID invUid1 = newUnsecureUUID();
         UUID invUid2 = newUnsecureUUID();
         RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
@@ -206,7 +212,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
             @Override
             public void run() {
                 RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
-                SemaphoreRegistry registry = service.getRegistryOrNull(groupId);
+                RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
@@ -230,7 +236,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
 
         final RaftGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
-        long threadId = getThreadId(semaphoreInstance, groupId);
+        long threadId = getThreadId(groupId);
         UUID invUid1 = newUnsecureUUID();
         UUID invUid2 = newUnsecureUUID();
         RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
@@ -242,7 +248,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
             @Override
             public void run() {
                 RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
-                SemaphoreRegistry registry = service.getRegistryOrNull(groupId);
+                RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
@@ -264,7 +270,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
 
         final RaftGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
-        long threadId = getThreadId(semaphoreInstance, groupId);
+        long threadId = getThreadId(groupId);
         UUID invUid1 = newUnsecureUUID();
         UUID invUid2 = newUnsecureUUID();
         RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
@@ -276,7 +282,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
             @Override
             public void run() {
                 RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
-                SemaphoreRegistry registry = service.getRegistryOrNull(groupId);
+                RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
@@ -300,7 +306,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
 
         final RaftGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
-        long threadId = getThreadId(semaphoreInstance, groupId);
+        long threadId = getThreadId(groupId);
         UUID invUid1 = newUnsecureUUID();
         UUID invUid2 = newUnsecureUUID();
         RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
@@ -312,7 +318,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
             @Override
             public void run() {
                 RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
-                SemaphoreRegistry registry = service.getRegistryOrNull(groupId);
+                RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
@@ -334,7 +340,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
 
         final RaftGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
-        long threadId = getThreadId(semaphoreInstance, groupId);
+        long threadId = getThreadId(groupId);
         UUID invUid = newUnsecureUUID();
         RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
 
@@ -345,7 +351,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
             @Override
             public void run() {
                 RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
-                SemaphoreRegistry registry = service.getRegistryOrNull(groupId);
+                RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
@@ -372,7 +378,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
 
         final RaftGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
-        long threadId = getThreadId(semaphoreInstance, groupId);
+        long threadId = getThreadId(groupId);
         UUID invUid = newUnsecureUUID();
         RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
 
@@ -383,7 +389,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
             @Override
             public void run() {
                 RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
-                SemaphoreRegistry registry = service.getRegistryOrNull(groupId);
+                RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
@@ -410,7 +416,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
 
         final RaftGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
-        long threadId = getThreadId(semaphoreInstance, groupId);
+        long threadId = getThreadId(groupId);
         UUID invUid = newUnsecureUUID();
         RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
 
@@ -421,7 +427,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
             @Override
             public void run() {
                 RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
-                SemaphoreRegistry registry = service.getRegistryOrNull(groupId);
+                RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
@@ -445,7 +451,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
 
         final RaftGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
-        long threadId = getThreadId(semaphoreInstance, groupId);
+        long threadId = getThreadId(groupId);
         UUID invUid1 = newUnsecureUUID();
         RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
 
@@ -456,7 +462,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
             @Override
             public void run() {
                 RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
-                SemaphoreRegistry registry = service.getRegistryOrNull(groupId);
+                RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(1, registry.getWaitTimeouts().size());
             }
@@ -477,7 +483,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
             @Override
             public void run() {
                 RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
-                SemaphoreRegistry registry = service.getRegistryOrNull(groupId);
+                RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(2, registry.getWaitTimeouts().size());
             }
@@ -490,7 +496,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
             @Override
             public void run() {
                 RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
-                SemaphoreRegistry registry = service.getRegistryOrNull(groupId);
+                RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertEquals(3, registry.getWaitTimeouts().size());
             }
@@ -508,6 +514,17 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
         f2.join();
 
         assertEquals(2, semaphore.availablePermits());
+    }
+
+    @Test
+    public void testAcquireOnMultipleProxies() {
+         ISemaphore semaphore2 = create(instances[0] == semaphoreInstance ? instances[1] : instances[0],
+                RaftSemaphoreService.SERVICE_NAME, name);
+
+         semaphore.init(1);
+         semaphore.tryAcquire(1);
+
+         assertFalse(semaphore2.tryAcquire());
     }
 
 }

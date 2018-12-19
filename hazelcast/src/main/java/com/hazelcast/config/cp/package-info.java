@@ -17,4 +17,4 @@
 /**
  * This package contains configuration classes for the CP sub-system
  */
-package com.hazelcast.config.raft;
+package com.hazelcast.config.cp;

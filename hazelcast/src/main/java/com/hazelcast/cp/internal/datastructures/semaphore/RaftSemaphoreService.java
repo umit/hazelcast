@@ -16,17 +16,17 @@
 
 package com.hazelcast.cp.internal.datastructures.semaphore;
 
-import com.hazelcast.config.raft.RaftSemaphoreConfig;
+import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
-import com.hazelcast.cp.internal.datastructures.spi.blocking.AbstractBlockingService;
 import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
-import com.hazelcast.cp.internal.session.SessionManagerService;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphore.AcquireResult;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphore.ReleaseResult;
 import com.hazelcast.cp.internal.datastructures.semaphore.proxy.RaftSessionAwareSemaphoreProxy;
 import com.hazelcast.cp.internal.datastructures.semaphore.proxy.RaftSessionlessSemaphoreProxy;
+import com.hazelcast.cp.internal.datastructures.spi.blocking.AbstractBlockingService;
+import com.hazelcast.cp.internal.session.ProxySessionManagerService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.util.ExceptionUtil;
 
@@ -38,7 +38,7 @@ import static com.hazelcast.cp.internal.RaftService.getObjectNameForProxy;
 /**
  * Contains Raft-based semaphore instances
  */
-public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvocationKey, RaftSemaphore, SemaphoreRegistry> {
+public class RaftSemaphoreService extends AbstractBlockingService<AcquireInvocationKey, RaftSemaphore, RaftSemaphoreRegistry> {
 
     /**
      * Name of the service
@@ -54,24 +54,24 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
         try {
             RaftGroupId groupId = raftService.createRaftGroupForProxy(name);
             String objectName = getObjectNameForProxy(name);
-            RaftSemaphoreConfig config = getConfig(name);
-            SessionManagerService sessionManager = nodeEngine.getService(SessionManagerService.SERVICE_NAME);
+            CPSemaphoreConfig config = getConfig(name);
+            ProxySessionManagerService sessionManager = nodeEngine.getService(ProxySessionManagerService.SERVICE_NAME);
             RaftInvocationManager invocationManager = raftService.getInvocationManager();
-            return config != null && config.isStrictModeEnabled()
-                    ? new RaftSessionAwareSemaphoreProxy(invocationManager, sessionManager, groupId, objectName)
-                    : new RaftSessionlessSemaphoreProxy(invocationManager, groupId, objectName);
+            return config != null && config.isJdkCompatible()
+                    ? new RaftSessionlessSemaphoreProxy(invocationManager, sessionManager, groupId, objectName)
+                    : new RaftSessionAwareSemaphoreProxy(invocationManager, sessionManager, groupId, objectName);
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
     }
 
-    private RaftSemaphoreConfig getConfig(String name) {
-        return nodeEngine.getConfig().findRaftSemaphoreConfig(name);
+    private CPSemaphoreConfig getConfig(String name) {
+        return nodeEngine.getConfig().findCPSemaphoreConfig(name);
     }
 
     public boolean initSemaphore(RaftGroupId groupId, String name, int permits) {
         try {
-            Collection<SemaphoreInvocationKey> acquired = getOrInitRegistry(groupId).init(name, permits);
+            Collection<AcquireInvocationKey> acquired = getOrInitRegistry(groupId).init(name, permits);
             notifyWaitKeys(groupId, acquired, true);
 
             return true;
@@ -81,14 +81,14 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
     }
 
     public int availablePermits(RaftGroupId groupId, String name) {
-        SemaphoreRegistry registry = getRegistryOrNull(groupId);
+        RaftSemaphoreRegistry registry = getRegistryOrNull(groupId);
         return registry != null ? registry.availablePermits(name) : 0;
     }
 
     public boolean acquirePermits(RaftGroupId groupId, long commitIndex, String name, long sessionId, long threadId,
                                   UUID invocationUid, int permits, long timeoutMs) {
         heartbeatSession(groupId, sessionId);
-        SemaphoreInvocationKey key = new SemaphoreInvocationKey(name, commitIndex, sessionId, threadId, invocationUid, permits);
+        AcquireInvocationKey key = new AcquireInvocationKey(name, commitIndex, sessionId, threadId, invocationUid, permits);
         AcquireResult result = getOrInitRegistry(groupId).acquire(name, key, timeoutMs);
 
         if (logger.isFineEnabled()) {
@@ -134,7 +134,11 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
         return result.success;
     }
 
-    private void notifyCancelledWaitKeys(RaftGroupId groupId, String name, Collection<SemaphoreInvocationKey> waitKeys) {
+    public long generateThreadId(RaftGroupId groupId, long initialValue) {
+        return getOrInitRegistry(groupId).generateThreadId(initialValue);
+    }
+
+    private void notifyCancelledWaitKeys(RaftGroupId groupId, String name, Collection<AcquireInvocationKey> waitKeys) {
         if (waitKeys.isEmpty()) {
             return;
         }
@@ -145,8 +149,8 @@ public class RaftSemaphoreService extends AbstractBlockingService<SemaphoreInvoc
     }
 
     @Override
-    protected SemaphoreRegistry createNewRegistry(RaftGroupId groupId) {
-        return new SemaphoreRegistry(groupId);
+    protected RaftSemaphoreRegistry createNewRegistry(RaftGroupId groupId) {
+        return new RaftSemaphoreRegistry(groupId);
     }
 
     @Override

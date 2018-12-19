@@ -38,7 +38,7 @@ import static java.lang.Math.max;
 /**
  * State-machine implementation of the Raft-based count down latch
  */
-public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocationKey> implements IdentifiedDataSerializable {
+public class RaftCountDownLatch extends BlockingResource<AwaitInvocationKey> implements IdentifiedDataSerializable {
 
     private int round;
     private int countDownFrom;
@@ -56,24 +56,24 @@ public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocatio
      * If the expected round is smaller than the current round, it is either a retry or a countDown() request
      * sent before re-initialization of the latch. In this case, this count down request is ignored.
      */
-    Tuple2<Integer, Collection<CountDownLatchInvocationKey>> countDown(int expectedRound, UUID invocationUuid) {
+    Tuple2<Integer, Collection<AwaitInvocationKey>> countDown(int expectedRound, UUID invocationUuid) {
         if (expectedRound > round) {
             throw new IllegalArgumentException("expected round: " + expectedRound + ", actual round: " + round);
         }
 
         if (expectedRound < round) {
-            Collection<CountDownLatchInvocationKey> c = Collections.emptyList();
+            Collection<AwaitInvocationKey> c = Collections.emptyList();
             return Tuple2.of(0, c);
         }
 
         countDownUids.add(invocationUuid);
         int remaining = getRemainingCount();
         if (remaining > 0) {
-            Collection<CountDownLatchInvocationKey> c = Collections.emptyList();
+            Collection<AwaitInvocationKey> c = Collections.emptyList();
             return Tuple2.of(remaining, c);
         }
 
-        Collection<CountDownLatchInvocationKey> w = new ArrayList<CountDownLatchInvocationKey>(waitKeys);
+        Collection<AwaitInvocationKey> w = new ArrayList<AwaitInvocationKey>(waitKeys);
         waitKeys.clear();
 
         return Tuple2.of(0, w);
@@ -96,7 +96,7 @@ public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocatio
     boolean await(long commitIndex, boolean wait) {
         boolean success = (getRemainingCount() == 0);
         if (!success && wait) {
-            waitKeys.add(new CountDownLatchInvocationKey(name, commitIndex));
+            waitKeys.add(new AwaitInvocationKey(name, commitIndex));
         }
 
         return success;
@@ -108,6 +108,18 @@ public class RaftCountDownLatch extends BlockingResource<CountDownLatchInvocatio
 
     int getRemainingCount() {
         return max(0, countDownFrom - countDownUids.size());
+    }
+
+    RaftCountDownLatch cloneForSnapshot() {
+        RaftCountDownLatch clone = new RaftCountDownLatch();
+        clone.groupId = this.groupId;
+        clone.name = this.name;
+        clone.waitKeys.addAll(this.waitKeys);
+        clone.round = this.round;
+        clone.countDownFrom = this.countDownFrom;
+        clone.countDownUids.addAll(this.countDownUids);
+
+        return clone;
     }
 
     @Override

@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.datastructures.semaphore;
 
 import com.hazelcast.config.Config;
-import com.hazelcast.config.raft.RaftSemaphoreConfig;
+import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.RaftGroupId;
@@ -25,8 +25,8 @@ import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.cp.internal.session.SessionExpiredException;
 import com.hazelcast.cp.internal.session.operation.CloseSessionOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.proxy.RaftSessionAwareSemaphoreProxy;
-import com.hazelcast.cp.internal.session.AbstractSessionManager;
-import com.hazelcast.cp.internal.session.SessionManagerService;
+import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
+import com.hazelcast.cp.internal.session.ProxySessionManagerService;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -41,7 +41,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import static com.hazelcast.cp.internal.session.AbstractSessionManager.NO_SESSION_ID;
+import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 import static com.hazelcast.cp.internal.datastructures.spi.RaftProxyFactory.create;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.junit.Assert.assertEquals;
@@ -516,7 +516,7 @@ public class RaftSessionAwareSemaphoreBasicTest extends HazelcastRaftTestSupport
             public void run() {
                 for (HazelcastInstance instance : instances) {
                     RaftSemaphoreService service = getNodeEngineImpl(instance).getService(RaftSemaphoreService.SERVICE_NAME);
-                    SemaphoreRegistry registry = service.getRegistryOrNull(getGroupId(semaphore));
+                    RaftSemaphoreRegistry registry = service.getRegistryOrNull(getGroupId(semaphore));
                     assertNotNull(registry);
                     assertFalse(registry.getWaitTimeouts().isEmpty());
                 }
@@ -533,15 +533,15 @@ public class RaftSessionAwareSemaphoreBasicTest extends HazelcastRaftTestSupport
             public void run() {
                 for (HazelcastInstance instance : instances) {
                     RaftSemaphoreService service = getNodeEngineImpl(instance).getService(RaftSemaphoreService.SERVICE_NAME);
-                    SemaphoreRegistry registry = service.getRegistryOrNull(getGroupId(semaphore));
+                    RaftSemaphoreRegistry registry = service.getRegistryOrNull(getGroupId(semaphore));
                     assertTrue(registry.getWaitTimeouts().isEmpty());
                 }
             }
         });
     }
 
-    protected AbstractSessionManager getSessionManager(HazelcastInstance instance) {
-        return getNodeEngineImpl(instance).getService(SessionManagerService.SERVICE_NAME);
+    protected AbstractProxySessionManager getSessionManager(HazelcastInstance instance) {
+        return getNodeEngineImpl(instance).getService(ProxySessionManagerService.SERVICE_NAME);
     }
 
     protected RaftGroupId getGroupId(ISemaphore semaphore) {
@@ -552,8 +552,8 @@ public class RaftSessionAwareSemaphoreBasicTest extends HazelcastRaftTestSupport
     protected Config createConfig(int cpNodeCount, int groupSize) {
         Config config = super.createConfig(cpNodeCount, groupSize);
 
-        RaftSemaphoreConfig semaphoreConfig = new RaftSemaphoreConfig(name, true);
-        config.addRaftSemaphoreConfig(semaphoreConfig);
+        CPSemaphoreConfig semaphoreConfig = new CPSemaphoreConfig(name, false);
+        config.addCPSemaphoreConfig(semaphoreConfig);
         return config;
     }
 }

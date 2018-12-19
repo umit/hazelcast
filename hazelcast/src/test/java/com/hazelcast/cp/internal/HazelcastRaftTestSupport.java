@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal;
 
 import com.hazelcast.config.Config;
-import com.hazelcast.config.raft.RaftConfig;
+import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.nio.Address;
 import com.hazelcast.cp.RaftGroupId;
@@ -130,11 +130,11 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         Config config = new Config();
         configureSplitBrainDelay(config);
 
-        RaftConfig raftConfig = new RaftConfig();
-        config.setRaftConfig(raftConfig);
+        CPSubsystemConfig cpSubsystemConfig = new CPSubsystemConfig();
+        config.setCpSubsystemConfig(cpSubsystemConfig);
 
         if (cpNodeCount > 0) {
-            raftConfig.setCpNodeCount(cpNodeCount).setGroupSize(groupSize);
+            cpSubsystemConfig.setCpMemberCount(cpNodeCount).setGroupSize(groupSize);
         }
 
         return config;

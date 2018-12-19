@@ -17,14 +17,16 @@
 package com.hazelcast.cp.internal.session;
 
 import com.hazelcast.core.ICompletableFuture;
-import com.hazelcast.logging.ILogger;
 import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.datastructures.semaphore.operation.GenerateThreadIdOp;
 import com.hazelcast.cp.internal.session.operation.CloseSessionOp;
 import com.hazelcast.cp.internal.session.operation.CreateSessionOp;
 import com.hazelcast.cp.internal.session.operation.HeartbeatSessionOp;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.GracefulShutdownAwareService;
+import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.util.ExceptionUtil;
 
@@ -38,20 +40,27 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 /**
  * Server-side implementation of Raft proxy session manager
  */
-public class SessionManagerService extends AbstractSessionManager implements GracefulShutdownAwareService {
+public class ProxySessionManagerService extends AbstractProxySessionManager implements GracefulShutdownAwareService {
 
     /**
      * Name of the service
      */
-    public static final String SERVICE_NAME = "hz:raft:sessionManager";
+    public static final String SERVICE_NAME = "hz:raft:proxySessionManagerService";
 
     private static final long SHUTDOWN_TASK_PERIOD_IN_MILLIS = SECONDS.toMillis(1);
 
 
     private final NodeEngine nodeEngine;
 
-    public SessionManagerService(NodeEngine nodeEngine) {
+    public ProxySessionManagerService(NodeEngine nodeEngine) {
         this.nodeEngine = nodeEngine;
+    }
+
+    @Override
+    protected long generateThreadId(RaftGroupId groupId) {
+        InternalCompletableFuture<Long> f = getInvocationManager()
+                .invoke(groupId, new GenerateThreadIdOp(System.currentTimeMillis()));
+        return f.join();
     }
 
     @Override

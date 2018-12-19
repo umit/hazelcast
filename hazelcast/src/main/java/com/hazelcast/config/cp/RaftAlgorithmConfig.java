@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.hazelcast.config.raft;
+package com.hazelcast.config.cp;
 
 import static com.hazelcast.util.Preconditions.checkPositive;
 

@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.datastructures.lock.proxy;
 
 import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.session.AbstractSessionManager;
+import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.cp.internal.session.SessionExpiredException;
 import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
 import com.hazelcast.cp.FencedLock;
@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 
 import static com.hazelcast.cp.internal.datastructures.lock.RaftLockService.INVALID_FENCE;
+import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static com.hazelcast.util.ThreadUtil.getThreadId;
 import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
@@ -50,7 +51,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
     // thread id -> lock state
     private final ConcurrentMap<Long, LockState> lockStates = new ConcurrentHashMap<Long, LockState>();
 
-    public AbstractRaftFencedLockProxy(AbstractSessionManager sessionManager, RaftGroupId groupId, String name) {
+    public AbstractRaftFencedLockProxy(AbstractProxySessionManager sessionManager, RaftGroupId groupId, String name) {
         super(sessionManager, groupId);
         this.name = name;
     }
@@ -163,7 +164,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
                 lockState.lockCount--;
                 return;
             }
-        } else if (sessionId == AbstractSessionManager.NO_SESSION_ID) {
+        } else if (sessionId == NO_SESSION_ID) {
             throw new IllegalMonitorStateException("Current thread is not owner of the Lock[" + name
                     + "] because session not found!");
         }
@@ -227,7 +228,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
         if (lockState != null) {
             validateLocalLockState(sessionId, threadId, lockState);
             return lockState.fence;
-        } else if (sessionId == AbstractSessionManager.NO_SESSION_ID) {
+        } else if (sessionId == NO_SESSION_ID) {
             throw new IllegalMonitorStateException("Current thread is not owner of the Lock[" + name
                     + "] because session not found!");
         }
@@ -304,12 +305,6 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
                     "Current thread is not owner of the Lock[" + name + "] because Session[" + lockState.sessionId
                             + "] is closed by server!");
         }
-    }
-
-    // !!! ONLY FOR TESTING !!!
-    public final long getLocalLockSession() {
-        LockState lockState = lockStates.get(getThreadId());
-        return lockState != null ? lockState.sessionId : AbstractSessionManager.NO_SESSION_ID;
     }
 
     // !!! ONLY FOR TESTING !!!

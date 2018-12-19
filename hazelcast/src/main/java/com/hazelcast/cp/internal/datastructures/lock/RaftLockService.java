@@ -16,14 +16,15 @@
 
 package com.hazelcast.cp.internal.datastructures.lock;
 
-import com.hazelcast.core.ILock;
+import com.hazelcast.cp.FencedLock;
 import com.hazelcast.cp.RaftGroupId;
-import com.hazelcast.cp.internal.session.SessionManagerService;
-import com.hazelcast.cp.internal.datastructures.spi.blocking.AbstractBlockingService;
+import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLock.AcquireResult;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLock.ReleaseResult;
-import com.hazelcast.cp.internal.datastructures.lock.proxy.RaftLockProxy;
+import com.hazelcast.cp.internal.datastructures.lock.proxy.RaftFencedLockProxy;
+import com.hazelcast.cp.internal.datastructures.spi.blocking.AbstractBlockingService;
+import com.hazelcast.cp.internal.session.ProxySessionManagerService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.util.ExceptionUtil;
 
@@ -36,7 +37,7 @@ import static com.hazelcast.util.Preconditions.checkNotNull;
 /**
  * Contains Raft-based lock instances
  */
-public class RaftLockService extends AbstractBlockingService<LockInvocationKey, RaftLock, LockRegistry> {
+public class RaftLockService extends AbstractBlockingService<LockInvocationKey, RaftLock, RaftLockRegistry> {
 
     /**
      * Representation of a failed lock request
@@ -58,11 +59,12 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
     }
 
     @Override
-    public ILock createRaftObjectProxy(String name) {
+    public FencedLock createRaftObjectProxy(String name) {
         try {
             RaftGroupId groupId = raftService.createRaftGroupForProxy(name);
-            SessionManagerService sessionManager = nodeEngine.getService(SessionManagerService.SERVICE_NAME);
-            return new RaftLockProxy(raftService.getInvocationManager(), sessionManager, groupId, getObjectNameForProxy(name));
+            RaftInvocationManager invocationManager = raftService.getInvocationManager();
+            ProxySessionManagerService sessionManager = nodeEngine.getService(ProxySessionManagerService.SERVICE_NAME);
+            return new RaftFencedLockProxy(invocationManager, sessionManager, groupId, getObjectNameForProxy(name));
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
@@ -105,7 +107,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
 
     public void release(RaftGroupId groupId, String name, LockEndpoint endpoint, UUID invocationUid, int lockCount) {
         heartbeatSession(groupId, endpoint.sessionId());
-        LockRegistry registry = getLockRegistryOrFail(groupId, name);
+        RaftLockRegistry registry = getLockRegistryOrFail(groupId, name);
         ReleaseResult result = registry.release(name, endpoint, invocationUid, lockCount);
 
         if (result.success) {
@@ -121,7 +123,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
     }
 
     public void forceRelease(RaftGroupId groupId, String name, long expectedFence, UUID invocationUid) {
-        LockRegistry registry = getLockRegistryOrFail(groupId, name);
+        RaftLockRegistry registry = getLockRegistryOrFail(groupId, name);
         ReleaseResult result = registry.forceRelease(name, expectedFence, invocationUid);
 
         if (result.success) {
@@ -168,13 +170,13 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         checkNotNull(groupId);
         checkNotNull(name);
 
-        LockRegistry registry = getRegistryOrNull(groupId);
+        RaftLockRegistry registry = getRegistryOrNull(groupId);
         return registry != null ? registry.getLockOwnershipState(name) : RaftLockOwnershipState.NOT_LOCKED;
     }
 
-    private LockRegistry getLockRegistryOrFail(RaftGroupId groupId, String name) {
+    private RaftLockRegistry getLockRegistryOrFail(RaftGroupId groupId, String name) {
         checkNotNull(groupId);
-        LockRegistry registry = getRegistryOrNull(groupId);
+        RaftLockRegistry registry = getRegistryOrNull(groupId);
         if (registry == null) {
             throw new IllegalMonitorStateException("Lock registry of " + groupId + " not found for Lock[" + name + "]");
         }
@@ -183,8 +185,8 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
     }
 
     @Override
-    protected LockRegistry createNewRegistry(RaftGroupId groupId) {
-        return new LockRegistry(groupId);
+    protected RaftLockRegistry createNewRegistry(RaftGroupId groupId) {
+        return new RaftLockRegistry(groupId);
     }
 
     @Override

@@ -16,14 +16,14 @@
 
 package com.hazelcast.cp.internal.session.operation;
 
-import com.hazelcast.config.raft.RaftConfig;
+import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
-import com.hazelcast.cp.internal.session.SessionService;
+import com.hazelcast.cp.internal.session.RaftSessionService;
 import com.hazelcast.cp.internal.session.RaftSessionServiceDataSerializerHook;
 import com.hazelcast.cp.internal.util.Tuple2;
 
@@ -33,7 +33,7 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Expires sessions that do have not committed any heartbeat for {@link RaftConfig#getSessionTimeToLiveSeconds()} seconds.
+ * Expires sessions that do have not committed any heartbeat for {@link CPSubsystemConfig#getSessionTimeToLiveSeconds()} seconds.
  */
 public class ExpireSessionsOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
@@ -48,7 +48,7 @@ public class ExpireSessionsOp extends RaftOp implements IndeterminateOperationSt
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
-        SessionService service = getService();
+        RaftSessionService service = getService();
         service.expireSessions(groupId, sessions);
         return null;
     }
@@ -60,7 +60,7 @@ public class ExpireSessionsOp extends RaftOp implements IndeterminateOperationSt
 
     @Override
     public String getServiceName() {
-        return SessionService.SERVICE_NAME;
+        return RaftSessionService.SERVICE_NAME;
     }
 
     @Override
@@ -70,7 +70,7 @@ public class ExpireSessionsOp extends RaftOp implements IndeterminateOperationSt
 
     @Override
     public int getId() {
-        return RaftSessionServiceDataSerializerHook.EXPIRE_SESSIONS;
+        return RaftSessionServiceDataSerializerHook.EXPIRE_SESSIONS_OP;
     }
 
     @Override

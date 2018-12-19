@@ -23,22 +23,23 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.WaitKey;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
-import static com.hazelcast.cp.internal.session.AbstractSessionManager.NO_SESSION_ID;
+import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 
 /**
- * Represents a {@link ICountDownLatch#countDown()} invocation
+ * Represents a {@link ICountDownLatch#await(long, TimeUnit)}} invocation
  */
-public class CountDownLatchInvocationKey implements WaitKey, IdentifiedDataSerializable {
+public class AwaitInvocationKey implements WaitKey, IdentifiedDataSerializable {
 
     private String name;
     private long commitIndex;
 
-    CountDownLatchInvocationKey() {
+    AwaitInvocationKey() {
     }
 
-    CountDownLatchInvocationKey(String name, long commitIndex) {
+    AwaitInvocationKey(String name, long commitIndex) {
         checkNotNull(name);
         this.name = name;
         this.commitIndex = commitIndex;
@@ -66,7 +67,7 @@ public class CountDownLatchInvocationKey implements WaitKey, IdentifiedDataSeria
 
     @Override
     public int getId() {
-        return RaftCountDownLatchDataSerializerHook.COUNT_DOWN_LATCH_INVOCATION_KEY;
+        return RaftCountDownLatchDataSerializerHook.AWAIT_INVOCATION_KEY;
     }
 
     @Override
@@ -90,7 +91,7 @@ public class CountDownLatchInvocationKey implements WaitKey, IdentifiedDataSeria
             return false;
         }
 
-        CountDownLatchInvocationKey that = (CountDownLatchInvocationKey) o;
+        AwaitInvocationKey that = (AwaitInvocationKey) o;
 
         if (commitIndex != that.commitIndex) {
             return false;
@@ -107,7 +108,7 @@ public class CountDownLatchInvocationKey implements WaitKey, IdentifiedDataSeria
 
     @Override
     public String toString() {
-        return "CountDownLatchInvocationKey{" + "name='" + name + '\'' + ", commitIndex=" + commitIndex + '}';
+        return "AwaitInvocationKey{" + "name='" + name + '\'' + ", commitIndex=" + commitIndex + '}';
     }
 
 }

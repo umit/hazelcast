@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.exception;
 
-import com.hazelcast.config.raft.RaftAlgorithmConfig;
+import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.cp.RaftMember;
 import com.hazelcast.spi.exception.RetryableException;
 

@@ -16,21 +16,24 @@
 
 package com.hazelcast.cp.internal.datastructures.lock;
 
-import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.RaftGroupId;
+import com.hazelcast.cp.internal.datastructures.lock.RaftLock.AcquireResult;
+import com.hazelcast.cp.internal.datastructures.lock.RaftLock.ReleaseResult;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
+import java.util.Map.Entry;
 import java.util.UUID;
 
 /**
  * Contains {@link RaftLock} resources and manages wait timeouts based on lock / unlock requests
  */
-class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> implements IdentifiedDataSerializable {
+class RaftLockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> implements IdentifiedDataSerializable {
 
-    LockRegistry() {
+    RaftLockRegistry() {
     }
 
-    LockRegistry(RaftGroupId groupId) {
+    RaftLockRegistry(RaftGroupId groupId) {
         super(groupId);
     }
 
@@ -39,8 +42,21 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> impleme
         return new RaftLock(groupId, name);
     }
 
-    RaftLock.AcquireResult acquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
-        RaftLock.AcquireResult result = getOrInitResource(name).acquire(endpoint, commitIndex, invocationUid, true);
+    @Override
+    protected RaftLockRegistry cloneForSnapshot() {
+        RaftLockRegistry clone = new RaftLockRegistry();
+        clone.groupId = this.groupId;
+        for (Entry<String, RaftLock> e : this.resources.entrySet()) {
+            clone.resources.put(e.getKey(), e.getValue().cloneForSnapshot());
+        }
+        clone.destroyedNames.addAll(this.destroyedNames);
+        clone.waitTimeouts.putAll(this.waitTimeouts);
+
+        return clone;
+    }
+
+    AcquireResult acquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid) {
+        AcquireResult result = getOrInitResource(name).acquire(endpoint, commitIndex, invocationUid, true);
 
         for (LockInvocationKey waitKey : result.cancelled) {
             removeWaitKey(waitKey);
@@ -49,9 +65,9 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> impleme
         return result;
     }
 
-    RaftLock.AcquireResult tryAcquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid, long timeoutMs) {
+    AcquireResult tryAcquire(String name, LockEndpoint endpoint, long commitIndex, UUID invocationUid, long timeoutMs) {
         boolean wait = (timeoutMs > 0);
-        RaftLock.AcquireResult result = getOrInitResource(name).acquire(endpoint, commitIndex, invocationUid, wait);
+        AcquireResult result = getOrInitResource(name).acquire(endpoint, commitIndex, invocationUid, wait);
 
         for (LockInvocationKey waitKey : result.cancelled) {
             removeWaitKey(waitKey);
@@ -64,13 +80,13 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> impleme
         return result;
     }
 
-    RaftLock.ReleaseResult release(String name, LockEndpoint endpoint, UUID invocationUid, int lockCount) {
+    ReleaseResult release(String name, LockEndpoint endpoint, UUID invocationUid, int lockCount) {
         RaftLock lock = getResourceOrNull(name);
         if (lock == null) {
-            return RaftLock.ReleaseResult.FAILED;
+            return ReleaseResult.FAILED;
         }
 
-        RaftLock.ReleaseResult result = lock.release(endpoint, invocationUid, lockCount);
+        ReleaseResult result = lock.release(endpoint, invocationUid, lockCount);
         for (LockInvocationKey key : result.notifications) {
             removeWaitKey(key);
         }
@@ -78,13 +94,13 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> impleme
         return result;
     }
 
-    RaftLock.ReleaseResult forceRelease(String name, long expectedFence, UUID invocationUid) {
+    ReleaseResult forceRelease(String name, long expectedFence, UUID invocationUid) {
         RaftLock lock = getResourceOrNull(name);
         if (lock == null) {
-            return RaftLock.ReleaseResult.FAILED;
+            return ReleaseResult.FAILED;
         }
 
-        RaftLock.ReleaseResult result = lock.forceRelease(expectedFence, invocationUid);
+        ReleaseResult result = lock.forceRelease(expectedFence, invocationUid);
         for (LockInvocationKey key : result.notifications) {
             removeWaitKey(key);
         }
@@ -104,6 +120,6 @@ class LockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> impleme
 
     @Override
     public int getId() {
-        return RaftLockDataSerializerHook.LOCK_REGISTRY;
+        return RaftLockDataSerializerHook.RAFT_LOCK_REGISTRY;
     }
 }

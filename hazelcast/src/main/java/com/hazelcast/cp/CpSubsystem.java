@@ -20,11 +20,13 @@ import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.core.ISemaphore;
+import com.hazelcast.spi.annotation.Beta;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
+@Beta
 public interface CpSubsystem {
 
     /**
@@ -63,4 +65,17 @@ public interface CpSubsystem {
      * @return
      */
     ISemaphore getSemaphore(String name);
+
+    /**
+     * TODO
+     * @return
+     */
+    CpSubsystemManagementService getCpSubsystemManagementService();
+
+    /**
+     * TODO
+     * @return
+     */
+    SessionManagementService getSessionManagementService();
+
 }

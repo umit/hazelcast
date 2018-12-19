@@ -23,7 +23,7 @@ import java.util.Collection;
 /**
  * The public API used for managing CP nodes and Raft groups.
  */
-public interface RaftManagementService {
+public interface CpSubsystemManagementService {
 
     /**
      * Returns all Raft group ids.
@@ -44,41 +44,42 @@ public interface RaftManagementService {
      * <strong>Use with caution:
      * This method is NOT idempotent and multiple invocations on the same member can break the whole system!</strong>
      */
-    void resetAndInitRaftState();
+    void resetAndInit();
 
     /**
-     * Promotes the local Hazelcast cluster member to a Raft cluster member.
+     * Promotes the local Hazelcast cluster member to a CP member.
      * <p>
      * This method is idempotent.
-     * If the local member is in the active Raft members list already, then this method will have no effect.
+     * If the local member is in the active CP members list already, then this method will have no effect.
      * <p>
-     * If the local member is currently being removed from the active Raft members list,
+     * If the local member is currently being removed from the active CP members list,
      * then the returning Future object will throw {@link IllegalArgumentException}.
      *
      * @return a Future representing pending completion of the operation
-     * @throws IllegalArgumentException If the local member is currently being removed from the active Raft members list
+     * @throws IllegalArgumentException If the local member is currently being removed from the active CP members list
      */
-    ICompletableFuture<Void> triggerRaftMemberPromotion();
+    ICompletableFuture<Void> promoteToCPMember();
 
     /**
-     * Removes the given unreachable member from the active Raft members list and all Raft groups it belongs to.
-     * If other active Raft members are available, they will replace the removed member in the Raft groups.
-     * Otherwise, the Raft groups the removed member is a member of will shrink and their majority values will be recalculated.
+     * Removes the given unreachable member from the active CP members list and all Raft groups it belongs to.
+     * If other active CP members are available, they will replace the removed member in Raft groups.
+     * Otherwise, the Raft groups which the removed member is a member of will shrink
+     * and their majority values will be recalculated.
      * <p>
      * This method can be invoked only from the Hazelcast master node.
      * <p>
      * This method is idempotent.
-     * If the given member is not in the active Raft members list, then this method will have no effect.
+     * If the given member is not in the active CP members list, then this method will have no effect.
      *
      * @return a Future representing pending completion of the operation
      * @throws IllegalStateException When member removal initiated by a non-master member
      *                               or the given member is still member of the Hazelcast cluster
      *                               or another CP member is being removed from the CP sub-system
      */
-    ICompletableFuture<Void> triggerRemoveRaftMember(RaftMember member);
+    ICompletableFuture<Void> removeCPMember(RaftMember member);
 
     /**
-     * Unconditionally destroys the Raft group without using Raft mechanics.
+     * Unconditionally destroys the Raft group without using the Raft algorithm mechanics.
      * This method must be used only when the given Raft group loses its majority and cannot make progress anymore.
      * Normally, membership changes in Raft groups are done via the Raft algorithm.
      * However, this method forcefully terminates the remaining nodes of the given Raft group.

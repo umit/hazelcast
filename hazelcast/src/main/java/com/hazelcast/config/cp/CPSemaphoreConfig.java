@@ -14,40 +14,40 @@
  * limitations under the License.
  */
 
-package com.hazelcast.config.raft;
+package com.hazelcast.config.cp;
 
 /**
  * TODO: Javadoc Pending...
  *
  */
-public class RaftSemaphoreConfig extends AbstractRaftObjectConfig {
+public class CPSemaphoreConfig extends AbstractCPObjectConfig {
 
-    private boolean strictModeEnabled;
+    private boolean jdkCompatible;
 
-    public RaftSemaphoreConfig() {
+    public CPSemaphoreConfig() {
         super();
     }
 
-    public RaftSemaphoreConfig(String name) {
+    public CPSemaphoreConfig(String name) {
         super(name);
     }
 
-    public RaftSemaphoreConfig(String name, boolean strictModeEnabled) {
+    public CPSemaphoreConfig(String name, boolean jdkCompatible) {
         super(name);
-        this.strictModeEnabled = strictModeEnabled;
+        this.jdkCompatible = jdkCompatible;
     }
 
-    public RaftSemaphoreConfig setName(String name) {
+    public CPSemaphoreConfig setName(String name) {
         this.name = name;
         return this;
     }
 
-    public boolean isStrictModeEnabled() {
-        return strictModeEnabled;
+    public boolean isJdkCompatible() {
+        return jdkCompatible;
     }
 
-    public RaftSemaphoreConfig setStrictModeEnabled(boolean strictModeEnabled) {
-        this.strictModeEnabled = strictModeEnabled;
+    public CPSemaphoreConfig setJdkCompatible(boolean jdkCompatible) {
+        this.jdkCompatible = jdkCompatible;
         return this;
     }
 }

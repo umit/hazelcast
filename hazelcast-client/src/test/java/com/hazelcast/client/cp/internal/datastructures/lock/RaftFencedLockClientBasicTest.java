@@ -16,12 +16,12 @@
 
 package com.hazelcast.client.cp.internal.datastructures.lock;
 
+import com.hazelcast.client.cp.internal.session.SessionManagerProvider;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.cp.FencedLock;
 import com.hazelcast.cp.internal.datastructures.lock.RaftFencedLockBasicTest;
-import com.hazelcast.cp.internal.session.AbstractSessionManager;
-import com.hazelcast.client.cp.internal.session.SessionManagerProvider;
+import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -53,7 +53,7 @@ public class RaftFencedLockClientBasicTest extends RaftFencedLockBasicTest {
         return RaftFencedLockProxy.create(lockInstance, name);
     }
 
-    protected AbstractSessionManager getSessionManager(HazelcastInstance instance) {
+    protected AbstractProxySessionManager getSessionManager(HazelcastInstance instance) {
         return SessionManagerProvider.get(getClient(instance));
     }
 

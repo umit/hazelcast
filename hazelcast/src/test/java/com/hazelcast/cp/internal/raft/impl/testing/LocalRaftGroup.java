@@ -1,6 +1,6 @@
 package com.hazelcast.cp.internal.raft.impl.testing;
 
-import com.hazelcast.config.raft.RaftAlgorithmConfig;
+import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
 import com.hazelcast.cp.RaftMember;

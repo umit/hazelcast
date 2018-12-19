@@ -34,7 +34,7 @@ import static com.hazelcast.cp.internal.RaftService.getObjectNameForProxy;
  * Contains Raft-based count down latch instances
  */
 public class RaftCountDownLatchService
-        extends AbstractBlockingService<CountDownLatchInvocationKey, RaftCountDownLatch, CountDownLatchRegistry> {
+        extends AbstractBlockingService<AwaitInvocationKey, RaftCountDownLatch, RaftCountDownLatchRegistry> {
 
     /**
      * Name of the service
@@ -61,8 +61,8 @@ public class RaftCountDownLatchService
     }
 
     public int countDown(RaftGroupId groupId, String name, int expectedRound, UUID invocationUuid) {
-        CountDownLatchRegistry registry = getOrInitRegistry(groupId);
-        Tuple2<Integer, Collection<CountDownLatchInvocationKey>> t = registry.countDown(name, expectedRound, invocationUuid);
+        RaftCountDownLatchRegistry registry = getOrInitRegistry(groupId);
+        Tuple2<Integer, Collection<AwaitInvocationKey>> t = registry.countDown(name, expectedRound, invocationUuid);
         notifyWaitKeys(groupId, t.element2, true);
 
         return t.element1;
@@ -71,7 +71,7 @@ public class RaftCountDownLatchService
     public boolean await(RaftGroupId groupId, String name, long commitIndex, long timeoutMillis) {
         boolean success = getOrInitRegistry(groupId).await(name, commitIndex, timeoutMillis);
         if (!success) {
-            scheduleTimeout(groupId, new CountDownLatchInvocationKey(name, commitIndex), timeoutMillis);
+            scheduleTimeout(groupId, new AwaitInvocationKey(name, commitIndex), timeoutMillis);
         }
 
         return success;
@@ -86,8 +86,8 @@ public class RaftCountDownLatchService
     }
 
     @Override
-    protected CountDownLatchRegistry createNewRegistry(RaftGroupId groupId) {
-        return new CountDownLatchRegistry(groupId);
+    protected RaftCountDownLatchRegistry createNewRegistry(RaftGroupId groupId) {
+        return new RaftCountDownLatchRegistry(groupId);
     }
 
     @Override

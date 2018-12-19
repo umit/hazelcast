@@ -1,7 +1,7 @@
 package com.hazelcast.cp.internal.raft.impl;
 
 import com.hazelcast.nio.Address;
-import com.hazelcast.config.raft.RaftAlgorithmConfig;
+import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.cp.RaftMember;
 import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
 import com.hazelcast.cp.internal.raft.impl.dataservice.RaftDataService;

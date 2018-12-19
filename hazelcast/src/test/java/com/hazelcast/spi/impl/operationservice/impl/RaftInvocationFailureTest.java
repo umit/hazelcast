@@ -1,7 +1,7 @@
 package com.hazelcast.spi.impl.operationservice.impl;
 
 import com.hazelcast.config.Config;
-import com.hazelcast.config.raft.RaftConfig;
+import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IndeterminateOperationStateException;
 import com.hazelcast.core.MemberLeftException;
@@ -154,8 +154,8 @@ public class RaftInvocationFailureTest extends HazelcastRaftTestSupport {
     protected Config createConfig(int cpNodeCount, int groupSize) {
         Config config = super.createConfig(cpNodeCount, groupSize);
 
-        RaftConfig raftConfig = config.getRaftConfig();
-        raftConfig.setFailOnIndeterminateOperationState(true);
+        CPSubsystemConfig cpSubsystemConfig = config.getCpSubsystemConfig();
+        cpSubsystemConfig.setFailOnIndeterminateOperationState(true);
 
         return config;
     }

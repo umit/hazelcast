@@ -28,6 +28,9 @@ public interface SnapshotAwareService<T> {
 
     /**
      * Creates a snapshot for specified {@link RaftGroupId}.
+     * The snapshot object returned from this method will be stored among the Raft log
+     * and it can be sent to other Raft nodes anytime. Therefore, this method must not
+     * return a snapshot object that can mutate after the takeSnapshot() call.
      *
      * @param groupId {@link RaftGroupId} which is snapshot requested for
      * @param commitIndex commitIndex of the Raft state when the snapshot is requested

@@ -23,7 +23,7 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.RaftGroupId;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
-import com.hazelcast.cp.internal.session.SessionService;
+import com.hazelcast.cp.internal.session.RaftSessionService;
 import com.hazelcast.cp.internal.session.RaftSessionServiceDataSerializerHook;
 
 import java.io.IOException;
@@ -46,7 +46,7 @@ public class CreateSessionOp extends RaftOp implements IndeterminateOperationSta
 
     @Override
     public Object run(RaftGroupId groupId, long commitIndex) {
-        SessionService service = getService();
+        RaftSessionService service = getService();
         return service.createNewSession(groupId, endpoint);
     }
 
@@ -57,7 +57,7 @@ public class CreateSessionOp extends RaftOp implements IndeterminateOperationSta
 
     @Override
     public String getServiceName() {
-        return SessionService.SERVICE_NAME;
+        return RaftSessionService.SERVICE_NAME;
     }
 
     @Override
@@ -67,7 +67,7 @@ public class CreateSessionOp extends RaftOp implements IndeterminateOperationSta
 
     @Override
     public int getId() {
-        return RaftSessionServiceDataSerializerHook.CREATE_SESSION;
+        return RaftSessionServiceDataSerializerHook.CREATE_SESSION_OP;
     }
 
     @Override

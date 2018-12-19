@@ -33,11 +33,11 @@ public class RaftLockDataSerializerHook implements DataSerializerHook {
 
     public static final int F_ID = FactoryIdHelper.getFactoryId(RAFT_LOCK_DS_FACTORY, RAFT_LOCK_DS_FACTORY_ID);
 
-    public static final int LOCK_REGISTRY = 1;
+    public static final int RAFT_LOCK_REGISTRY = 1;
     public static final int RAFT_LOCK = 2;
     public static final int LOCK_ENDPOINT = 3;
     public static final int LOCK_INVOCATION_KEY = 4;
-    public static final int RAFT_LOCK_OWNERSHIP = 5;
+    public static final int RAFT_LOCK_OWNERSHIP_STATE = 5;
     public static final int LOCK_OP = 6;
     public static final int TRY_LOCK_OP = 7;
     public static final int UNLOCK_OP = 8;
@@ -55,15 +55,15 @@ public class RaftLockDataSerializerHook implements DataSerializerHook {
             @Override
             public IdentifiedDataSerializable create(int typeId) {
                 switch (typeId) {
-                    case LOCK_REGISTRY:
-                        return new LockRegistry();
+                    case RAFT_LOCK_REGISTRY:
+                        return new RaftLockRegistry();
                     case RAFT_LOCK:
                         return new RaftLock();
                     case LOCK_ENDPOINT:
                         return new LockEndpoint();
                     case LOCK_INVOCATION_KEY:
                         return new LockInvocationKey();
-                    case RAFT_LOCK_OWNERSHIP:
+                    case RAFT_LOCK_OWNERSHIP_STATE:
                         return new RaftLockOwnershipState();
                     case LOCK_OP:
                         return new LockOp();

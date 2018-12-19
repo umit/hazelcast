@@ -36,7 +36,7 @@ public class RaftCountDownLatchDataSerializerHook implements DataSerializerHook 
 
     public static final int COUNT_DOWN_LATCH_REGISTRY = 1;
     public static final int COUNT_DOWN_LATCH = 2;
-    public static final int COUNT_DOWN_LATCH_INVOCATION_KEY = 3;
+    public static final int AWAIT_INVOCATION_KEY = 3;
     public static final int AWAIT_OP = 4;
     public static final int COUNT_DOWN_OP = 5;
     public static final int GET_REMAINING_COUNT_OP = 6;
@@ -56,11 +56,11 @@ public class RaftCountDownLatchDataSerializerHook implements DataSerializerHook 
             public IdentifiedDataSerializable create(int typeId) {
                 switch (typeId) {
                     case COUNT_DOWN_LATCH_REGISTRY:
-                        return new CountDownLatchRegistry();
+                        return new RaftCountDownLatchRegistry();
                     case COUNT_DOWN_LATCH:
                         return new RaftCountDownLatch();
-                    case COUNT_DOWN_LATCH_INVOCATION_KEY:
-                        return new CountDownLatchInvocationKey();
+                    case AWAIT_INVOCATION_KEY:
+                        return new AwaitInvocationKey();
                     case AWAIT_OP:
                         return new AwaitOp();
                     case COUNT_DOWN_OP:
