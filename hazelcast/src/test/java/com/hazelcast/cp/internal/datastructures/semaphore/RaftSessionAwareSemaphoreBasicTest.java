@@ -22,11 +22,12 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
-import com.hazelcast.cp.internal.session.SessionExpiredException;
-import com.hazelcast.cp.internal.session.operation.CloseSessionOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.proxy.RaftSessionAwareSemaphoreProxy;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.cp.internal.session.ProxySessionManagerService;
+import com.hazelcast.cp.internal.session.SessionExpiredException;
+import com.hazelcast.cp.internal.session.operation.CloseSessionOp;
+import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -42,7 +43,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
-import static com.hazelcast.cp.internal.datastructures.spi.RaftProxyFactory.create;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -57,23 +57,21 @@ public class RaftSessionAwareSemaphoreBasicTest extends HazelcastRaftTestSupport
 
     private HazelcastInstance[] instances;
     private ISemaphore semaphore;
-    private String name = "semaphore";
+    protected String objectName = "semaphore";
+    protected String proxyName = objectName + "@group1";
     protected HazelcastInstance semaphoreInstance;
 
     @Before
     public void setup() {
         instances = createInstances();
-        semaphore = createSemaphore(name);
+        semaphore = semaphoreInstance.getCPSubsystem().getSemaphore(proxyName);
         assertNotNull(semaphore);
     }
 
     protected HazelcastInstance[] createInstances() {
-        return newInstances(3);
-    }
-
-    protected ISemaphore createSemaphore(String name) {
+        HazelcastInstance[] instances = newInstances(3);
         semaphoreInstance = instances[RandomPicker.getInt(instances.length)];
-        return create(semaphoreInstance, RaftSemaphoreService.SERVICE_NAME, name);
+        return instances;
     }
 
     @Test
@@ -540,6 +538,13 @@ public class RaftSessionAwareSemaphoreBasicTest extends HazelcastRaftTestSupport
         });
     }
 
+    @Test(expected = DistributedObjectDestroyedException.class)
+    public void test_destroy() {
+        semaphore.destroy();
+
+        semaphore.init(1);
+    }
+
     protected AbstractProxySessionManager getSessionManager(HazelcastInstance instance) {
         return getNodeEngineImpl(instance).getService(ProxySessionManagerService.SERVICE_NAME);
     }
@@ -552,7 +557,7 @@ public class RaftSessionAwareSemaphoreBasicTest extends HazelcastRaftTestSupport
     protected Config createConfig(int cpNodeCount, int groupSize) {
         Config config = super.createConfig(cpNodeCount, groupSize);
 
-        CPSemaphoreConfig semaphoreConfig = new CPSemaphoreConfig(name, false);
+        CPSemaphoreConfig semaphoreConfig = new CPSemaphoreConfig(objectName, false);
         config.addCPSemaphoreConfig(semaphoreConfig);
         return config;
     }

@@ -16,20 +16,18 @@
 
 package com.hazelcast.cp.internal.datastructures.atomicref;
 
-import com.hazelcast.core.IAtomicReference;
-import com.hazelcast.cp.internal.datastructures.spi.RaftRemoteService;
-import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.core.DistributedObject;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.raft.SnapshotAwareService;
 import com.hazelcast.cp.internal.RaftGroupLifecycleAwareService;
-import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftService;
-import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.cp.internal.datastructures.atomicref.proxy.RaftAtomicRefProxy;
+import com.hazelcast.cp.internal.datastructures.spi.RaftRemoteService;
+import com.hazelcast.cp.internal.raft.SnapshotAwareService;
+import com.hazelcast.cp.internal.util.Tuple2;
+import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
-import com.hazelcast.spi.serialization.SerializationService;
 import com.hazelcast.util.ExceptionUtil;
 
 import java.util.HashMap;
@@ -128,18 +126,6 @@ public class RaftAtomicRefService implements ManagedService, RaftRemoteService, 
     }
 
     @Override
-    public IAtomicReference createRaftObjectProxy(String name) {
-        try {
-            CPGroupId groupId = raftService.createRaftGroupForProxy(name);
-            RaftInvocationManager invocationManager = raftService.getInvocationManager();
-            SerializationService serializationService = nodeEngine.getSerializationService();
-            return new RaftAtomicRefProxy(invocationManager, serializationService, groupId, getObjectNameForProxy(name));
-        } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
-        }
-    }
-
-    @Override
     public boolean destroyRaftObject(CPGroupId groupId, String name) {
         Tuple2<CPGroupId, String> key = Tuple2.of(groupId, name);
         destroyedRefs.add(key);
@@ -159,5 +145,19 @@ public class RaftAtomicRefService implements ManagedService, RaftRemoteService, 
             atomicRefs.put(key, atomicRef);
         }
         return atomicRef;
+    }
+
+    @Override
+    public DistributedObject createDistributedObject(String proxyName) {
+        try {
+            CPGroupId groupId = raftService.createRaftGroupForProxy(proxyName);
+            return new RaftAtomicRefProxy(nodeEngine, groupId, proxyName, getObjectNameForProxy(proxyName));
+        } catch (Exception e) {
+            throw ExceptionUtil.rethrow(e);
+        }
+    }
+
+    @Override
+    public void destroyDistributedObject(String proxyName) {
     }
 }

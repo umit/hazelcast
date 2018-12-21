@@ -46,18 +46,18 @@ public interface CPSubsystem {
 
     /**
      * TODO
-     * @param key
-     * @return
-     */
-    FencedLock getFencedLock(String key);
-
-    /**
-     * TODO
      *
      * @param name
      * @return
      */
     ICountDownLatch getCountDownLatch(String name);
+
+    /**
+     * TODO
+     * @param key
+     * @return
+     */
+    FencedLock getFencedLock(String name);
 
     /**
      * TODO

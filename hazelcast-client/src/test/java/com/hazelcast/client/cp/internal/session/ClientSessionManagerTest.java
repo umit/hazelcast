@@ -16,11 +16,11 @@
 
 package com.hazelcast.client.cp.internal.session;
 
+import com.hazelcast.client.impl.clientside.HazelcastClientProxy;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.client.cp.internal.ClientAccessor;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManagerTest;
 import com.hazelcast.cp.internal.session.SessionAwareProxy;
@@ -86,8 +86,7 @@ public class ClientSessionManagerTest extends AbstractProxySessionManagerTest {
     }
 
     protected AbstractProxySessionManager getSessionManager() {
-        ClientProxySessionManager service = SessionManagerProvider.get(ClientAccessor.getClient(client));
-        return spy(service);
+        return spy((((HazelcastClientProxy) client).client).getProxySessionManager());
     }
 
     private static class SessionProxyImpl extends SessionAwareProxy {

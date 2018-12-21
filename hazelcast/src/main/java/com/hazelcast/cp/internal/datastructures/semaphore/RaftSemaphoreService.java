@@ -17,16 +17,14 @@
 package com.hazelcast.cp.internal.datastructures.semaphore;
 
 import com.hazelcast.config.cp.CPSemaphoreConfig;
-import com.hazelcast.core.ISemaphore;
+import com.hazelcast.core.DistributedObject;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphore.AcquireResult;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphore.ReleaseResult;
 import com.hazelcast.cp.internal.datastructures.semaphore.proxy.RaftSessionAwareSemaphoreProxy;
 import com.hazelcast.cp.internal.datastructures.semaphore.proxy.RaftSessionlessSemaphoreProxy;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.AbstractBlockingService;
-import com.hazelcast.cp.internal.session.ProxySessionManagerService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.util.ExceptionUtil;
 
@@ -47,22 +45,6 @@ public class RaftSemaphoreService extends AbstractBlockingService<AcquireInvocat
 
     public RaftSemaphoreService(NodeEngine nodeEngine) {
         super(nodeEngine);
-    }
-
-    @Override
-    public ISemaphore createRaftObjectProxy(String name) {
-        try {
-            CPGroupId groupId = raftService.createRaftGroupForProxy(name);
-            String objectName = getObjectNameForProxy(name);
-            CPSemaphoreConfig config = getConfig(name);
-            ProxySessionManagerService sessionManager = nodeEngine.getService(ProxySessionManagerService.SERVICE_NAME);
-            RaftInvocationManager invocationManager = raftService.getInvocationManager();
-            return config != null && config.isJdkCompatible()
-                    ? new RaftSessionlessSemaphoreProxy(invocationManager, sessionManager, groupId, objectName)
-                    : new RaftSessionAwareSemaphoreProxy(invocationManager, sessionManager, groupId, objectName);
-        } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
-        }
     }
 
     private CPSemaphoreConfig getConfig(String name) {
@@ -163,4 +145,21 @@ public class RaftSemaphoreService extends AbstractBlockingService<AcquireInvocat
         return SERVICE_NAME;
     }
 
+    @Override
+    public DistributedObject createDistributedObject(String proxyName) {
+        try {
+            CPGroupId groupId = raftService.createRaftGroupForProxy(proxyName);
+            String objectName = getObjectNameForProxy(proxyName);
+            CPSemaphoreConfig config = getConfig(proxyName);
+            return config != null && config.isJdkCompatible()
+                    ? new RaftSessionlessSemaphoreProxy(nodeEngine, groupId, proxyName, objectName)
+                    : new RaftSessionAwareSemaphoreProxy(nodeEngine, groupId, proxyName, objectName);
+        } catch (Exception e) {
+            throw ExceptionUtil.rethrow(e);
+        }
+    }
+
+    @Override
+    public void destroyDistributedObject(String objectName) {
+    }
 }

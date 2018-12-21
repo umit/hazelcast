@@ -291,8 +291,8 @@ class HazelcastOSGiInstanceImpl
     }
 
     @Override
-    public CPSubsystem getCpSubsystem() {
-        return delegatedInstance.getCpSubsystem();
+    public CPSubsystem getCPSubsystem() {
+        return delegatedInstance.getCPSubsystem();
     }
 
     @Override

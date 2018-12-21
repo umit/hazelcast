@@ -16,21 +16,18 @@
 
 package com.hazelcast.client.cp.internal.datastructures.semaphore;
 
-import com.hazelcast.client.cp.internal.ClientAccessor;
-import com.hazelcast.client.cp.internal.session.SessionManagerProvider;
+import com.hazelcast.client.cp.internal.session.ClientProxySessionManager;
 import com.hazelcast.client.impl.clientside.ClientMessageDecoder;
-import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.spi.ClientContext;
+import com.hazelcast.client.spi.ClientProxy;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
-import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
-import com.hazelcast.cp.internal.datastructures.spi.client.RaftGroupTaskFactoryProvider;
-import com.hazelcast.cp.internal.session.SessionAwareProxy;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.spi.InternalCompletableFuture;
 
@@ -39,7 +36,6 @@ import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
 import static com.hazelcast.cp.internal.RaftGroupId.dataSize;
-import static com.hazelcast.cp.internal.RaftService.getObjectNameForProxy;
 import static com.hazelcast.cp.internal.datastructures.semaphore.client.SemaphoreMessageTaskFactoryProvider.ACQUIRE_PERMITS_TYPE;
 import static com.hazelcast.cp.internal.datastructures.semaphore.client.SemaphoreMessageTaskFactoryProvider.AVAILABLE_PERMITS_TYPE;
 import static com.hazelcast.cp.internal.datastructures.semaphore.client.SemaphoreMessageTaskFactoryProvider.CHANGE_PERMITS_TYPE;
@@ -56,54 +52,30 @@ import static java.lang.Math.max;
 /**
  * TODO: Javadoc Pending...
  */
-public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements ISemaphore {
+class RaftSessionlessSemaphoreProxy extends ClientProxy implements ISemaphore {
 
     private static final ClientMessageDecoder INT_RESPONSE_DECODER = new IntResponseDecoder();
     private static final ClientMessageDecoder BOOLEAN_RESPONSE_DECODER = new BooleanResponseDecoder();
 
-    public static ISemaphore create(HazelcastInstance instance, String name) {
-        int dataSize = ClientMessage.HEADER_SIZE + calculateDataSize(name);
-        ClientMessage msg = ClientMessage.createForEncode(dataSize);
-        msg.setMessageType(RaftGroupTaskFactoryProvider.CREATE_TYPE);
-        msg.setRetryable(false);
-        msg.setOperationName("");
-        msg.set(name);
-        msg.updateFrameLength();
 
-        String objectName = getObjectNameForProxy(name);
-        HazelcastClientInstanceImpl client = ClientAccessor.getClient(instance);
-        ClientInvocationFuture f = new ClientInvocation(client, msg, objectName).invoke();
-
-        InternalCompletableFuture<CPGroupId> future = new ClientDelegatingFuture<CPGroupId>(f, client.getSerializationService(),
-                new ClientMessageDecoder() {
-                    @Override
-                    public CPGroupId decodeClientMessage(ClientMessage msg) {
-                        return RaftGroupId.readFrom(msg);
-                    }
-                });
-
-        CPGroupId groupId = future.join();
-        return new RaftSessionlessSemaphoreProxy(instance, groupId, objectName);
-    }
-
-    private final HazelcastClientInstanceImpl client;
+    private final ClientProxySessionManager sessionManager;
     private final CPGroupId groupId;
-    private final String name;
+    private final String objectName;
 
-    private RaftSessionlessSemaphoreProxy(HazelcastInstance instance, CPGroupId groupId, final String name) {
-        super(SessionManagerProvider.get(ClientAccessor.getClient(instance)), groupId);
-        this.client = ClientAccessor.getClient(instance);
+    RaftSessionlessSemaphoreProxy(ClientContext context, CPGroupId groupId, String proxyName, String objectName) {
+        super(RaftSemaphoreService.SERVICE_NAME, proxyName, context);
+        this.sessionManager = getClient().getProxySessionManager();
         this.groupId = groupId;
-        this.name = name;
+        this.objectName = objectName;
     }
 
     @Override
     public boolean init(int permits) {
         checkNotNegative(permits, "Permits must be non-negative!");
 
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(objectName) + Bits.LONG_SIZE_IN_BYTES
                 + Bits.INT_SIZE_IN_BYTES;
-        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, INIT_SEMAPHORE_TYPE);
+        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, INIT_SEMAPHORE_TYPE);
         msg.set(permits);
         msg.updateFrameLength();
 
@@ -120,11 +92,11 @@ public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements 
     public void acquire(int permits) {
         checkPositive(permits, "Permits must be positive!");
 
-        long clusterWideThreadId = getOrCreateUniqueThreadId(groupId);
+        long clusterWideThreadId = sessionManager.getOrCreateUniqueThreadId(groupId);
         UUID invocationUid = newUnsecureUUID();
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 5
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(objectName) + Bits.LONG_SIZE_IN_BYTES * 5
                 + Bits.INT_SIZE_IN_BYTES;
-        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, ACQUIRE_PERMITS_TYPE);
+        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, ACQUIRE_PERMITS_TYPE);
         msg.set(clusterWideThreadId);
         msg.set(invocationUid.getLeastSignificantBits());
         msg.set(invocationUid.getMostSignificantBits());
@@ -154,12 +126,12 @@ public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements 
     public boolean tryAcquire(int permits, long timeout, TimeUnit unit) {
         checkPositive(permits, "Permits must be positive!");
 
-        long clusterWideThreadId = getOrCreateUniqueThreadId(groupId);
+        long clusterWideThreadId = sessionManager.getOrCreateUniqueThreadId(groupId);
         UUID invocationUid = newUnsecureUUID();
         long timeoutMs = max(0, unit.toMillis(timeout));
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 5
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(objectName) + Bits.LONG_SIZE_IN_BYTES * 5
                 + Bits.INT_SIZE_IN_BYTES;
-        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, ACQUIRE_PERMITS_TYPE);
+        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, ACQUIRE_PERMITS_TYPE);
         msg.set(clusterWideThreadId);
         msg.set(invocationUid.getLeastSignificantBits());
         msg.set(invocationUid.getMostSignificantBits());
@@ -180,11 +152,11 @@ public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements 
     public void release(int permits) {
         checkPositive(permits, "Permits must be positive!");
 
-        long clusterWideThreadId = getOrCreateUniqueThreadId(groupId);
+        long clusterWideThreadId = sessionManager.getOrCreateUniqueThreadId(groupId);
         UUID invocationUid = newUnsecureUUID();
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(objectName) + Bits.LONG_SIZE_IN_BYTES * 4
                 + Bits.INT_SIZE_IN_BYTES;
-        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, RELEASE_PERMITS_TYPE);
+        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, RELEASE_PERMITS_TYPE);
         msg.set(clusterWideThreadId);
         msg.set(invocationUid.getLeastSignificantBits());
         msg.set(invocationUid.getMostSignificantBits());
@@ -196,8 +168,8 @@ public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements 
 
     @Override
     public int availablePermits() {
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES;
-        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, AVAILABLE_PERMITS_TYPE);
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(objectName) + Bits.LONG_SIZE_IN_BYTES;
+        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, AVAILABLE_PERMITS_TYPE);
         msg.updateFrameLength();
 
         InternalCompletableFuture<Integer> future = invoke(msg, INT_RESPONSE_DECODER);
@@ -206,10 +178,11 @@ public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements 
 
     @Override
     public int drainPermits() {
-        long clusterWideThreadId = getOrCreateUniqueThreadId(groupId);
+        long clusterWideThreadId = sessionManager.getOrCreateUniqueThreadId(groupId);
         UUID invocationUid = newUnsecureUUID();
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4;
-        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, DRAIN_PERMITS_TYPE);
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(objectName)
+                + Bits.LONG_SIZE_IN_BYTES * 4;
+        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, DRAIN_PERMITS_TYPE);
         msg.set(clusterWideThreadId);
         msg.set(invocationUid.getLeastSignificantBits());
         msg.set(invocationUid.getMostSignificantBits());
@@ -226,12 +199,12 @@ public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements 
             return;
         }
 
-        long clusterWideThreadId = getOrCreateUniqueThreadId(groupId);
+        long clusterWideThreadId = sessionManager.getOrCreateUniqueThreadId(groupId);
         UUID invocationUid = newUnsecureUUID();
 
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(objectName) + Bits.LONG_SIZE_IN_BYTES * 4
                 + Bits.INT_SIZE_IN_BYTES;
-        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, CHANGE_PERMITS_TYPE);
+        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, CHANGE_PERMITS_TYPE);
         msg.set(clusterWideThreadId);
         msg.set(invocationUid.getLeastSignificantBits());
         msg.set(invocationUid.getMostSignificantBits());
@@ -248,12 +221,12 @@ public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements 
             return;
         }
 
-        long clusterWideThreadId = getOrCreateUniqueThreadId(groupId);
+        long clusterWideThreadId = sessionManager.getOrCreateUniqueThreadId(groupId);
         UUID invocationUid = newUnsecureUUID();
 
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(objectName) + Bits.LONG_SIZE_IN_BYTES * 4
                 + Bits.INT_SIZE_IN_BYTES;
-        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, CHANGE_PERMITS_TYPE);
+        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, CHANGE_PERMITS_TYPE);
         msg.set(clusterWideThreadId);
         msg.set(invocationUid.getLeastSignificantBits());
         msg.set(invocationUid.getMostSignificantBits());
@@ -264,32 +237,26 @@ public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements 
     }
 
     @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
     public String getPartitionKey() {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public String getServiceName() {
-        return RaftSemaphoreService.SERVICE_NAME;
-    }
-
-    @Override
-    public void destroy() {
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + calculateDataSize(name);
+    public void onDestroy() {
+        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + calculateDataSize(objectName);
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
         msg.setMessageType(DESTROY_TYPE);
         msg.setRetryable(false);
         msg.setOperationName("");
         RaftGroupId.writeTo(groupId, msg);
-        msg.set(name);
+        msg.set(objectName);
         msg.updateFrameLength();
 
         invoke(msg, BOOLEAN_RESPONSE_DECODER).join();
+    }
+
+    public CPGroupId getGroupId() {
+        return groupId;
     }
 
     private ClientMessage prepareClientMessage(CPGroupId groupId, String name, int dataSize, int messageTypeId) {
@@ -304,8 +271,8 @@ public class RaftSessionlessSemaphoreProxy extends SessionAwareProxy implements 
     }
 
     private <T> InternalCompletableFuture<T> invoke(ClientMessage msg, ClientMessageDecoder decoder) {
-        ClientInvocationFuture future = new ClientInvocation(client, msg, name).invoke();
-        return new ClientDelegatingFuture<T>(future, client.getSerializationService(), decoder);
+        ClientInvocationFuture future = new ClientInvocation(getClient(), msg, name).invoke();
+        return new ClientDelegatingFuture<T>(future, getContext().getSerializationService(), decoder);
     }
 
     private static class IntResponseDecoder implements ClientMessageDecoder {

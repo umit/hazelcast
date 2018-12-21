@@ -16,12 +16,12 @@
 
 package com.hazelcast.cp.internal.datastructures.countdownlatch;
 
-import com.hazelcast.core.ICountDownLatch;
+import com.hazelcast.core.DistributedObject;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
-import com.hazelcast.cp.internal.util.Tuple2;
-import com.hazelcast.cp.internal.datastructures.spi.blocking.AbstractBlockingService;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.proxy.RaftCountDownLatchProxy;
+import com.hazelcast.cp.internal.datastructures.spi.blocking.AbstractBlockingService;
+import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.util.ExceptionUtil;
 
@@ -43,17 +43,6 @@ public class RaftCountDownLatchService
 
     public RaftCountDownLatchService(NodeEngine nodeEngine) {
         super(nodeEngine);
-    }
-
-    @Override
-    public ICountDownLatch createRaftObjectProxy(String name) {
-        try {
-            RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
-            CPGroupId groupId = service.createRaftGroupForProxy(name);
-            return new RaftCountDownLatchProxy(raftService.getInvocationManager(), groupId, getObjectNameForProxy(name));
-        } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
-        }
     }
 
     public boolean trySetCount(CPGroupId groupId, String name, int count) {
@@ -98,5 +87,20 @@ public class RaftCountDownLatchService
     @Override
     protected String serviceName() {
         return SERVICE_NAME;
+    }
+
+    @Override
+    public DistributedObject createDistributedObject(String proxyName) {
+        try {
+            RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+            CPGroupId groupId = service.createRaftGroupForProxy(proxyName);
+            return new RaftCountDownLatchProxy(nodeEngine, groupId, proxyName, getObjectNameForProxy(proxyName));
+        } catch (Exception e) {
+            throw ExceptionUtil.rethrow(e);
+        }
+    }
+
+    @Override
+    public void destroyDistributedObject(String objectName) {
     }
 }

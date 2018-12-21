@@ -19,23 +19,19 @@ package com.hazelcast.cp.internal.datastructures.lock;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.cp.FencedLock;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.FencedLock;
+import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
+import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
-import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
-import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.raftop.snapshot.RestoreSnapshotOp;
-import com.hazelcast.cp.internal.session.RaftSessionService;
-import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
-import com.hazelcast.cp.internal.datastructures.lock.proxy.RaftFencedLockProxy;
 import com.hazelcast.cp.internal.session.ProxySessionManagerService;
-import com.hazelcast.spi.impl.NodeEngineImpl;
+import com.hazelcast.cp.internal.session.RaftSessionService;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
-import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.RandomPicker;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,7 +43,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-import static com.hazelcast.cp.internal.RaftService.getObjectNameForProxy;
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getSnapshotEntry;
 import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 import static java.util.concurrent.TimeUnit.MINUTES;
@@ -66,7 +61,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
     private HazelcastInstance[] instances;
     private HazelcastInstance lockInstance;
     private FencedLock lock;
-    private String name = "lock";
+    private String name = "lock@group1";
     private int groupSize = 3;
 
     @Before
@@ -78,21 +73,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
 
     private FencedLock createLock() {
         lockInstance = instances[RandomPicker.getInt(instances.length)];
-        return createLock(lockInstance);
-    }
-
-    private FencedLock createLock(HazelcastInstance instance) {
-        NodeEngineImpl nodeEngine = getNodeEngineImpl(instance);
-        RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
-
-        try {
-            CPGroupId groupId = raftService.createRaftGroupForProxy(name);
-            String objectName = getObjectNameForProxy(name);
-            ProxySessionManagerService sessionManager = nodeEngine.getService(ProxySessionManagerService.SERVICE_NAME);
-            return new RaftFencedLockProxy(raftService.getInvocationManager(), sessionManager, groupId, objectName);
-        } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
-        }
+        return lockInstance.getCPSubsystem().getFencedLock(name);
     }
 
     @Override
@@ -327,7 +308,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
         FencedLock other = null;
         for (HazelcastInstance instance : instances) {
             if (instance != lockInstance) {
-                other = createLock(instance);
+                other = instance.getCPSubsystem().getFencedLock(name);
                 break;
             }
         }

@@ -36,8 +36,6 @@ import static org.junit.Assert.assertFalse;
 @Category({QuickTest.class, ParallelTest.class})
 public class RaftSessionlessSemaphoreClientBasicTest extends RaftSessionlessSemaphoreBasicTest {
 
-    private HazelcastInstance client;
-
     @Override
     protected TestHazelcastInstanceFactory createTestFactory() {
         return new TestHazelcastFactory();
@@ -47,13 +45,8 @@ public class RaftSessionlessSemaphoreClientBasicTest extends RaftSessionlessSema
     protected HazelcastInstance[] createInstances() {
         HazelcastInstance[] instances = super.createInstances();
         TestHazelcastFactory f = (TestHazelcastFactory) factory;
-        client = f.newHazelcastClient();
+        semaphoreInstance = f.newHazelcastClient();
         return instances;
-    }
-
-    @Override
-    protected ISemaphore createSemaphore(String name) {
-        return RaftSessionlessSemaphoreProxy.create(client, name);
     }
 
     @After
@@ -68,17 +61,12 @@ public class RaftSessionlessSemaphoreClientBasicTest extends RaftSessionlessSema
 
     @Test
     public void testAcquireOnMultipleProxies() {
-        ISemaphore semaphore2 = RaftSessionlessSemaphoreProxy.create(client, name);
+        ISemaphore semaphore2 = ((TestHazelcastFactory) factory).newHazelcastClient().getCPSubsystem().getSemaphore(proxyName);
 
         semaphore.init(1);
         semaphore.tryAcquire(1);
 
         assertFalse(semaphore2.tryAcquire());
-    }
-
-    @Test
-    public void testAcquire() throws InterruptedException {
-        super.testAcquire();
     }
 
 }

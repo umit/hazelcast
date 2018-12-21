@@ -101,7 +101,7 @@ public abstract class AbstractProxySessionManager {
      * Increments acquire count of the session.
      * Creates a new session if there is no session yet.
      */
-    final long acquireSession(CPGroupId groupId) {
+    public final long acquireSession(CPGroupId groupId) {
         return getOrCreateSession(groupId).acquire(1);
     }
 
@@ -109,7 +109,7 @@ public abstract class AbstractProxySessionManager {
      * Increments acquire count of the session.
      * Creates a new session if there is no session yet.
      */
-    final long acquireSession(CPGroupId groupId, int count) {
+    public final long acquireSession(CPGroupId groupId, int count) {
         return getOrCreateSession(groupId).acquire(count);
     }
 
@@ -117,7 +117,7 @@ public abstract class AbstractProxySessionManager {
      * Decrements acquire count of the session.
      * Returns silently if no session exists for the given id.
      */
-    final void releaseSession(CPGroupId groupId, long id) {
+    public final void releaseSession(CPGroupId groupId, long id) {
         releaseSession(groupId, id, 1);
     }
 
@@ -125,7 +125,7 @@ public abstract class AbstractProxySessionManager {
      * Decrements acquire count of the session.
      * Returns silently if no session exists for the given id.
      */
-    final void releaseSession(CPGroupId groupId, long id, int count) {
+    public final void releaseSession(CPGroupId groupId, long id, int count) {
         SessionState session = sessions.get(groupId);
         if (session != null && session.id == id) {
             session.release(count);
@@ -136,7 +136,7 @@ public abstract class AbstractProxySessionManager {
      * Invalidates the given session.
      * No more heartbeats will be sent for the given session.
      */
-    final void invalidateSession(CPGroupId groupId, long id) {
+    public final void invalidateSession(CPGroupId groupId, long id) {
         SessionState session = sessions.get(groupId);
         if (session != null && session.id == id) {
             sessions.remove(groupId, session);

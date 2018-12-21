@@ -91,7 +91,7 @@ public class RaftInvocationContext {
     }
 
     MemberCursor newMemberCursor(CPGroupId groupId) {
-        RaftGroup group = raftService.getCPGroup(groupId);
+        RaftGroup group = raftService.getCPGroupLocally(groupId);
         CPMember[] endpoints = group != null ? group.membersArray() : members;
         return new MemberCursor(endpoints);
     }

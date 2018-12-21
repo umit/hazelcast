@@ -18,20 +18,20 @@ package com.hazelcast.cp.internal;
 
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.Member;
-import com.hazelcast.cp.CPGroup;
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.nio.Address;
+import com.hazelcast.cp.CPGroup.CPGroupStatus;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.raft.SnapshotAwareService;
-import com.hazelcast.cp.internal.raft.impl.RaftNode;
 import com.hazelcast.cp.internal.exception.CannotCreateRaftGroupException;
 import com.hazelcast.cp.internal.exception.CannotRemoveCPMemberException;
 import com.hazelcast.cp.internal.exception.MetadataRaftGroupNotInitializedException;
+import com.hazelcast.cp.internal.raft.SnapshotAwareService;
+import com.hazelcast.cp.internal.raft.impl.RaftNode;
 import com.hazelcast.cp.internal.raftop.metadata.CreateMetadataRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.CreateRaftNodeOp;
 import com.hazelcast.cp.internal.raftop.metadata.DestroyRaftNodesOp;
 import com.hazelcast.cp.internal.raftop.metadata.SendActiveCPMembersOp;
 import com.hazelcast.cp.internal.util.Tuple2;
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.nio.Address;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
@@ -209,8 +209,8 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         return localMember.get();
     }
 
-    Collection<CPGroupId> getRaftGroupIds() {
-        return groups.keySet();
+    public Collection<CPGroupId> getGroupIds() {
+        return new ArrayList<CPGroupId>(groups.keySet());
     }
 
     public RaftGroup getRaftGroup(CPGroupId groupId) {
@@ -221,7 +221,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
 
     public CPGroupId getActiveRaftGroupId(String groupName) {
         for (RaftGroup group : groups.values()) {
-            if (group.status() == CPGroup.CPGroupStatus.ACTIVE && group.name().equals(groupName)) {
+            if (group.status() == CPGroupStatus.ACTIVE && group.name().equals(groupName)) {
                 return group.id();
             }
         }
@@ -585,7 +585,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         raftService.getInvocationManager().getRaftInvocationContext().setMembers(members);
     }
 
-    public Collection<CPGroupId> getDestroyingRaftGroupIds() {
+    public Collection<CPGroupId> getDestroyingGroupIds() {
         Collection<CPGroupId> groupIds = new ArrayList<CPGroupId>();
         for (RaftGroup group : groups.values()) {
             if (group.status() == DESTROYING) {

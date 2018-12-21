@@ -20,8 +20,13 @@ import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.IFunction;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftInvocationManager;
+import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongService;
 import com.hazelcast.cp.internal.datastructures.atomiclong.operation.AddAndGetOp;
 import com.hazelcast.cp.internal.datastructures.atomiclong.operation.AlterOp;
+import com.hazelcast.cp.internal.datastructures.atomiclong.operation.AlterOp.AlterResultType;
 import com.hazelcast.cp.internal.datastructures.atomiclong.operation.ApplyOp;
 import com.hazelcast.cp.internal.datastructures.atomiclong.operation.CompareAndSetOp;
 import com.hazelcast.cp.internal.datastructures.atomiclong.operation.GetAndAddOp;
@@ -29,11 +34,10 @@ import com.hazelcast.cp.internal.datastructures.atomiclong.operation.GetAndSetOp
 import com.hazelcast.cp.internal.datastructures.atomiclong.operation.LocalGetOp;
 import com.hazelcast.cp.internal.datastructures.spi.operation.DestroyRaftObjectOp;
 import com.hazelcast.cp.internal.raft.QueryPolicy;
-import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.raft.impl.util.SimpleCompletableFuture;
-import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongService;
 import com.hazelcast.spi.InternalCompletableFuture;
+import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.ProxyService;
 import com.hazelcast.util.ExceptionUtil;
 
 import java.util.concurrent.Future;
@@ -44,14 +48,19 @@ import java.util.concurrent.Future;
 @SuppressWarnings("checkstyle:methodcount")
 public class RaftAtomicLongProxy implements IAtomicLong {
 
-    private final String name;
-    private final CPGroupId groupId;
     private final RaftInvocationManager invocationManager;
+    private final ProxyService proxyService;
+    private final CPGroupId groupId;
+    private final String proxyName;
+    private final String objectName;
 
-    public RaftAtomicLongProxy(RaftInvocationManager invocationManager, CPGroupId groupId, String name) {
-        this.name = name;
+    public RaftAtomicLongProxy(NodeEngine nodeEngine, CPGroupId groupId, String proxyName, String objectName) {
+        RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+        this.proxyService = nodeEngine.getProxyService();
+        this.invocationManager = service.getInvocationManager();
         this.groupId = groupId;
-        this.invocationManager = invocationManager;
+        this.proxyName = proxyName;
+        this.objectName = objectName;
     }
 
     @Override
@@ -101,7 +110,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public InternalCompletableFuture<Long> addAndGetAsync(final long delta) {
-        return invocationManager.invoke(groupId, new AddAndGetOp(name, delta));
+        return invocationManager.invoke(groupId, new AddAndGetOp(objectName, delta));
     }
 
     @Override
@@ -116,12 +125,12 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public InternalCompletableFuture<Boolean> compareAndSetAsync(final long expect, final long update) {
-        return invocationManager.invoke(groupId, new CompareAndSetOp(name, expect, update));
+        return invocationManager.invoke(groupId, new CompareAndSetOp(objectName, expect, update));
     }
 
     @Override
     public InternalCompletableFuture<Long> getAndAddAsync(final long delta) {
-        return invocationManager.invoke(groupId, new GetAndAddOp(name, delta));
+        return invocationManager.invoke(groupId, new GetAndAddOp(objectName, delta));
     }
 
     @Override
@@ -136,7 +145,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public InternalCompletableFuture<Long> getAndSetAsync(final long newValue) {
-        return invocationManager.invoke(groupId, new GetAndSetOp(name, newValue));
+        return invocationManager.invoke(groupId, new GetAndSetOp(objectName, newValue));
     }
 
     @Override
@@ -147,25 +156,25 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public void alter(final IFunction<Long, Long> function) {
-        doAlter(function, AlterOp.AlterResultType.AFTER_VALUE);
+        doAlter(function, AlterResultType.AFTER_VALUE);
     }
 
     @Override
     public long alterAndGet(IFunction<Long, Long> function) {
-        return doAlter(function, AlterOp.AlterResultType.AFTER_VALUE);
+        return doAlter(function, AlterResultType.AFTER_VALUE);
     }
 
     @Override
     public long getAndAlter(IFunction<Long, Long> function) {
-        return doAlter(function, AlterOp.AlterResultType.BEFORE_VALUE);
+        return doAlter(function, AlterResultType.BEFORE_VALUE);
     }
 
-    private long doAlter(IFunction<Long, Long> function, AlterOp.AlterResultType alterResultType) {
+    private long doAlter(IFunction<Long, Long> function, AlterResultType alterResultType) {
         return doAlterAsync(function, alterResultType).join();
     }
 
-    private InternalCompletableFuture<Long> doAlterAsync(IFunction<Long, Long> function, AlterOp.AlterResultType alterResultType) {
-        return invocationManager.invoke(groupId, new AlterOp(name, function, alterResultType));
+    private InternalCompletableFuture<Long> doAlterAsync(IFunction<Long, Long> function, AlterResultType alterResultType) {
+        return invocationManager.invoke(groupId, new AlterOp(objectName, function, alterResultType));
     }
 
     @Override
@@ -175,23 +184,23 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public InternalCompletableFuture<Void> alterAsync(IFunction<Long, Long> function) {
-        InternalCompletableFuture future = doAlterAsync(function, AlterOp.AlterResultType.AFTER_VALUE);
+        InternalCompletableFuture future = doAlterAsync(function, AlterResultType.AFTER_VALUE);
         return future;
     }
 
     @Override
     public InternalCompletableFuture<Long> alterAndGetAsync(IFunction<Long, Long> function) {
-        return doAlterAsync(function, AlterOp.AlterResultType.AFTER_VALUE);
+        return doAlterAsync(function, AlterResultType.AFTER_VALUE);
     }
 
     @Override
     public InternalCompletableFuture<Long> getAndAlterAsync(IFunction<Long, Long> function) {
-        return doAlterAsync(function, AlterOp.AlterResultType.BEFORE_VALUE);
+        return doAlterAsync(function, AlterResultType.BEFORE_VALUE);
     }
 
     @Override
     public <R> InternalCompletableFuture<R> applyAsync(final IFunction<Long, R> function) {
-        return invocationManager.invoke(groupId, new ApplyOp<R>(name, function));
+        return invocationManager.invoke(groupId, new ApplyOp<R>(objectName, function));
     }
 
     public long localGet(QueryPolicy queryPolicy) {
@@ -206,7 +215,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
     public ICompletableFuture<Long> localGetAsync(final QueryPolicy queryPolicy) {
         final SimpleCompletableFuture<Long> resultFuture = new SimpleCompletableFuture<Long>(null, null);
         ICompletableFuture<Long> localFuture =
-                invocationManager.queryOnLocal(groupId, new LocalGetOp(name), queryPolicy);
+                invocationManager.queryLocally(groupId, new LocalGetOp(objectName), queryPolicy);
 
         localFuture.andThen(new ExecutionCallback<Long>() {
             @Override
@@ -216,7 +225,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
             @Override
             public void onFailure(Throwable t) {
-                ICompletableFuture<Long> future = invocationManager.query(groupId, new LocalGetOp(name), queryPolicy);
+                ICompletableFuture<Long> future = invocationManager.query(groupId, new LocalGetOp(objectName), queryPolicy);
                 future.andThen(new ExecutionCallback<Long>() {
                     @Override
                     public void onResponse(Long response) {
@@ -241,7 +250,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public String getName() {
-        return name;
+        return proxyName;
     }
 
     @Override
@@ -251,15 +260,12 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public void destroy() {
-        invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
+        invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), objectName)).join();
+        proxyService.destroyDistributedObject(getServiceName(), proxyName);
     }
 
     public CPGroupId getGroupId() {
         return groupId;
     }
 
-    @Override
-    public String toString() {
-        return "RaftAtomicLongProxy{" + "name='" + name + '\'' + ", groupId=" + groupId + '}';
-    }
 }

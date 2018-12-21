@@ -16,6 +16,7 @@
 
 package com.hazelcast.cp.internal;
 
+import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupIdsOp;
 import com.hazelcast.internal.serialization.DataSerializerHook;
 import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
@@ -97,7 +98,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int CREATE_METADATA_RAFT_GROUP_OP = 34;
     public static final int FORCE_DESTROY_RAFT_GROUP_OP = 35;
     public static final int GET_INITIAL_RAFT_GROUP_MEMBERS_IF_CURRENT_GROUP_MEMBER_OP = 36;
-    public static final int RAFT_PRE_JOIN_OP = 37;
+    public static final int GET_RAFT_GROUP_IDS_OP = 37;
+    public static final int RAFT_PRE_JOIN_OP = 38;
 
     @Override
     public int getFactoryId() {
@@ -182,6 +184,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new ForceDestroyRaftGroupOp();
                     case GET_INITIAL_RAFT_GROUP_MEMBERS_IF_CURRENT_GROUP_MEMBER_OP:
                         return new GetInitialRaftGroupMembersIfCurrentGroupMemberOp();
+                    case GET_RAFT_GROUP_IDS_OP:
+                        return new GetRaftGroupIdsOp();
                     case RAFT_PRE_JOIN_OP:
                         return new RaftServicePreJoinOp();
                     default:

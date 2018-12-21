@@ -17,66 +17,43 @@
 package com.hazelcast.client.cp.internal.datastructures.atomiclong;
 
 import com.hazelcast.client.impl.clientside.ClientMessageDecoder;
-import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.spi.ClientContext;
+import com.hazelcast.client.spi.ClientProxy;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
-import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.IFunction;
-import com.hazelcast.cp.internal.datastructures.atomiclong.client.AtomicLongMessageTaskFactoryProvider;
-import com.hazelcast.cp.internal.datastructures.spi.client.RaftGroupTaskFactoryProvider;
-import com.hazelcast.client.cp.internal.ClientAccessor;
-import com.hazelcast.nio.Bits;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongService;
+import com.hazelcast.nio.Bits;
 import com.hazelcast.spi.InternalCompletableFuture;
 
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
-import static com.hazelcast.cp.internal.RaftService.getObjectNameForProxy;
+import static com.hazelcast.cp.internal.datastructures.atomiclong.client.AtomicLongMessageTaskFactoryProvider.ADD_AND_GET_TYPE;
+import static com.hazelcast.cp.internal.datastructures.atomiclong.client.AtomicLongMessageTaskFactoryProvider.COMPARE_AND_SET_TYPE;
+import static com.hazelcast.cp.internal.datastructures.atomiclong.client.AtomicLongMessageTaskFactoryProvider.DESTROY_TYPE;
+import static com.hazelcast.cp.internal.datastructures.atomiclong.client.AtomicLongMessageTaskFactoryProvider.GET_AND_ADD_TYPE;
+import static com.hazelcast.cp.internal.datastructures.atomiclong.client.AtomicLongMessageTaskFactoryProvider.GET_AND_SET_TYPE;
 
 /**
  * TODO: Javadoc Pending...
  */
-public class RaftAtomicLongProxy implements IAtomicLong {
+class RaftAtomicLongProxy extends ClientProxy implements IAtomicLong {
 
     private static final ClientMessageDecoder LONG_RESPONSE_DECODER = new LongResponseDecoder();
     private static final ClientMessageDecoder BOOLEAN_RESPONSE_DECODER = new BooleanResponseDecoder();
 
-    public static IAtomicLong create(HazelcastInstance instance, String name) {
-        int dataSize = ClientMessage.HEADER_SIZE + calculateDataSize(name);
-        ClientMessage msg = ClientMessage.createForEncode(dataSize);
-        msg.setMessageType(RaftGroupTaskFactoryProvider.CREATE_TYPE);
-        msg.setRetryable(false);
-        msg.setOperationName("");
-        msg.set(name);
-        msg.updateFrameLength();
 
-        String objectName = getObjectNameForProxy(name);
-        HazelcastClientInstanceImpl client = ClientAccessor.getClient(instance);
-        ClientInvocationFuture f = new ClientInvocation(client, msg, objectName).invoke();
-
-        InternalCompletableFuture<CPGroupId> future = new ClientDelegatingFuture<CPGroupId>(f, client.getSerializationService(),
-                new ClientMessageDecoder() {
-            @Override
-            public CPGroupId decodeClientMessage(ClientMessage msg) {
-                return RaftGroupId.readFrom(msg);
-            }
-        });
-        CPGroupId groupId = future.join();
-        return new RaftAtomicLongProxy(instance, groupId, objectName);
-    }
-
-    private final HazelcastClientInstanceImpl client;
     private final CPGroupId groupId;
-    private final String name;
+    private final String objectName;
 
-    private RaftAtomicLongProxy(HazelcastInstance instance, CPGroupId groupId, String name) {
-        client = ClientAccessor.getClient(instance);
+    RaftAtomicLongProxy(ClientContext context, CPGroupId groupId, String proxyName, String objectName) {
+        super(RaftAtomicLongService.SERVICE_NAME, proxyName, context);
         this.groupId = groupId;
-        this.name = name;
+        this.objectName = objectName;
     }
 
     @Override
@@ -146,13 +123,13 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public InternalCompletableFuture<Long> addAndGetAsync(long delta) {
-        ClientMessage msg = encodeRequest(groupId, name, delta, AtomicLongMessageTaskFactoryProvider.ADD_AND_GET_TYPE);
+        ClientMessage msg = encodeRequest(groupId, objectName, delta, ADD_AND_GET_TYPE);
         return invoke(msg, LONG_RESPONSE_DECODER);
     }
 
     @Override
     public InternalCompletableFuture<Boolean> compareAndSetAsync(long expect, long update) {
-        ClientMessage msg = encodeRequest(groupId, name, expect, update, AtomicLongMessageTaskFactoryProvider.COMPARE_AND_SET_TYPE);
+        ClientMessage msg = encodeRequest(groupId, objectName, expect, update, COMPARE_AND_SET_TYPE);
         return invoke(msg, BOOLEAN_RESPONSE_DECODER);
     }
 
@@ -168,13 +145,13 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public InternalCompletableFuture<Long> getAndAddAsync(long delta) {
-        ClientMessage msg = encodeRequest(groupId, name, delta, AtomicLongMessageTaskFactoryProvider.GET_AND_ADD_TYPE);
+        ClientMessage msg = encodeRequest(groupId, objectName, delta, GET_AND_ADD_TYPE);
         return invoke(msg, LONG_RESPONSE_DECODER);
     }
 
     @Override
     public InternalCompletableFuture<Long> getAndSetAsync(long newValue) {
-        ClientMessage msg = encodeRequest(groupId, name, newValue, AtomicLongMessageTaskFactoryProvider.GET_AND_SET_TYPE);
+        ClientMessage msg = encodeRequest(groupId, objectName, newValue, GET_AND_SET_TYPE);
         return invoke(msg, LONG_RESPONSE_DECODER);
     }
 
@@ -215,37 +192,27 @@ public class RaftAtomicLongProxy implements IAtomicLong {
     }
 
     @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public String getServiceName() {
-        return RaftAtomicLongService.SERVICE_NAME;
-    }
-
-    @Override
     public String getPartitionKey() {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void destroy() {
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + calculateDataSize(name);
-        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, AtomicLongMessageTaskFactoryProvider.DESTROY_TYPE);
+    public void onDestroy() {
+        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + calculateDataSize(objectName);
+        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, DESTROY_TYPE);
         msg.updateFrameLength();
 
         invoke(msg, BOOLEAN_RESPONSE_DECODER).join();
     }
 
     private <T> InternalCompletableFuture<T> invoke(ClientMessage msg, ClientMessageDecoder decoder) {
-        ClientInvocationFuture future = new ClientInvocation(client, msg, getName()).invoke();
-        return new ClientDelegatingFuture<T>(future, client.getSerializationService(), decoder);
+        ClientInvocationFuture future = new ClientInvocation(getClient(), msg, name).invoke();
+        return new ClientDelegatingFuture<T>(future, getContext().getSerializationService(), decoder);
     }
 
     private static ClientMessage encodeRequest(CPGroupId groupId, String name, long value, int messageTypeId) {
-        int dataSize = ClientMessage.HEADER_SIZE
-                + RaftGroupId.dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES;
+        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + calculateDataSize(name)
+                + Bits.LONG_SIZE_IN_BYTES;
         ClientMessage msg = prepareClientMessage(groupId, name, dataSize, messageTypeId);
         msg.set(value);
         msg.updateFrameLength();
@@ -253,8 +220,8 @@ public class RaftAtomicLongProxy implements IAtomicLong {
     }
 
     private static ClientMessage encodeRequest(CPGroupId groupId, String name, long value1, long value2, int messageTypeId) {
-        int dataSize = ClientMessage.HEADER_SIZE
-                + RaftGroupId.dataSize(groupId) + calculateDataSize(name) + 2 * Bits.LONG_SIZE_IN_BYTES;
+        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + calculateDataSize(name)
+                + 2 * Bits.LONG_SIZE_IN_BYTES;
         ClientMessage msg = prepareClientMessage(groupId, name, dataSize, messageTypeId);
         msg.set(value1);
         msg.set(value2);

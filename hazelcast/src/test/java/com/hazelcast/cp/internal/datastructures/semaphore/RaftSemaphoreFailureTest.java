@@ -36,7 +36,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-import static com.hazelcast.cp.internal.datastructures.spi.RaftProxyFactory.create;
 import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.junit.Assert.assertEquals;
@@ -50,23 +49,14 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
     private HazelcastInstance semaphoreInstance;
     private ProxySessionManagerService sessionManagerService;
     private ISemaphore semaphore;
-    private String name = "semaphore";
+    private String name = "semaphore@group1";
 
     @Before
     public void setup() {
-        instances = createInstances();
-        semaphore = createSemaphore(name);
-        assertNotNull(semaphore);
-    }
-
-    private HazelcastInstance[] createInstances() {
-        return newInstances(3);
-    }
-
-    private ISemaphore createSemaphore(String name) {
+        instances = newInstances(3);
         semaphoreInstance = instances[RandomPicker.getInt(instances.length)];
         sessionManagerService = getNodeEngineImpl(semaphoreInstance).getService(ProxySessionManagerService.SERVICE_NAME);
-        return create(semaphoreInstance, RaftSemaphoreService.SERVICE_NAME, name);
+        semaphore = semaphoreInstance.getCPSubsystem().getSemaphore(name);
     }
 
     @Override
@@ -518,13 +508,13 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
 
     @Test
     public void testAcquireOnMultipleProxies() {
-         ISemaphore semaphore2 = create(instances[0] == semaphoreInstance ? instances[1] : instances[0],
-                RaftSemaphoreService.SERVICE_NAME, name);
+        HazelcastInstance otherInstance = instances[0] == semaphoreInstance ? instances[1] : instances[0];
+        ISemaphore semaphore2 = otherInstance.getCPSubsystem().getSemaphore(name);
 
-         semaphore.init(1);
-         semaphore.tryAcquire(1);
+        semaphore.init(1);
+        semaphore.tryAcquire(1);
 
-         assertFalse(semaphore2.tryAcquire());
+        assertFalse(semaphore2.tryAcquire());
     }
 
 }

@@ -433,10 +433,10 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                assertNotNull(raftService.getCPGroup(METADATA_GROUP_ID));
+                assertNotNull(raftService.getCPGroupLocally(METADATA_GROUP_ID));
             }
         });
-        RaftGroup metadataGroup = raftService.getCPGroup(METADATA_GROUP_ID);
+        RaftGroup metadataGroup = raftService.getCPGroupLocally(METADATA_GROUP_ID);
 
         final Collection<CPMember> endpoints = new HashSet<CPMember>(otherRaftGroupSize);
         for (CPMember endpoint : allEndpoints) {

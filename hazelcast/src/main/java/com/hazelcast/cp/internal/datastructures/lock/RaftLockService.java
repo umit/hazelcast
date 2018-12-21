@@ -16,15 +16,13 @@
 
 package com.hazelcast.cp.internal.datastructures.lock;
 
-import com.hazelcast.cp.FencedLock;
+import com.hazelcast.core.DistributedObject;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLock.AcquireResult;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLock.ReleaseResult;
 import com.hazelcast.cp.internal.datastructures.lock.proxy.RaftFencedLockProxy;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.AbstractBlockingService;
-import com.hazelcast.cp.internal.session.ProxySessionManagerService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.util.ExceptionUtil;
 
@@ -56,18 +54,6 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
     @Override
     protected void initImpl() {
         super.initImpl();
-    }
-
-    @Override
-    public FencedLock createRaftObjectProxy(String name) {
-        try {
-            CPGroupId groupId = raftService.createRaftGroupForProxy(name);
-            RaftInvocationManager invocationManager = raftService.getInvocationManager();
-            ProxySessionManagerService sessionManager = nodeEngine.getService(ProxySessionManagerService.SERVICE_NAME);
-            return new RaftFencedLockProxy(invocationManager, sessionManager, groupId, getObjectNameForProxy(name));
-        } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
-        }
     }
 
     public RaftLockOwnershipState acquire(CPGroupId groupId, String name, LockEndpoint endpoint, long commitIndex,
@@ -197,5 +183,19 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
     @Override
     protected String serviceName() {
         return SERVICE_NAME;
+    }
+
+    @Override
+    public DistributedObject createDistributedObject(String proxyName) {
+        try {
+            CPGroupId groupId = raftService.createRaftGroupForProxy(proxyName);
+            return new RaftFencedLockProxy(nodeEngine, groupId, proxyName, getObjectNameForProxy(proxyName));
+        } catch (Exception e) {
+            throw ExceptionUtil.rethrow(e);
+        }
+    }
+
+    @Override
+    public void destroyDistributedObject(String objectName) {
     }
 }

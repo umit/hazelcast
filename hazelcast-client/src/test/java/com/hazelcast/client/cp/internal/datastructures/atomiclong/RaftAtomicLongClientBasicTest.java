@@ -52,7 +52,7 @@ public class RaftAtomicLongClientBasicTest extends RaftAtomicLongBasicTest {
 
     @Override
     protected IAtomicLong createAtomicLong(String name) {
-        return RaftAtomicLongProxy.create(client, name);
+        return client.getCPSubsystem().getAtomicLong(name);
     }
 
     @After

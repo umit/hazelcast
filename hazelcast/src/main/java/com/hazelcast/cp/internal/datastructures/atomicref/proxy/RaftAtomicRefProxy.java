@@ -18,17 +18,20 @@ package com.hazelcast.cp.internal.datastructures.atomicref.proxy;
 
 import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.core.IFunction;
-import com.hazelcast.cp.internal.datastructures.atomicref.RaftAtomicRefService;
-import com.hazelcast.cp.internal.datastructures.spi.operation.DestroyRaftObjectOp;
-import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
+import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.datastructures.atomicref.RaftAtomicRefService;
 import com.hazelcast.cp.internal.datastructures.atomicref.operation.ApplyOp;
 import com.hazelcast.cp.internal.datastructures.atomicref.operation.CompareAndSetOp;
 import com.hazelcast.cp.internal.datastructures.atomicref.operation.ContainsOp;
 import com.hazelcast.cp.internal.datastructures.atomicref.operation.GetOp;
 import com.hazelcast.cp.internal.datastructures.atomicref.operation.SetOp;
+import com.hazelcast.cp.internal.datastructures.spi.operation.DestroyRaftObjectOp;
+import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.InternalCompletableFuture;
+import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.ProxyService;
 import com.hazelcast.spi.serialization.SerializationService;
 
 import static com.hazelcast.cp.internal.datastructures.atomicref.operation.ApplyOp.ReturnValueType.NO_RETURN_VALUE;
@@ -43,17 +46,21 @@ import static com.hazelcast.util.Preconditions.checkTrue;
  */
 public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
 
-    private final String name;
-    private final CPGroupId groupId;
     private final RaftInvocationManager invocationManager;
     private final SerializationService serializationService;
+    private final ProxyService proxyService;
+    private final CPGroupId groupId;
+    private final String proxyName;
+    private final String objectName;
 
-    public RaftAtomicRefProxy(RaftInvocationManager invocationManager, SerializationService serializationService,
-                              CPGroupId groupId, String name) {
-        this.name = name;
+    public RaftAtomicRefProxy(NodeEngine nodeEngine, CPGroupId groupId, String proxyName, String objectName) {
+        RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+        this.invocationManager = service.getInvocationManager();
+        this.serializationService = nodeEngine.getSerializationService();
+        this.proxyService = nodeEngine.getProxyService();
         this.groupId = groupId;
-        this.invocationManager = invocationManager;
-        this.serializationService = serializationService;
+        this.proxyName = proxyName;
+        this.objectName = objectName;
     }
 
     @Override
@@ -119,22 +126,22 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
 
     @Override
     public InternalCompletableFuture<Boolean> compareAndSetAsync(T expect, T update) {
-        return invocationManager.invoke(groupId, new CompareAndSetOp(name, toData(expect), toData(update)));
+        return invocationManager.invoke(groupId, new CompareAndSetOp(objectName, toData(expect), toData(update)));
     }
 
     @Override
     public InternalCompletableFuture<T> getAsync() {
-        return invocationManager.invoke(groupId, new GetOp(name));
+        return invocationManager.invoke(groupId, new GetOp(objectName));
     }
 
     @Override
     public InternalCompletableFuture<Void> setAsync(T newValue) {
-        return invocationManager.invoke(groupId, new SetOp(name, toData(newValue), false));
+        return invocationManager.invoke(groupId, new SetOp(objectName, toData(newValue), false));
     }
 
     @Override
     public InternalCompletableFuture<T> getAndSetAsync(T newValue) {
-        return invocationManager.invoke(groupId, new SetOp(name, toData(newValue), true));
+        return invocationManager.invoke(groupId, new SetOp(objectName, toData(newValue), true));
     }
 
     @Override
@@ -149,31 +156,31 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
 
     @Override
     public InternalCompletableFuture<Boolean> containsAsync(T expected) {
-        return invocationManager.invoke(groupId, new ContainsOp(name, toData(expected)));
+        return invocationManager.invoke(groupId, new ContainsOp(objectName, toData(expected)));
     }
 
     @Override
     public InternalCompletableFuture<Void> alterAsync(IFunction<T, T> function) {
         checkTrue(function != null, "Function cannot be null");
-        return invocationManager.invoke(groupId, new ApplyOp(name, toData(function), NO_RETURN_VALUE, true));
+        return invocationManager.invoke(groupId, new ApplyOp(objectName, toData(function), NO_RETURN_VALUE, true));
     }
 
     @Override
     public InternalCompletableFuture<T> alterAndGetAsync(IFunction<T, T> function) {
         checkTrue(function != null, "Function cannot be null");
-        return invocationManager.invoke(groupId, new ApplyOp(name, toData(function), RETURN_NEW_VALUE, true));
+        return invocationManager.invoke(groupId, new ApplyOp(objectName, toData(function), RETURN_NEW_VALUE, true));
     }
 
     @Override
     public InternalCompletableFuture<T> getAndAlterAsync(IFunction<T, T> function) {
         checkTrue(function != null, "Function cannot be null");
-        return invocationManager.invoke(groupId, new ApplyOp(name, toData(function), RETURN_OLD_VALUE, true));
+        return invocationManager.invoke(groupId, new ApplyOp(objectName, toData(function), RETURN_OLD_VALUE, true));
     }
 
     @Override
     public <R> InternalCompletableFuture<R> applyAsync(IFunction<T, R> function) {
         checkTrue(function != null, "Function cannot be null");
-        return invocationManager.invoke(groupId, new ApplyOp(name, toData(function), RETURN_NEW_VALUE, false));
+        return invocationManager.invoke(groupId, new ApplyOp(objectName, toData(function), RETURN_NEW_VALUE, false));
     }
 
     @Override
@@ -183,7 +190,7 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
 
     @Override
     public String getName() {
-        return name;
+        return proxyName;
     }
 
     @Override
@@ -193,7 +200,8 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
 
     @Override
     public void destroy() {
-        invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
+        invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), objectName)).join();
+        proxyService.destroyDistributedObject(getServiceName(), proxyName);
     }
 
     public CPGroupId getGroupId() {

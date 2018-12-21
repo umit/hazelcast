@@ -17,24 +17,24 @@
 package com.hazelcast.cp.internal.datastructures.semaphore;
 
 import com.hazelcast.config.Config;
-import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.config.cp.CPSemaphoreConfig;
+import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
-import com.hazelcast.cp.internal.RaftOp;
-import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.cp.internal.RaftInvocationManager;
-import com.hazelcast.cp.internal.raftop.snapshot.RestoreSnapshotOp;
-import com.hazelcast.cp.internal.session.RaftSessionService;
-import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
+import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.ChangePermitsOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.DrainPermitsOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.ReleasePermitsOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.proxy.RaftSessionAwareSemaphoreProxy;
+import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
+import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
+import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
+import com.hazelcast.cp.internal.raftop.snapshot.RestoreSnapshotOp;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.cp.internal.session.ProxySessionManagerService;
+import com.hazelcast.cp.internal.session.RaftSessionService;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -54,7 +54,6 @@ import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getSnapshotEntry;
 import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
-import static com.hazelcast.cp.internal.datastructures.spi.RaftProxyFactory.create;
 import static com.hazelcast.util.ThreadUtil.getThreadId;
 import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.util.concurrent.TimeUnit.MINUTES;
@@ -74,14 +73,14 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
     private HazelcastInstance[] instances;
     private HazelcastInstance semaphoreInstance;
     private RaftSessionAwareSemaphoreProxy semaphore;
-    private String name = "semaphore";
+    private String name = "semaphore@group1";
     private int groupSize = 3;
 
     @Before
     public void setup() {
-        instances = createInstances();
-        semaphore = createSemaphore(name);
-        assertNotNull(semaphore);
+        instances = newInstances(groupSize);
+        semaphoreInstance = instances[RandomPicker.getInt(instances.length)];
+        semaphore =(RaftSessionAwareSemaphoreProxy) semaphoreInstance.getCPSubsystem().getSemaphore(name);
     }
 
     @Test
@@ -438,15 +437,6 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
 
         assertEquals(3, drained2);
         assertEquals(1, semaphore.availablePermits());
-    }
-
-    protected HazelcastInstance[] createInstances() {
-        return newInstances(groupSize);
-    }
-
-    private RaftSessionAwareSemaphoreProxy createSemaphore(String name) {
-        semaphoreInstance = instances[RandomPicker.getInt(instances.length)];
-        return create(semaphoreInstance, RaftSemaphoreService.SERVICE_NAME, name);
     }
 
     private AbstractProxySessionManager getSessionManager() {

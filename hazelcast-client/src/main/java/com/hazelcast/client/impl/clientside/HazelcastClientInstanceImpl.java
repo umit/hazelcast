@@ -32,6 +32,7 @@ import com.hazelcast.client.connection.AddressTranslator;
 import com.hazelcast.client.connection.ClientConnectionManager;
 import com.hazelcast.client.connection.nio.ClientConnectionManagerImpl;
 import com.hazelcast.client.connection.nio.DefaultCredentialsFactory;
+import com.hazelcast.client.cp.internal.session.ClientProxySessionManager;
 import com.hazelcast.client.impl.client.DistributedObjectInfo;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.ClientGetDistributedObjectsCodec;
@@ -214,6 +215,7 @@ public class HazelcastClientInstanceImpl implements HazelcastInstance, Serializa
     private final ClientLockReferenceIdGenerator lockReferenceIdGenerator;
     private final ClientExceptionFactory clientExceptionFactory;
     private final ClientUserCodeDeploymentService userCodeDeploymentService;
+    private final ClientProxySessionManager proxySessionManager;
 
     public HazelcastClientInstanceImpl(ClientConfig config,
                                        ClientConnectionManagerFactory clientConnectionManagerFactory,
@@ -269,6 +271,7 @@ public class HazelcastClientInstanceImpl implements HazelcastInstance, Serializa
         clientExceptionFactory = initClientExceptionFactory();
         statistics = new Statistics(this);
         userCodeDeploymentService = new ClientUserCodeDeploymentService(config.getUserCodeDeploymentConfig(), classLoader);
+        proxySessionManager = new ClientProxySessionManager(this);
     }
 
     private int getConnectionTimeoutMillis() {
@@ -878,8 +881,8 @@ public class HazelcastClientInstanceImpl implements HazelcastInstance, Serializa
     }
 
     @Override
-    public CPSubsystem getCpSubsystem() {
-        throw new UnsupportedOperationException();
+    public CPSubsystem getCPSubsystem() {
+        return new CPSubsystemImpl(this);
     }
 
     @Override
@@ -898,6 +901,10 @@ public class HazelcastClientInstanceImpl implements HazelcastInstance, Serializa
 
     public ClientUserCodeDeploymentService getUserCodeDeploymentService() {
         return userCodeDeploymentService;
+    }
+
+    public ClientProxySessionManager getProxySessionManager() {
+        return proxySessionManager;
     }
 
     public ProxyManager getProxyManager() {

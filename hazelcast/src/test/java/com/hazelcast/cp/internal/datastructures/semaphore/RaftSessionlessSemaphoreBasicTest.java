@@ -23,6 +23,7 @@ import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.cp.internal.datastructures.semaphore.proxy.RaftSessionlessSemaphoreProxy;
+import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -38,10 +39,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import static com.hazelcast.cp.internal.datastructures.spi.RaftProxyFactory.create;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -51,22 +50,20 @@ public class RaftSessionlessSemaphoreBasicTest extends HazelcastRaftTestSupport 
 
     private HazelcastInstance[] instances;
     protected ISemaphore semaphore;
-    protected String name = "semaphore";
+    protected String objectName = "semaphore";
+    protected String proxyName = objectName + "@group1";
+    protected HazelcastInstance semaphoreInstance;
 
     @Before
     public void setup() {
         instances = createInstances();
-        semaphore = createSemaphore(name);
-        assertNotNull(semaphore);
+        semaphore = semaphoreInstance.getCPSubsystem().getSemaphore(proxyName);
     }
 
     protected HazelcastInstance[] createInstances() {
-        return newInstances(3);
-    }
-
-    protected ISemaphore createSemaphore(String name) {
-        HazelcastInstance semaphoreInstance = instances[RandomPicker.getInt(instances.length)];
-        return create(semaphoreInstance, RaftSemaphoreService.SERVICE_NAME, name);
+        HazelcastInstance[] instances = newInstances(3);
+        semaphoreInstance = instances[RandomPicker.getInt(instances.length)];
+        return instances;
     }
 
     @Test
@@ -474,6 +471,13 @@ public class RaftSessionlessSemaphoreBasicTest extends HazelcastRaftTestSupport 
         assertOpenEventually(latch);
     }
 
+    @Test(expected = DistributedObjectDestroyedException.class)
+    public void test_destroy() {
+        semaphore.destroy();
+
+        semaphore.init(1);
+    }
+
     protected CPGroupId getGroupId(ISemaphore semaphore) {
         return ((RaftSessionlessSemaphoreProxy) semaphore).getGroupId();
     }
@@ -482,7 +486,7 @@ public class RaftSessionlessSemaphoreBasicTest extends HazelcastRaftTestSupport 
     protected Config createConfig(int cpNodeCount, int groupSize) {
         Config config = super.createConfig(cpNodeCount, groupSize);
 
-        CPSemaphoreConfig semaphoreConfig = new CPSemaphoreConfig(name, true);
+        CPSemaphoreConfig semaphoreConfig = new CPSemaphoreConfig(objectName, true);
         config.addCPSemaphoreConfig(semaphoreConfig);
         return config;
     }

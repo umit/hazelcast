@@ -38,9 +38,10 @@ import com.hazelcast.cp.internal.raft.impl.dto.VoteResponse;
 import com.hazelcast.cp.internal.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.cp.internal.raftop.metadata.AddCPMemberOp;
 import com.hazelcast.cp.internal.raftop.metadata.ForceDestroyRaftGroupOp;
-import com.hazelcast.cp.internal.raftop.metadata.GetActiveRaftGroupIdOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetActiveCPMembersOp;
+import com.hazelcast.cp.internal.raftop.metadata.GetActiveRaftGroupIdOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetInitialRaftGroupMembersIfCurrentGroupMemberOp;
+import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupIdsOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.RaftServicePreJoinOp;
 import com.hazelcast.cp.internal.raftop.metadata.TriggerRemoveCPMemberOp;
@@ -145,12 +146,12 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
     @Override
     public Collection<CPGroupId> getCPGroupIds() {
-        return Collections.unmodifiableCollection(metadataGroupManager.getRaftGroupIds());
+        return invocationManager.<Collection<CPGroupId>>invoke(METADATA_GROUP_ID, new GetRaftGroupIdsOp()).join();
     }
 
     @Override
-    public RaftGroup getCPGroup(CPGroupId id) {
-        return metadataGroupManager.getRaftGroup(id);
+    public RaftGroup getCPGroup(CPGroupId groupId) {
+        return invocationManager.<RaftGroup>invoke(METADATA_GROUP_ID, new GetRaftGroupOp(groupId)).join();
     }
 
     /**
@@ -341,6 +342,14 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return Collections.unmodifiableSet(missingMembers.keySet());
     }
 
+    public Collection<CPGroupId> getCPGroupIdsLocally() {
+        return metadataGroupManager.getGroupIds();
+    }
+
+    public RaftGroup getCPGroupLocally(CPGroupId groupId) {
+        return metadataGroupManager.getRaftGroup(groupId);
+    }
+
     public MetadataRaftGroupManager getMetadataGroupManager() {
         return metadataGroupManager;
     }
@@ -489,8 +498,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         String groupName = getGroupNameForProxy(name);
 
         try {
-            CPGroupId groupId = invocationManager
-                    .<CPGroupId>invoke(MetadataRaftGroupManager.METADATA_GROUP_ID, new GetActiveRaftGroupIdOp(groupName)).get();
+            CPGroupId groupId = getGroupIdForProxy(name);
             if (groupId != null) {
                 return groupId;
             }
@@ -504,17 +512,9 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
     }
 
-    private String getGroupNameForProxy(String name) {
-        int i = name.indexOf("@");
-        if (i == -1) {
-            return DEFAULT_GROUP_NAME;
-        }
-
-        checkTrue(i < (name.length() - 1), "Custom group name cannot be empty string");
-        checkTrue(name.indexOf("@", i +1) == -1, "Custom group name must be specified at most once");
-        String groupName = name.substring(i + 1).trim();
-        checkTrue(groupName.length() > 0, "Custom group name cannot be empty string");
-        return groupName;
+    public CPGroupId getGroupIdForProxy(String name) {
+        String groupName = getGroupNameForProxy(name);
+        return invocationManager.<CPGroupId>invoke(METADATA_GROUP_ID, new GetActiveRaftGroupIdOp(groupName)).join();
     }
 
     private ICompletableFuture<Void> invokeTriggerRemoveMember(CPMember member) {
@@ -526,6 +526,35 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         InternalCompletableFuture<List<CPMember>> f = invocationManager.query(METADATA_GROUP_ID, op, LEADER_LOCAL);
         List<CPMember> members = f.join();
         return !members.contains(member);
+    }
+
+    public static String withoutDefaultGroupName(String name) {
+        name = name.trim();
+        int i = name.indexOf("@");
+        if (i == -1) {
+            return name;
+        }
+
+        checkTrue(name.indexOf("@", i +1) == -1, "Custom group name must be specified at most once");
+        String groupName = name.substring(i + 1);
+        if (groupName.equals(DEFAULT_GROUP_NAME)) {
+            return name.substring(0, i);
+        }
+
+        return name;
+    }
+
+    public static String getGroupNameForProxy(String name) {
+        int i = name.indexOf("@");
+        if (i == -1) {
+            return DEFAULT_GROUP_NAME;
+        }
+
+        checkTrue(i < (name.length() - 1), "Custom group name cannot be empty string");
+        checkTrue(name.indexOf("@", i +1) == -1, "Custom group name must be specified at most once");
+        String groupName = name.substring(i + 1).trim();
+        checkTrue(groupName.length() > 0, "Custom group name cannot be empty string");
+        return groupName;
     }
 
     public static String getObjectNameForProxy(String name) {

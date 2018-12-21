@@ -17,20 +17,18 @@
 package com.hazelcast.client.cp.internal.datastructures.countdownlatch;
 
 import com.hazelcast.client.impl.clientside.ClientMessageDecoder;
-import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.spi.ClientContext;
+import com.hazelcast.client.spi.ClientProxy;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
-import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.core.OperationTimeoutException;
-import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
-import com.hazelcast.client.cp.internal.ClientAccessor;
-import com.hazelcast.nio.Bits;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftGroupId;
-import com.hazelcast.cp.internal.datastructures.spi.client.RaftGroupTaskFactoryProvider;
+import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
+import com.hazelcast.nio.Bits;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.util.UuidUtil;
 
@@ -39,7 +37,6 @@ import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
 import static com.hazelcast.cp.internal.RaftGroupId.dataSize;
-import static com.hazelcast.cp.internal.RaftService.getObjectNameForProxy;
 import static com.hazelcast.cp.internal.datastructures.countdownlatch.client.CountDownLatchMessageTaskFactoryProvider.AWAIT_TYPE;
 import static com.hazelcast.cp.internal.datastructures.countdownlatch.client.CountDownLatchMessageTaskFactoryProvider.COUNT_DOWN_TYPE;
 import static com.hazelcast.cp.internal.datastructures.countdownlatch.client.CountDownLatchMessageTaskFactoryProvider.DESTROY_TYPE;
@@ -51,54 +48,28 @@ import static com.hazelcast.util.Preconditions.checkNotNull;
 /**
  * TODO: Javadoc Pending...
  */
-public class RaftCountDownLatchProxy implements ICountDownLatch {
+class RaftCountDownLatchProxy extends ClientProxy implements ICountDownLatch {
 
     private static final ClientMessageDecoder INT_RESPONSE_DECODER = new IntResponseDecoder();
     private static final ClientMessageDecoder BOOLEAN_RESPONSE_DECODER = new BooleanResponseDecoder();
 
-    public static ICountDownLatch create(HazelcastInstance instance, String name) {
-        int dataSize = ClientMessage.HEADER_SIZE + calculateDataSize(name);
-        ClientMessage msg = ClientMessage.createForEncode(dataSize);
-        msg.setMessageType(RaftGroupTaskFactoryProvider.CREATE_TYPE);
-        msg.setRetryable(false);
-        msg.setOperationName("");
-        msg.set(name);
-        msg.updateFrameLength();
-
-        String objectName = getObjectNameForProxy(name);
-        HazelcastClientInstanceImpl client = ClientAccessor.getClient(instance);
-        ClientInvocationFuture f = new ClientInvocation(client, msg, objectName).invoke();
-
-        InternalCompletableFuture<CPGroupId> future = new ClientDelegatingFuture<CPGroupId>(f, client.getSerializationService(),
-                new ClientMessageDecoder() {
-                    @Override
-                    public CPGroupId decodeClientMessage(ClientMessage msg) {
-                        return RaftGroupId.readFrom(msg);
-                    }
-                });
-
-        CPGroupId groupId = future.join();
-        return new RaftCountDownLatchProxy(instance, groupId, objectName);
-    }
-
-    private final HazelcastClientInstanceImpl client;
     private final CPGroupId groupId;
-    private final String name;
+    private final String objectName;
 
-    public RaftCountDownLatchProxy(HazelcastInstance instance, CPGroupId groupId, String name) {
-        this.client = ClientAccessor.getClient(instance);
+    RaftCountDownLatchProxy(ClientContext context, CPGroupId groupId, String proxyName, String objectName) {
+        super(RaftCountDownLatchService.SERVICE_NAME, proxyName, context);
         this.groupId = groupId;
-        this.name = name;
+        this.objectName = objectName;
     }
 
     @Override
-    public boolean await(long timeout, TimeUnit unit) throws InterruptedException {
+    public boolean await(long timeout, TimeUnit unit) {
         checkNotNull(unit);
 
         long timeoutMillis = Math.max(0, unit.toMillis(timeout));
 
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES;
-        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, AWAIT_TYPE);
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(objectName) + Bits.LONG_SIZE_IN_BYTES;
+        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, AWAIT_TYPE);
         msg.set(timeoutMillis);
         msg.updateFrameLength();
 
@@ -120,17 +91,17 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
     }
 
     private int getRound() {
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name);
-        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, GET_ROUND_TYPE);
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(objectName);
+        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, GET_ROUND_TYPE);
         msg.updateFrameLength();
 
         return this.<Integer>invoke(msg, INT_RESPONSE_DECODER).join();
     }
 
     private void countDown(int round, UUID invocationUid) {
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.INT_SIZE_IN_BYTES
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(objectName) + Bits.INT_SIZE_IN_BYTES
                 + Bits.LONG_SIZE_IN_BYTES * 2;
-        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, COUNT_DOWN_TYPE);
+        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, COUNT_DOWN_TYPE);
         msg.set(round);
         msg.set(invocationUid.getLeastSignificantBits());
         msg.set(invocationUid.getMostSignificantBits());
@@ -141,8 +112,8 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
 
     @Override
     public int getCount() {
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name);
-        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, GET_REMAINING_COUNT_TYPE);
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(objectName);
+        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, GET_REMAINING_COUNT_TYPE);
         msg.updateFrameLength();
 
         return this.<Integer>invoke(msg, INT_RESPONSE_DECODER).join();
@@ -150,8 +121,8 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
 
     @Override
     public boolean trySetCount(int count) {
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.INT_SIZE_IN_BYTES;
-        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, TRY_SET_COUNT_TYPE);
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(objectName) + Bits.INT_SIZE_IN_BYTES;
+        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, TRY_SET_COUNT_TYPE);
         msg.set(count);
         msg.updateFrameLength();
         return this.<Boolean>invoke(msg, BOOLEAN_RESPONSE_DECODER).join();
@@ -162,32 +133,22 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
         throw new UnsupportedOperationException();
     }
 
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public String getServiceName() {
-        return RaftCountDownLatchService.SERVICE_NAME;
-    }
-
     public CPGroupId getGroupId() {
         return groupId;
     }
 
     @Override
-    public void destroy() {
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name);
-        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, DESTROY_TYPE);
+    public void onDestroy() {
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(objectName);
+        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, DESTROY_TYPE);
         msg.updateFrameLength();
 
         invoke(msg, BOOLEAN_RESPONSE_DECODER).join();
     }
 
     private <T> InternalCompletableFuture<T> invoke(ClientMessage clientMessage, ClientMessageDecoder decoder) {
-        ClientInvocationFuture future = new ClientInvocation(client, clientMessage, name).invoke();
-        return new ClientDelegatingFuture<T>(future, client.getSerializationService(), decoder);
+        ClientInvocationFuture future = new ClientInvocation(getClient(), clientMessage, name).invoke();
+        return new ClientDelegatingFuture<T>(future, getContext().getSerializationService(), decoder);
     }
 
     private ClientMessage prepareClientMessage(CPGroupId groupId, String name, int dataSize, int messageTypeId) {

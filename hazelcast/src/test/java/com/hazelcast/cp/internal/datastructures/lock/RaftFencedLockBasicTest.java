@@ -17,21 +17,18 @@
 package com.hazelcast.cp.internal.datastructures.lock;
 
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.cp.FencedLock;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.FencedLock;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
-import com.hazelcast.cp.internal.RaftService;
-import com.hazelcast.cp.internal.session.RaftSessionService;
-import com.hazelcast.cp.internal.datastructures.lock.proxy.RaftFencedLockProxy;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.cp.internal.session.ProxySessionManagerService;
+import com.hazelcast.cp.internal.session.RaftSessionService;
 import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
-import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.RandomPicker;
 import org.junit.Before;
 import org.junit.Test;
@@ -62,27 +59,14 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
     @Before
     public void setup() {
         instances = createInstances();
-        lock = createLock("lock");
+        lock = lockInstance.getCPSubsystem().getFencedLock("lock@group1");
         assertNotNull(lock);
     }
 
     protected HazelcastInstance[] createInstances() {
-        return newInstances(3);
-    }
-
-    protected FencedLock createLock(String name) {
+        HazelcastInstance[] instances = newInstances(3);
         lockInstance = instances[RandomPicker.getInt(instances.length)];
-        NodeEngineImpl nodeEngine = getNodeEngineImpl(lockInstance);
-        RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
-
-        try {
-            CPGroupId groupId = raftService.createRaftGroupForProxy(name);
-            String objectName = RaftService.getObjectNameForProxy(name);
-            ProxySessionManagerService sessionManager = nodeEngine.getService(ProxySessionManagerService.SERVICE_NAME);
-            return new RaftFencedLockProxy(raftService.getInvocationManager(), sessionManager, groupId, objectName);
-        } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
-        }
+        return instances;
     }
 
     protected AbstractProxySessionManager getSessionManager(HazelcastInstance instance) {

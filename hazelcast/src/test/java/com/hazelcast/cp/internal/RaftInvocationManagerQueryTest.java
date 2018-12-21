@@ -111,7 +111,7 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         HazelcastInstance followerInstance = getRandomFollowerInstance(instances, leader);
         RaftInvocationManager followerInvManager = getRaftInvocationManager(followerInstance);
 
-        ICompletableFuture<Object> future = followerInvManager.queryOnLocal(groupId, new RaftTestQueryOp(), LEADER_LOCAL);
+        ICompletableFuture<Object> future = followerInvManager.queryLocally(groupId, new RaftTestQueryOp(), LEADER_LOCAL);
         try {
             future.get();
         } catch (ExecutionException e) {
@@ -133,7 +133,7 @@ public class RaftInvocationManagerQueryTest extends HazelcastRaftTestSupport {
         HazelcastInstance leaderInstance = getLeaderInstance(instances, groupId);
         RaftInvocationManager leaderInvManager = getRaftInvocationManager(leaderInstance);
 
-        ICompletableFuture<Object> future = leaderInvManager.queryOnLocal(groupId, new RaftTestQueryOp(), LEADER_LOCAL);
+        ICompletableFuture<Object> future = leaderInvManager.queryLocally(groupId, new RaftTestQueryOp(), LEADER_LOCAL);
         assertEquals(value, future.get());
     }
 }

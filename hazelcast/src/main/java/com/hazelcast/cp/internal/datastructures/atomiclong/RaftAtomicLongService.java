@@ -16,13 +16,13 @@
 
 package com.hazelcast.cp.internal.datastructures.atomiclong;
 
-import com.hazelcast.core.IAtomicLong;
+import com.hazelcast.core.DistributedObject;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupLifecycleAwareService;
+import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.atomiclong.proxy.RaftAtomicLongProxy;
 import com.hazelcast.cp.internal.datastructures.spi.RaftRemoteService;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
-import com.hazelcast.cp.internal.RaftGroupLifecycleAwareService;
-import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
@@ -112,16 +112,6 @@ public class RaftAtomicLongService implements ManagedService, RaftRemoteService,
     }
 
     @Override
-    public IAtomicLong createRaftObjectProxy(String name) {
-        try {
-            CPGroupId groupId = raftService.createRaftGroupForProxy(name);
-            return new RaftAtomicLongProxy(raftService.getInvocationManager(), groupId, getObjectNameForProxy(name));
-        } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
-        }
-    }
-
-    @Override
     public boolean destroyRaftObject(CPGroupId groupId, String name) {
         Tuple2<CPGroupId, String> key = Tuple2.of(groupId, name);
         destroyedLongs.add(key);
@@ -153,5 +143,19 @@ public class RaftAtomicLongService implements ManagedService, RaftRemoteService,
             atomicLongs.put(key, atomicLong);
         }
         return atomicLong;
+    }
+
+    @Override
+    public DistributedObject createDistributedObject(String proxyName) {
+        try {
+            CPGroupId groupId = raftService.createRaftGroupForProxy(proxyName);
+            return new RaftAtomicLongProxy(nodeEngine, groupId, proxyName, getObjectNameForProxy(proxyName));
+        } catch (Exception e) {
+            throw ExceptionUtil.rethrow(e);
+        }
+    }
+
+    @Override
+    public void destroyDistributedObject(String proxyName) {
     }
 }

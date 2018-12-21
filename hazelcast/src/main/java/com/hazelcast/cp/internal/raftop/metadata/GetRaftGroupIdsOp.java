@@ -16,14 +16,14 @@
 
 package com.hazelcast.cp.internal.raftop.metadata;
 
-import com.hazelcast.nio.ObjectDataInput;
-import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
-import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
 import java.io.IOException;
 
@@ -32,15 +32,15 @@ import java.io.IOException;
  * <p/>
  * This operation is committed to the Metadata group.
  */
-public class GetDestroyingRaftGroupIdsOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
+public class GetRaftGroupIdsOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
-    public GetDestroyingRaftGroupIdsOp() {
+    public GetRaftGroupIdsOp() {
     }
 
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        return service.getMetadataGroupManager().getDestroyingGroupIds();
+        return service.getMetadataGroupManager().getGroupIds();
     }
 
     @Override
@@ -60,7 +60,7 @@ public class GetDestroyingRaftGroupIdsOp extends RaftOp implements Indeterminate
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.GET_DESTROYING_RAFT_GROUP_IDS_OP;
+        return RaftServiceDataSerializerHook.GET_RAFT_GROUP_IDS_OP;
     }
 
     @Override

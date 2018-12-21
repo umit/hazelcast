@@ -16,7 +16,6 @@
 
 package com.hazelcast.client.cp.internal.datastructures.countdownlatch;
 
-import com.hazelcast.client.cp.internal.datastructures.countdownlatch.RaftCountDownLatchProxy;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICountDownLatch;
@@ -43,7 +42,7 @@ public class RaftCountDownLatchClientBasicTest extends RaftCountDownLatchBasicTe
 
     @Override
     protected ICountDownLatch createLatch(String name) {
-        return RaftCountDownLatchProxy.create(client, name);
+        return client.getCPSubsystem().getCountDownLatch(name);
     }
 
     @After

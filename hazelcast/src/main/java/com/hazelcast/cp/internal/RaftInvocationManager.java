@@ -175,7 +175,7 @@ public class RaftInvocationManager {
         return invocation.invoke();
     }
 
-    public <T> InternalCompletableFuture<T> queryOnLocal(CPGroupId groupId, RaftOp raftOp, QueryPolicy queryPolicy) {
+    public <T> InternalCompletableFuture<T> queryLocally(CPGroupId groupId, RaftOp raftOp, QueryPolicy queryPolicy) {
         RaftQueryOp operation = new RaftQueryOp(groupId, raftOp, queryPolicy);
         return nodeEngine.getOperationService().invokeOnTarget(RaftService.SERVICE_NAME, operation, nodeEngine.getThisAddress());
     }

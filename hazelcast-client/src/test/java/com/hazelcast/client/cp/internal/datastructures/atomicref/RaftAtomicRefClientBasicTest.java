@@ -50,7 +50,7 @@ public class RaftAtomicRefClientBasicTest extends RaftAtomicRefBasicTest {
 
     @Override
     protected <T> IAtomicReference<T> createAtomicRef(String name) {
-        return RaftAtomicRefProxy.create(client, name);
+        return client.getCPSubsystem().getAtomicReference(name);
     }
 
     @After

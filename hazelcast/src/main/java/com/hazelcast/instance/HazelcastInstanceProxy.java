@@ -301,8 +301,8 @@ public final class HazelcastInstanceProxy implements HazelcastInstance, Serializ
     }
 
     @Override
-    public CPSubsystem getCpSubsystem() {
-        return getOriginal().getCpSubsystem();
+    public CPSubsystem getCPSubsystem() {
+        return getOriginal().getCPSubsystem();
     }
 
     @Override

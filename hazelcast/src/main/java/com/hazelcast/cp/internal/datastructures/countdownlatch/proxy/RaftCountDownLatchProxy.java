@@ -19,6 +19,7 @@ package com.hazelcast.cp.internal.datastructures.countdownlatch.proxy;
 import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
+import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.AwaitOp;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.CountDownOp;
@@ -26,6 +27,8 @@ import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.GetRema
 import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.GetRoundOp;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.TrySetCountOp;
 import com.hazelcast.cp.internal.datastructures.spi.operation.DestroyRaftObjectOp;
+import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.ProxyService;
 
 import java.util.concurrent.TimeUnit;
 
@@ -37,38 +40,43 @@ import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
  */
 public class RaftCountDownLatchProxy implements ICountDownLatch {
 
-    private final CPGroupId groupId;
-    private final String name;
     private final RaftInvocationManager invocationManager;
+    private final ProxyService proxyService;
+    private final CPGroupId groupId;
+    private final String proxyName;
+    private final String objectName;
 
-    public RaftCountDownLatchProxy(RaftInvocationManager invocationManager, CPGroupId groupId, String name) {
-        this.invocationManager = invocationManager;
+    public RaftCountDownLatchProxy(NodeEngine nodeEngine, CPGroupId groupId, String proxyName, String objectName) {
+        RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+        this.invocationManager = service.getInvocationManager();
+        this.proxyService = nodeEngine.getProxyService();
         this.groupId = groupId;
-        this.name = name;
+        this.proxyName = proxyName;
+        this.objectName = objectName;
     }
 
     @Override
-    public boolean await(long timeout, TimeUnit unit) throws InterruptedException {
+    public boolean await(long timeout, TimeUnit unit) {
         checkNotNull(unit);
 
         long timeoutMillis = Math.max(0, unit.toMillis(timeout));
-        return invocationManager.<Boolean>invoke(groupId, new AwaitOp(name, timeoutMillis)).join();
+        return invocationManager.<Boolean>invoke(groupId, new AwaitOp(objectName, timeoutMillis)).join();
     }
 
     @Override
     public void countDown() {
-        int round = invocationManager.<Integer>invoke(groupId, new GetRoundOp(name)).join();
-        invocationManager.invoke(groupId, new CountDownOp(name, round, newUnsecureUUID())).join();
+        int round = invocationManager.<Integer>invoke(groupId, new GetRoundOp(objectName)).join();
+        invocationManager.invoke(groupId, new CountDownOp(objectName, round, newUnsecureUUID())).join();
     }
 
     @Override
     public int getCount() {
-        return invocationManager.<Integer>invoke(groupId, new GetRemainingCountOp(name)).join();
+        return invocationManager.<Integer>invoke(groupId, new GetRemainingCountOp(objectName)).join();
     }
 
     @Override
     public boolean trySetCount(int count) {
-        return invocationManager.<Boolean>invoke(groupId, new TrySetCountOp(name, count)).join();
+        return invocationManager.<Boolean>invoke(groupId, new TrySetCountOp(objectName, count)).join();
     }
 
     @Override
@@ -78,7 +86,7 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
 
     @Override
     public String getName() {
-        return name;
+        return proxyName;
     }
 
     @Override
@@ -86,13 +94,14 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
         return RaftCountDownLatchService.SERVICE_NAME;
     }
 
-    public CPGroupId getGroupId() {
-        return groupId;
-    }
-
     @Override
     public void destroy() {
-        invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
+        invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), objectName)).join();
+        proxyService.destroyDistributedObject(getServiceName(), proxyName);
+    }
+
+    public CPGroupId getGroupId() {
+        return groupId;
     }
 
 }

@@ -22,7 +22,10 @@ package com.hazelcast.config.cp;
  */
 public class CPSemaphoreConfig extends AbstractCPObjectConfig {
 
-    private boolean jdkCompatible;
+    public static final boolean DEFAULT_SEMAPHORE_JDK_COMPATIBILITY = false;
+
+
+    private boolean jdkCompatible = DEFAULT_SEMAPHORE_JDK_COMPATIBILITY;
 
     public CPSemaphoreConfig() {
         super();

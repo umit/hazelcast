@@ -20,6 +20,7 @@ import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftOp;
+import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.AcquirePermitsOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.AvailablePermitsOp;
@@ -32,6 +33,8 @@ import com.hazelcast.cp.internal.session.ProxySessionManagerService;
 import com.hazelcast.cp.internal.session.SessionAwareProxy;
 import com.hazelcast.cp.internal.session.SessionExpiredException;
 import com.hazelcast.spi.InternalCompletableFuture;
+import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.ProxyService;
 import com.hazelcast.util.Clock;
 
 import java.util.UUID;
@@ -56,20 +59,24 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
      */
     public static final int DRAIN_SESSION_ACQ_COUNT = 1024;
 
-    private final String name;
     private final RaftInvocationManager invocationManager;
+    private final ProxyService proxyService;
+    private final String proxyName;
+    private final String objectName;
 
-    public RaftSessionAwareSemaphoreProxy(RaftInvocationManager invocationManager, ProxySessionManagerService sessionManager,
-                                          CPGroupId groupId, String name) {
-        super(sessionManager, groupId);
-        this.name = name;
-        this.invocationManager = invocationManager;
+    public RaftSessionAwareSemaphoreProxy(NodeEngine nodeEngine, CPGroupId groupId, String proxyName, String objectName) {
+        super((ProxySessionManagerService) nodeEngine.getService(ProxySessionManagerService.SERVICE_NAME), groupId);
+        RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+        this.invocationManager = service.getInvocationManager();
+        this.proxyService = nodeEngine.getProxyService();
+        this.proxyName = proxyName;
+        this.objectName = objectName;
     }
 
     @Override
     public boolean init(int permits) {
         checkNotNegative(permits, "Permits must be non-negative!");
-        return invocationManager.<Boolean>invoke(groupId, new InitSemaphoreOp(name, permits)).join();
+        return invocationManager.<Boolean>invoke(groupId, new InitSemaphoreOp(objectName, permits)).join();
     }
 
     @Override
@@ -84,7 +91,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
         UUID invocationUid = newUnsecureUUID();
         for (;;) {
             long sessionId = acquireSession(permits);
-            RaftOp op = new AcquirePermitsOp(name, sessionId, threadId, invocationUid, permits, -1L);
+            RaftOp op = new AcquirePermitsOp(objectName, sessionId, threadId, invocationUid, permits, -1L);
             try {
                 invocationManager.invoke(groupId, op).join();
                 return;
@@ -119,7 +126,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
         for (;;) {
             start = Clock.currentTimeMillis();
             long sessionId = acquireSession(permits);
-            RaftOp op = new AcquirePermitsOp(name, sessionId, threadId, invocationUid, permits, timeoutMs);
+            RaftOp op = new AcquirePermitsOp(objectName, sessionId, threadId, invocationUid, permits, timeoutMs);
             try {
                 InternalCompletableFuture<Boolean> f = invocationManager.invoke(groupId, op);
                 boolean acquired = f.join();
@@ -152,7 +159,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
 
         long threadId = getThreadId();
         UUID invocationUid = newUnsecureUUID();
-        RaftOp op = new ReleasePermitsOp(name, sessionId, threadId, invocationUid, permits);
+        RaftOp op = new ReleasePermitsOp(objectName, sessionId, threadId, invocationUid, permits);
         try {
             invocationManager.invoke(groupId, op).join();
         } catch (SessionExpiredException e) {
@@ -165,7 +172,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
 
     @Override
     public int availablePermits() {
-        return invocationManager.<Integer>invoke(groupId, new AvailablePermitsOp(name)).join();
+        return invocationManager.<Integer>invoke(groupId, new AvailablePermitsOp(objectName)).join();
     }
 
     @Override
@@ -174,7 +181,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
         UUID invocationUid = newUnsecureUUID();
         for (;;) {
             long sessionId = acquireSession(DRAIN_SESSION_ACQ_COUNT);
-            RaftOp op = new DrainPermitsOp(name, sessionId, threadId, invocationUid);
+            RaftOp op = new DrainPermitsOp(objectName, sessionId, threadId, invocationUid);
             try {
                 InternalCompletableFuture<Integer> future = invocationManager.invoke(groupId, op);
                 int count = future.join();
@@ -200,7 +207,8 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
         long threadId = getThreadId();
         UUID invocationUid = newUnsecureUUID();
         try {
-            invocationManager.invoke(groupId, new ChangePermitsOp(name, sessionId, threadId, invocationUid, -reduction)).join();
+            RaftOp op = new ChangePermitsOp(objectName, sessionId, threadId, invocationUid, -reduction);
+            invocationManager.invoke(groupId, op).join();
         } catch (SessionExpiredException e) {
             invalidateSession(sessionId);
             throw e;
@@ -223,7 +231,8 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
         long threadId = getThreadId();
         UUID invocationUid = newUnsecureUUID();
         try {
-            invocationManager.invoke(groupId, new ChangePermitsOp(name, sessionId, threadId, invocationUid, increase)).join();
+            RaftOp op = new ChangePermitsOp(objectName, sessionId, threadId, invocationUid, increase);
+            invocationManager.invoke(groupId, op).join();
         } catch (SessionExpiredException e) {
             invalidateSession(sessionId);
             throw e;
@@ -234,7 +243,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
 
     @Override
     public String getName() {
-        return name;
+        return proxyName;
     }
 
     @Override
@@ -249,7 +258,8 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
 
     @Override
     public void destroy() {
-        invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), name)).join();
+        invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), objectName)).join();
+        proxyService.destroyDistributedObject(getServiceName(), proxyName);
     }
 
 }

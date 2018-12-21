@@ -47,13 +47,16 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  */
 public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy implements FencedLock {
 
-    protected final String name;
+    protected final String proxyName;
+    protected final String objectName;
     // thread id -> lock state
     private final ConcurrentMap<Long, LockState> lockStates = new ConcurrentHashMap<Long, LockState>();
 
-    public AbstractRaftFencedLockProxy(AbstractProxySessionManager sessionManager, CPGroupId groupId, String name) {
+    public AbstractRaftFencedLockProxy(AbstractProxySessionManager sessionManager, CPGroupId groupId, String proxyName,
+                                       String objectName) {
         super(sessionManager, groupId);
-        this.name = name;
+        this.proxyName = proxyName;
+        this.objectName = objectName;
     }
 
     @Override
@@ -78,7 +81,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
         for (;;) {
             long sessionId = acquireSession();
             try {
-                RaftLockOwnershipState ownership = doLock(groupId, name, sessionId, threadId, invocationUid).join();
+                RaftLockOwnershipState ownership = doLock(sessionId, threadId, invocationUid).join();
                 assert ownership.isLocked();
 
                 // initialize the local state with the lock count returned from the Raft group
@@ -126,8 +129,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
             start = Clock.currentTimeMillis();
             long sessionId = acquireSession();
             try {
-                RaftLockOwnershipState ownership =
-                        doTryLock(groupId, name, sessionId, threadId, invocationUid, timeoutMillis).join();
+                RaftLockOwnershipState ownership = doTryLock(sessionId, threadId, invocationUid, timeoutMillis).join();
                 if (ownership.isLocked()) {
                     // initialize the local state with the lock count returned from the Raft group
                     // since I might have performed some lock() calls that failed with operation timeout
@@ -165,7 +167,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
                 return;
             }
         } else if (sessionId == NO_SESSION_ID) {
-            throw new IllegalMonitorStateException("Current thread is not owner of the Lock[" + name
+            throw new IllegalMonitorStateException("Current thread is not owner of the Lock[" + proxyName
                     + "] because session not found!");
         }
 
@@ -188,10 +190,10 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
         // lock(), getFence(), isLocked(), isLockedByCurrentThread(), or getLockCount() call.
 
         try {
-            doUnlock(groupId, name, sessionId, threadId, newUnsecureUUID(), Integer.MAX_VALUE).join();
+            doUnlock(sessionId, threadId, newUnsecureUUID(), Integer.MAX_VALUE).join();
         } catch (SessionExpiredException e) {
             invalidateSession(sessionId);
-            throw new IllegalMonitorStateException("Current thread is not owner of the Lock[" + name + "] because Session["
+            throw new IllegalMonitorStateException("Current thread is not owner of the Lock[" + proxyName + "] because Session["
                     + sessionId + "] is closed by server!");
         } finally {
             lockStates.remove(threadId);
@@ -199,21 +201,20 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
         }
     }
 
-    @Nonnull
     @Override
-    public Condition newCondition() {
+    public final Condition newCondition() {
         throw new UnsupportedOperationException();
     }
 
     @Override
     public final void forceUnlock() {
         try {
-            RaftLockOwnershipState ownership = doGetLockOwnershipState(groupId, name).join();
+            RaftLockOwnershipState ownership = doGetLockOwnershipState().join();
             if (!ownership.isLocked()) {
-                throw new IllegalMonitorStateException("Lock[" + name + "] has no owner!");
+                throw new IllegalMonitorStateException("Lock[" + objectName + "] has no owner!");
             }
 
-            doForceUnlock(groupId, name, newUnsecureUUID(), ownership.getFence()).join();
+            doForceUnlock(newUnsecureUUID(), ownership.getFence()).join();
         } finally {
             lockStates.remove(getThreadId());
         }
@@ -229,7 +230,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
             validateLocalLockState(sessionId, threadId, lockState);
             return lockState.fence;
         } else if (sessionId == NO_SESSION_ID) {
-            throw new IllegalMonitorStateException("Current thread is not owner of the Lock[" + name
+            throw new IllegalMonitorStateException("Current thread is not owner of the Lock[" + proxyName
                     + "] because session not found!");
         }
 
@@ -238,13 +239,13 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
         // but actually committed on the Raft group. In this case, I already acquired
         // the session before I made the failed lock() call, so there is no need to acquire it here.
 
-        RaftLockOwnershipState ownership = doGetLockOwnershipState(groupId, name).join();
+        RaftLockOwnershipState ownership = doGetLockOwnershipState().join();
         if (ownership.getSessionId() == sessionId && ownership.getThreadId() == threadId) {
             lockStates.put(threadId, new LockState(sessionId, ownership.getFence(), ownership.getLockCount()));
             return ownership.getFence();
         }
 
-        throw new IllegalMonitorStateException("Current thread is not owner of the Lock[" + name + "]");
+        throw new IllegalMonitorStateException("Current thread is not owner of the Lock[" + proxyName + "]");
     }
 
     @Override
@@ -276,7 +277,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
         // but actually committed on the Raft group. In this case, I already acquired
         // the session before I made the failed lock() call, so there is no need to acquire it here.
 
-        RaftLockOwnershipState ownership = doGetLockOwnershipState(groupId, name).join();
+        RaftLockOwnershipState ownership = doGetLockOwnershipState().join();
         if (ownership.getSessionId() == sessionId && ownership.getThreadId() == threadId) {
             lockStates.put(threadId, new LockState(sessionId, ownership.getFence(), ownership.getLockCount()));
             return ownership.getLockCount();
@@ -302,7 +303,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
         if (lockState.sessionId != sessionId) {
             lockStates.remove(threadId);
             throw new IllegalMonitorStateException(
-                    "Current thread is not owner of the Lock[" + name + "] because Session[" + lockState.sessionId
+                    "Current thread is not owner of the Lock[" + proxyName + "] because Session[" + lockState.sessionId
                             + "] is closed by server!");
         }
     }
@@ -320,8 +321,17 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
     }
 
     @Override
+    public void destroy() {
+        lockStates.clear();
+    }
+
+    @Override
     public final String getName() {
-        return name;
+        return proxyName;
+    }
+
+    public String getObjectName() {
+        return objectName;
     }
 
     @Override
@@ -334,23 +344,18 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
         return RaftLockService.SERVICE_NAME;
     }
 
-    protected abstract InternalCompletableFuture<RaftLockOwnershipState> doLock(CPGroupId groupId, String name,
-                                                                                long sessionId, long threadId,
+    protected abstract InternalCompletableFuture<RaftLockOwnershipState> doLock(long sessionId, long threadId,
                                                                                 UUID invocationUid);
 
-    protected abstract InternalCompletableFuture<RaftLockOwnershipState> doTryLock(CPGroupId groupId, String name,
-                                                                                   long sessionId, long threadId,
+    protected abstract InternalCompletableFuture<RaftLockOwnershipState> doTryLock(long sessionId, long threadId,
                                                                                    UUID invocationUid, long timeoutMillis);
 
-    protected abstract InternalCompletableFuture<Object> doUnlock(CPGroupId groupId, String name,
-                                                                  long sessionId, long threadId,
-                                                                  UUID invocationUid, int releaseCount);
+    protected abstract InternalCompletableFuture<Object> doUnlock(long sessionId, long threadId, UUID invocationUid,
+                                                                  int releaseCount);
 
-    protected abstract InternalCompletableFuture<Object> doForceUnlock(CPGroupId groupId, String name,
-                                                                       UUID invocationUid, long expectedFence);
+    protected abstract InternalCompletableFuture<Object> doForceUnlock(UUID invocationUid, long expectedFence);
 
-    protected abstract InternalCompletableFuture<RaftLockOwnershipState> doGetLockOwnershipState(CPGroupId groupId,
-                                                                                                 String name);
+    protected abstract InternalCompletableFuture<RaftLockOwnershipState> doGetLockOwnershipState();
 
     private static class LockState {
         final long sessionId;

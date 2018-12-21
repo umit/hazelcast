@@ -16,19 +16,19 @@
 
 package com.hazelcast.client.cp.internal.datastructures.semaphore;
 
+import com.hazelcast.client.impl.clientside.HazelcastClientProxy;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSessionAwareSemaphoreBasicTest;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
-import com.hazelcast.client.cp.internal.session.SessionManagerProvider;
-import com.hazelcast.client.cp.internal.ClientAccessor;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.After;
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
@@ -49,11 +49,6 @@ public class RaftSessionAwareSemaphoreClientBasicTest extends RaftSessionAwareSe
         return instances;
     }
 
-    @Override
-    protected ISemaphore createSemaphore(String name) {
-        return RaftSessionAwareSemaphoreProxy.create(semaphoreInstance, name);
-    }
-
     @After
     public void shutdown() {
         factory.terminateAll();
@@ -61,12 +56,17 @@ public class RaftSessionAwareSemaphoreClientBasicTest extends RaftSessionAwareSe
 
     @Override
     protected AbstractProxySessionManager getSessionManager(HazelcastInstance instance) {
-        return SessionManagerProvider.get(ClientAccessor.getClient(instance));
+        return (((HazelcastClientProxy) instance).client).getProxySessionManager();
     }
 
     @Override
     protected CPGroupId getGroupId(ISemaphore semaphore) {
         return ((RaftSessionAwareSemaphoreProxy) semaphore).getGroupId();
+    }
+
+    @Test
+    public void testInit() {
+        super.testInit();
     }
 
 }

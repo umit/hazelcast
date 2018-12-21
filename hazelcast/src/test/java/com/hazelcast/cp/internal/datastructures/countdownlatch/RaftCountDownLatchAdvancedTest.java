@@ -21,12 +21,12 @@ import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.proxy.RaftCountDownLatchProxy;
+import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
-import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.cp.internal.raftop.snapshot.RestoreSnapshotOp;
-import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -44,7 +44,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getSnapshotEntry;
-import static com.hazelcast.cp.internal.datastructures.spi.RaftProxyFactory.create;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -59,7 +58,7 @@ public class RaftCountDownLatchAdvancedTest extends HazelcastRaftTestSupport {
 
     private HazelcastInstance[] instances;
     private ICountDownLatch latch;
-    private String name = "latch";
+    private String name = "latch@group1";
     private int groupSize = 3;
 
     @Before
@@ -74,7 +73,8 @@ public class RaftCountDownLatchAdvancedTest extends HazelcastRaftTestSupport {
     }
 
     private ICountDownLatch createLatch(String name) {
-        return create(instances[RandomPicker.getInt(instances.length)], RaftCountDownLatchService.SERVICE_NAME, name);
+        HazelcastInstance instance = instances[RandomPicker.getInt(instances.length)];
+        return instance.getCPSubsystem().getCountDownLatch(name);
     }
 
     @Override

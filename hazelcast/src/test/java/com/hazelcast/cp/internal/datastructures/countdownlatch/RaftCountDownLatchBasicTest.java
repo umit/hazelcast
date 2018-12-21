@@ -19,6 +19,7 @@ package com.hazelcast.cp.internal.datastructures.countdownlatch;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
+import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.TestThread;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -32,7 +33,6 @@ import org.junit.runner.RunWith;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static com.hazelcast.cp.internal.datastructures.spi.RaftProxyFactory.create;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -48,7 +48,7 @@ public class RaftCountDownLatchBasicTest extends HazelcastRaftTestSupport {
     @Before
     public void setup() {
         instances = createInstances();
-        latch = createLatch("latch");
+        latch = createLatch("latch@group1");
         assertNotNull(latch);
     }
 
@@ -57,9 +57,9 @@ public class RaftCountDownLatchBasicTest extends HazelcastRaftTestSupport {
     }
 
     protected ICountDownLatch createLatch(String name) {
-        return create(instances[RandomPicker.getInt(instances.length)], RaftCountDownLatchService.SERVICE_NAME, name);
+        HazelcastInstance instance = instances[RandomPicker.getInt(instances.length)];
+        return instance.getCPSubsystem().getCountDownLatch(name);
     }
-
 
     // ================= trySetCount =================================================
 
@@ -173,6 +173,13 @@ public class RaftCountDownLatchBasicTest extends HazelcastRaftTestSupport {
         long elapsed = System.currentTimeMillis() - time;
         assertTrue(elapsed >= 100);
         assertEquals(1, latch.getCount());
+    }
+
+    @Test(expected = DistributedObjectDestroyedException.class)
+    public void testCountDown_afterDestroy() {
+        latch.destroy();
+
+        latch.countDown();
     }
 
 }

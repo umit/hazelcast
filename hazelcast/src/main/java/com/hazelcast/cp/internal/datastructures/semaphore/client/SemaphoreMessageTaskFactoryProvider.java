@@ -38,6 +38,7 @@ public class SemaphoreMessageTaskFactoryProvider implements MessageTaskFactoryPr
     public static final int INIT_SEMAPHORE_TYPE = 15005;
     public static final int RELEASE_PERMITS_TYPE = 15006;
     public static final int GENERATE_THREAD_ID_TYPE = 15007;
+    public static final int GET_SEMAPHORE_TYPE = 15008;
 
     private final Node node;
 
@@ -102,6 +103,12 @@ public class SemaphoreMessageTaskFactoryProvider implements MessageTaskFactoryPr
             @Override
             public MessageTask create(ClientMessage clientMessage, Connection connection) {
                 return new GenerateThreadIdMessageTask(clientMessage, node, connection);
+            }
+        };
+        factories[GET_SEMAPHORE_TYPE] = new MessageTaskFactory() {
+            @Override
+            public MessageTask create(ClientMessage clientMessage, Connection connection) {
+                return new GetSemaphoreTypeMessageTask(clientMessage, node, connection);
             }
         };
 

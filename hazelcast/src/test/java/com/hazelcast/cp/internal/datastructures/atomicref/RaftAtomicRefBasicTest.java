@@ -19,9 +19,13 @@ package com.hazelcast.cp.internal.datastructures.atomicref;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.core.IFunction;
+import com.hazelcast.cp.CPGroup;
+import com.hazelcast.cp.CPGroup.CPGroupStatus;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
+import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.datastructures.atomicref.proxy.RaftAtomicRefProxy;
+import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupOp;
 import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -36,7 +40,7 @@ import org.junit.runner.RunWith;
 import java.util.concurrent.ExecutionException;
 
 import static com.hazelcast.config.cp.CPSubsystemConfig.DEFAULT_GROUP_NAME;
-import static com.hazelcast.cp.internal.datastructures.spi.RaftProxyFactory.create;
+import static com.hazelcast.cp.internal.MetadataRaftGroupManager.METADATA_GROUP_ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -50,7 +54,7 @@ public class RaftAtomicRefBasicTest extends HazelcastRaftTestSupport {
 
     private HazelcastInstance[] instances;
     private IAtomicReference<String> atomicRef;
-    private String name = "ref";
+    private String name = "ref@group1";
 
     @Before
     public void setup() {
@@ -60,11 +64,12 @@ public class RaftAtomicRefBasicTest extends HazelcastRaftTestSupport {
     }
 
     protected HazelcastInstance[] createInstances() {
-        return newInstances(5, 3, 2);
+        return newInstances(3, 3, 1);
     }
 
     protected <T> IAtomicReference<T> createAtomicRef(String name) {
-        return create(instances[RandomPicker.getInt(instances.length)], RaftAtomicRefService.SERVICE_NAME, name);
+        HazelcastInstance instance = instances[RandomPicker.getInt(instances.length)];
+        return instance.getCPSubsystem().getAtomicReference(name);
     }
 
     @Test
@@ -229,15 +234,19 @@ public class RaftAtomicRefBasicTest extends HazelcastRaftTestSupport {
         atomicRef.destroy();
 
         final CPGroupId groupId = getGroupId(atomicRef);
-        getRaftInvocationManager(instances[0]).triggerDestroy(groupId).get();
+        final RaftInvocationManager invocationManager = getRaftInvocationManager(instances[0]);
+        invocationManager.triggerDestroy(groupId).get();
 
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                atomicRef = createAtomicRef(name);
-                assertNotEquals(groupId, getGroupId(atomicRef));
+                CPGroup group = invocationManager.<CPGroup>invoke(METADATA_GROUP_ID, new GetRaftGroupOp(groupId)).join();
+                assertEquals(CPGroupStatus.DESTROYED, group.status());
             }
         });
+
+        atomicRef = createAtomicRef(name);
+        assertNotEquals(groupId, getGroupId(atomicRef));
 
         atomicRef.set("str1");
     }

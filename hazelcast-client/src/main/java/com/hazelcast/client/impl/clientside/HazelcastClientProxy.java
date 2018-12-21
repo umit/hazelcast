@@ -280,8 +280,8 @@ public class HazelcastClientProxy implements HazelcastInstance, SerializationSer
     }
 
     @Override
-    public CPSubsystem getCpSubsystem() {
-        return getClient().getCpSubsystem();
+    public CPSubsystem getCPSubsystem() {
+        return getClient().getCPSubsystem();
     }
 
     @Override
