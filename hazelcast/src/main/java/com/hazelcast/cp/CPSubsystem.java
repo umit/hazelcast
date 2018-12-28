@@ -215,6 +215,6 @@ public interface CPSubsystem {
      *
      * @return the {@link CPSessionManagementService} of this Hazelcast instance
      */
-    CPSessionManagementService getSessionManagementService();
+    CPSessionManagementService getCPSessionManagementService();
 
 }

@@ -23,12 +23,12 @@ import com.hazelcast.cp.internal.datastructures.countdownlatch.proxy.RaftCountDo
 import com.hazelcast.cp.internal.datastructures.spi.blocking.AbstractBlockingService;
 import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.spi.NodeEngine;
-import com.hazelcast.util.ExceptionUtil;
 
 import java.util.Collection;
 import java.util.UUID;
 
 import static com.hazelcast.cp.internal.RaftService.getObjectNameForProxy;
+import static com.hazelcast.util.ExceptionUtil.rethrow;
 
 /**
  * Contains Raft-based count down latch instances
@@ -96,7 +96,7 @@ public class RaftCountDownLatchService
             CPGroupId groupId = service.createRaftGroupForProxy(proxyName);
             return new RaftCountDownLatchProxy(nodeEngine, groupId, proxyName, getObjectNameForProxy(proxyName));
         } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
+            throw rethrow(e);
         }
     }
 

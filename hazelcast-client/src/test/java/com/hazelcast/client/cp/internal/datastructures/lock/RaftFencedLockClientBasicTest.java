@@ -25,8 +25,11 @@ import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+
+import static org.junit.Assert.assertFalse;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
@@ -43,6 +46,16 @@ public class RaftFencedLockClientBasicTest extends RaftFencedLockBasicTest {
         TestHazelcastFactory f = (TestHazelcastFactory) factory;
         lockInstance = f.newHazelcastClient();
         return instances;
+    }
+
+    @Test
+    public void test_lockAutoRelease_onClientShutdown() {
+        String proxyName = lock.getName();
+        lock.lock();
+
+        lockInstance.shutdown();
+
+        assertFalse(instances[0].getCPSubsystem().getLock(proxyName).isLocked());
     }
 
     protected AbstractProxySessionManager getSessionManager(HazelcastInstance instance) {

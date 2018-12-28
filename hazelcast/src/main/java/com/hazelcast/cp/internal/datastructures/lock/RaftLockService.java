@@ -24,12 +24,12 @@ import com.hazelcast.cp.internal.datastructures.lock.RaftLock.ReleaseResult;
 import com.hazelcast.cp.internal.datastructures.lock.proxy.RaftFencedLockProxy;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.AbstractBlockingService;
 import com.hazelcast.spi.NodeEngine;
-import com.hazelcast.util.ExceptionUtil;
 
 import java.util.Collection;
 import java.util.UUID;
 
 import static com.hazelcast.cp.internal.RaftService.getObjectNameForProxy;
+import static com.hazelcast.util.ExceptionUtil.rethrow;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 
 /**
@@ -186,7 +186,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
             CPGroupId groupId = raftService.createRaftGroupForProxy(proxyName);
             return new RaftFencedLockProxy(nodeEngine, groupId, proxyName, getObjectNameForProxy(proxyName));
         } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
+            throw rethrow(e);
         }
     }
 

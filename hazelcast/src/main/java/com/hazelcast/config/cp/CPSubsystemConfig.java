@@ -16,8 +16,16 @@
 
 package com.hazelcast.config.cp;
 
+import com.hazelcast.config.ConfigPatternMatcher;
+import com.hazelcast.config.matcher.MatchingPointConfigPatternMatcher;
+import com.hazelcast.core.ISemaphore;
 import com.hazelcast.core.IndeterminateOperationStateException;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static com.hazelcast.internal.config.ConfigUtils.lookupByPattern;
+import static com.hazelcast.partition.strategy.StringPartitioningStrategy.getBaseName;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static com.hazelcast.util.Preconditions.checkPositive;
 import static com.hazelcast.util.Preconditions.checkTrue;
@@ -130,6 +138,13 @@ public class CPSubsystemConfig {
      * implementation
      */
     private RaftAlgorithmConfig raftAlgorithmConfig = new RaftAlgorithmConfig();
+
+    /**
+     * Configurations for CP {@link ISemaphore} instances
+     */
+    private final Map<String, CPSemaphoreConfig> cpSemaphoreConfigs = new ConcurrentHashMap<String, CPSemaphoreConfig>();
+
+    private final ConfigPatternMatcher configPatternMatcher = new MatchingPointConfigPatternMatcher();
 
     public CPSubsystemConfig() {
     }
@@ -326,4 +341,22 @@ public class CPSubsystemConfig {
         return this;
     }
 
+    public CPSemaphoreConfig findCPSemaphoreConfig(String name) {
+        return lookupByPattern(configPatternMatcher, cpSemaphoreConfigs, getBaseName(name));
+    }
+
+    public CPSubsystemConfig addCPSemaphoreConfig(CPSemaphoreConfig config) {
+        cpSemaphoreConfigs.put(config.getName(), config);
+        return this;
+    }
+
+    @Override
+    public String toString() {
+        return "CPSubsystemConfig{" + "cpMemberCount=" + cpMemberCount + ", groupSize=" + groupSize
+                + ", sessionTimeToLiveSeconds=" + sessionTimeToLiveSeconds + ", sessionHeartbeatIntervalSeconds="
+                + sessionHeartbeatIntervalSeconds + ", missingCpMemberAutoRemovalSeconds=" + missingCpMemberAutoRemovalSeconds
+                + ", failOnIndeterminateOperationState=" + failOnIndeterminateOperationState + ", raftAlgorithmConfig="
+                + raftAlgorithmConfig + ", cpSemaphoreConfigs=" + cpSemaphoreConfigs + ", configPatternMatcher="
+                + configPatternMatcher + '}';
+    }
 }

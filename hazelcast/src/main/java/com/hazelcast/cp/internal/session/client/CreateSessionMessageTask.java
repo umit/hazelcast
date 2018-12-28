@@ -36,7 +36,7 @@ import java.security.Permission;
  */
 public class CreateSessionMessageTask extends AbstractMessageTask implements ExecutionCallback {
 
-    protected CPGroupId groupId;
+    private CPGroupId groupId;
 
     CreateSessionMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);

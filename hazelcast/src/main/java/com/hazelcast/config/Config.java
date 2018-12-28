@@ -16,9 +16,8 @@
 
 package com.hazelcast.config;
 
-import com.hazelcast.config.matcher.MatchingPointConfigPatternMatcher;
 import com.hazelcast.config.cp.CPSubsystemConfig;
-import com.hazelcast.config.cp.CPSemaphoreConfig;
+import com.hazelcast.config.matcher.MatchingPointConfigPatternMatcher;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ManagedContext;
 import com.hazelcast.flakeidgen.FlakeIdGenerator;
@@ -167,9 +166,7 @@ public class Config {
 
     private boolean liteMember;
 
-    private CPSubsystemConfig cpSubsystemConfig;
-
-    private final Map<String, CPSemaphoreConfig> cpSemaphoreConfigs = new ConcurrentHashMap<String, CPSemaphoreConfig>();
+    private CPSubsystemConfig cpSubsystemConfig = new CPSubsystemConfig();
 
     public Config() {
     }
@@ -3447,21 +3444,25 @@ public class Config {
         return this;
     }
 
-    public CPSubsystemConfig getCpSubsystemConfig() {
+    /**
+     * Get current configuration for the CP subsystem
+     *
+     * @return CP subsystem configuration
+     * @since 3.12
+     */
+    public CPSubsystemConfig getCPSubsystemConfig() {
         return cpSubsystemConfig;
     }
 
-    public Config setCpSubsystemConfig(CPSubsystemConfig cpSubsystemConfig) {
+    /**
+     * Set CP subsystem configuration
+     *
+     * @param cpSubsystemConfig the CP subsystem configuration
+     * @return this config instance
+     * @since 3.12
+     */
+    public Config setCPSubsystemConfig(CPSubsystemConfig cpSubsystemConfig) {
         this.cpSubsystemConfig = cpSubsystemConfig;
-        return this;
-    }
-
-    public CPSemaphoreConfig findCPSemaphoreConfig(String name) {
-        return lookupByPattern(configPatternMatcher, cpSemaphoreConfigs, getBaseName(name));
-    }
-
-    public Config addCPSemaphoreConfig(CPSemaphoreConfig config) {
-        cpSemaphoreConfigs.put(config.getName(), config);
         return this;
     }
 
@@ -3491,6 +3492,7 @@ public class Config {
                 + ", securityConfig=" + securityConfig
                 + ", liteMember=" + liteMember
                 + ", crdtReplicationConfig=" + crdtReplicationConfig
+                + ", cpSubsystemConfig=" + cpSubsystemConfig
                 + '}';
     }
 }

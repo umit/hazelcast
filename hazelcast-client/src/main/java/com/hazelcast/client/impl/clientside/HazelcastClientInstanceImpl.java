@@ -961,6 +961,7 @@ public class HazelcastClientInstanceImpl implements HazelcastInstance, Serializa
     }
 
     public void doShutdown() {
+        proxySessionManager.shutdown();
         proxyManager.destroy();
         connectionManager.shutdown();
         clusterService.shutdown();

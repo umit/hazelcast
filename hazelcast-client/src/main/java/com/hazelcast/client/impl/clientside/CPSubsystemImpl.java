@@ -70,11 +70,11 @@ class CPSubsystemImpl implements CPSubsystem {
 
     @Override
     public CPSubsystemManagementService getCPSubsystemManagementService() {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public CPSessionManagementService getSessionManagementService() {
-        return null;
+    public CPSessionManagementService getCPSessionManagementService() {
+        throw new UnsupportedOperationException();
     }
 }

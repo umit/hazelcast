@@ -65,7 +65,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
         Config config = super.createConfig(cpNodeCount, groupSize);
 
         CPSemaphoreConfig semaphoreConfig = new CPSemaphoreConfig(objectName, isJDKCompatible());
-        config.addCPSemaphoreConfig(semaphoreConfig);
+        config.getCPSubsystemConfig().addCPSemaphoreConfig(semaphoreConfig);
         return config;
     }
 

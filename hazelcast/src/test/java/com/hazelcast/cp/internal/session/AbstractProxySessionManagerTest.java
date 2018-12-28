@@ -255,7 +255,7 @@ public abstract class AbstractProxySessionManagerTest extends HazelcastRaftTestS
     @Override
     protected Config createConfig(int cpNodeCount, int groupSize) {
         Config config = super.createConfig(cpNodeCount, groupSize);
-        CPSubsystemConfig cpSubsystemConfig = config.getCpSubsystemConfig();
+        CPSubsystemConfig cpSubsystemConfig = config.getCPSubsystemConfig();
         cpSubsystemConfig.setSessionHeartbeatIntervalSeconds(1);
         cpSubsystemConfig.setSessionTimeToLiveSeconds(sessionTTLSeconds);
         return config;

@@ -53,9 +53,9 @@ import static org.junit.Assert.fail;
 @Category({QuickTest.class, ParallelTest.class})
 public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
 
-    private HazelcastInstance[] instances;
+    protected HazelcastInstance[] instances;
     protected HazelcastInstance lockInstance;
-    private FencedLock lock;
+    protected FencedLock lock;
 
     @Before
     public void setup() {

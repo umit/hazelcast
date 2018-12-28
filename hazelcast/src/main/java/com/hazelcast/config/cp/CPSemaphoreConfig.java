@@ -73,4 +73,9 @@ public class CPSemaphoreConfig extends AbstractCPObjectConfig {
         this.jdkCompatible = jdkCompatible;
         return this;
     }
+
+    @Override
+    public String toString() {
+        return "CPSemaphoreConfig{" + "name='" + name + ", jdkCompatible=" + jdkCompatible + '\'' + '}';
+    }
 }

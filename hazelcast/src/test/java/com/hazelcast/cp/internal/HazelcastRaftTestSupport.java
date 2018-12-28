@@ -131,7 +131,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         configureSplitBrainDelay(config);
 
         CPSubsystemConfig cpSubsystemConfig = new CPSubsystemConfig();
-        config.setCpSubsystemConfig(cpSubsystemConfig);
+        config.setCPSubsystemConfig(cpSubsystemConfig);
 
         if (cpNodeCount > 0) {
             cpSubsystemConfig.setCPMemberCount(cpNodeCount).setGroupSize(groupSize);

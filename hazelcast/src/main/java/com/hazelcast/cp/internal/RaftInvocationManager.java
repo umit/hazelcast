@@ -17,21 +17,22 @@
 package com.hazelcast.cp.internal;
 
 import com.hazelcast.core.ExecutionCallback;
+import com.hazelcast.core.HazelcastException;
 import com.hazelcast.core.ICompletableFuture;
-import com.hazelcast.internal.cluster.ClusterService;
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.cp.internal.raft.MembershipChangeType;
-import com.hazelcast.cp.internal.raft.QueryPolicy;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.exception.CannotCreateRaftGroupException;
-import com.hazelcast.cp.internal.raftop.metadata.CreateRaftGroupOp;
-import com.hazelcast.cp.internal.raftop.metadata.GetActiveCPMembersOp;
-import com.hazelcast.cp.internal.raftop.metadata.TriggerDestroyRaftGroupOp;
 import com.hazelcast.cp.internal.operation.ChangeRaftGroupMembershipOp;
 import com.hazelcast.cp.internal.operation.DefaultRaftReplicateOp;
 import com.hazelcast.cp.internal.operation.DestroyRaftGroupOp;
 import com.hazelcast.cp.internal.operation.RaftQueryOp;
+import com.hazelcast.cp.internal.raft.MembershipChangeType;
+import com.hazelcast.cp.internal.raft.QueryPolicy;
 import com.hazelcast.cp.internal.raft.impl.util.SimpleCompletableFuture;
+import com.hazelcast.cp.internal.raftop.metadata.CreateRaftGroupOp;
+import com.hazelcast.cp.internal.raftop.metadata.GetActiveCPMembersOp;
+import com.hazelcast.cp.internal.raftop.metadata.TriggerDestroyRaftGroupOp;
+import com.hazelcast.internal.cluster.ClusterService;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
@@ -48,8 +49,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Executor;
 
-import static com.hazelcast.cp.internal.raft.QueryPolicy.LEADER_LOCAL;
 import static com.hazelcast.cp.internal.MetadataRaftGroupManager.METADATA_GROUP_ID;
+import static com.hazelcast.cp.internal.raft.QueryPolicy.LEADER_LOCAL;
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 
 /**
@@ -87,11 +88,19 @@ public class RaftInvocationManager {
     }
 
     public ICompletableFuture<CPGroupId> createRaftGroup(String groupName, int groupSize) {
+        checkCPSubsystemEnabled();
+
         Executor executor = nodeEngine.getExecutionService().getExecutor(ASYNC_EXECUTOR);
         ILogger logger = nodeEngine.getLogger(getClass());
         SimpleCompletableFuture<CPGroupId> resultFuture = new SimpleCompletableFuture<CPGroupId>(executor, logger);
         invokeGetMembersToCreateRaftGroup(groupName, groupSize, resultFuture);
         return resultFuture;
+    }
+
+    private void checkCPSubsystemEnabled() {
+        if (raftService.getConfig().getCPMemberCount() == 0) {
+            throw new HazelcastException("CP Subsystem is not enabled!");
+        }
     }
 
     private void invokeGetMembersToCreateRaftGroup(final String groupName, final int groupSize,
@@ -150,11 +159,13 @@ public class RaftInvocationManager {
 
     // TODO [basri] this operation should be here or somewhere else?
     public InternalCompletableFuture<CPGroupId> triggerDestroy(CPGroupId groupId) {
+        checkCPSubsystemEnabled();
         return invoke(METADATA_GROUP_ID, new TriggerDestroyRaftGroupOp(groupId));
     }
 
     <T> InternalCompletableFuture<T> changeMembership(CPGroupId groupId, long membersCommitIndex,
                                                       CPMember member, MembershipChangeType changeType) {
+        checkCPSubsystemEnabled();
         Operation operation = new ChangeRaftGroupMembershipOp(groupId, membersCommitIndex, member, changeType);
         Invocation invocation = new RaftInvocation(operationService.getInvocationContext(), raftInvocationContext, groupId,
                 operation, invocationMaxRetryCount, invocationRetryPauseMillis, operationCallTimeout);
@@ -162,6 +173,7 @@ public class RaftInvocationManager {
     }
 
     public <T> InternalCompletableFuture<T> invoke(CPGroupId groupId, RaftOp raftOp) {
+        checkCPSubsystemEnabled();
         Operation operation = new DefaultRaftReplicateOp(groupId, raftOp);
         Invocation invocation = new RaftInvocation(operationService.getInvocationContext(), raftInvocationContext,
                 groupId, operation, invocationMaxRetryCount, invocationRetryPauseMillis, operationCallTimeout);
@@ -169,6 +181,7 @@ public class RaftInvocationManager {
     }
 
     public <T> InternalCompletableFuture<T> query(CPGroupId groupId, RaftOp raftOp, QueryPolicy queryPolicy) {
+        checkCPSubsystemEnabled();
         RaftQueryOp operation = new RaftQueryOp(groupId, raftOp, queryPolicy);
         Invocation invocation = new RaftInvocation(operationService.getInvocationContext(), raftInvocationContext,
                 groupId, operation, invocationMaxRetryCount, invocationRetryPauseMillis, operationCallTimeout);
@@ -176,11 +189,13 @@ public class RaftInvocationManager {
     }
 
     public <T> InternalCompletableFuture<T> queryLocally(CPGroupId groupId, RaftOp raftOp, QueryPolicy queryPolicy) {
+        checkCPSubsystemEnabled();
         RaftQueryOp operation = new RaftQueryOp(groupId, raftOp, queryPolicy);
         return nodeEngine.getOperationService().invokeOnTarget(RaftService.SERVICE_NAME, operation, nodeEngine.getThisAddress());
     }
 
     public InternalCompletableFuture<Object> destroy(CPGroupId groupId) {
+        checkCPSubsystemEnabled();
         Operation operation = new DestroyRaftGroupOp(groupId);
         Invocation invocation = new RaftInvocation(operationService.getInvocationContext(), raftInvocationContext,
                 groupId, operation, invocationMaxRetryCount, invocationRetryPauseMillis, operationCallTimeout);

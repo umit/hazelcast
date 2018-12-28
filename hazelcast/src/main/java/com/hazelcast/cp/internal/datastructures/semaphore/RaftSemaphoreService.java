@@ -26,12 +26,12 @@ import com.hazelcast.cp.internal.datastructures.semaphore.proxy.RaftSessionAware
 import com.hazelcast.cp.internal.datastructures.semaphore.proxy.RaftSessionlessSemaphoreProxy;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.AbstractBlockingService;
 import com.hazelcast.spi.NodeEngine;
-import com.hazelcast.util.ExceptionUtil;
 
 import java.util.Collection;
 import java.util.UUID;
 
 import static com.hazelcast.cp.internal.RaftService.getObjectNameForProxy;
+import static com.hazelcast.util.ExceptionUtil.rethrow;
 
 /**
  * Contains Raft-based semaphore instances
@@ -48,7 +48,7 @@ public class RaftSemaphoreService extends AbstractBlockingService<AcquireInvocat
     }
 
     private CPSemaphoreConfig getConfig(String name) {
-        return nodeEngine.getConfig().findCPSemaphoreConfig(name);
+        return nodeEngine.getConfig().getCPSubsystemConfig().findCPSemaphoreConfig(name);
     }
 
     public boolean initSemaphore(CPGroupId groupId, String name, int permits) {
@@ -155,7 +155,7 @@ public class RaftSemaphoreService extends AbstractBlockingService<AcquireInvocat
                     ? new RaftSessionlessSemaphoreProxy(nodeEngine, groupId, proxyName, objectName)
                     : new RaftSessionAwareSemaphoreProxy(nodeEngine, groupId, proxyName, objectName);
         } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
+            throw rethrow(e);
         }
     }
 

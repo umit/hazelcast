@@ -58,7 +58,6 @@ import com.hazelcast.config.SetConfig;
 import com.hazelcast.config.TopicConfig;
 import com.hazelcast.config.UserCodeDeploymentConfig;
 import com.hazelcast.config.WanReplicationConfig;
-import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.ManagedContext;
 import com.hazelcast.internal.dynamicconfig.search.ConfigSearch;
@@ -1446,22 +1445,12 @@ public class DynamicConfigurationAwareConfig extends Config {
     }
 
     @Override
-    public CPSubsystemConfig getCpSubsystemConfig() {
-        return staticConfig.getCpSubsystemConfig();
+    public CPSubsystemConfig getCPSubsystemConfig() {
+        return staticConfig.getCPSubsystemConfig();
     }
 
     @Override
-    public Config setCpSubsystemConfig(CPSubsystemConfig cpSubsystemConfig) {
-        throw new UnsupportedOperationException("Unsupported operation");
-    }
-
-    @Override
-    public CPSemaphoreConfig findCPSemaphoreConfig(String name) {
-        return staticConfig.findCPSemaphoreConfig(name);
-    }
-
-    @Override
-    public Config addCPSemaphoreConfig(CPSemaphoreConfig config) {
+    public Config setCPSubsystemConfig(CPSubsystemConfig cpSubsystemConfig) {
         throw new UnsupportedOperationException("Unsupported operation");
     }
 }

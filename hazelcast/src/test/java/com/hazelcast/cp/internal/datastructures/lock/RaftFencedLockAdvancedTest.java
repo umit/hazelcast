@@ -80,7 +80,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
     @Override
     protected Config createConfig(int cpNodeCount, int groupSize) {
         Config config = super.createConfig(cpNodeCount, groupSize);
-        CPSubsystemConfig cpSubsystemConfig = config.getCpSubsystemConfig();
+        CPSubsystemConfig cpSubsystemConfig = config.getCPSubsystemConfig();
         cpSubsystemConfig.getRaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(LOG_ENTRY_COUNT_TO_SNAPSHOT);
         cpSubsystemConfig.setSessionTimeToLiveSeconds(10);
         cpSubsystemConfig.setSessionHeartbeatIntervalSeconds(1);

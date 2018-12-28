@@ -154,7 +154,7 @@ public class RaftInvocationFailureTest extends HazelcastRaftTestSupport {
     protected Config createConfig(int cpNodeCount, int groupSize) {
         Config config = super.createConfig(cpNodeCount, groupSize);
 
-        CPSubsystemConfig cpSubsystemConfig = config.getCpSubsystemConfig();
+        CPSubsystemConfig cpSubsystemConfig = config.getCPSubsystemConfig();
         cpSubsystemConfig.setFailOnIndeterminateOperationState(true);
 
         return config;
