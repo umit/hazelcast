@@ -61,7 +61,8 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
     private HazelcastInstance[] instances;
     private HazelcastInstance lockInstance;
     private FencedLock lock;
-    private String name = "lock@group1";
+    private String objectName = "lock";
+    private String proxyName = objectName + "@group1";
     private int groupSize = 3;
 
     @Before
@@ -73,7 +74,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
 
     private FencedLock createLock() {
         lockInstance = instances[RandomPicker.getInt(instances.length)];
-        return lockInstance.getCPSubsystem().getFencedLock(name);
+        return lockInstance.getCPSubsystem().getLock(proxyName);
     }
 
     @Override
@@ -134,7 +135,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
 
         long fence = lock.tryLockAndGetFence(1, TimeUnit.SECONDS);
 
-        assertEquals(RaftLockService.INVALID_FENCE, fence);
+        assertEquals(FencedLock.INVALID_FENCE, fence);
         assertTrue(registry.getWaitTimeouts().isEmpty());
     }
 
@@ -224,8 +225,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
         instanceToShutdown.shutdown();
 
         final HazelcastInstance newInstance = factory.newHazelcastInstance(createConfig(groupSize, groupSize));
-        getRaftService(newInstance).promoteToCPMember().get();
-//        getRaftService(newInstance).triggerRebalanceRaftGroups().get();
+        newInstance.getCPSubsystem().getCPSubsystemManagementService().promoteToCPMember().get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -238,7 +238,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
                 RaftLockRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertFalse(registry.getWaitTimeouts().isEmpty());
-                RaftLockOwnershipState ownership = registry.getLockOwnershipState(name);
+                RaftLockOwnershipState ownership = registry.getLockOwnershipState(objectName);
                 assertTrue(ownership.isLocked());
                 assertTrue(ownership.getLockCount() > 0);
                 assertEquals(fence, ownership.getFence());
@@ -308,7 +308,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
         FencedLock other = null;
         for (HazelcastInstance instance : instances) {
             if (instance != lockInstance) {
-                other = instance.getCPSubsystem().getFencedLock(name);
+                other = instance.getCPSubsystem().getLock(proxyName);
                 break;
             }
         }

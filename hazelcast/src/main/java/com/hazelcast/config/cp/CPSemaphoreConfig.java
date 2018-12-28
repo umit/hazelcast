@@ -16,15 +16,35 @@
 
 package com.hazelcast.config.cp;
 
+import com.hazelcast.core.ISemaphore;
+
+import java.util.concurrent.Semaphore;
+
 /**
- * TODO: Javadoc Pending...
- *
+ * Contains configuration options for the CP {@link ISemaphore}
  */
 public class CPSemaphoreConfig extends AbstractCPObjectConfig {
 
+    /**
+     * Default value for JDK compatibility mode of the CP {@link ISemaphore}
+     */
     public static final boolean DEFAULT_SEMAPHORE_JDK_COMPATIBILITY = false;
 
-
+    /**
+     * Enables / disables JDK compatibility of the CP {@link ISemaphore}.
+     * When it is JDK compatible, just as in the {@link Semaphore#release()}
+     * method, a permit can be released without acquiring it first, because
+     * acquired permits are not bound to threads. However, there is no
+     * auto-cleanup of acquired permits upon Hazelcast server/client failures.
+     * If a permit holder fails, its permits must be released manually.
+     * When JDK compatibility is disabled, a thread must acquire permits before
+     * releasing them and it cannot release a permit that it has mot acquired.
+     * However, in this mode, acquired permits are automatically released
+     * upon failure of the holder Hazelcast server or client. So there is a
+     * minor behavioral difference to the {@link Semaphore#release()} method.
+     * <p>
+     * JDK compatibility is disabled by default.
+     */
     private boolean jdkCompatible = DEFAULT_SEMAPHORE_JDK_COMPATIBILITY;
 
     public CPSemaphoreConfig() {

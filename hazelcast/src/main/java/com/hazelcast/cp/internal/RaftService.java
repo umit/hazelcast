@@ -73,7 +73,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import static com.hazelcast.config.cp.CPSubsystemConfig.DEFAULT_GROUP_NAME;
+import static com.hazelcast.cp.CPGroup.DEFAULT_GROUP_NAME;
 import static com.hazelcast.cp.internal.MetadataRaftGroupManager.METADATA_GROUP_ID;
 import static com.hazelcast.cp.internal.RaftGroupMembershipManager.MANAGEMENT_TASK_PERIOD_IN_MILLIS;
 import static com.hazelcast.cp.internal.raft.QueryPolicy.LEADER_LOCAL;
@@ -86,7 +86,8 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
- * TODO: Javadoc Pending...
+ * Contains {@link RaftNode} instances that run the Raft consensus algorithm for the created CP groups.
+ * Also implements CP subsystem management methods.
  */
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:classfanoutcomplexity", "checkstyle:classdataabstractioncoupling"})
 public class RaftService implements ManagedService, SnapshotAwareService<MetadataRaftGroupSnapshot>, GracefulShutdownAwareService,

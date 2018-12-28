@@ -9,6 +9,7 @@ import com.hazelcast.cp.internal.raft.impl.state.RaftGroupMembers;
 import com.hazelcast.cp.internal.raft.impl.testing.LocalRaftGroup;
 import com.hazelcast.cp.internal.raft.impl.testing.TestRaftMember;
 import com.hazelcast.nio.Address;
+import com.hazelcast.test.AssertTask;
 import com.hazelcast.util.ExceptionUtil;
 
 import java.net.InetAddress;
@@ -17,8 +18,9 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
 
 import static com.hazelcast.cp.internal.raft.impl.dataservice.RaftDataService.SERVICE_NAME;
+import static com.hazelcast.test.HazelcastTestSupport.assertTrueEventually;
 import static com.hazelcast.test.HazelcastTestSupport.randomString;
-import static com.hazelcast.test.HazelcastTestSupport.sleepSeconds;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 public class RaftUtil {
@@ -144,10 +146,13 @@ public class RaftUtil {
         return readRaftState(node, task);
     }
 
-    public static void waitUntilLeaderElected(RaftNodeImpl node) {
-        while (getLeaderMember(node) == null) {
-            sleepSeconds(1);
-        }
+    public static void waitUntilLeaderElected(final RaftNodeImpl node) {
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertNotNull(getLeaderMember(node));
+            }
+        });
     }
 
     private static <T> T readRaftState(RaftNodeImpl node, Callable<T> task) {

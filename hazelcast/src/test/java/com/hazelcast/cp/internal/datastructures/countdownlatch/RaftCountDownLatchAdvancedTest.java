@@ -58,13 +58,14 @@ public class RaftCountDownLatchAdvancedTest extends HazelcastRaftTestSupport {
 
     private HazelcastInstance[] instances;
     private ICountDownLatch latch;
-    private String name = "latch@group1";
+    private String objectName = "semaphore";
+    private String proxyName = objectName + "@group1";
     private int groupSize = 3;
 
     @Before
     public void setup() {
         instances = createInstances();
-        latch = createLatch(name);
+        latch = createLatch(proxyName);
         assertNotNull(latch);
     }
 
@@ -224,8 +225,7 @@ public class RaftCountDownLatchAdvancedTest extends HazelcastRaftTestSupport {
         instances[1].shutdown();
 
         final HazelcastInstance newInstance = factory.newHazelcastInstance(createConfig(groupSize, groupSize));
-        getRaftService(newInstance).promoteToCPMember().get();
-//        getRaftService(newInstance).triggerRebalanceRaftGroups().get();
+        newInstance.getCPSubsystem().getCPSubsystemManagementService().promoteToCPMember().get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -234,7 +234,7 @@ public class RaftCountDownLatchAdvancedTest extends HazelcastRaftTestSupport {
                 RaftCountDownLatchRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertFalse(registry.getWaitTimeouts().isEmpty());
-                Assert.assertEquals(1, registry.getRemainingCount(name));
+                Assert.assertEquals(1, registry.getRemainingCount(objectName));
             }
         });
     }

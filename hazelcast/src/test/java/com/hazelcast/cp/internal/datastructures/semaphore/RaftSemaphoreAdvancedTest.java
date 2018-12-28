@@ -73,14 +73,15 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
     private HazelcastInstance[] instances;
     private HazelcastInstance semaphoreInstance;
     private RaftSessionAwareSemaphoreProxy semaphore;
-    private String name = "semaphore@group1";
+    private String objectName = "semaphore";
+    private String proxyName = objectName + "@group1";
     private int groupSize = 3;
 
     @Before
     public void setup() {
         instances = newInstances(groupSize);
         semaphoreInstance = instances[RandomPicker.getInt(instances.length)];
-        semaphore =(RaftSessionAwareSemaphoreProxy) semaphoreInstance.getCPSubsystem().getSemaphore(name);
+        semaphore = (RaftSessionAwareSemaphoreProxy) semaphoreInstance.getCPSubsystem().getSemaphore(proxyName);
     }
 
     @Test
@@ -241,8 +242,7 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
         instances[1].shutdown();
 
         final HazelcastInstance newInstance = factory.newHazelcastInstance(createConfig(groupSize, groupSize));
-        getRaftService(newInstance).promoteToCPMember().get();
-//        getRaftService(newInstance).triggerRebalanceRaftGroups().get();
+        newInstance.getCPSubsystem().getCPSubsystemManagementService().promoteToCPMember().get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -251,7 +251,7 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
                 RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
                 assertNotNull(registry);
                 assertFalse(registry.getWaitTimeouts().isEmpty());
-                assertEquals(1, registry.availablePermits(name));
+                assertEquals(1, registry.availablePermits(objectName));
             }
         });
     }
@@ -279,7 +279,7 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
 
         assertNotEquals(NO_SESSION_ID, sessionId);
 
-        RaftOp op = new ReleasePermitsOp(name, sessionId, getThreadId(), newUnsecureUUID(), 1);
+        RaftOp op = new ReleasePermitsOp(objectName, sessionId, getThreadId(), newUnsecureUUID(), 1);
         getRaftInvocationManager(semaphoreInstance).invoke(groupId, op).get();
 
         assertTrueEventually(new AssertTask() {
@@ -361,7 +361,7 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
         UUID invUid = newUnsecureUUID();
         RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
 
-        invocationManager.invoke(groupId, new ReleasePermitsOp(name, sessionId, getThreadId(), invUid, 1)).join();
+        invocationManager.invoke(groupId, new ReleasePermitsOp(objectName, sessionId, getThreadId(), invUid, 1)).join();
 
         spawn(new Runnable() {
             @Override
@@ -370,7 +370,7 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
             }
         });
 
-        invocationManager.invoke(groupId, new ReleasePermitsOp(name, sessionId, getThreadId(), invUid, 1)).join();
+        invocationManager.invoke(groupId, new ReleasePermitsOp(objectName, sessionId, getThreadId(), invUid, 1)).join();
     }
 
     @Test
@@ -386,8 +386,8 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
         UUID invUid = newUnsecureUUID();
         RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
 
-        invocationManager.invoke(groupId, new ChangePermitsOp(name, sessionId, getThreadId(), invUid, 1)).join();
-        invocationManager.invoke(groupId, new ChangePermitsOp(name, sessionId, getThreadId(), invUid, 1)).join();
+        invocationManager.invoke(groupId, new ChangePermitsOp(objectName, sessionId, getThreadId(), invUid, 1)).join();
+        invocationManager.invoke(groupId, new ChangePermitsOp(objectName, sessionId, getThreadId(), invUid, 1)).join();
 
         assertEquals(2, semaphore.availablePermits());
     }
@@ -405,8 +405,8 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
         UUID invUid = newUnsecureUUID();
         RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
 
-        invocationManager.invoke(groupId, new ChangePermitsOp(name, sessionId, getThreadId(), invUid, -1)).join();
-        invocationManager.invoke(groupId, new ChangePermitsOp(name, sessionId, getThreadId(), invUid, -1)).join();
+        invocationManager.invoke(groupId, new ChangePermitsOp(objectName, sessionId, getThreadId(), invUid, -1)).join();
+        invocationManager.invoke(groupId, new ChangePermitsOp(objectName, sessionId, getThreadId(), invUid, -1)).join();
 
         assertEquals(1, semaphore.availablePermits());
     }
@@ -421,7 +421,7 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
         UUID invUid = newUnsecureUUID();
         RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
 
-        int drained1 = invocationManager.<Integer>invoke(groupId, new DrainPermitsOp(name, sessionId, getThreadId(), invUid)).join();
+        int drained1 = invocationManager.<Integer>invoke(groupId, new DrainPermitsOp(objectName, sessionId, getThreadId(), invUid)).join();
 
         assertEquals(3, drained1);
         assertEquals(0, semaphore.availablePermits());
@@ -433,7 +433,7 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
             }
         }).get();
 
-        int drained2 = invocationManager.<Integer>invoke(groupId, new DrainPermitsOp(name, sessionId, getThreadId(), invUid)).join();
+        int drained2 = invocationManager.<Integer>invoke(groupId, new DrainPermitsOp(objectName, sessionId, getThreadId(), invUid)).join();
 
         assertEquals(3, drained2);
         assertEquals(1, semaphore.availablePermits());
@@ -451,7 +451,7 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
         cpSubsystemConfig.setSessionTimeToLiveSeconds(10);
         cpSubsystemConfig.setSessionHeartbeatIntervalSeconds(1);
 
-        CPSemaphoreConfig semaphoreConfig = new CPSemaphoreConfig(name, false);
+        CPSemaphoreConfig semaphoreConfig = new CPSemaphoreConfig(objectName, false);
         config.addCPSemaphoreConfig(semaphoreConfig);
         return config;
     }

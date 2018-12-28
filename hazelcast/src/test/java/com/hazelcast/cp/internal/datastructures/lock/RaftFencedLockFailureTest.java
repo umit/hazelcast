@@ -40,7 +40,7 @@ import org.junit.runner.RunWith;
 
 import java.util.UUID;
 
-import static com.hazelcast.cp.internal.datastructures.lock.RaftLockService.INVALID_FENCE;
+import static com.hazelcast.cp.FencedLock.INVALID_FENCE;
 import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 import static com.hazelcast.util.ThreadUtil.getThreadId;
 import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
@@ -59,13 +59,14 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
     private HazelcastInstance[] instances;
     private HazelcastInstance lockInstance;
     private RaftFencedLockProxy lock;
-    private String name = "lock@group1";
+    private String objectName = "lock";
+    private String proxyName = objectName + "@group1";
 
     @Before
     public void setup() {
         instances = newInstances(3);
         lockInstance = instances[RandomPicker.getInt(instances.length)];
-        lock = (RaftFencedLockProxy) lockInstance.getCPSubsystem().getFencedLock(name);
+        lock = (RaftFencedLockProxy) lockInstance.getCPSubsystem().getLock(proxyName);
     }
 
     private AbstractProxySessionManager getSessionManager() {
@@ -83,7 +84,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid = newUnsecureUUID();
 
-        invocationManager.invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
+        invocationManager.invoke(groupId, new TryLockOp(objectName, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -95,7 +96,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             }
         });
 
-        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), invUid));
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), invUid));
 
         assertTrueAllTheTime(new AssertTask() {
             @Override
@@ -120,7 +121,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         UUID invUid2 = newUnsecureUUID();
 
         InternalCompletableFuture<Object> f = invocationManager
-                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid1, MINUTES.toMillis(5)));
+                .invoke(groupId, new TryLockOp(objectName, sessionId, getThreadId(), invUid1, MINUTES.toMillis(5)));
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -132,7 +133,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             }
         });
 
-        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), invUid2));
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), invUid2));
 
         try {
             f.join();
@@ -152,7 +153,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid = newUnsecureUUID();
 
-        invocationManager.invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
+        invocationManager.invoke(groupId, new TryLockOp(objectName, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -164,7 +165,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             }
         });
 
-        invocationManager.invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
+        invocationManager.invoke(groupId, new TryLockOp(objectName, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -189,7 +190,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         UUID invUid2 = newUnsecureUUID();
 
         InternalCompletableFuture<Object> f = invocationManager
-                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid1, MINUTES.toMillis(5)));
+                .invoke(groupId, new TryLockOp(objectName, sessionId, getThreadId(), invUid1, MINUTES.toMillis(5)));
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -201,7 +202,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             }
         });
 
-        invocationManager.invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid2, MINUTES.toMillis(5)));
+        invocationManager.invoke(groupId, new TryLockOp(objectName, sessionId, getThreadId(), invUid2, MINUTES.toMillis(5)));
 
         try {
             f.join();
@@ -221,7 +222,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid = newUnsecureUUID();
 
-        invocationManager.invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
+        invocationManager.invoke(groupId, new TryLockOp(objectName, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -233,7 +234,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             }
         });
 
-        invocationManager.invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, 0));
+        invocationManager.invoke(groupId, new TryLockOp(objectName, sessionId, getThreadId(), invUid, 0));
 
         assertTrueAllTheTime(new AssertTask() {
             @Override
@@ -257,7 +258,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         UUID invUid = newUnsecureUUID();
 
         InternalCompletableFuture<Object> f = invocationManager
-                .invoke(groupId, new TryLockOp(name, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
+                .invoke(groupId, new TryLockOp(objectName, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -296,10 +297,10 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid = newUnsecureUUID();
 
-        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), invUid)).join();
-        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), invUid)).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), invUid)).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), invUid)).join();
 
-        assertEquals(1, lock.getLockCount());
+        assertEquals(1, lock.getLockCountIfLockedByCurrentThread());
     }
 
     @Test
@@ -317,11 +318,11 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         UUID invUid1 = newUnsecureUUID();
         UUID invUid2 = newUnsecureUUID();
 
-        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), invUid1)).join();
-        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), invUid2)).join();
-        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), invUid2)).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), invUid1)).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), invUid2)).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), invUid2)).join();
 
-        assertEquals(2, lock.getLockCount());
+        assertEquals(2, lock.getLockCountIfLockedByCurrentThread());
     }
 
     @Test
@@ -333,11 +334,11 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid = newUnsecureUUID();
 
-        invocationManager.invoke(groupId, new UnlockOp(name, sessionId, getThreadId(), invUid, 1)).join();
+        invocationManager.invoke(groupId, new UnlockOp(objectName, sessionId, getThreadId(), invUid, 1)).join();
 
         lockByOtherThread();
 
-        invocationManager.invoke(groupId, new UnlockOp(name, sessionId, getThreadId(), invUid, 1)).join();
+        invocationManager.invoke(groupId, new UnlockOp(objectName, sessionId, getThreadId(), invUid, 1)).join();
     }
 
     @Test
@@ -352,7 +353,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         assertNotEquals(NO_SESSION_ID, sessionId);
 
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
-        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), newUnsecureUUID())).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), newUnsecureUUID())).join();
 
         // the current thread acquired the lock once and we pretend that there was a operation timeout in lock.lock() call
 
@@ -373,8 +374,8 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         assertNotEquals(NO_SESSION_ID, sessionId);
 
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
-        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), newUnsecureUUID())).join();
-        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), newUnsecureUUID())).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), newUnsecureUUID())).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), newUnsecureUUID())).join();
 
         // the current thread acquired the lock twice and we pretend that both lock.lock() calls failed with operation timeout
 
@@ -395,8 +396,8 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         assertNotEquals(NO_SESSION_ID, sessionId);
 
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
-        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), newUnsecureUUID())).join();
-        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), newUnsecureUUID())).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), newUnsecureUUID())).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), newUnsecureUUID())).join();
 
         lock.lock();
 
@@ -416,7 +417,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         assertNotEquals(NO_SESSION_ID, sessionId);
 
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
-        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), newUnsecureUUID())).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), newUnsecureUUID())).join();
 
         lock.lock();
 
@@ -435,7 +436,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             public void run() {
                 RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
                 RaftLockRegistry registry = service.getRegistryOrNull(groupId);
-                assertFalse(registry.getLockOwnershipState(name).isLocked());
+                assertFalse(registry.getLockOwnershipState(objectName).isLocked());
             }
         });
     }
@@ -452,8 +453,8 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         assertNotEquals(NO_SESSION_ID, sessionId);
 
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
-        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), newUnsecureUUID())).join();
-        invocationManager.invoke(groupId, new LockOp(name, sessionId, getThreadId(), newUnsecureUUID())).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), newUnsecureUUID())).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), newUnsecureUUID())).join();
 
         lock.unlock();
 
@@ -466,7 +467,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             public void run() {
                 RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
                 RaftLockRegistry registry = service.getRegistryOrNull(groupId);
-                assertFalse(registry.getLockOwnershipState(name).isLocked());
+                assertFalse(registry.getLockOwnershipState(objectName).isLocked());
             }
         });
     }

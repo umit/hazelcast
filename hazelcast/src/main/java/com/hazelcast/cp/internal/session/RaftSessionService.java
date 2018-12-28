@@ -20,7 +20,7 @@ import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.Session;
-import com.hazelcast.cp.SessionManagementService;
+import com.hazelcast.cp.CPSessionManagementService;
 import com.hazelcast.cp.internal.RaftGroupLifecycleAwareService;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.TermChangeAwareService;
@@ -70,7 +70,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * its attached resources will be released automatically.
  */
 public class RaftSessionService implements ManagedService, SnapshotAwareService<RaftSessionRegistry>, SessionAccessor,
-                                           TermChangeAwareService, RaftGroupLifecycleAwareService, SessionManagementService {
+                                           TermChangeAwareService, RaftGroupLifecycleAwareService, CPSessionManagementService {
 
     public static final String SERVICE_NAME = "hz:core:raftSession";
 

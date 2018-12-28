@@ -22,26 +22,36 @@ import java.util.Collection;
 
 /**
  * Contains information about a CP group
+ *
+ * @see CPSubsystemManagementService
  */
 public interface CPGroup {
+
+    /**
+     * Name of the DEFAULT CP group that is used when no group name is
+     * specified while creating a CP data structure proxy.
+     */
+    String DEFAULT_GROUP_NAME = "default";
 
     /**
      * Represents status of a CP group
      */
     enum CPGroupStatus {
         /**
-         * A CP group is active after it is initialized with the first request it has received,
-         * and before its destroy process is initialized.
+         * A CP group is active after it is initialized with the first request
+         * sent to it, and before its destroy process is initialized.
          */
         ACTIVE,
 
         /**
-         * A CP group moves into this state after its destroy process is initialized but not completed yet.
+         * A CP group switches to this state after its destroy process is
+         * initialized, but not completed yet.
          */
         DESTROYING,
 
         /**
-         * A CP group moves into this state after its destroy process is completed.
+         * A CP group switches to this state after its destroy process is
+         * completed.
          */
         DESTROYED
     }
@@ -65,4 +75,5 @@ public interface CPGroup {
      * Returns current members of the CP group
      */
     Collection<EndpointIdentifier> members();
+
 }

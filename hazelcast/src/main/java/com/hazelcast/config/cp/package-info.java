@@ -15,6 +15,7 @@
  */
 
 /**
- * This package contains configuration classes for the CP sub-system
+ * This package contains configuration classes
+ * for the {@link com.hazelcast.cp.CPSubsystem}
  */
 package com.hazelcast.config.cp;

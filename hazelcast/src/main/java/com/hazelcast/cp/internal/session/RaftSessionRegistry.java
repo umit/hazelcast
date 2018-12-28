@@ -140,6 +140,7 @@ class RaftSessionRegistry implements IdentifiedDataSerializable {
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
+        out.writeObject(groupId);
         out.writeLong(nextSessionId);
         out.writeInt(sessions.size());
         for (RaftSession session : sessions.values()) {
@@ -153,6 +154,7 @@ class RaftSessionRegistry implements IdentifiedDataSerializable {
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
+        groupId = in.readObject();
         nextSessionId = in.readLong();
         int size = in.readInt();
         for (int i = 0; i < size; i++) {

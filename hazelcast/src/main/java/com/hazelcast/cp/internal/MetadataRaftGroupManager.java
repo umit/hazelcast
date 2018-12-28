@@ -67,7 +67,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
- * TODO: Javadoc Pending...
+ * Maintains the CP subsystem metadata, such as CP groups, active CP members, leaving and joining CP members, etc.
  */
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:classdataabstractioncoupling"})
 public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRaftGroupSnapshot>  {
@@ -673,7 +673,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         OperationService operationService = nodeEngine.getOperationService();
         Operation op = new SendActiveCPMembersOp(getActiveMembers());
         for (Member member : clusterMembers) {
-            if (addresses.contains(member.getAddress())) {
+            if (addresses.contains(member.getAddress()) || member.getAddress().equals(nodeEngine.getThisAddress())) {
                 continue;
             }
             operationService.send(op, member.getAddress());
@@ -720,8 +720,8 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             }
             latestMembers = members;
 
-            if (members.size() < config.getCpMemberCount()) {
-                logger.warning("Waiting for " + config.getCpMemberCount() + " CP members to join the cluster. "
+            if (members.size() < config.getCPMemberCount()) {
+                logger.warning("Waiting for " + config.getCPMemberCount() + " CP members to join the cluster. "
                         + "Current CP members count: " + members.size());
                 ExecutionService executionService = nodeEngine.getExecutionService();
                 executionService.schedule(this, DISCOVER_INITIAL_CP_MEMBERS_TASK_DELAY_MILLIS, MILLISECONDS);
@@ -775,9 +775,9 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         }
 
         private List<CPMember> getInitialCPMembers(Collection<Member> members) {
-            assert members.size() >= config.getCpMemberCount();
-            List<Member> memberList = new ArrayList<Member>(members).subList(0, config.getCpMemberCount());
-            List<CPMember> cpMembers = new ArrayList<CPMember>(config.getCpMemberCount());
+            assert members.size() >= config.getCPMemberCount();
+            List<Member> memberList = new ArrayList<Member>(members).subList(0, config.getCPMemberCount());
+            List<CPMember> cpMembers = new ArrayList<CPMember>(config.getCPMemberCount());
             for (Member member : memberList) {
                 cpMembers.add(new CPMember(member));
             }

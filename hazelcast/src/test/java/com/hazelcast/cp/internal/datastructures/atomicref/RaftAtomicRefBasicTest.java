@@ -39,7 +39,7 @@ import org.junit.runner.RunWith;
 
 import java.util.concurrent.ExecutionException;
 
-import static com.hazelcast.config.cp.CPSubsystemConfig.DEFAULT_GROUP_NAME;
+import static com.hazelcast.cp.CPGroup.DEFAULT_GROUP_NAME;
 import static com.hazelcast.cp.internal.MetadataRaftGroupManager.METADATA_GROUP_ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;

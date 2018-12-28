@@ -23,7 +23,7 @@ import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.CPSubsystem;
 import com.hazelcast.cp.CPSubsystemManagementService;
 import com.hazelcast.cp.FencedLock;
-import com.hazelcast.cp.SessionManagementService;
+import com.hazelcast.cp.CPSessionManagementService;
 import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongService;
 import com.hazelcast.cp.internal.datastructures.atomicref.RaftAtomicRefService;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
@@ -36,7 +36,7 @@ import static com.hazelcast.cp.internal.RaftService.withoutDefaultGroupName;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 
 /**
- * TODO [basri] javadoc
+ * Provides access to CP subsystem utilities
  */
 public class CPSubsystemImpl implements CPSubsystem {
 
@@ -65,7 +65,7 @@ public class CPSubsystemImpl implements CPSubsystem {
     }
 
     @Override
-    public FencedLock getFencedLock(String name) {
+    public FencedLock getLock(String name) {
         checkNotNull(name, "Retrieving an fenced lock instance with a null name is not allowed!");
         return instance.getDistributedObject(RaftLockService.SERVICE_NAME, withoutDefaultGroupName(name));
     }
@@ -82,7 +82,7 @@ public class CPSubsystemImpl implements CPSubsystem {
     }
 
     @Override
-    public SessionManagementService getSessionManagementService() {
+    public CPSessionManagementService getSessionManagementService() {
         return instance.node.getNodeEngine().getService(RaftSessionService.SERVICE_NAME);
     }
 }

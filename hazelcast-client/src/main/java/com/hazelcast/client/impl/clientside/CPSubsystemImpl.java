@@ -23,7 +23,7 @@ import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.CPSubsystem;
 import com.hazelcast.cp.CPSubsystemManagementService;
 import com.hazelcast.cp.FencedLock;
-import com.hazelcast.cp.SessionManagementService;
+import com.hazelcast.cp.CPSessionManagementService;
 import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongService;
 import com.hazelcast.cp.internal.datastructures.atomicref.RaftAtomicRefService;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
@@ -59,7 +59,7 @@ class CPSubsystemImpl implements CPSubsystem {
     }
 
     @Override
-    public FencedLock getFencedLock(String name) {
+    public FencedLock getLock(String name) {
         return client.getDistributedObject(RaftLockService.SERVICE_NAME, withoutDefaultGroupName(name));
     }
 
@@ -74,7 +74,7 @@ class CPSubsystemImpl implements CPSubsystem {
     }
 
     @Override
-    public SessionManagementService getSessionManagementService() {
+    public CPSessionManagementService getSessionManagementService() {
         return null;
     }
 }

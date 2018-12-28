@@ -38,11 +38,6 @@ import static com.hazelcast.util.Preconditions.checkNotNull;
 public class RaftLockService extends AbstractBlockingService<LockInvocationKey, RaftLock, RaftLockRegistry> {
 
     /**
-     * Representation of a failed lock request
-     */
-    public static final long INVALID_FENCE = 0L;
-
-    /**
      * Name of the service
      */
     public static final String SERVICE_NAME = "hz:raft:lockService";

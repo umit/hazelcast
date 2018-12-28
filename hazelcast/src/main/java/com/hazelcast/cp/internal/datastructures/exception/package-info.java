@@ -15,6 +15,6 @@
  */
 
 /**
- * TODO: Missing JAVADOC
+ * Contains internal exceptions related to Raft-based data structure implementations
  */
 package com.hazelcast.cp.internal.datastructures.exception;

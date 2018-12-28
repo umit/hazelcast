@@ -68,7 +68,7 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
     }
 
     @Override
-    public void lockInterruptibly() {
+    public void lockInterruptibly() throws InterruptedException {
         lock.lockInterruptibly();
     }
 
@@ -123,8 +123,8 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
     }
 
     @Override
-    public int getLockCount() {
-        return lock.getLockCount();
+    public int getLockCountIfLockedByCurrentThread() {
+        return lock.getLockCountIfLockedByCurrentThread();
     }
 
     @Override

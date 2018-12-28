@@ -171,8 +171,8 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
     }
 
     private void when_raftGroupIsCreatedWithSomeCPNodes_then_raftNodeIsCreatedOnOnlyTheSelectedEndpoints(boolean invokeOnCP) {
-        int cpNodeCount = 5;
-        int metadataGroupSize = 2;
+        int cpNodeCount = 6;
+        int metadataGroupSize = 3;
         int nonCpNodeCount = 2;
         instances = newInstances(cpNodeCount, metadataGroupSize, nonCpNodeCount);
 
@@ -467,31 +467,34 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
 
     @Test
     public void when_shutdownLeader_thenNewLeaderElected() {
-        int cpNodeCount = 5;
-        int metadataGroupSize = cpNodeCount - 1;
+        int cpNodeCount = 6;
+        int metadataGroupSize = 5;
         instances = newInstances(cpNodeCount, metadataGroupSize, 0);
 
-        HazelcastInstance leaderInstance = getLeaderInstance(instances, METADATA_GROUP_ID);
+        final HazelcastInstance leaderInstance = getLeaderInstance(instances, METADATA_GROUP_ID);
         leaderInstance.shutdown();
 
-        for (HazelcastInstance instance : instances) {
-            if (instance == leaderInstance) {
-                continue;
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (HazelcastInstance instance : instances) {
+                    if (instance == leaderInstance) {
+                        continue;
+                    }
+                    RaftNodeImpl raftNode = getRaftNode(instance, METADATA_GROUP_ID);
+                    assertNotNull(raftNode);
+                    waitUntilLeaderElected(raftNode);
+                }
             }
-            RaftNodeImpl raftNode = getRaftNode(instance, METADATA_GROUP_ID);
-            while (raftNode == null) {
-                sleepMillis(100);
-                raftNode = getRaftNode(instance, METADATA_GROUP_ID);
-            }
-            waitUntilLeaderElected(raftNode);
-        }
+        });
+
     }
 
     @Test
     public void when_memberIsShutdown_then_itIsRemovedFromRaftGroups() throws ExecutionException, InterruptedException {
-        int cpNodeCount = 5;
-        int metadataGroupSize = cpNodeCount - 1;
-        int atomicLong1GroupSize = cpNodeCount - 2;
+        int cpNodeCount = 7;
+        int metadataGroupSize = 5;
+        int atomicLong1GroupSize = 3;
         instances = newInstances(cpNodeCount, metadataGroupSize, 0);
 
         CPGroupId groupId1 = createNewRaftGroup(instances[0], "id1", atomicLong1GroupSize);

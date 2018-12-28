@@ -19,7 +19,7 @@ package com.hazelcast.cp;
 import com.hazelcast.nio.Address;
 
 /**
- * Represents state of a CP session.
+ * Represents a CP session.
  */
 public interface Session {
 
@@ -39,7 +39,8 @@ public interface Session {
     long expirationTime();
 
     /**
-     * Returns version of the session. A session's version is incremented on each heartbeat.
+     * Returns version of the session.
+     * A session's version is incremented on each heartbeat.
      */
     long version();
 

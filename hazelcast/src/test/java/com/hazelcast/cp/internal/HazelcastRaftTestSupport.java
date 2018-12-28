@@ -134,7 +134,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         config.setCpSubsystemConfig(cpSubsystemConfig);
 
         if (cpNodeCount > 0) {
-            cpSubsystemConfig.setCpMemberCount(cpNodeCount).setGroupSize(groupSize);
+            cpSubsystemConfig.setCPMemberCount(cpNodeCount).setGroupSize(groupSize);
         }
 
         return config;

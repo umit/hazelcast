@@ -61,7 +61,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
     @Test
     public void testPromoteToRaftMember() throws ExecutionException, InterruptedException {
-        HazelcastInstance[] instances = newInstances(2, 2, 1);
+        HazelcastInstance[] instances = newInstances(3, 3, 1);
 
         final RaftService service = getRaftService(instances[instances.length - 1]);
         service.promoteToCPMember().get();
@@ -80,14 +80,13 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         final CPGroupId testGroupId = getRaftInvocationManager(instances[0]).createRaftGroup("test", 3).get();
 
-        final RaftService service = getRaftService(instances[1]);
         Member member = instances[0].getCluster().getLocalMember();
         instances[0].getLifecycleService().terminate();
 
         assertClusterSizeEventually(2, instances[1]);
 
         final CPMember removedEndpoint = new CPMember(member);
-        service.removeCPMember(removedEndpoint).get();
+        instances[1].getCPSubsystem().getCPSubsystemManagementService().removeCPMember(removedEndpoint).get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -109,15 +108,14 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         final CPGroupId testGroupId = getRaftInvocationManager(instances[0]).createRaftGroup("test", 3).get();
 
-        final RaftService service = getRaftService(instances[1]);
         Member member = instances[0].getCluster().getLocalMember();
         instances[0].getLifecycleService().terminate();
 
         assertClusterSizeEventually(2, instances[1]);
 
         final CPMember removedEndpoint = new CPMember(member);
-        service.removeCPMember(removedEndpoint).get();
-        service.removeCPMember(removedEndpoint).get();
+        instances[1].getCPSubsystem().getCPSubsystemManagementService().removeCPMember(removedEndpoint).get();
+        instances[1].getCPSubsystem().getCPSubsystemManagementService().removeCPMember(removedEndpoint).get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -147,9 +145,8 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         factory.getInstance(crashedMember.getAddress()).getLifecycleService().terminate();
 
-        RaftService raftService = getRaftService(runningInstance);
-        raftService.forceDestroyCPGroup(groupId).get();
-        raftService.removeCPMember(crashedMember).get();
+        runningInstance.getCPSubsystem().getCPSubsystemManagementService().forceDestroyCPGroup(groupId).get();
+        runningInstance.getCPSubsystem().getCPSubsystemManagementService().removeCPMember(crashedMember).get();
 
         final RaftInvocationManager invocationManager = getRaftInvocationManager(runningInstance);
         assertTrueEventually(new AssertTask() {
@@ -185,10 +182,8 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         // from now on, "test" group lost the majority
 
-        RaftService raftService = getRaftService(runningInstance);
-
         // we triggered removal of the crashed member but we won't be able to commit to the "test" group
-        raftService.removeCPMember(crashedMember).get();
+        runningInstance.getCPSubsystem().getCPSubsystemManagementService().removeCPMember(crashedMember).get();
 
         // wait until RaftCleanupHandler kicks in and appends ApplyRaftGroupMembersCmd to the leader of the "test" group
         assertTrueEventually(new AssertTask() {
@@ -200,7 +195,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         // force-destroy the raft group.
         // Now, the pending membership change in the "test" group will fail and we will fix it in the metadata group.
-        raftService.forceDestroyCPGroup(groupId).get();
+        runningInstance.getCPSubsystem().getCPSubsystemManagementService().forceDestroyCPGroup(groupId).get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -229,7 +224,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         CPMember promotedMember = getRaftService(promoted).getLocalMember();
         promoted.getLifecycleService().terminate();
 
-        getRaftService(master).removeCPMember(promotedMember).get();
+        master.getCPSubsystem().getCPSubsystemManagementService().removeCPMember(promotedMember).get();
 
         MembershipChangeContext ctx = getRaftInvocationManager(master).<MembershipChangeContext>query(METADATA_GROUP_ID, new GetMembershipChangeContextOp(), LEADER_LOCAL).get();
         assertNull(ctx);
@@ -527,7 +522,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
     @Test
     public void testNodesBecomeAP_whenMoreThanInitialRaftMembers_areStartedConcurrently() {
-        final Config config = createConfig(3, 2);
+        final Config config = createConfig(4, 3);
 
         final Collection<Future<HazelcastInstance>> futures = new ArrayList<Future<HazelcastInstance>>();
         int nodeCount = 8;
@@ -559,15 +554,10 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
                         metadataCount++;
                     }
                 }
-                assertEquals(3, cpCount);
-                assertEquals(2, metadataCount);
+                assertEquals(4, cpCount);
+                assertEquals(3, metadataCount);
             }
         });
-    }
-
-    @Test
-    public void testNodesTerminate_whenInitialRaftMembersConflict() {
-        // TODO
     }
 
 }

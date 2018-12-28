@@ -16,6 +16,7 @@
 
 package com.hazelcast.cp.internal.datastructures.lock;
 
+import com.hazelcast.cp.FencedLock;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
@@ -23,13 +24,14 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
 import java.io.IOException;
 
+import static com.hazelcast.cp.FencedLock.INVALID_FENCE;
+
 /**
  * Represents ownership state of a RaftLock
  */
 public class RaftLockOwnershipState implements IdentifiedDataSerializable {
 
-    static final RaftLockOwnershipState NOT_LOCKED
-            = new RaftLockOwnershipState(RaftLockService.INVALID_FENCE, 0, -1, -1);
+    static final RaftLockOwnershipState NOT_LOCKED = new RaftLockOwnershipState(INVALID_FENCE, 0, -1, -1);
 
     private long fence;
 
@@ -50,11 +52,11 @@ public class RaftLockOwnershipState implements IdentifiedDataSerializable {
     }
 
     public boolean isLocked() {
-        return fence != RaftLockService.INVALID_FENCE;
+        return fence != INVALID_FENCE;
     }
 
     /**
-     * Returns fencing token of the lock if it is currently hold by some endpoint. {@link RaftLockService#INVALID_FENCE} otherwise
+     * Returns fencing token of the lock if it is currently hold by some endpoint. {@link FencedLock#INVALID_FENCE} otherwise
      */
     public long getFence() {
         return fence;
