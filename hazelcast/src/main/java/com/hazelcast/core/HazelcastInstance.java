@@ -493,8 +493,8 @@ public interface HazelcastInstance {
     IScheduledExecutorService getScheduledExecutorService(String name);
 
     /**
-     * TODO
-     * @return
+     * Returns the CP subsystem that offers a set of in-memory linearizable data structures
+     * @return the CP subsystem that offers a set of in-memory linearizable data structures
      */
     CPSubsystem getCPSubsystem();
 
