@@ -19,6 +19,9 @@ package com.hazelcast.config;
 import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig;
 import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig.DurationConfig;
 import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig.TimedExpiryPolicyFactoryConfig;
+import com.hazelcast.config.cp.CPSemaphoreConfig;
+import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.internal.util.RuntimeAvailableProcessors;
 import com.hazelcast.util.CollectionUtil;
@@ -129,6 +132,8 @@ public class ConfigCompatibilityChecker {
         checkCompatibleConfigs("quorum", c1, c2, c1.getQuorumConfigs(), c2.getQuorumConfigs(), new QuorumConfigChecker());
         checkCompatibleConfigs("security", c1, c2, singletonMap("", c1.getSecurityConfig()),
                 singletonMap("", c2.getSecurityConfig()), new SecurityConfigChecker());
+        checkCompatibleConfigs("cp subsystem", c1, c2, singletonMap("", c1.getCPSubsystemConfig()),
+                singletonMap("", c2.getCPSubsystemConfig()), new CPSubsystemConfigChecker());
 
         return true;
     }
@@ -670,6 +675,68 @@ public class ConfigCompatibilityChecker {
         @Override
         PNCounterConfig getDefault(Config c) {
             return c.getPNCounterConfig("default");
+        }
+    }
+
+    public static class CPSubsystemConfigChecker extends ConfigChecker<CPSubsystemConfig> {
+
+        @Override
+        boolean check(CPSubsystemConfig c1, CPSubsystemConfig c2) {
+            if (c1 == c2) {
+                return true;
+            }
+            if (c1 == null || c2 == null) {
+                return false;
+            }
+
+            boolean cpSubsystemConfigValuesEqual =
+                    (c1.getCPMemberCount() == c2.getCPMemberCount() && c1.getGroupSize() == c2.getGroupSize()
+                    && c1.getSessionTimeToLiveSeconds() == c2.getSessionTimeToLiveSeconds()
+                    && c1.getSessionHeartbeatIntervalSeconds() == c2.getSessionHeartbeatIntervalSeconds()
+                    && c1.getMissingCPMemberAutoRemovalSeconds() == c2.getMissingCPMemberAutoRemovalSeconds()
+                    && c1.isFailOnIndeterminateOperationState() == c2.isFailOnIndeterminateOperationState());
+
+            if (!cpSubsystemConfigValuesEqual) {
+                return false;
+            }
+
+            RaftAlgorithmConfig r1 = c1.getRaftAlgorithmConfig();
+            RaftAlgorithmConfig r2 = c2.getRaftAlgorithmConfig();
+
+            final boolean raftAlgorithmConfigEqual =
+                    (r1.getLeaderElectionTimeoutInMillis() == r2.getLeaderElectionTimeoutInMillis()
+                    && r1.getLeaderHeartbeatPeriodInMillis() == r2.getLeaderHeartbeatPeriodInMillis()
+                    && r1.getAppendRequestMaxEntryCount() == r2.getAppendRequestMaxEntryCount()
+                    && r1.getCommitIndexAdvanceCountToSnapshot() == r2.getCommitIndexAdvanceCountToSnapshot()
+                    && r1.getUncommittedEntryCountToRejectNewAppends() == r2.getUncommittedEntryCountToRejectNewAppends());
+
+            if (!raftAlgorithmConfigEqual) {
+                return false;
+            }
+
+            Map<String, CPSemaphoreConfig> semaphores1 = c1.getCPSemaphoreConfigs();
+
+
+            if (semaphores1.size() != c2.getCPSemaphoreConfigs().size()) {
+                return false;
+            }
+
+            for (Entry<String, CPSemaphoreConfig> e : semaphores1.entrySet()) {
+                CPSemaphoreConfig s2 = c2.findCPSemaphoreConfig(e.getKey());
+                if (s2 == null) {
+                    return false;
+                }
+                if (e.getValue().isJdkCompatible() != s2.isJdkCompatible()) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        @Override
+        CPSubsystemConfig getDefault(Config c) {
+            return c.getCPSubsystemConfig();
         }
     }
 

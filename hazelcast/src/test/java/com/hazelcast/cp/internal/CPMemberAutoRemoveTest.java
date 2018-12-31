@@ -113,7 +113,7 @@ public class CPMemberAutoRemoveTest extends HazelcastRaftTestSupport {
               .setProperty(GroupProperty.MERGE_NEXT_RUN_DELAY_SECONDS.getName(), "5")
               .getCPSubsystemConfig()
               .setSessionTimeToLiveSeconds(missingRaftMemberRemovalSeconds)
-              .setMissingCpMemberAutoRemovalSeconds(missingRaftMemberRemovalSeconds);
+              .setMissingCPMemberAutoRemovalSeconds(missingRaftMemberRemovalSeconds);
 
         return config;
     }

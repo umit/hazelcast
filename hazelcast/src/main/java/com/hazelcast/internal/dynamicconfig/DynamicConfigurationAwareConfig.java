@@ -164,6 +164,7 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     private volatile ConfigurationService configurationService = new EmptyConfigurationService();
     private volatile DynamicSecurityConfig dynamicSecurityConfig;
+    private volatile DynamicCPSubsystemConfig dynamicCPSubsystemConfig;
     private volatile Searcher configSearcher;
 
     public DynamicConfigurationAwareConfig(Config staticConfig, HazelcastProperties properties) {
@@ -172,6 +173,7 @@ public class DynamicConfigurationAwareConfig extends Config {
         this.configPatternMatcher = staticConfig.getConfigPatternMatcher();
         this.isStaticFirst = !properties.getBoolean(SEARCH_DYNAMIC_CONFIG_FIRST);
         this.dynamicSecurityConfig = new DynamicSecurityConfig(staticConfig.getSecurityConfig(), null);
+        this.dynamicCPSubsystemConfig = new DynamicCPSubsystemConfig(staticConfig.getCPSubsystemConfig());
         this.configSearcher = initConfigSearcher();
     }
 
@@ -1446,7 +1448,7 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     @Override
     public CPSubsystemConfig getCPSubsystemConfig() {
-        return staticConfig.getCPSubsystemConfig();
+        return dynamicCPSubsystemConfig;
     }
 
     @Override

@@ -17,6 +17,9 @@
 package com.hazelcast.config;
 
 import com.hazelcast.config.PermissionConfig.PermissionType;
+import com.hazelcast.config.cp.CPSemaphoreConfig;
+import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.config.helpers.DummyMapStore;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
@@ -2898,6 +2901,57 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
         assertEquals(42, icmpFailureDetectorConfig.getTimeoutMilliseconds());
         assertEquals(42, icmpFailureDetectorConfig.getMaxAttempts());
         assertEquals(4200, icmpFailureDetectorConfig.getIntervalMilliseconds());
+    }
+
+    @Test
+    public void testCPSubsystemConfig() {
+        String xml = HAZELCAST_START_TAG
+                + "<cp-subsystem>\n"
+                + "  <cp-member-count>10</cp-member-count>\n"
+                + "  <group-size>5</group-size>\n"
+                + "  <session-time-to-live-seconds>15</session-time-to-live-seconds>\n"
+                + "  <session-heartbeat-interval-seconds>3</session-heartbeat-interval-seconds>\n"
+                + "  <missing-cp-member-auto-removal-seconds>120</missing-cp-member-auto-removal-seconds>\n"
+                + "  <fail-on-indeterminate-operation-state>true</fail-on-indeterminate-operation-state>\n"
+                + "  <raft-algorithm>\n"
+                + "    <leader-election-timeout-in-millis>500</leader-election-timeout-in-millis>\n"
+                + "    <leader-heartbeat-period-in-millis>100</leader-heartbeat-period-in-millis>\n"
+                + "    <append-request-max-entry-count>25</append-request-max-entry-count>\n"
+                + "    <commit-index-advance-count-to-snapshot>250</commit-index-advance-count-to-snapshot>\n"
+                + "    <uncommitted-entry-count-to-reject-new-appends>75</uncommitted-entry-count-to-reject-new-appends>\n"
+                + "  </raft-algorithm>\n"
+                + "  <cp-semaphores>\n"
+                + "    <cp-semaphore>\n"
+                + "      <name>sem1</name>\n"
+                + "      <jdk-compatible>true</jdk-compatible>\n"
+                + "    </cp-semaphore>\n"
+                + "    <cp-semaphore>\n"
+                + "      <name>sem2</name>\n"
+                + "      <jdk-compatible>false</jdk-compatible>\n"
+                + "    </cp-semaphore>\n"
+                + "  </cp-semaphores>\n"
+                + "</cp-subsystem>"
+                + HAZELCAST_END_TAG;
+        Config config = new InMemoryXmlConfig(xml);
+        CPSubsystemConfig cpSubsystemConfig = config.getCPSubsystemConfig();
+        assertEquals(10, cpSubsystemConfig.getCPMemberCount());
+        assertEquals(5, cpSubsystemConfig.getGroupSize());
+        assertEquals(15, cpSubsystemConfig.getSessionTimeToLiveSeconds());
+        assertEquals(3, cpSubsystemConfig.getSessionHeartbeatIntervalSeconds());
+        assertEquals(120, cpSubsystemConfig.getMissingCPMemberAutoRemovalSeconds());
+        assertTrue(cpSubsystemConfig.isFailOnIndeterminateOperationState());
+        RaftAlgorithmConfig raftAlgorithmConfig = cpSubsystemConfig.getRaftAlgorithmConfig();
+        assertEquals(500, raftAlgorithmConfig.getLeaderElectionTimeoutInMillis());
+        assertEquals(100, raftAlgorithmConfig.getLeaderHeartbeatPeriodInMillis());
+        assertEquals(25, raftAlgorithmConfig.getAppendRequestMaxEntryCount());
+        assertEquals(250, raftAlgorithmConfig.getCommitIndexAdvanceCountToSnapshot());
+        assertEquals(75, raftAlgorithmConfig.getUncommittedEntryCountToRejectNewAppends());
+        CPSemaphoreConfig cpSemaphoreConfig1 = cpSubsystemConfig.findCPSemaphoreConfig("sem1");
+        CPSemaphoreConfig cpSemaphoreConfig2 = cpSubsystemConfig.findCPSemaphoreConfig("sem2");
+        assertNotNull(cpSemaphoreConfig1);
+        assertNotNull(cpSemaphoreConfig2);
+        assertTrue(cpSemaphoreConfig1.isJdkCompatible());
+        assertFalse(cpSemaphoreConfig2.isJdkCompatible());
     }
 
     @Test

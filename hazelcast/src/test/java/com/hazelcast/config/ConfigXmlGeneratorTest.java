@@ -19,8 +19,12 @@ package com.hazelcast.config;
 import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig;
 import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig.DurationConfig;
 import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig.TimedExpiryPolicyFactoryConfig;
+import com.hazelcast.config.ConfigCompatibilityChecker.CPSubsystemConfigChecker;
 import com.hazelcast.config.ConfigCompatibilityChecker.EventJournalConfigChecker;
 import com.hazelcast.config.ConfigCompatibilityChecker.MapMerkleTreeConfigChecker;
+import com.hazelcast.config.ConfigCompatibilityChecker.QuorumConfigChecker;
+import com.hazelcast.config.cp.CPSemaphoreConfig;
+import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.memory.MemorySize;
 import com.hazelcast.memory.MemoryUnit;
 import com.hazelcast.quorum.QuorumType;
@@ -40,7 +44,6 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.nio.ByteOrder;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Properties;
@@ -49,6 +52,7 @@ import static com.google.common.collect.Sets.newHashSet;
 import static com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig.TimedExpiryPolicyFactoryConfig.ExpiryPolicyType.ACCESSED;
 import static com.hazelcast.config.ConfigXmlGenerator.MASK_FOR_SENSITIVE_DATA;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -258,7 +262,7 @@ public class ConfigXmlGeneratorTest {
     public void testListenerConfig() {
         Config expectedConfig = new Config();
 
-        expectedConfig.setListenerConfigs(asList(new ListenerConfig("Listener")));
+        expectedConfig.setListenerConfigs(singletonList(new ListenerConfig("Listener")));
 
         Config actualConfig = getNewConfigViaXMLGenerator(expectedConfig);
 
@@ -297,7 +301,7 @@ public class ConfigXmlGeneratorTest {
                 .setProperties(properties);
         ServicesConfig expectedConfig = cfg.getServicesConfig()
                 .setEnableDefaults(true)
-                .setServiceConfigs(asList(serviceConfig));
+                .setServiceConfigs(singletonList(serviceConfig));
 
         ServicesConfig actualConfig = getNewConfigViaXMLGenerator(cfg).getServicesConfig();
 
@@ -335,7 +339,7 @@ public class ConfigXmlGeneratorTest {
                           .setClassName("member.l.o.l")
                           .setUsage(LoginModuleConfig.LoginModuleUsage.REQUIRED)))
         .setMemberCredentialsConfig(new CredentialsFactoryConfig().setClassName("foo.bar").setProperties(dummyprops))
-        .setClientPermissionConfigs(new HashSet<PermissionConfig>(Arrays.asList(
+        .setClientPermissionConfigs(new HashSet<PermissionConfig>(singletonList(
                 new PermissionConfig()
                         .setActions(newHashSet("read", "remove"))
                         .setEndpoints(newHashSet("127.0.0.1", "127.0.0.2"))
@@ -406,7 +410,7 @@ public class ConfigXmlGeneratorTest {
         PartitionGroupConfig expectedConfig = new PartitionGroupConfig()
                 .setEnabled(true)
                 .setGroupType(PartitionGroupConfig.MemberGroupType.PER_MEMBER)
-                .setMemberGroupConfigs(asList(new MemberGroupConfig().addInterface("hostname")));
+                .setMemberGroupConfigs(singletonList(new MemberGroupConfig().addInterface("hostname")));
 
         cfg.setPartitionGroupConfig(expectedConfig);
 
@@ -519,9 +523,10 @@ public class ConfigXmlGeneratorTest {
                 .setValueType("valueType")
                 .setReadThrough(true)
                 .setHotRestartConfig(hotRestartConfig())
-                .setCacheEntryListeners(asList(cacheSimpleEntryListenerConfig()))
+                .setCacheEntryListeners(singletonList(cacheSimpleEntryListenerConfig()))
                 .setWriteThrough(true)
-                .setPartitionLostListenerConfigs(asList(new CachePartitionLostListenerConfig("partitionLostListener")))
+                .setPartitionLostListenerConfigs(singletonList(
+                        new CachePartitionLostListenerConfig("partitionLostListener")))
                 .setQuorumName("testQuorum");
 
         expectedConfig.setMergePolicy("mergePolicy");
@@ -547,9 +552,10 @@ public class ConfigXmlGeneratorTest {
                 .setCacheLoaderFactory("cacheLoaderFactory")
                 .setCacheWriterFactory("cacheWriterFactory")
                 .setExpiryPolicyFactory("expiryPolicyFactory")
-                .setCacheEntryListeners(asList(cacheSimpleEntryListenerConfig()))
+                .setCacheEntryListeners(singletonList(cacheSimpleEntryListenerConfig()))
                 .setExpiryPolicyFactoryConfig(new ExpiryPolicyFactoryConfig(timedExpiryPolicyFactoryConfig))
-                .setPartitionLostListenerConfigs(asList(new CachePartitionLostListenerConfig("partitionLostListener")));
+                .setPartitionLostListenerConfigs(singletonList(
+                        new CachePartitionLostListenerConfig("partitionLostListener")));
 
         expectedConfig.setMergePolicy("mergePolicy");
         expectedConfig.setDisablePerEntryInvalidationEvents(true);
@@ -712,7 +718,7 @@ public class ConfigXmlGeneratorTest {
                 .setBinary(true)
                 .setStatisticsEnabled(true)
                 .setQuorumName("quorum")
-                .setEntryListenerConfigs(asList(new EntryListenerConfig("java.Listener", true, true)));
+                .setEntryListenerConfigs(singletonList(new EntryListenerConfig("java.Listener", true, true)));
 
         Config config = new Config()
                 .addMultiMapConfig(expectedConfig);
@@ -797,7 +803,7 @@ public class ConfigXmlGeneratorTest {
                 .setAsyncBackupCount(3)
                 .setQuorumName("quorum")
                 .setMergePolicyConfig(mergePolicyConfig)
-                .setItemListenerConfigs(asList(new ItemListenerConfig("java.Listener", true)));
+                .setItemListenerConfigs(singletonList(new ItemListenerConfig("java.Listener", true)));
 
         Config config = new Config()
                 .addListConfig(expectedConfig);
@@ -821,7 +827,7 @@ public class ConfigXmlGeneratorTest {
                 .setAsyncBackupCount(3)
                 .setQuorumName("quorum")
                 .setMergePolicyConfig(mergePolicyConfig)
-                .setItemListenerConfigs(asList(new ItemListenerConfig("java.Listener", true)));
+                .setItemListenerConfigs(singletonList(new ItemListenerConfig("java.Listener", true)));
 
         Config config = new Config()
                 .addSetConfig(expectedConfig);
@@ -866,7 +872,7 @@ public class ConfigXmlGeneratorTest {
                 .setEmptyQueueTtl(1000)
                 .setMergePolicyConfig(mergePolicyConfig)
                 .setQueueStoreConfig(queueStoreConfig)
-                .setItemListenerConfigs(asList(new ItemListenerConfig("java.Listener", true)));
+                .setItemListenerConfigs(singletonList(new ItemListenerConfig("java.Listener", true)));
 
         Config config = new Config()
                 .addQueueConfig(expectedConfig);
@@ -1025,9 +1031,10 @@ public class ConfigXmlGeneratorTest {
                 .setHotRestartConfig(hotRestartConfig())
                 .setEvictionPolicy(EvictionPolicy.LRU)
                 .addEntryListenerConfig(listenerConfig)
-                .setMapIndexConfigs(asList(mapIndexConfig))
+                .setMapIndexConfigs(singletonList(mapIndexConfig))
                 .addMapAttributeConfig(attrConfig)
-                .setPartitionLostListenerConfigs(asList(new MapPartitionLostListenerConfig("partitionLostListener")));
+                .setPartitionLostListenerConfigs(singletonList(
+                        new MapPartitionLostListenerConfig("partitionLostListener")));
 
         expectedConfig.setQueryCacheConfigs(asList(queryCacheConfig1, queryCacheConfig2));
 
@@ -1136,7 +1143,7 @@ public class ConfigXmlGeneratorTest {
 
         wanConfig
                 .setWanConsumerConfig(wanConsumerConfig)
-                .setWanPublisherConfigs(Collections.singletonList(publisherConfig));
+                .setWanPublisherConfigs(singletonList(publisherConfig));
 
         Config config = new Config().addWanReplicationConfig(wanConfig);
         Config xmlConfig = getNewConfigViaXMLGenerator(config);
@@ -1226,7 +1233,7 @@ public class ConfigXmlGeneratorTest {
                 .setName("TestTopic")
                 .setGlobalOrderingEnabled(true)
                 .setStatisticsEnabled(true)
-                .setMessageListenerConfigs(asList(new ListenerConfig("foo.bar.Listener")));
+                .setMessageListenerConfigs(singletonList(new ListenerConfig("foo.bar.Listener")));
         cfg.addTopicConfig(expectedConfig);
 
         TopicConfig actualConfig = getNewConfigViaXMLGenerator(cfg).getTopicConfig("TestTopic");
@@ -1243,7 +1250,7 @@ public class ConfigXmlGeneratorTest {
                 .setName(testTopic)
                 .setMultiThreadingEnabled(true)
                 .setStatisticsEnabled(true)
-                .setMessageListenerConfigs(asList(new ListenerConfig("foo.bar.Listener")));
+                .setMessageListenerConfigs(singletonList(new ListenerConfig("foo.bar.Listener")));
         cfg.addTopicConfig(expectedConfig);
 
         TopicConfig actualConfig = getNewConfigViaXMLGenerator(cfg).getTopicConfig(testTopic);
@@ -1261,7 +1268,7 @@ public class ConfigXmlGeneratorTest {
                 .setReadBatchSize(10)
                 .setTopicOverloadPolicy(TopicOverloadPolicy.BLOCK)
                 .setStatisticsEnabled(true)
-                .setMessageListenerConfigs(asList(new ListenerConfig("foo.bar.Listener")));
+                .setMessageListenerConfigs(singletonList(new ListenerConfig("foo.bar.Listener")));
 
         cfg.addReliableTopicConfig(expectedConfig);
 
@@ -1321,7 +1328,7 @@ public class ConfigXmlGeneratorTest {
 
         QuorumConfig generatedConfig = getNewConfigViaXMLGenerator(config).getQuorumConfig("test-quorum");
         assertTrue(generatedConfig.toString() + " should be compatible with " + quorumConfig.toString(),
-                new ConfigCompatibilityChecker.QuorumConfigChecker().check(quorumConfig, generatedConfig));
+                new QuorumConfigChecker().check(quorumConfig, generatedConfig));
     }
 
     @Test
@@ -1335,7 +1342,7 @@ public class ConfigXmlGeneratorTest {
 
         QuorumConfig generatedConfig = getNewConfigViaXMLGenerator(config).getQuorumConfig("recently-active");
         assertTrue(generatedConfig.toString() + " should be compatible with " + quorumConfig.toString(),
-                new ConfigCompatibilityChecker.QuorumConfigChecker().check(quorumConfig, generatedConfig));
+                new QuorumConfigChecker().check(quorumConfig, generatedConfig));
     }
 
     @Test
@@ -1354,7 +1361,37 @@ public class ConfigXmlGeneratorTest {
 
         QuorumConfig generatedConfig = getNewConfigViaXMLGenerator(config).getQuorumConfig("probabilistic-quorum");
         assertTrue(generatedConfig.toString() + " should be compatible with " + quorumConfig.toString(),
-                new ConfigCompatibilityChecker.QuorumConfigChecker().check(quorumConfig, generatedConfig));
+                new QuorumConfigChecker().check(quorumConfig, generatedConfig));
+    }
+
+    @Test
+    public void testCPSubsystemConfig() {
+        Config config = new Config();
+
+        config.getCPSubsystemConfig()
+              .setCPMemberCount(10)
+              .setGroupSize(5)
+              .setSessionTimeToLiveSeconds(15)
+              .setSessionHeartbeatIntervalSeconds(3)
+              .setMissingCPMemberAutoRemovalSeconds(120)
+              .setFailOnIndeterminateOperationState(true);
+
+        config.getCPSubsystemConfig()
+              .getRaftAlgorithmConfig()
+              .setLeaderElectionTimeoutInMillis(500)
+              .setLeaderHeartbeatPeriodInMillis(100)
+              .setAppendRequestMaxEntryCount(25)
+              .setAppendRequestMaxEntryCount(250)
+              .setUncommittedEntryCountToRejectNewAppends(75);
+
+        config.getCPSubsystemConfig()
+              .addCPSemaphoreConfig(new CPSemaphoreConfig("sem1", true))
+              .addCPSemaphoreConfig(new CPSemaphoreConfig("sem2", false));
+
+
+        CPSubsystemConfig generatedConfig = getNewConfigViaXMLGenerator(config).getCPSubsystemConfig();
+        assertTrue(generatedConfig + " should be compatible with " + config.getCPSubsystemConfig(),
+                new CPSubsystemConfigChecker().check(config.getCPSubsystemConfig(), generatedConfig));
     }
 
     private DiscoveryConfig getDummyDiscoveryConfig() {

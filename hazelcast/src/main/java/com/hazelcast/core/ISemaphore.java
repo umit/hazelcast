@@ -19,7 +19,7 @@ package com.hazelcast.core;
 import com.hazelcast.config.QuorumConfig;
 import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.config.cp.CPSubsystemConfig;
-import com.hazelcast.cp.CPSessionManagementService;
+import com.hazelcast.cp.CPSession;
 import com.hazelcast.cp.CPSubsystem;
 
 import java.util.concurrent.Semaphore;
@@ -97,8 +97,7 @@ import java.util.concurrent.TimeUnit;
  * the session-aware impl has a minor difference to the JDK Semaphore, we think
  * it is a better fit for distributed environments because of its safe
  * auto-cleanup mechanism for acquired permits. Please see
- * {@link CPSessionManagementService} for the rationale behind the session
- * mechanism.
+ * {@link CPSession} for the rationale behind the session mechanism.
  * </li>
  * <li>
  * The second impl offered by {@link CPSubsystem} is sessionless. This impl

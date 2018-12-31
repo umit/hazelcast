@@ -20,7 +20,7 @@ import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.Session;
+import com.hazelcast.cp.CPSession;
 import com.hazelcast.util.Clock;
 
 import java.io.IOException;
@@ -31,7 +31,7 @@ import static java.lang.Math.max;
 /**
  * Represents state of a Raft session.
  */
-public class RaftSession implements Session, IdentifiedDataSerializable {
+public class RaftSession implements CPSession, IdentifiedDataSerializable {
 
     private long id;
 

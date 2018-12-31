@@ -36,7 +36,7 @@
 <hazelcast xmlns="http://www.hazelcast.com/schema/config"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
            xsi:schemaLocation="http://www.hazelcast.com/schema/config
-           http://www.hazelcast.com/schema/config/hazelcast-config-3.11.xsd">
+           http://www.hazelcast.com/schema/config/hazelcast-config-3.12.xsd">
 
     <group>
         <name>dev</name>
@@ -915,4 +915,30 @@
         <mapName>default</mapName>
         <depth>5</depth>
     </merkle-tree>
+
+    <cp-subsystem>
+        <cp-member-count>10</cp-member-count>
+        <group-size>3</group-size>
+        <session-time-to-live-seconds>60</session-time-to-live-seconds>
+        <session-heartbeat-interval-seconds>5</session-heartbeat-interval-seconds>
+        <missing-cp-member-auto-removal-seconds>120</missing-cp-member-auto-removal-seconds>
+        <fail-on-indeterminate-operation-state>false</fail-on-indeterminate-operation-state>
+        <raft-algorithm>
+            <leader-election-timeout-in-millis>2000</leader-election-timeout-in-millis>
+            <leader-heartbeat-period-in-millis>5000</leader-heartbeat-period-in-millis>
+            <append-request-max-entry-count>50</append-request-max-entry-count>
+            <commit-index-advance-count-to-snapshot>1000</commit-index-advance-count-to-snapshot>
+            <uncommitted-entry-count-to-reject-new-appends>100</uncommitted-entry-count-to-reject-new-appends>
+        </raft-algorithm>
+        <cp-semaphores>
+            <cp-semaphore>
+                <name>sem1</name>
+                <jdk-compatible>true</jdk-compatible>
+            </cp-semaphore>
+            <cp-semaphore>
+                <name>sem2</name>
+                <jdk-compatible>false</jdk-compatible>
+            </cp-semaphore>
+        </cp-semaphores>
+    </cp-subsystem>
 </hazelcast>

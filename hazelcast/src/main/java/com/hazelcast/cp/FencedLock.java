@@ -33,8 +33,8 @@ import java.util.concurrent.locks.Lock;
  * failures and network partitions. If a network partition occurs, it remains
  * available on at most one side of the partition.
  * <p>
- * {@link FencedLock} works on top of CP sessions. Please see
- * {@link CPSessionManagementService} for more information about CP sessions.
+ * {@link FencedLock} works on top of CP sessions. Please see {@link CPSession}
+ * for more information about CP sessions.
  * <p>
  * Distributed locks are unfortunately NOT EQUIVALENT to single-node mutexes
  * because of the complexities in distributed systems, such as uncertain

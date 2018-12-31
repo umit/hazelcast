@@ -36,6 +36,7 @@ import com.hazelcast.config.QueueConfig;
 import com.hazelcast.config.ReplicatedMapConfig;
 import com.hazelcast.config.RingbufferConfig;
 import com.hazelcast.config.ScheduledExecutorConfig;
+import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.internal.eviction.EvictionPolicyComparator;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
@@ -56,6 +57,7 @@ import static com.hazelcast.internal.config.MergePolicyValidator.checkCacheMerge
 import static com.hazelcast.internal.config.MergePolicyValidator.checkMapMergePolicy;
 import static com.hazelcast.internal.config.MergePolicyValidator.checkMergePolicy;
 import static com.hazelcast.internal.config.MergePolicyValidator.checkReplicatedMapMergePolicy;
+import static com.hazelcast.util.Preconditions.checkTrue;
 import static com.hazelcast.util.StringUtil.isNullOrEmpty;
 import static java.lang.String.format;
 
@@ -358,6 +360,18 @@ public final class ConfigValidator {
                                                     SplitBrainMergePolicyProvider mergePolicyProvider) {
         String mergePolicyClassName = scheduledExecutorConfig.getMergePolicyConfig().getPolicy();
         checkMergePolicy(scheduledExecutorConfig, mergePolicyProvider, mergePolicyClassName);
+    }
+
+    public static void checkCPSubsystemConfig(CPSubsystemConfig config) {
+        checkTrue(config.getGroupSize() <= config.getCPMemberCount(),
+                "The group size parameter cannot be bigger than the number of the CP member count");
+
+        checkTrue(config.getSessionTimeToLiveSeconds() > config.getSessionHeartbeatIntervalSeconds(),
+                "Session TTL must be greater than session heartbeat interval!");
+
+        checkTrue(config.getMissingCPMemberAutoRemovalSeconds() == 0
+                        || config.getSessionTimeToLiveSeconds() <= config.getMissingCPMemberAutoRemovalSeconds(),
+                "Session TTL must be smaller than or equal to missing CP member auto-removal seconds!");
     }
 
     /**

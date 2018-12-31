@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.session;
 
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.Session;
+import com.hazelcast.cp.CPSession;
 import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
@@ -115,7 +115,7 @@ class RaftSessionRegistry implements IdentifiedDataSerializable {
         return session;
     }
 
-    Collection<? extends Session> getSessions() {
+    Collection<? extends CPSession> getSessions() {
         return sessions.values();
     }
 

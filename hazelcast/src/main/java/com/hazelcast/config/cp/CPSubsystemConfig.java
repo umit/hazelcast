@@ -20,8 +20,10 @@ import com.hazelcast.config.ConfigPatternMatcher;
 import com.hazelcast.config.matcher.MatchingPointConfigPatternMatcher;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.core.IndeterminateOperationStateException;
+import com.hazelcast.cp.CPGroup;
 
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.hazelcast.internal.config.ConfigUtils.lookupByPattern;
@@ -68,6 +70,8 @@ public class CPSubsystemConfig {
      * when a positive value is set. After the CP subsystem is initialized
      * successfully, more CP members can be added at run-time and number of
      * active CP members can go beyond the configured CP member count.
+     * <p>
+     * If set, must be greater than or equal to {@link #groupSize}
      */
     private int cpMemberCount;
 
@@ -75,6 +79,8 @@ public class CPSubsystemConfig {
      * Number of CP members for running CP groups. If set, it must be an odd
      * number between {@link #MIN_GROUP_SIZE} and {@link #MAX_GROUP_SIZE}.
      * Otherwise, {@link #cpMemberCount} is respected.
+     * <p>
+     * If set, must be smaller than or equal to {@link #cpMemberCount}
      */
     private int groupSize;
 
@@ -82,6 +88,9 @@ public class CPSubsystemConfig {
      * Duration for a CP session to be kept alive after the last heartbeat
      * it ha received. The session will be closed if there is no new heartbeat
      * during this duration.
+     * <p>
+     * Must be greater than {@link #sessionHeartbeatIntervalSeconds}, and
+     * smaller than or equal to {@link #missingCPMemberAutoRemovalSeconds}
      */
     private int sessionTimeToLiveSeconds = DEFAULT_SESSION_TTL_SECONDS;
 
@@ -90,6 +99,8 @@ public class CPSubsystemConfig {
      * A CP session is started on a CP group with the first session-based
      * request of a Hazelcast server or a client. After that, heartbeats are
      * periodically committed to the CP group.
+     * <p>
+     * Must be smaller than {@link #sessionTimeToLiveSeconds}
      */
     private int sessionHeartbeatIntervalSeconds = DEFAULT_HEARTBEAT_INTERVAL_SECONDS;
 
@@ -112,8 +123,10 @@ public class CPSubsystemConfig {
      * groups with other available CP members in the CP subsystem. This
      * configuration also implies that no network partition is expected to be
      * longer than the configured duration.
+     * <p>
+     * Must be greater than or equal to {@link #sessionTimeToLiveSeconds}
      */
-    private long missingCpMemberAutoRemovalSeconds;
+    private long missingCPMemberAutoRemovalSeconds;
 
     /**
      * Offers a choice between at-least-once and at-most-once execution
@@ -156,7 +169,10 @@ public class CPSubsystemConfig {
         this.sessionTimeToLiveSeconds = config.sessionTimeToLiveSeconds;
         this.sessionHeartbeatIntervalSeconds = config.sessionHeartbeatIntervalSeconds;
         this.failOnIndeterminateOperationState = config.failOnIndeterminateOperationState;
-        this.missingCpMemberAutoRemovalSeconds = config.missingCpMemberAutoRemovalSeconds;
+        this.missingCPMemberAutoRemovalSeconds = config.missingCPMemberAutoRemovalSeconds;
+        for (CPSemaphoreConfig semaphoreConfig : config.cpSemaphoreConfigs.values()) {
+            this.cpSemaphoreConfigs.put(semaphoreConfig.getName(), new CPSemaphoreConfig(semaphoreConfig));
+        }
     }
 
     /**
@@ -176,10 +192,8 @@ public class CPSubsystemConfig {
      * @return this config instance
      */
     public CPSubsystemConfig setCPMemberCount(int cpMemberCount) {
-        checkTrue(cpMemberCount >= MIN_GROUP_SIZE, "CP subsystem must have at least " + MIN_GROUP_SIZE
-                + " CP members");
-        checkTrue(groupSize <= cpMemberCount, "The group size parameter cannot be bigger than "
-                + "the number of the CP member count");
+        checkTrue(cpMemberCount == 0 || cpMemberCount >= MIN_GROUP_SIZE, "CP subsystem must have at least "
+                + MIN_GROUP_SIZE + " CP members");
         this.cpMemberCount = cpMemberCount;
         return this;
     }
@@ -208,16 +222,13 @@ public class CPSubsystemConfig {
 
     /**
      * Sets group size. Must be an odd number between {@link #MIN_GROUP_SIZE}
-     * and {@link #MAX_GROUP_SIZE}. Must be smaller than or equal to CP member
-     * count.
+     * and {@link #MAX_GROUP_SIZE}.
      *
      * @return this config instance
      */
     public CPSubsystemConfig setGroupSize(int groupSize) {
         checkTrue(groupSize == 0 || (groupSize >= MIN_GROUP_SIZE && groupSize <= MAX_GROUP_SIZE
                 && (groupSize % 2 == 1)), "Group size must be an odd value between 3 and 7");
-        checkTrue(groupSize <= cpMemberCount,
-                "Group size cannot be bigger than CP member count");
         this.groupSize = groupSize;
         return this;
     }
@@ -240,11 +251,6 @@ public class CPSubsystemConfig {
      */
     public CPSubsystemConfig setSessionTimeToLiveSeconds(int sessionTimeToLiveSeconds) {
         checkPositive(sessionTimeToLiveSeconds, "Session TTL must be a positive value!");
-        checkTrue(sessionTimeToLiveSeconds > sessionHeartbeatIntervalSeconds,
-                "Session TTL must be greater than session heartbeat interval!");
-        checkTrue(missingCpMemberAutoRemovalSeconds == 0
-                        || sessionTimeToLiveSeconds <= missingCpMemberAutoRemovalSeconds,
-                "Session TTL must be smaller than or equal to missing CP member auto-removal seconds!");
         this.sessionTimeToLiveSeconds = sessionTimeToLiveSeconds;
         return this;
     }
@@ -265,8 +271,6 @@ public class CPSubsystemConfig {
      */
     public CPSubsystemConfig setSessionHeartbeatIntervalSeconds(int sessionHeartbeatIntervalSeconds) {
         checkPositive(sessionTimeToLiveSeconds, "Session heartbeat interval must be a positive value!");
-        checkTrue(sessionTimeToLiveSeconds > sessionHeartbeatIntervalSeconds,
-                "Session heartbeat interval must be smaller than session TTL!");
         this.sessionHeartbeatIntervalSeconds = sessionHeartbeatIntervalSeconds;
         return this;
     }
@@ -278,8 +282,8 @@ public class CPSubsystemConfig {
      * @return duration to wait before automatically removing
      *         a missing CP member from the CP subsystem
      */
-    public long getMissingCpMemberAutoRemovalSeconds() {
-        return missingCpMemberAutoRemovalSeconds;
+    public long getMissingCPMemberAutoRemovalSeconds() {
+        return missingCPMemberAutoRemovalSeconds;
     }
 
     /**
@@ -288,11 +292,9 @@ public class CPSubsystemConfig {
      *
      * @return this config instance
      */
-    public CPSubsystemConfig setMissingCpMemberAutoRemovalSeconds(long missingCpMemberAutoRemovalSeconds) {
-        checkTrue(missingCpMemberAutoRemovalSeconds == 0
-                        || missingCpMemberAutoRemovalSeconds >= sessionTimeToLiveSeconds,
-                "missingCpMemberAutoRemovalSeconds must be either 0 or greater than or equal to session TTL");
-        this.missingCpMemberAutoRemovalSeconds = missingCpMemberAutoRemovalSeconds;
+    public CPSubsystemConfig setMissingCPMemberAutoRemovalSeconds(long missingCPMemberAutoRemovalSeconds) {
+        checkTrue(missingCPMemberAutoRemovalSeconds >= 0, "missing cp member auto-removal seconds must be non-negative");
+        this.missingCPMemberAutoRemovalSeconds = missingCPMemberAutoRemovalSeconds;
         return this;
     }
 
@@ -341,12 +343,56 @@ public class CPSubsystemConfig {
         return this;
     }
 
+    /**
+     * Returns the map of CP {@link ISemaphore} configurations
+     *
+     * @return the map of CP {@link ISemaphore} configurations
+     */
+    public Map<String, CPSemaphoreConfig> getCPSemaphoreConfigs() {
+        return cpSemaphoreConfigs;
+    }
+
+    /**
+     * Returns the CP {@link ISemaphore} configuration for the given name.
+     * <p>
+     * The name is matched by stripping the {@link CPGroup} name from
+     * the given {@code name} if present.
+     * Returns null if there is no config found by the given {@code name}
+     *
+     * @param name name of the CP {@link ISemaphore}
+     * @return the CP {@link ISemaphore} configuration
+     */
     public CPSemaphoreConfig findCPSemaphoreConfig(String name) {
         return lookupByPattern(configPatternMatcher, cpSemaphoreConfigs, getBaseName(name));
     }
 
-    public CPSubsystemConfig addCPSemaphoreConfig(CPSemaphoreConfig config) {
-        cpSemaphoreConfigs.put(config.getName(), config);
+    /**
+     * Adds the CP {@link ISemaphore} configuration. Name of the CP
+     * {@link ISemaphore} could optionally contain a {@link CPGroup} name,
+     * like "mySemaphore@group1".
+     *
+     * @param cpSemaphoreConfig the CP {@link ISemaphore} configuration
+     * @return this config instance
+     */
+    public CPSubsystemConfig addCPSemaphoreConfig(CPSemaphoreConfig cpSemaphoreConfig) {
+        cpSemaphoreConfigs.put(cpSemaphoreConfig.getName(), cpSemaphoreConfig);
+        return this;
+    }
+
+    /**
+     * Sets the map of CP {@link ISemaphore} configurations,
+     * mapped by config name. Names could optionally contain
+     * a {@link CPGroup} name, such as "mySemaphore@group1".
+     *
+     * @param cpSemaphoreConfigs the CP {@link ISemaphore} config map to set
+     * @return this config instance
+     */
+    public CPSubsystemConfig setCPSemaphoreConfigs(Map<String, CPSemaphoreConfig> cpSemaphoreConfigs) {
+        this.cpSemaphoreConfigs.clear();
+        this.cpSemaphoreConfigs.putAll(cpSemaphoreConfigs);
+        for (final Entry<String, CPSemaphoreConfig> entry : this.cpSemaphoreConfigs.entrySet()) {
+            entry.getValue().setName(entry.getKey());
+        }
         return this;
     }
 
@@ -354,9 +400,8 @@ public class CPSubsystemConfig {
     public String toString() {
         return "CPSubsystemConfig{" + "cpMemberCount=" + cpMemberCount + ", groupSize=" + groupSize
                 + ", sessionTimeToLiveSeconds=" + sessionTimeToLiveSeconds + ", sessionHeartbeatIntervalSeconds="
-                + sessionHeartbeatIntervalSeconds + ", missingCpMemberAutoRemovalSeconds=" + missingCpMemberAutoRemovalSeconds
+                + sessionHeartbeatIntervalSeconds + ", missingCPMemberAutoRemovalSeconds=" + missingCPMemberAutoRemovalSeconds
                 + ", failOnIndeterminateOperationState=" + failOnIndeterminateOperationState + ", raftAlgorithmConfig="
-                + raftAlgorithmConfig + ", cpSemaphoreConfigs=" + cpSemaphoreConfigs + ", configPatternMatcher="
-                + configPatternMatcher + '}';
+                + raftAlgorithmConfig + ", cpSemaphoreConfigs=" + cpSemaphoreConfigs + '}';
     }
 }

@@ -4,7 +4,7 @@ import com.hazelcast.config.Config;
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.Session;
+import com.hazelcast.cp.CPSession;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.CPMember;
@@ -77,10 +77,10 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
                     RaftSessionRegistry registry = service.getSessionRegistryOrNull(groupId);
                     assertNotNull(registry);
 
-                    Session session = registry.getSession(response.getSessionId());
+                    CPSession session = registry.getSession(response.getSessionId());
                     assertNotNull(session);
 
-                    Collection<Session> sessions = service.getAllSessions(groupId);
+                    Collection<CPSession> sessions = service.getAllSessions(groupId);
                     assertThat(sessions, hasItem(session));
                 }
             }

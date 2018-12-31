@@ -97,8 +97,10 @@ import com.hazelcast.config.WanPublisherState;
 import com.hazelcast.config.WanReplicationConfig;
 import com.hazelcast.config.WanReplicationRef;
 import com.hazelcast.config.WanSyncConfig;
+import com.hazelcast.config.cp.CPSemaphoreConfig;
+import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.core.EntryListener;
-import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.IAtomicReference;
@@ -123,6 +125,7 @@ import com.hazelcast.core.RingbufferStore;
 import com.hazelcast.core.RingbufferStoreFactory;
 import com.hazelcast.crdt.pncounter.PNCounter;
 import com.hazelcast.flakeidgen.FlakeIdGenerator;
+import com.hazelcast.instance.HazelcastInstanceFactory;
 import com.hazelcast.memory.MemoryUnit;
 import com.hazelcast.nio.SocketInterceptor;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
@@ -275,7 +278,7 @@ public class TestFullApplicationContext extends HazelcastTestSupport {
     @BeforeClass
     @AfterClass
     public static void start() {
-        Hazelcast.shutdownAll();
+        HazelcastInstanceFactory.terminateAll();
     }
 
     @Before
@@ -1417,5 +1420,28 @@ public class TestFullApplicationContext extends HazelcastTestSupport {
         assertEquals(2, whitelist.getPackages().size());
         assertTrue(whitelist.getPackages().contains("com.acme.app"));
         assertTrue(whitelist.getPackages().contains("com.acme.app.subpkg"));
+    }
+
+    @Test
+    public void testCPSubsystemConfig() {
+        CPSubsystemConfig cpSubsystemConfig = config.getCPSubsystemConfig();
+        assertEquals(10, cpSubsystemConfig.getCPMemberCount());
+        assertEquals(5, cpSubsystemConfig.getGroupSize());
+        assertEquals(15, cpSubsystemConfig.getSessionTimeToLiveSeconds());
+        assertEquals(3, cpSubsystemConfig.getSessionHeartbeatIntervalSeconds());
+        assertEquals(120, cpSubsystemConfig.getMissingCPMemberAutoRemovalSeconds());
+        assertTrue(cpSubsystemConfig.isFailOnIndeterminateOperationState());
+        RaftAlgorithmConfig raftAlgorithmConfig = cpSubsystemConfig.getRaftAlgorithmConfig();
+        assertEquals(500, raftAlgorithmConfig.getLeaderElectionTimeoutInMillis());
+        assertEquals(100, raftAlgorithmConfig.getLeaderHeartbeatPeriodInMillis());
+        assertEquals(25, raftAlgorithmConfig.getAppendRequestMaxEntryCount());
+        assertEquals(250, raftAlgorithmConfig.getCommitIndexAdvanceCountToSnapshot());
+        assertEquals(75, raftAlgorithmConfig.getUncommittedEntryCountToRejectNewAppends());
+        CPSemaphoreConfig cpSemaphoreConfig1 = cpSubsystemConfig.findCPSemaphoreConfig("sem1");
+        CPSemaphoreConfig cpSemaphoreConfig2 = cpSubsystemConfig.findCPSemaphoreConfig("sem2");
+        assertNotNull(cpSemaphoreConfig1);
+        assertNotNull(cpSemaphoreConfig2);
+        assertTrue(cpSemaphoreConfig1.isJdkCompatible());
+        assertFalse(cpSemaphoreConfig2.isJdkCompatible());
     }
 }

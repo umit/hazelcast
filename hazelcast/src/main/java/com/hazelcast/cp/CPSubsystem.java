@@ -93,12 +93,12 @@ import com.hazelcast.spi.annotation.Beta;
  * acquire request, and then periodically commits session-heartbeats to this CP
  * group to indicate its liveliness. It means that if CP locks and semaphores
  * are distributed into multiple CP groups, there will be a session
- * management overhead. Please see {@link CPSessionManagementService} for more
- * details about CP sessions. For the aforementioned reasons, we recommend
- * developers to use a minimal number of CP groups. For most use cases,
- * the DEFAULT CP group should be sufficient to maintain all CP data structure
- * instances. Custom CP groups could be created when throughput of the CP
- * subsystem is needed to be improved.
+ * management overhead. Please see {@link CPSession} for more details about CP
+ * sessions. For the aforementioned reasons, we recommend developers to use
+ * a minimal number of CP groups. For most use cases, the DEFAULT CP group
+ * should be sufficient to maintain all CP data structure instances. Custom
+ * CP groups could be created when throughput of the CP subsystem is needed
+ * to be improved.
  *
  * @see CPSubsystemConfig
  */

@@ -77,6 +77,7 @@ import static com.hazelcast.cp.CPGroup.DEFAULT_GROUP_NAME;
 import static com.hazelcast.cp.internal.MetadataRaftGroupManager.METADATA_GROUP_ID;
 import static com.hazelcast.cp.internal.RaftGroupMembershipManager.MANAGEMENT_TASK_PERIOD_IN_MILLIS;
 import static com.hazelcast.cp.internal.raft.QueryPolicy.LEADER_LOCAL;
+import static com.hazelcast.internal.config.ConfigValidator.checkCPSubsystemConfig;
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 import static com.hazelcast.spi.ExecutionService.SYSTEM_EXECUTOR;
 import static com.hazelcast.util.Preconditions.checkState;
@@ -114,6 +115,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         this.logger = nodeEngine.getLogger(getClass());
         CPSubsystemConfig cpSubsystemConfig = nodeEngine.getConfig().getCPSubsystemConfig();
         this.config = cpSubsystemConfig != null ? new CPSubsystemConfig(cpSubsystemConfig) : new CPSubsystemConfig();
+        checkCPSubsystemConfig(this.config);
         this.metadataGroupManager = new MetadataRaftGroupManager(nodeEngine, this, config);
         this.invocationManager = new RaftInvocationManager(nodeEngine, this);
     }
@@ -121,7 +123,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
         metadataGroupManager.initLocalCPMemberOnStartup();
-        if (config.getMissingCpMemberAutoRemovalSeconds() > 0) {
+        if (config.getMissingCPMemberAutoRemovalSeconds() > 0) {
             nodeEngine.getExecutionService().scheduleWithRepetition(new RemoveMissingMemberTask(),
                     REMOVE_MISSING_MEMBER_TASK_PERIOD_SECONDS, REMOVE_MISSING_MEMBER_TASK_PERIOD_SECONDS, SECONDS);
         }
@@ -319,7 +321,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     }
 
     void updateMissingMembers() {
-        if (config.getMissingCpMemberAutoRemovalSeconds() == 0 || !metadataGroupManager.isDiscoveryCompleted()) {
+        if (config.getMissingCPMemberAutoRemovalSeconds() == 0 || !metadataGroupManager.isDiscoveryCompleted()) {
             return;
         }
 
@@ -331,7 +333,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             if (clusterService.getMember(cpMember.getAddress()) == null) {
                 if (missingMembers.putIfAbsent(cpMember, System.currentTimeMillis()) == null) {
                     logger.warning(cpMember + " is not present in the cluster. It will be auto-removed after "
-                            + config.getMissingCpMemberAutoRemovalSeconds() + " seconds.");
+                            + config.getMissingCPMemberAutoRemovalSeconds() + " seconds.");
                 }
             } else if (missingMembers.remove(cpMember) != null) {
                 logger.info(cpMember + " is removed from the missing members list as it is in the cluster.");
@@ -641,7 +643,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
                 for (Entry<CPMember, Long> e : missingMembers.entrySet()) {
                     long missingTimeSeconds = MILLISECONDS.toSeconds(System.currentTimeMillis() - e.getValue());
-                    if (missingTimeSeconds >= config.getMissingCpMemberAutoRemovalSeconds()) {
+                    if (missingTimeSeconds >= config.getMissingCPMemberAutoRemovalSeconds()) {
                         CPMember missingMember = e.getKey();
                         logger.info("Triggering auto-remove of " + missingMember + " since it is absent for "
                                 + missingTimeSeconds + " seconds...");

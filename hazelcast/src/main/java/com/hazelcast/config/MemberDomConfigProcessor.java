@@ -17,6 +17,9 @@
 package com.hazelcast.config;
 
 import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig.TimedExpiryPolicyFactoryConfig.ExpiryPolicyType;
+import com.hazelcast.config.cp.CPSemaphoreConfig;
+import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
@@ -47,6 +50,7 @@ import static com.hazelcast.config.ConfigSections.ATOMIC_REFERENCE;
 import static com.hazelcast.config.ConfigSections.CACHE;
 import static com.hazelcast.config.ConfigSections.CARDINALITY_ESTIMATOR;
 import static com.hazelcast.config.ConfigSections.COUNT_DOWN_LATCH;
+import static com.hazelcast.config.ConfigSections.CP_SUBSYSTEM;
 import static com.hazelcast.config.ConfigSections.CRDT_REPLICATION;
 import static com.hazelcast.config.ConfigSections.DURABLE_EXECUTOR_SERVICE;
 import static com.hazelcast.config.ConfigSections.EVENT_JOURNAL;
@@ -221,6 +225,8 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
             handleCRDTReplication(node);
         } else if (PN_COUNTER.isEqual(nodeName)) {
             handlePNCounter(node);
+        } else if (CP_SUBSYSTEM.isEqual(nodeName)) {
+            handleCPSubsystem(node);
         } else {
             return true;
         }
@@ -2383,4 +2389,64 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         }
     }
 
+    private void handleCPSubsystem(Node node) {
+        CPSubsystemConfig cpSubsystemConfig = config.getCPSubsystemConfig();
+        for (Node child : childElements(node)) {
+            String nodeName = cleanNodeName(child);
+            if ("raft-algorithm".equals(nodeName)) {
+                handleRaftAlgorithm(cpSubsystemConfig.getRaftAlgorithmConfig(), child);
+            } else if ("cp-semaphores".equals(nodeName)) {
+                handleCPSemaphores(cpSubsystemConfig, child);
+            } else {
+                String value = getTextContent(child).trim();
+                if ("cp-member-count".equals(nodeName)) {
+                    cpSubsystemConfig.setCPMemberCount(Integer.parseInt(value));
+                } else if ("group-size".equals(nodeName)) {
+                    cpSubsystemConfig.setGroupSize(Integer.parseInt(value));
+                } else if ("session-time-to-live-seconds".equals(nodeName)) {
+                    cpSubsystemConfig.setSessionTimeToLiveSeconds(Integer.parseInt(value));
+                } else if ("session-heartbeat-interval-seconds".equals(nodeName)) {
+                    cpSubsystemConfig.setSessionHeartbeatIntervalSeconds(Integer.parseInt(value));
+                } else if ("missing-cp-member-auto-removal-seconds".equals(nodeName)) {
+                    cpSubsystemConfig.setMissingCPMemberAutoRemovalSeconds(Integer.parseInt(value));
+                } else if ("fail-on-indeterminate-operation-state".equals(nodeName)) {
+                    cpSubsystemConfig.setFailOnIndeterminateOperationState(Boolean.parseBoolean(value));
+                }
+            }
+        }
+    }
+
+    private void handleRaftAlgorithm(RaftAlgorithmConfig raftAlgorithmConfig, Node node) {
+        for (Node child : childElements(node)) {
+            String nodeName = cleanNodeName(child);
+            String value = getTextContent(child).trim();
+            if ("leader-election-timeout-in-millis".equals(nodeName)) {
+                raftAlgorithmConfig.setLeaderElectionTimeoutInMillis(Integer.parseInt(value));
+            } else if ("leader-heartbeat-period-in-millis".equals(nodeName)) {
+                raftAlgorithmConfig.setLeaderHeartbeatPeriodInMillis(Integer.parseInt(value));
+            } else if ("append-request-max-entry-count".equals(nodeName)) {
+                raftAlgorithmConfig.setAppendRequestMaxEntryCount(Integer.parseInt(value));
+            } else if ("commit-index-advance-count-to-snapshot".equals(nodeName)) {
+                raftAlgorithmConfig.setCommitIndexAdvanceCountToSnapshot(Integer.parseInt(value));
+            } else if ("uncommitted-entry-count-to-reject-new-appends".equals(nodeName)) {
+                raftAlgorithmConfig.setUncommittedEntryCountToRejectNewAppends(Integer.parseInt(value));
+            }
+        }
+    }
+
+    private void handleCPSemaphores(CPSubsystemConfig cpSubsystemConfig, Node node) {
+        for (Node child : childElements(node)) {
+            CPSemaphoreConfig cpSemaphoreConfig = new CPSemaphoreConfig();
+            for (Node subChild : childElements(child)) {
+                String nodeName = cleanNodeName(subChild);
+                String value = getTextContent(subChild).trim();
+                if ("name".equals(nodeName)) {
+                    cpSemaphoreConfig.setName(value);
+                } else if ("jdk-compatible".equals(nodeName)) {
+                    cpSemaphoreConfig.setJdkCompatible(Boolean.parseBoolean(value));
+                }
+            }
+            cpSubsystemConfig.addCPSemaphoreConfig(cpSemaphoreConfig);
+        }
+    }
 }

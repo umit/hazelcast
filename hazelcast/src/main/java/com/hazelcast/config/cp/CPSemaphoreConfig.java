@@ -60,6 +60,11 @@ public class CPSemaphoreConfig extends AbstractCPObjectConfig {
         this.jdkCompatible = jdkCompatible;
     }
 
+    public CPSemaphoreConfig(CPSemaphoreConfig config) {
+        super(config.name);
+        this.jdkCompatible = config.jdkCompatible;
+    }
+
     public CPSemaphoreConfig setName(String name) {
         this.name = name;
         return this;

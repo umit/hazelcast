@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.session;
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.Session;
+import com.hazelcast.cp.CPSession;
 import com.hazelcast.cp.CPSessionManagementService;
 import com.hazelcast.cp.internal.RaftGroupLifecycleAwareService;
 import com.hazelcast.cp.internal.RaftService;
@@ -139,8 +139,8 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
     }
 
     @Override
-    public Collection<Session> getAllSessions(CPGroupId groupId) {
-        return raftService.getInvocationManager().<Collection<Session>>invoke(groupId, new GetSessionsOp()).join();
+    public Collection<CPSession> getAllSessions(CPGroupId groupId) {
+        return raftService.getInvocationManager().<Collection<CPSession>>invoke(groupId, new GetSessionsOp()).join();
     }
 
     @Override
@@ -228,7 +228,7 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
         }
     }
 
-    public Collection<Session> getSessionsLocally(CPGroupId groupId) {
+    public Collection<CPSession> getSessionsLocally(CPGroupId groupId) {
         RaftSessionRegistry registry = getSessionRegistryOrNull(groupId);
         if (registry == null) {
             return Collections.emptyList();
@@ -300,7 +300,7 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
                     }
 
                     Set<Long> inactiveSessionIds = new HashSet<Long>();
-                    for (Session session : registry.getSessions()) {
+                    for (CPSession session : registry.getSessions()) {
                         if (!activeSessionIds.contains(session.id())
                                 && session.creationTime() + getSessionTTLMillis() < Clock.currentTimeMillis()) {
                             inactiveSessionIds.add(session.id());

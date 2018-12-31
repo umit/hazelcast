@@ -60,19 +60,19 @@ public class RaftAlgorithmConfig {
     private long leaderElectionTimeoutInMillis = DEFAULT_LEADER_ELECTION_TIMEOUT_IN_MILLIS;
 
     /**
-     * Period for leader to send heartbeat messages to its followers.
+     * Period for leader to send heartbeat messages to its followers
      */
     private long leaderHeartbeatPeriodInMillis = DEFAULT_LEADER_HEARTBEAT_PERIOD_IN_MILLIS;
 
     /**
      * Max entry count that can be sent in a single batch of
-     * append entries request.
+     * append entries request
      */
     private int appendRequestMaxEntryCount = DEFAULT_APPEND_REQUEST_MAX_ENTRY_COUNT;
 
     /**
      * Number of commits to initiate a new snapshot after
-     * the last snapshot's index.
+     * the last snapshot's index
      */
     private int commitIndexAdvanceCountToSnapshot = DEFAULT_COMMIT_INDEX_ADVANCE_COUNT_TO_SNAPSHOT;
 

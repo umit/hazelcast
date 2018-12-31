@@ -107,6 +107,9 @@ import com.hazelcast.config.WanPublisherConfig;
 import com.hazelcast.config.WanReplicationConfig;
 import com.hazelcast.config.WanReplicationRef;
 import com.hazelcast.config.WanSyncConfig;
+import com.hazelcast.config.cp.CPSemaphoreConfig;
+import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.map.eviction.MapEvictionPolicy;
 import com.hazelcast.memory.MemorySize;
 import com.hazelcast.memory.MemoryUnit;
@@ -345,6 +348,8 @@ public class HazelcastConfigBeanDefinitionParser extends AbstractHazelcastBeanDe
                         handleCRDTReplication(node);
                     } else if ("pn-counter".equals(nodeName)) {
                         handlePNCounter(node);
+                    } else if ("cp-subsystem".equals(nodeName)) {
+                        handleCPSubSystem(node);
                     }
                 }
             }
@@ -377,6 +382,48 @@ public class HazelcastConfigBeanDefinitionParser extends AbstractHazelcastBeanDe
             final BeanDefinitionBuilder crdtReplicationConfigBuilder = createBeanBuilder(CRDTReplicationConfig.class);
             fillAttributeValues(node, crdtReplicationConfigBuilder);
             configBuilder.addPropertyValue("CRDTReplicationConfig", crdtReplicationConfigBuilder.getBeanDefinition());
+        }
+
+        private void handleCPSubSystem(Node node) {
+            BeanDefinitionBuilder cpSubsystemConfigBuilder = createBeanBuilder(CPSubsystemConfig.class);
+
+            fillValues(node, cpSubsystemConfigBuilder, "raftAlgorithm", "cpSemaphores", "cpMemberCount",
+                    "missingCpMemberAutoRemovalSeconds");
+
+            for (Node child : childElements(node)) {
+                String nodeName = cleanNodeName(child);
+                if ("raft-algorithm".equals(nodeName)) {
+                    BeanDefinitionBuilder raftAlgorithmConfigBuilder = createBeanBuilder(RaftAlgorithmConfig.class);
+                    fillValues(child, raftAlgorithmConfigBuilder);
+                    cpSubsystemConfigBuilder.addPropertyValue("raftAlgorithmConfig",
+                            raftAlgorithmConfigBuilder.getBeanDefinition());
+                } else if ("cp-semaphores".equals(nodeName)) {
+                    ManagedMap<String, AbstractBeanDefinition> cpSemaphores = new ManagedMap<String, AbstractBeanDefinition>();
+                    handleCPSemaphores(cpSemaphores, child);
+                    cpSubsystemConfigBuilder.addPropertyValue("CPSemaphoreConfigs", cpSemaphores);
+                } else {
+                    String value = getTextContent(child).trim();
+                    if ("cp-member-count".equals(nodeName)) {
+                        cpSubsystemConfigBuilder.addPropertyValue("CPMemberCount",
+                                getIntegerValue("cp-member-count", value));
+                    } else if ("missing-cp-member-auto-removal-seconds".equals(nodeName)) {
+                        cpSubsystemConfigBuilder.addPropertyValue("missingCPMemberAutoRemovalSeconds",
+                                getIntegerValue("missing-cp-member-auto-removal-seconds", value));
+                    }
+                }
+            }
+
+            configBuilder.addPropertyValue("CPSubsystemConfig", cpSubsystemConfigBuilder.getBeanDefinition());
+        }
+
+        private void handleCPSemaphores(ManagedMap<String, AbstractBeanDefinition> cpSemaphores, Node node) {
+            for (Node child : childElements(node)) {
+                BeanDefinitionBuilder cpSemaphoreConfigBuilder = createBeanBuilder(CPSemaphoreConfig.class);
+                fillValues(child, cpSemaphoreConfigBuilder);
+                AbstractBeanDefinition beanDefinition = cpSemaphoreConfigBuilder.getBeanDefinition();
+                String name = (String) beanDefinition.getPropertyValues().get("name");
+                cpSemaphores.put(name, beanDefinition);
+            }
         }
 
         private void handleQuorum(Node node) {
