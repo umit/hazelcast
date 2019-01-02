@@ -21,6 +21,8 @@ import com.hazelcast.config.matcher.MatchingPointConfigPatternMatcher;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.core.IndeterminateOperationStateException;
 import com.hazelcast.cp.CPGroup;
+import com.hazelcast.cp.CPSubsystem;
+import com.hazelcast.cp.internal.CPMember;
 
 import java.util.Map;
 import java.util.Map.Entry;
@@ -33,7 +35,62 @@ import static com.hazelcast.util.Preconditions.checkPositive;
 import static com.hazelcast.util.Preconditions.checkTrue;
 
 /**
- * Contains configuration options for the CP subsystem.
+ * Contains configuration options for the {@link CPSubsystem}.
+ * <p>
+ * You can check the following code snippet to see how the {@link CPSubsystem}
+ * can be initialized by configuring only the
+ * {@link CPSubsystemConfig#setCPMemberCount(int)} value. In this code,
+ * we set 3 to {@link CPSubsystemConfig#setCPMemberCount(int)}, and we don't
+ * set any value to {@link CPSubsystemConfig#setGroupSize(int)}. Therefore,
+ * there will be 3 {@link CPMember} instances and {@link CPGroup}s will have
+ * 3 members.
+ * <pre>
+ *     int cpMemberCount = 3;
+ *     int apMemberCount = 2;
+ *     int memberCount = cpMemberCount + apMemberCount;
+ *     Config config = new Config();
+ *     config.getCPSubsystemConfig().setCPMemberCount(cpMemberCount);
+ *     HazelcastInstance[] instances = new HazelcastInstance[memberCount];
+ *     for (int i = 0; i < memberCount; i++) {
+ *         instances[i] = Hazelcast.newHazelcastInstance(config);
+ *     }
+ *
+ *     // update an atomic long via a CP member
+ *     IAtomicLong cpLong = instances[0].getCPSubsystem().getAtomicLong("myLong");
+ *     cpLong.set(10);
+ *
+ *     // access to its value via an AP member
+ *     cpLong = instances[cpMemberCount].getCPSubsystem().getAtomicLong("myLong");
+ *     System.out.println(cpLong.get());
+ * </pre>
+ * <p>
+ * In the following code snippet, we configure
+ * {@link CPSubsystemConfig#setCPMemberCount(int)} to 5 and
+ * {@link CPSubsystemConfig#setGroupSize(int)} to 3, therefore there will be 5
+ * {@link CPMember}s and {@link CPGroup}s will be initialized by selecting 3
+ * random {@link CPMember}s among them.
+ * <pre>
+ *     int cpMemberCount = 5;
+ *     int apMemberCount = 2;
+ *     int groupSize = 3;
+ *     int memberCount = cpMemberCount + apMemberCount;
+ *     Config config = new Config();
+ *     config.getCPSubsystemConfig()
+ *           .setCPMemberCount(cpMemberCount)
+ *           .setGroupSize(groupSize);
+ *     HazelcastInstance[] instances = new HazelcastInstance[memberCount];
+ *     for (int i = 0; i < memberCount; i++) {
+ *         instances[i] = Hazelcast.newHazelcastInstance(config);
+ *     }
+ *
+ *     // update an atomic long via a CP member
+ *     IAtomicLong cpLong = instances[0].getCPSubsystem().getAtomicLong("myLong");
+ *     cpLong.set(10);
+ *
+ *     // access to its value via an AP member
+ *     cpLong = instances[cpMemberCount].getCPSubsystem().getAtomicLong("myLong");
+ *     System.out.println(cpLong.get());
+ * </pre>
  */
 public class CPSubsystemConfig {
 

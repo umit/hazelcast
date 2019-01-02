@@ -118,11 +118,11 @@ public interface FencedLock extends Lock, DistributedObject {
      * <p>
      * Consider the following scenario:
      * <pre>
-     *      FencedLock lock = ...;
-     *      lock.lock();
-     *      // JVM of the caller thread hits a long pause and its CP session
-     *      is closed on the CP group.
-     *      lock.lock();
+     *     FencedLock lock = ...;
+     *     lock.lock();
+     *     // JVM of the caller thread hits a long pause
+     *     // and its CP session is closed on the CP group.
+     *     lock.lock();
      * </pre>
      * In this scenario, a thread acquires the lock, then its JVM instance
      * encounters a long pause, which is longer than
@@ -160,11 +160,11 @@ public interface FencedLock extends Lock, DistributedObject {
      * <p>
      * Consider the following scenario:
      * <pre>
-     *      FencedLock lock = ...;
-     *      lock.lockInterruptibly();
-     *      // JVM of the caller thread hits a long pause and its CP session
-     *      is closed on the CP group.
-     *      lock.lockInterruptibly();
+     *     FencedLock lock = ...;
+     *     lock.lockInterruptibly();
+     *     // JVM of the caller thread hits a long pause
+     *     // and its CP session is closed on the CP group.
+     *     lock.lockInterruptibly();
      * </pre>
      * In this scenario, a thread acquires the lock, then its JVM instance
      * encounters a long pause, which is longer than
@@ -194,9 +194,9 @@ public interface FencedLock extends Lock, DistributedObject {
      * <p>
      * This is a convenience method for the following pattern:
      * <pre>
-     *      FencedLock lock = ...;
-     *      lock.lock();
-     *      return lock.getFence();
+     *     FencedLock lock = ...;
+     *     lock.lock();
+     *     return lock.getFence();
      * </pre>
      * <p>
      * If the lock is not available then the current thread becomes disabled
@@ -205,11 +205,11 @@ public interface FencedLock extends Lock, DistributedObject {
      * <p>
      * Consider the following scenario where the lock is free initially:
      * <pre>
-     *      FencedLock lock = ...; // the lock is free
-     *      lock.lockAndGetFence();
-     *      // JVM of the caller thread hits a long pause and its CP session
-     *      is closed on the CP group.
-     *      lock.lockAndGetFence();
+     *     FencedLock lock = ...; // the lock is free
+     *     lock.lockAndGetFence();
+     *     // JVM of the caller thread hits a long pause
+     *     // and its CP session is closed on the CP group.
+     *     lock.lockAndGetFence();
      * </pre>
      * In this scenario, a thread acquires the lock, then its JVM instance
      * encounters a long pause, which is longer than
@@ -233,14 +233,14 @@ public interface FencedLock extends Lock, DistributedObject {
      * <p>
      * Consider the following scenario where the lock is free initially:
      * <pre>
-     *      FencedLock lock = ...; // the lock is free
-     *      long fence1 = lock.lockAndGetFence(); // (1)
-     *      long fence2 = lock.lockAndGetFence(); // (2)
-     *      assert fence1 == fence2;
-     *      lock.unlock();
-     *      lock.unlock();
-     *      long fence3 = lock.lockAndGetFence(); // (3)
-     *      assert fence3 > fence1;
+     *     FencedLock lock = ...; // the lock is free
+     *     long fence1 = lock.lockAndGetFence(); // (1)
+     *     long fence2 = lock.lockAndGetFence(); // (2)
+     *     assert fence1 == fence2;
+     *     lock.unlock();
+     *     lock.unlock();
+     *     long fence3 = lock.lockAndGetFence(); // (3)
+     *     assert fence3 > fence1;
      * </pre>
      * In this scenario, the lock is acquired by a thread in the cluster. Then,
      * the same thread reentrantly acquires the lock again. The fencing token
@@ -264,16 +264,16 @@ public interface FencedLock extends Lock, DistributedObject {
      * <p>
      * A typical usage idiom for this method would be:
      * <pre>
-     *      FencedLock lock = ...;
-     *      if (lock.tryLock()) {
-     *          try {
-     *              // manipulate protected state
-     *          } finally {
-     *              lock.unlock();
-     *          }
-     *      } else {
-     *          // perform alternative actions
-     *      }
+     *     FencedLock lock = ...;
+     *     if (lock.tryLock()) {
+     *         try {
+     *             // manipulate protected state
+     *         } finally {
+     *             lock.unlock();
+     *         }
+     *     } else {
+     *         // perform alternative actions
+     *     }
      * </pre>
      * This usage ensures that the lock is unlocked if it was acquired,
      * and doesn't try to unlock if the lock was not acquired.
@@ -296,21 +296,21 @@ public interface FencedLock extends Lock, DistributedObject {
      * <p>
      * This is a convenience method for the following pattern:
      * <pre>
-     *      FencedLock lock = ...;
-     *      if (lock.tryLock()) {
-     *          return lock.getFence();
-     *      } else {
-     *          return FencedLock.INVALID_FENCE;
-     *      }
+     *     FencedLock lock = ...;
+     *     if (lock.tryLock()) {
+     *         return lock.getFence();
+     *     } else {
+     *         return FencedLock.INVALID_FENCE;
+     *     }
      * </pre>
      * <p>
      * Consider the following scenario where the lock is free initially:
      * <pre>
-     *      FencedLock lock = ...; // the lock is free
-     *      lock.tryLockAndGetFence();
-     *      // JVM of the caller thread hits a long pause and its CP session
-     *      is closed on the CP group.
-     *      lock.tryLockAndGetFence();
+     *     FencedLock lock = ...; // the lock is free
+     *     lock.tryLockAndGetFence();
+     *     // JVM of the caller thread hits a long pause
+     *     // and its CP session is closed on the CP group.
+     *     lock.tryLockAndGetFence();
      * </pre>
      * In this scenario, a thread acquires the lock, then its JVM instance
      * encounters a long pause, which is longer than
@@ -334,14 +334,14 @@ public interface FencedLock extends Lock, DistributedObject {
      * <p>
      * Consider the following scenario where the lock is free initially:
      * <pre>
-     *      FencedLock lock = ...; // the lock is free
-     *      long fence1 = lock.tryLockAndGetFence(); // (1)
-     *      long fence2 = lock.tryLockAndGetFence(); // (2)
-     *      assert fence1 == fence2;
-     *      lock.unlock();
-     *      lock.unlock();
-     *      long fence3 = lock.tryLockAndGetFence(); // (3)
-     *      assert fence3 > fence1;
+     *     FencedLock lock = ...; // the lock is free
+     *     long fence1 = lock.tryLockAndGetFence(); // (1)
+     *     long fence2 = lock.tryLockAndGetFence(); // (2)
+     *     assert fence1 == fence2;
+     *     lock.unlock();
+     *     lock.unlock();
+     *     long fence3 = lock.tryLockAndGetFence(); // (3)
+     *     assert fence3 > fence1;
      * </pre>
      * In this scenario, the lock is acquired by a thread in the cluster. Then,
      * the same thread reentrantly acquires the lock again. The fencing token
@@ -402,12 +402,12 @@ public interface FencedLock extends Lock, DistributedObject {
      * <p>
      * This is a convenience method for the following pattern:
      * <pre>
-     *      FencedLock lock = ...;
-     *      if (lock.tryLock(time, unit)) {
-     *          return lock.getFence();
-     *      } else {
-     *          return FencedLock.INVALID_FENCE;
-     *      }
+     *     FencedLock lock = ...;
+     *     if (lock.tryLock(time, unit)) {
+     *         return lock.getFence();
+     *     } else {
+     *         return FencedLock.INVALID_FENCE;
+     *     }
      * </pre>
      * <p>
      * Consider the following scenario where the lock is free initially:
@@ -440,14 +440,14 @@ public interface FencedLock extends Lock, DistributedObject {
      * <p>
      * Consider the following scenario where the lock is free initially:
      * <pre>
-     *      FencedLock lock = ...; // the lock is free
-     *      long fence1 = lock.tryLockAndGetFence(time, unit); // (1)
-     *      long fence2 = lock.tryLockAndGetFence(time, unit); // (2)
-     *      assert fence1 == fence2;
-     *      lock.unlock();
-     *      lock.unlock();
-     *      long fence3 = lock.tryLockAndGetFence(time, unit); // (3)
-     *      assert fence3 > fence1;
+     *     FencedLock lock = ...; // the lock is free
+     *     long fence1 = lock.tryLockAndGetFence(time, unit); // (1)
+     *     long fence2 = lock.tryLockAndGetFence(time, unit); // (2)
+     *     assert fence1 == fence2;
+     *     lock.unlock();
+     *     lock.unlock();
+     *     long fence3 = lock.tryLockAndGetFence(time, unit); // (3)
+     *     assert fence3 > fence1;
      * </pre>
      * In this scenario, the lock is acquired by a thread in the cluster. Then,
      * the same thread reentrantly acquires the lock again. The fencing token
