@@ -142,7 +142,9 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
             return;
         }
 
-        logger.warning("Wait keys: " + waitKeys +  " for Lock[" + name + "] in " + groupId + " are notifications.");
+        if (logger.isFineEnabled()) {
+            logger.fine("Wait keys: " + waitKeys +  " for Lock[" + name + "] in " + groupId + " are notifications.");
+        }
 
         notifyWaitKeys(groupId, waitKeys, new WaitKeyCancelledException());
     }

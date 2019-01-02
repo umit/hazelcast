@@ -122,9 +122,12 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
-        metadataGroupManager.initLocalCPMemberOnStartup();
+        if (!metadataGroupManager.initLocalCPMemberOnStartup()) {
+            return;
+        }
+
         if (config.getMissingCPMemberAutoRemovalSeconds() > 0) {
-            nodeEngine.getExecutionService().scheduleWithRepetition(new RemoveMissingMemberTask(),
+            nodeEngine.getExecutionService().scheduleWithRepetition(new AutoRemoveMissingCPMemberTask(),
                     REMOVE_MISSING_MEMBER_TASK_PERIOD_SECONDS, REMOVE_MISSING_MEMBER_TASK_PERIOD_SECONDS, SECONDS);
         }
     }
@@ -364,7 +367,9 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public void handlePreVoteRequest(CPGroupId groupId, PreVoteRequest request) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
-            logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
+            if (logger.isFineEnabled()) {
+                logger.warning("RaftNode[" + groupId + "] does not exist to handle: " + request);
+            }
             return;
         }
         node.handlePreVoteRequest(request);
@@ -373,7 +378,9 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public void handlePreVoteResponse(CPGroupId groupId, PreVoteResponse response) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
-            logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
+            if (logger.isFineEnabled()) {
+                logger.warning("RaftNode[" + groupId + "] does not exist to handle: " + response);
+            }
             return;
         }
         node.handlePreVoteResponse(response);
@@ -382,7 +389,9 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public void handleVoteRequest(CPGroupId groupId, VoteRequest request) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
-            logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
+            if (logger.isFineEnabled()) {
+                logger.warning("RaftNode[" + groupId + "] does not exist to handle: " + request);
+            }
             return;
         }
         node.handleVoteRequest(request);
@@ -391,7 +400,9 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public void handleVoteResponse(CPGroupId groupId, VoteResponse response) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
-            logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
+            if (logger.isFineEnabled()) {
+                logger.warning("RaftNode[" + groupId + "] does not exist to handle: " + response);
+            }
             return;
         }
         node.handleVoteResponse(response);
@@ -400,7 +411,9 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public void handleAppendEntries(CPGroupId groupId, AppendRequest request) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
-            logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
+            if (logger.isFineEnabled()) {
+                logger.warning("RaftNode[" + groupId + "] does not exist to handle: " + request);
+            }
             return;
         }
         node.handleAppendRequest(request);
@@ -409,7 +422,9 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public void handleAppendResponse(CPGroupId groupId, AppendSuccessResponse response) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
-            logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
+            if (logger.isFineEnabled()) {
+                logger.warning("RaftNode[" + groupId + "] does not exist to handle: " + response);
+            }
             return;
         }
         node.handleAppendResponse(response);
@@ -418,7 +433,9 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public void handleAppendResponse(CPGroupId groupId, AppendFailureResponse response) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
-            logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + response);
+            if (logger.isFineEnabled()) {
+                logger.warning("RaftNode[" + groupId + "] does not exist to handle: " + response);
+            }
             return;
         }
         node.handleAppendResponse(response);
@@ -427,7 +444,9 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public void handleSnapshot(CPGroupId groupId, InstallSnapshot request) {
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
-            logger.warning("RaftNode[" + groupId.name() + "] does not exist to handle: " + request);
+            if (logger.isFineEnabled()) {
+                logger.warning("RaftNode[" + groupId + "] does not exist to handle: " + request);
+            }
             return;
         }
         node.handleInstallSnapshot(request);
@@ -444,7 +463,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public RaftNode getOrInitRaftNode(CPGroupId groupId) {
         RaftNode node = nodes.get(groupId);
         if (node == null && !destroyedGroupIds.contains(groupId)) {
-            logger.fine("There is no RaftNode for " + groupId + ". Asking to the metadata group...");
+            logger.fine("RaftNode[" + groupId + "] does not exist. Asking to the METADATA CP group...");
             nodeEngine.getExecutionService().execute(ASYNC_EXECUTOR, new InitializeRaftNodeTask(groupId));
         }
         return node;
@@ -464,12 +483,11 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
     public void createRaftNode(CPGroupId groupId, Collection<EndpointIdentifier> members) {
         if (nodes.containsKey(groupId)) {
-            logger.fine("Not creating RaftNode for " + groupId + " since it is already created...");
             return;
         }
 
         if (destroyedGroupIds.contains(groupId)) {
-            logger.warning("Not creating RaftNode for " + groupId + " since it is already destroyed");
+            logger.warning("Not creating RaftNode[" + groupId + "] since the CP group is already destroyed");
             return;
         }
 
@@ -479,12 +497,12 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         if (nodes.putIfAbsent(groupId, node) == null) {
             if (destroyedGroupIds.contains(groupId)) {
                 node.forceSetTerminatedStatus();
-                logger.warning("Not creating RaftNode for " + groupId + " since it is already destroyed");
+                logger.warning("Not creating RaftNode[" + groupId + "] since the CP group is already destroyed");
                 return;
             }
 
             node.start();
-            logger.info("RaftNode created for: " + groupId + " with members: " + members);
+            logger.info("RaftNode[" + groupId + "] is created with " + members);
         }
     }
 
@@ -493,7 +511,9 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         RaftNode node = nodes.remove(groupId);
         if (node != null) {
             node.forceSetTerminatedStatus();
-            logger.fine("Local raft node of " + groupId + " is destroyed.");
+            if (logger.isFineEnabled()) {
+                logger.fine("Local RaftNode[" + groupId + "] is destroyed.");
+            }
         }
     }
 
@@ -553,10 +573,10 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             return DEFAULT_GROUP_NAME;
         }
 
-        checkTrue(i < (name.length() - 1), "Custom group name cannot be empty string");
+        checkTrue(i < (name.length() - 1), "Custom CP group name cannot be empty string");
         checkTrue(name.indexOf("@", i + 1) == -1, "Custom group name must be specified at most once");
         String groupName = name.substring(i + 1).trim();
-        checkTrue(groupName.length() > 0, "Custom group name cannot be empty string");
+        checkTrue(groupName.length() > 0, "Custom CP group name cannot be empty string");
         return groupName;
     }
 
@@ -567,7 +587,8 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
 
         checkTrue(i < (name.length() - 1), "Object name cannot be empty string");
-        checkTrue(name.indexOf("@", i + 1) == -1, "Custom group name must be specified at most once");
+        checkTrue(name.indexOf("@", i + 1) == -1,
+                "Custom CP group name must be specified at most once");
         String objectName = name.substring(0, i).trim();
         checkTrue(objectName.length() > 0, "Object name cannot be empty string");
         return objectName;
@@ -598,14 +619,16 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
                             // I can be the member that is just added to the raft group...
                             queryInitialMembersFromTargetRaftGroup();
                         }
-                    } else {
-                        logger.warning("Cannot get initial members of: " + groupId + " from the metadata group");
+                    } else if (logger.isFineEnabled()) {
+                        logger.fine("Cannot get initial members of " + groupId + " from the METADATA CP group");
                     }
                 }
 
                 @Override
                 public void onFailure(Throwable t) {
-                    logger.warning("Cannot get initial members of: " + groupId + " from the metadata group", t);
+                    if (logger.isFineEnabled()) {
+                        logger.fine("Cannot get initial members of " + groupId + " from the METADATA CP group", t);
+                    }
                 }
             });
         }
@@ -626,13 +649,15 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
                 @Override
                 public void onFailure(Throwable t) {
-                    logger.warning("Cannot get initial members of: " + groupId + " from the group itself", t);
+                    if (logger.isFineEnabled()) {
+                        logger.fine("Cannot get initial members of " + groupId + " from the CP group itself", t);
+                    }
                 }
             });
         }
     }
 
-    private class RemoveMissingMemberTask implements Runnable {
+    private class AutoRemoveMissingCPMemberTask implements Runnable {
         @Override
         public void run() {
             try {
@@ -645,8 +670,8 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
                     long missingTimeSeconds = MILLISECONDS.toSeconds(System.currentTimeMillis() - e.getValue());
                     if (missingTimeSeconds >= config.getMissingCPMemberAutoRemovalSeconds()) {
                         CPMember missingMember = e.getKey();
-                        logger.info("Triggering auto-remove of " + missingMember + " since it is absent for "
-                                + missingTimeSeconds + " seconds...");
+                        logger.warning("Removing " + missingMember + " since it is absent for " + missingTimeSeconds
+                                + " seconds.");
 
                         removeCPMember(missingMember).get();
 

@@ -183,8 +183,10 @@ public class RaftNodeImpl implements RaftNode {
             return;
         }
 
-        logger.info("Starting raft node: " + localMember + " for raft cluster: " + state.name()
-                + " with members[" + state.memberCount() + "]: " + state.members());
+        if (logger.isFineEnabled()) {
+            logger.fine("Starting raft node: " + localMember + " for " + groupId
+                    + " with " + state.memberCount() + " members: " + state.members());
+        }
         raftIntegration.execute(new PreVoteTask(this));
 
         scheduleLeaderFailureDetection();

@@ -133,7 +133,9 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
         RaftSessionRegistry registry = registries.get(groupId);
         if (registry != null) {
             registry.shiftExpirationTimes(getHeartbeatIntervalMillis());
-            logger.info("Session expiration times are shifted in " + groupId);
+            if (logger.isFineEnabled()) {
+                logger.fine("Session expiration times are shifted in " + groupId);
+            }
         }
     }
 
@@ -157,7 +159,9 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
         if (registry == null) {
             registry = new RaftSessionRegistry(groupId);
             registries.put(groupId, registry);
-            logger.info("Created new session registry for " + groupId);
+            if (logger.isFineEnabled()) {
+                logger.fine("Created new session registry for " + groupId);
+            }
         }
 
         long sessionTTLMillis = getSessionTTLMillis();
@@ -173,7 +177,9 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
         }
 
         registry.heartbeat(sessionId, getSessionTTLMillis());
-        logger.info("Session: " + sessionId + " heartbeat in " + groupId);
+        if (logger.isFineEnabled()) {
+            logger.fine("Session: " + sessionId + " heartbeat in " + groupId);
+        }
     }
 
     public boolean closeSession(CPGroupId groupId, long sessionId) {
@@ -206,7 +212,10 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
         }
 
         if (expired.size() > 0) {
-            logger.info("Sessions: " + expired + " are expired in " + groupId);
+            if (logger.isFineEnabled()) {
+                logger.fine("Sessions: " + expired + " are expired in " + groupId);
+            }
+
             notifyServices(groupId, expired);
         }
     }
@@ -227,7 +236,9 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
         }
 
         if (closed.size() > 0) {
-            logger.info("Inactive sessions: " + closed + " are closed in " + groupId);
+            if (logger.isFineEnabled()) {
+                logger.fine("Inactive sessions: " + closed + " are closed in " + groupId);
+            }
             notifyServices(groupId, closed);
         }
     }

@@ -124,7 +124,9 @@ public class RaftSemaphoreService extends AbstractBlockingService<AcquireInvocat
             return;
         }
 
-        logger.warning("Wait keys: " + waitKeys +  " for Semaphore[" + name + "] in " + groupId + " are cancelled.");
+        if (logger.isFineEnabled()) {
+            logger.fine("Wait keys: " + waitKeys +  " for Semaphore[" + name + "] in " + groupId + " are cancelled.");
+        }
 
         notifyWaitKeys(groupId, waitKeys, new WaitKeyCancelledException());
     }

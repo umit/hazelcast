@@ -122,6 +122,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         }
 
         assertClusterSizeEventually(nodeCount, instances);
+        waitUntilCPDiscoveryCompleted(instances);
 
         return instances;
     }
