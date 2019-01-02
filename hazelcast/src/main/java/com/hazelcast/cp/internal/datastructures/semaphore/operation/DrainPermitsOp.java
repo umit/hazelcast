@@ -44,7 +44,7 @@ public class DrainPermitsOp extends AbstractSemaphoreOp implements Indeterminate
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftSemaphoreService service = getService();
-        return service.drainPermits(groupId, name, sessionId, threadId, invocationUid);
+        return service.drainPermits(groupId, name, getSemaphoreEndpoint(), invocationUid);
     }
 
     @Override

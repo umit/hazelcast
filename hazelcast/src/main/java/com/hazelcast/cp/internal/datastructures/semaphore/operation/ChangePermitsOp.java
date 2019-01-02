@@ -51,7 +51,7 @@ public class ChangePermitsOp extends AbstractSemaphoreOp implements Indeterminat
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftSemaphoreService service = getService();
-        return service.changePermits(groupId, name, sessionId, threadId, invocationUid, permits);
+        return service.changePermits(groupId, name, getSemaphoreEndpoint(), invocationUid, permits);
     }
 
     @Override

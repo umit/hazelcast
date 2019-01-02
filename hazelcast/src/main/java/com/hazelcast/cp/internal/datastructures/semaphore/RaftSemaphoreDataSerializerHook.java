@@ -38,13 +38,14 @@ public class RaftSemaphoreDataSerializerHook implements DataSerializerHook {
     public static final int RAFT_SEMAPHORE_REGISTRY = 1;
     public static final int RAFT_SEMAPHORE = 2;
     public static final int ACQUIRE_INVOCATION_KEY = 3;
-    public static final int ACQUIRE_PERMITS_OP = 4;
-    public static final int AVAILABLE_PERMITS_OP = 5;
-    public static final int CHANGE_PERMITS_OP = 6;
-    public static final int DRAIN_PERMITS_OP = 7;
-    public static final int INIT_SEMAPHORE_OP = 8;
-    public static final int RELEASE_PERMITS_OP = 9;
-    public static final int GENERATE_THREAD_ID_OP = 10;
+    public static final int SEMAPHORE_ENDPOINT = 4;
+    public static final int ACQUIRE_PERMITS_OP = 5;
+    public static final int AVAILABLE_PERMITS_OP = 6;
+    public static final int CHANGE_PERMITS_OP = 7;
+    public static final int DRAIN_PERMITS_OP = 8;
+    public static final int INIT_SEMAPHORE_OP = 9;
+    public static final int RELEASE_PERMITS_OP = 10;
+    public static final int GENERATE_THREAD_ID_OP = 11;
 
     @Override
     public int getFactoryId() {
@@ -63,6 +64,8 @@ public class RaftSemaphoreDataSerializerHook implements DataSerializerHook {
                         return new RaftSemaphore();
                     case ACQUIRE_INVOCATION_KEY:
                         return new AcquireInvocationKey();
+                    case SEMAPHORE_ENDPOINT:
+                        return new SemaphoreEndpoint();
                     case ACQUIRE_PERMITS_OP:
                         return new AcquirePermitsOp();
                     case AVAILABLE_PERMITS_OP:

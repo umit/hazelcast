@@ -18,6 +18,7 @@ package com.hazelcast.cp.internal.datastructures.semaphore.operation;
 
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
+import com.hazelcast.cp.internal.datastructures.semaphore.SemaphoreEndpoint;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
@@ -44,6 +45,10 @@ abstract class AbstractSemaphoreOp extends RaftOp implements IdentifiedDataSeria
         this.sessionId = sessionId;
         this.threadId = threadId;
         this.invocationUid = invocationUid;
+    }
+
+    SemaphoreEndpoint getSemaphoreEndpoint() {
+        return new SemaphoreEndpoint(sessionId, threadId);
     }
 
     @Override

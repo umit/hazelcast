@@ -92,8 +92,8 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
         return result;
     }
 
-    ReleaseResult release(String name, long sessionId, long threadId, UUID invocationUid, int permits) {
-        ReleaseResult result = getOrInitResource(name).release(sessionId, threadId, invocationUid, permits);
+    ReleaseResult release(String name, SemaphoreEndpoint endpoint, UUID invocationUid, int permits) {
+        ReleaseResult result = getOrInitResource(name).release(endpoint, invocationUid, permits);
         for (AcquireInvocationKey key : result.acquired) {
             removeWaitKey(key);
         }
@@ -105,8 +105,8 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
         return result;
     }
 
-    AcquireResult drainPermits(String name, long sessionId, long threadId, UUID invocationUid) {
-        AcquireResult result = getOrInitResource(name).drain(sessionId, threadId, invocationUid);
+    AcquireResult drainPermits(String name, SemaphoreEndpoint endpoint, UUID invocationUid) {
+        AcquireResult result = getOrInitResource(name).drain(endpoint, invocationUid);
         for (AcquireInvocationKey key : result.cancelled) {
             removeWaitKey(key);
         }
@@ -114,8 +114,8 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
         return result;
     }
 
-    ReleaseResult changePermits(String name, long sessionId, long threadId, UUID invocationUid, int permits) {
-        ReleaseResult result = getOrInitResource(name).change(sessionId, threadId, invocationUid, permits);
+    ReleaseResult changePermits(String name, SemaphoreEndpoint endpoint, UUID invocationUid, int permits) {
+        ReleaseResult result = getOrInitResource(name).change(endpoint, invocationUid, permits);
         for (AcquireInvocationKey key : result.acquired) {
             removeWaitKey(key);
         }
@@ -146,8 +146,7 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
     }
 
     @Override
-    public void writeData(ObjectDataOutput out)
-            throws IOException {
+    public void writeData(ObjectDataOutput out) throws IOException {
         super.writeData(out);
         boolean generatedThreadIdExists = (generatedThreadId != null);
         out.writeBoolean(generatedThreadIdExists);
@@ -157,8 +156,7 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
     }
 
     @Override
-    public void readData(ObjectDataInput in)
-            throws IOException {
+    public void readData(ObjectDataInput in) throws IOException {
         super.readData(in);
         boolean generatedThreadIdExists = in.readBoolean();
         if (generatedThreadIdExists) {

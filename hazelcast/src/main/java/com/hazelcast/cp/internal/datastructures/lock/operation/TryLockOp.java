@@ -51,8 +51,7 @@ public class TryLockOp extends AbstractLockOp implements IndeterminateOperationS
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
         LockEndpoint endpoint = getLockEndpoint();
-        RaftLockOwnershipState
-                ownership = service.tryAcquire(groupId, name, endpoint, commitIndex, invocationUid, timeoutMs);
+        RaftLockOwnershipState ownership = service.tryAcquire(groupId, name, endpoint, commitIndex, invocationUid, timeoutMs);
         if (ownership.isLocked()) {
             return ownership;
         } else if (timeoutMs  > 0) {

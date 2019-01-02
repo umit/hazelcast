@@ -54,7 +54,7 @@ public class AcquirePermitsOp extends AbstractSemaphoreOp implements Indetermina
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftSemaphoreService service = getService();
-        boolean acquired = service.acquirePermits(groupId, commitIndex, name, sessionId, threadId,
+        boolean acquired = service.acquirePermits(groupId, commitIndex, name, getSemaphoreEndpoint(),
                 invocationUid, permits, timeoutMs);
         if (!acquired && timeoutMs != 0) {
             return PostponedResponse.INSTANCE;

@@ -67,15 +67,15 @@ public class RaftSemaphoreService extends AbstractBlockingService<AcquireInvocat
         return registry != null ? registry.availablePermits(name) : 0;
     }
 
-    public boolean acquirePermits(CPGroupId groupId, long commitIndex, String name, long sessionId, long threadId,
+    public boolean acquirePermits(CPGroupId groupId, long commitIndex, String name, SemaphoreEndpoint endpoint,
                                   UUID invocationUid, int permits, long timeoutMs) {
-        heartbeatSession(groupId, sessionId);
-        AcquireInvocationKey key = new AcquireInvocationKey(name, commitIndex, sessionId, threadId, invocationUid, permits);
+        heartbeatSession(groupId, endpoint.sessionId());
+        AcquireInvocationKey key = new AcquireInvocationKey(name, commitIndex, endpoint, invocationUid, permits);
         AcquireResult result = getOrInitRegistry(groupId).acquire(name, key, timeoutMs);
 
         if (logger.isFineEnabled()) {
             logger.fine("Semaphore[" + name + "] in " + groupId + " acquired permits: " + result.acquired
-                    + " by <" + sessionId + ", " + threadId + ", " + invocationUid + ">");
+                    + " by <" + endpoint + ", " + invocationUid + ">");
         }
 
         notifyCancelledWaitKeys(groupId, name, result.cancelled);
@@ -87,9 +87,9 @@ public class RaftSemaphoreService extends AbstractBlockingService<AcquireInvocat
         return (result.acquired != 0);
     }
 
-    public void releasePermits(CPGroupId groupId, String name, long sessionId, long threadId, UUID invocationUid, int permits) {
-        heartbeatSession(groupId, sessionId);
-        ReleaseResult result = getOrInitRegistry(groupId).release(name, sessionId, threadId, invocationUid, permits);
+    public void releasePermits(CPGroupId groupId, String name, SemaphoreEndpoint endpoint, UUID invocationUid, int permits) {
+        heartbeatSession(groupId, endpoint.sessionId());
+        ReleaseResult result = getOrInitRegistry(groupId).release(name, endpoint, invocationUid, permits);
         notifyCancelledWaitKeys(groupId, name, result.cancelled);
         notifyWaitKeys(groupId, result.acquired, true);
 
@@ -98,18 +98,17 @@ public class RaftSemaphoreService extends AbstractBlockingService<AcquireInvocat
         }
     }
 
-    public int drainPermits(CPGroupId groupId, String name, long sessionId, long threadId, UUID invocationUid) {
-        heartbeatSession(groupId, sessionId);
-        AcquireResult result = getOrInitRegistry(groupId).drainPermits(name, sessionId, threadId, invocationUid);
+    public int drainPermits(CPGroupId groupId, String name, SemaphoreEndpoint endpoint, UUID invocationUid) {
+        heartbeatSession(groupId, endpoint.sessionId());
+        AcquireResult result = getOrInitRegistry(groupId).drainPermits(name, endpoint, invocationUid);
         notifyCancelledWaitKeys(groupId, name, result.cancelled);
 
         return result.acquired;
     }
 
-    public boolean changePermits(CPGroupId groupId, String name, long sessionId, long threadId, UUID invocationUid,
-                                 int permits) {
-        heartbeatSession(groupId, sessionId);
-        ReleaseResult result = getOrInitRegistry(groupId).changePermits(name, sessionId, threadId, invocationUid, permits);
+    public boolean changePermits(CPGroupId groupId, String name, SemaphoreEndpoint endpoint, UUID invocationUid, int permits) {
+        heartbeatSession(groupId, endpoint.sessionId());
+        ReleaseResult result = getOrInitRegistry(groupId).changePermits(name, endpoint, invocationUid, permits);
         notifyCancelledWaitKeys(groupId, name, result.cancelled);
         notifyWaitKeys(groupId, result.acquired, true);
 

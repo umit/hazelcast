@@ -88,12 +88,15 @@ import java.util.concurrent.TimeUnit;
  * a new CP session with the underlying CP group. Then, liveliness of the
  * caller is tracked via this CP session. When the caller fails, permits
  * acquired by this caller are automatically and safely released. However,
- * the session-aware version comes with a limitation, that is, a thread cannot
- * release permits before acquiring them first. In other words, a thread can
- * release only the permits it has acquired earlier. This behaviour is not
- * compatible with {@link Semaphore#release()}. You can use the session-aware
- * CP {@link ISemaphore} impl by disabling JDK compatibility via
- * {@link CPSemaphoreConfig#setJdkCompatible(boolean)}. Although
+ * the session-aware version comes with a limitation, that is,
+ * a HazelcastInstance cannot release permits before acquiring them
+ * first. In other words, a HazelcastInstance can release only
+ * the permits it has acquired earlier. It means, you can acquire a permit
+ * from one thread and release it from another thread using the same
+ * HazelcastInstance, but not different instances of HazelcastInstance. This
+ * behaviour is not compatible with {@link Semaphore#release()}. You can use
+ * the session-aware CP {@link ISemaphore} impl by disabling JDK compatibility
+ * via {@link CPSemaphoreConfig#setJdkCompatible(boolean)}. Although
  * the session-aware impl has a minor difference to the JDK Semaphore, we think
  * it is a better fit for distributed environments because of its safe
  * auto-cleanup mechanism for acquired permits. Please see
