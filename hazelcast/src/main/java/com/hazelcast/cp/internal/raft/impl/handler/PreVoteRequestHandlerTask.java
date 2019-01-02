@@ -26,11 +26,14 @@ import com.hazelcast.cp.internal.raft.impl.task.RaftNodeStatusAwareTask;
 import com.hazelcast.util.Clock;
 
 /**
- * Handles {@link PreVoteRequest} and responds to the sender with a {@link PreVoteResponse}.
- * Pre-voting is initiated by {@link com.hazelcast.cp.internal.raft.impl.task.PreVoteTask}.
+ * Handles {@link PreVoteRequest} and responds to the sender
+ * with a {@link PreVoteResponse}. Pre-voting is initiated by
+ * {@link com.hazelcast.cp.internal.raft.impl.task.PreVoteTask}.
  * <p>
- * Grants vote or rejects the request as if responding to a {@link com.hazelcast.cp.internal.raft.impl.dto.VoteRequest}
- * but differently Raft state is not mutated/updated, this task is completely read-only.
+ * Grants vote or rejects the request as if responding to
+ * a {@link com.hazelcast.cp.internal.raft.impl.dto.VoteRequest}
+ * but differently Raft state is not mutated/updated, this task is
+ * completely read-only.
  *
  * @see PreVoteRequest
  * @see PreVoteResponse

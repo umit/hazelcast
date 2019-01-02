@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,15 +20,17 @@ import com.hazelcast.spi.ReadonlyOperation;
 import com.hazelcast.spi.impl.AllowedDuringPassiveState;
 
 /**
- * Marker interface for all operations used in Raft system. {@code RaftSystemOperation} extends a few interfaces
- * to bring in some extra features:
+ * Marker interface for all operations used in Raft system.
+ * {@code RaftSystemOperation} extends a few interfaces to bring in some extra
+ * features:
  * <ul>
- * <li>{@code AllowedDuringPassiveState}: Raft operations are submitted while a node is shutting down
- * to replace shutting down member with a new one.
+ * <li>{@code AllowedDuringPassiveState}: Raft operations are submitted while
+ * a node is shutting down to replace shutting down member with a new one.
  * </li>
- * <li>{@code ReadonlyOperation}: Raft operations are executed on partition threads but not sent to partition owners.
- * To avoid invocations fail with {@code PartitionMigratingException}, we mark them as read-only
- * from Hazelcast partitioning system perspective.
+ * <li>{@code ReadonlyOperation}: Raft operations are executed on partition
+ * threads but not sent to partition owners. To avoid invocations fail with
+ * {@code PartitionMigratingException}, we mark them as read-only from
+ * Hazelcast partitioning system perspective.
  * </li>
  * </ul>
  */

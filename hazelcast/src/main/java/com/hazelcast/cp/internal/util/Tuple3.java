@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,10 @@ package com.hazelcast.cp.internal.util;
 
 /**
  * An immutable container of 3 statically typed fields
+ *
+ * @param <X> type of the first element
+ * @param <Y> type of the second element
+ * @param <Z> type of the third element
  */
 @SuppressWarnings("checkstyle:visibilitymodifier")
 public final class Tuple3<X, Y, Z> {

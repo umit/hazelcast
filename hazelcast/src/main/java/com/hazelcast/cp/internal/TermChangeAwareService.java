@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,9 @@ package com.hazelcast.cp.internal;
 import com.hazelcast.cp.CPGroupId;
 
 /**
- * Services can implement this interface to get notified when there is a leader change in a Raft group.
- * After a new leader is elected, a special commit is made first to notify services via this interface.
+ * Services can implement this interface to get notified when there is
+ * a leader change in a Raft group. After a new leader is elected,
+ * a special commit is made first to notify services via this interface.
  */
 public interface TermChangeAwareService {
 

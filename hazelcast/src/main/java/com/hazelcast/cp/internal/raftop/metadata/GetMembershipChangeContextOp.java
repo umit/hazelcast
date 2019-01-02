@@ -28,7 +28,8 @@ import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import java.io.IOException;
 
 /**
- * Returns the list of pending membership changes that will be orchestrated by the leader node of the Metadata group.
+ * Returns the list of pending membership changes that will be orchestrated by
+ * the leader node of the Metadata group.
  * <p/>
  * This operation is committed to the Metadata group.
  */

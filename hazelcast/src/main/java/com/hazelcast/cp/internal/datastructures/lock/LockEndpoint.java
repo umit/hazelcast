@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,11 +26,11 @@ import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_S
 import static com.hazelcast.util.Preconditions.checkTrue;
 
 /**
- * LockEndpoint represents a thread in a Raft client.
- * It is a combination of a session id and a thread id.
- * A LockEndpoint is a single-threaded unique entity.
- * When it sends a request X, it can either retry this request X, or send a new request Y.
- * After it sends request Y, it will not retry request X anymore.
+ * LockEndpoint represents a thread in a Raft client. It is a combination of
+ * a session id and a thread id. A LockEndpoint is a single-threaded unique
+ * entity. When it sends a request X, it can either retry this request X,
+ * or send a new request Y. After it sends request Y, it will not retry
+ * request X anymore.
  */
 public class LockEndpoint implements IdentifiedDataSerializable {
     private long sessionId;

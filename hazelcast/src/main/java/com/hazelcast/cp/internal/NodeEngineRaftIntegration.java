@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,8 +61,9 @@ import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.TERMINATED;
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 
 /**
- * The integration point of the Raft algorithm implementation and Hazelcast system
- * Replicates Raft RPCs via Hazelcast operations and executes committed Raft operations.
+ * The integration point of the Raft algorithm implementation and
+ * Hazelcast system. Replicates Raft RPCs via Hazelcast operations and executes
+ * committed Raft operations.
  */
 @SuppressWarnings("checkstyle:classfanoutcomplexity")
 final class NodeEngineRaftIntegration implements RaftIntegration {

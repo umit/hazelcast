@@ -19,16 +19,19 @@ package com.hazelcast.cp.internal.raft.impl.task;
 import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.dto.VoteRequest;
+import com.hazelcast.cp.internal.raft.impl.handler.PreVoteResponseHandlerTask;
 import com.hazelcast.cp.internal.raft.impl.state.RaftState;
 
 /**
- * LeaderElectionTask is scheduled when current leader is null, unreachable or unknown
- * by {@link com.hazelcast.cp.internal.raft.impl.handler.PreVoteResponseHandlerTask} after a follower receives votes
- * from at least majority.
- * Local member becomes a candidate using {@link RaftState#toCandidate()} and sends {@link VoteRequest}s to other members.
+ * LeaderElectionTask is scheduled when current leader is null, unreachable
+ * or unknown by {@link PreVoteResponseHandlerTask} after a follower receives
+ * votes from at least majority. Local member becomes a candidate using
+ * {@link RaftState#toCandidate()} and sends {@link VoteRequest}s to other
+ * members.
  * <p>
- * Also a {@link LeaderElectionTimeoutTask} is scheduled with a {@link RaftNodeImpl#getLeaderElectionTimeoutInMillis()}
- * delay to trigger leader election if one is not elected yet.
+ * Also a {@link LeaderElectionTimeoutTask} is scheduled with a
+ * {@link RaftNodeImpl#getLeaderElectionTimeoutInMillis()} delay to trigger
+ * leader election if one is not elected yet.
  */
 public class LeaderElectionTask extends RaftNodeStatusAwareTask implements Runnable {
 

@@ -18,6 +18,7 @@ package com.hazelcast.cp.exception;
 
 import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.core.HazelcastException;
+import com.hazelcast.cp.CPGroup;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -26,7 +27,8 @@ import java.io.ObjectOutputStream;
 /**
  * Base exception for failures in the CP subsystem
  * <p>
- * This exception can include the known leader of a CP group when & where it's thrown.
+ * This exception can include the known leader of a {@link CPGroup}
+ * when it's thrown.
  * Leader endpoint can be accessed by {@link #getLeader()}, if available.
  */
 public class CPSubsystemException extends HazelcastException {

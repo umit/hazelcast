@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,10 @@ package com.hazelcast.cp.internal.datastructures.spi.blocking;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 
 /**
- * This abstraction is used when an operation does not return a response at commit-time.
- * Such an operation will either return a response in future or timeout.
- * Future completions of such operations are represented with implementations of this interface.
+ * This abstraction is used when an operation does not return a response
+ * at commit-time. Such an operation will either return a response in future
+ * or timeout. Future completions of such operations are represented with
+ * implementations of this interface.
  */
 public interface WaitKey {
 
@@ -31,13 +32,16 @@ public interface WaitKey {
     String name();
 
     /**
-     * Returns id of the session to which the corresponding operation is attached.
-     * Returns {@link AbstractProxySessionManager#NO_SESSION_ID} If no session is attached.
+     * Returns id of the session to which the corresponding operation is
+     * attached.
+     * Returns {@link AbstractProxySessionManager#NO_SESSION_ID} if no session
+     *         is attached.
      */
     long sessionId();
 
     /**
-     * Returns commit index of the operation that has not returned a response at the time of its commit.
+     * Returns commit index of the operation that has not returned a response
+     * at the time of its commit.
      */
     long commitIndex();
 }

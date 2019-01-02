@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,11 +27,12 @@ import java.util.UUID;
 import static com.hazelcast.util.Preconditions.checkTrue;
 
 /**
- * Represents acquire() invocation of a semaphore endpoint
- * A SemaphoreInvocationKey either holds some permits or resides in the wait queue.
- * Combination of a session id and a thread id a single-threaded unique entity.
- * When it sends a request X, it can either retry this request X, or send a new request Y.
- * After it sends request Y, it will not retry request X anymore.
+ * Represents acquire() invocation of a semaphore endpoint.
+ * A SemaphoreInvocationKey either holds some permits or resides
+ * in the wait queue. Combination of a session id and a thread id a
+ * single-threaded unique entity. When it sends a request X, it can either
+ * retry this request X, or send a new request Y. After it sends request Y,
+ * it will not retry request X anymore.
  */
 public class AcquireInvocationKey implements WaitKey, IdentifiedDataSerializable {
 
@@ -116,6 +117,7 @@ public class AcquireInvocationKey implements WaitKey, IdentifiedDataSerializable
     }
 
     @Override
+    @SuppressWarnings("checkstyle:npathcomplexity")
     public boolean equals(Object o) {
         if (this == o) {
             return true;

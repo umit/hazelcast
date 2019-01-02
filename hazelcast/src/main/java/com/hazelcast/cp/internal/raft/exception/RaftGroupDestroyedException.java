@@ -19,7 +19,8 @@ package com.hazelcast.cp.internal.raft.exception;
 import com.hazelcast.cp.exception.CPSubsystemException;
 
 /**
- * A {@code CPSubsystemException} which is thrown when a request is sent to a destroyed CP group.
+ * A {@code CPSubsystemException} which is thrown when a request is sent to
+ * a destroyed CP group.
  * Handled internally.
  */
 public class RaftGroupDestroyedException extends CPSubsystemException {

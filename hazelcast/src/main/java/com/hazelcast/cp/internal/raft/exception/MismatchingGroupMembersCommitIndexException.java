@@ -26,8 +26,9 @@ import java.util.Collection;
 import java.util.HashSet;
 
 /**
- * A {@code CPSubsystemException} which is thrown when a membership change is requested
- * but expected members commitIndex doesn't match the actual members commitIndex in the Raft state.
+ * A {@code CPSubsystemException} which is thrown when a membership change is
+ * requested but expected members commitIndex doesn't match the actual members
+ * commitIndex in the Raft state.
  * Handled internally.
  */
 public class MismatchingGroupMembersCommitIndexException extends CPSubsystemException {

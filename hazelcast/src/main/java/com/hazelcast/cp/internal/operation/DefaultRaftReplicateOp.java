@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,8 +27,10 @@ import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
 import java.io.IOException;
 
 /**
- * The operation used by {@link RaftInvocationManager} to replicate a given {@link RaftOp} to leader of the target Raft group.
- * The leader sends the response for this operation after it commits the given operation to the majority of the Raft group.
+ * The operation used by {@link RaftInvocationManager} to replicate a given
+ * {@link RaftOp} to leader of the target Raft group. The leader sends
+ * the response for this operation after it commits the given operation
+ * to the majority of the Raft group.
  */
 public class DefaultRaftReplicateOp extends RaftReplicateOp implements IndeterminateOperationStateAware {
 

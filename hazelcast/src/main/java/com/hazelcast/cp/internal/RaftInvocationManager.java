@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,7 +54,8 @@ import static com.hazelcast.cp.internal.raft.QueryPolicy.LEADER_LOCAL;
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 
 /**
- * Performs invocations to create & destroy Raft groups, commit {@link RaftOp} to Raft groups, and run queries on Raft groups.
+ * Performs invocations to create & destroy Raft groups,
+ * commits {@link RaftOp} and runs queries on Raft groups.
  */
 @SuppressWarnings("unchecked")
 public class RaftInvocationManager {

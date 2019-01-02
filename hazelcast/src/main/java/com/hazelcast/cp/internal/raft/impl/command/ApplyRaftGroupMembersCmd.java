@@ -41,7 +41,8 @@ public class ApplyRaftGroupMembersCmd extends RaftGroupCmd implements Identified
     public ApplyRaftGroupMembersCmd() {
     }
 
-    public ApplyRaftGroupMembersCmd(Collection<EndpointIdentifier> members, EndpointIdentifier member, MembershipChangeType changeType) {
+    public ApplyRaftGroupMembersCmd(Collection<EndpointIdentifier> members, EndpointIdentifier member,
+                                    MembershipChangeType changeType) {
         this.members = members;
         this.member = member;
         this.changeType = changeType;

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,9 +32,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * Expires the given wait keys on the given blocking service.
- * Invocations that are waiting responses of these wait keys will be notified with the return value
- * provided by {@link AbstractBlockingService#expiredWaitKeyResponse()}
+ * Expires the given wait keys on the given blocking service. Invocations that
+ * are waiting responses of these wait keys will be notified with
+ * the return value provided by
+ * {@link AbstractBlockingService#expiredWaitKeyResponse()}
  *
  * @param <W> concrete type of the WaitKey
  */

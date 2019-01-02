@@ -33,8 +33,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 /**
- * Commits the given successfully-applied membership changes to the Metadata Raft group.
- * The given changes do not have to contain all pending Raft group membership changes.
+ * Commits the given successfully-applied membership changes to the Metadata
+ * Raft group. The given changes do not have to contain all pending Raft group
+ * membership changes.
  */
 public class CompleteRaftGroupMembershipChangesOp extends RaftOp implements IndeterminateOperationStateAware,
                                                                             IdentifiedDataSerializable {

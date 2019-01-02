@@ -28,10 +28,12 @@ import java.io.IOException;
 /**
  * Struct for InstallSnapshot RPC.
  * <p>
- * See <i>7 Log compaction</i> section of <i>In Search of an Understandable Consensus Algorithm</i>
+ * See <i>7 Log compaction</i> section of
+ * <i>In Search of an Understandable Consensus Algorithm</i>
  * paper by <i>Diego Ongaro</i> and <i>John Ousterhout</i>.
  * <p>
- * Invoked by leader to send chunks of a snapshot to a follower. Leaders always send chunks in order.
+ * Invoked by leader to send chunks of a snapshot to a follower.
+ * Leaders always send chunks in order.
  */
 public class InstallSnapshot implements IdentifiedDataSerializable {
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,10 +38,12 @@ import java.io.IOException;
 
 /**
  * The operation that passes a query to leader or a follower of a Raft group.
- * The given query can run locally on leader or a follower, or can be committed to the Raft group, depending on query policy.
+ * The given query can run locally on leader or a follower, or can be committed
+ * to the Raft group, depending on query policy.
  * <p/>
- * Please note that the given query can be committed twice if the leader commits the query but fails before sending the response,
- * therefore the query operation is expected to have no side-effect.
+ * Please note that the given query can be committed twice if the leader
+ * commits the query but fails before sending the response, therefore the query
+ * operation is expected to have no side-effect.
  */
 public class RaftQueryOp extends Operation implements IndeterminateOperationStateAware, RaftSystemOperation, ExecutionCallback,
                                                       IdentifiedDataSerializable {

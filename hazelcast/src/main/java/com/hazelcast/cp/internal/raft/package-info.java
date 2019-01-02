@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  */
 
 /**
- * Contains abstractions that are defined for the core Raft algorithm implementation
+ * Contains abstractions that are defined
+ * for the core Raft algorithm implementation
  */
 package com.hazelcast.cp.internal.raft;

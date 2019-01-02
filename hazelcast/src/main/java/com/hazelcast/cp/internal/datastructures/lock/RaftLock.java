@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
     private LockInvocationKey owner;
 
     /**
-     * Number of acquires the current lock owner has committed on the Raft group
+     * Number of acquires the current lock owner has committed
      */
     private int lockCount;
 
@@ -66,14 +66,18 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
     }
 
     /**
-     * Assigns the lock to the endpoint, if the lock is not held.
-     * Lock count is incremented if the endpoint already holds the lock.
-     * If some other endpoint holds the lock and the second argument is true, a wait key is created and added to the wait queue.
-     * Lock count is not incremented if the lock request is a retry of the lock holder.
-     * If the lock request is a retry of a lock endpoint that resides in the wait queue with the same invocation uid,
-     * a duplicate wait key is added to the wait queue because cancelling the previous wait key can cause the caller to fail.
-     * If the lock request is a new request of a lock endpoint that resides in the wait queue with a different invocation uid,
-     * the existing wait key is cancelled because it means the caller has stopped waiting for response of the previous invocation.
+     * Assigns the lock to the endpoint, if the lock is not held. Lock count is
+     * incremented if the endpoint already holds the lock. If some other
+     * endpoint holds the lock and the second argument is true, a wait key is
+     * created and added to the wait queue. Lock count is not incremented if
+     * the lock request is a retry of the lock holder. If the lock request is
+     * a retry of a lock endpoint that resides in the wait queue with the same
+     * invocation uid, a duplicate wait key is added to the wait queue because
+     * cancelling the previous wait key can cause the caller to fail.
+     * If the lock request is a new request of a lock endpoint that resides
+     * in the wait queue with a different invocation uid, the existing wait key
+     * is cancelled because it means the caller has stopped waiting for
+     * response of the previous invocation.
      */
     AcquireResult acquire(LockEndpoint endpoint, long commitIndex, UUID invocationUid, boolean wait) {
         // if lock() is being retried
@@ -123,12 +127,16 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
     }
 
     /**
-     * Releases the lock with the given release count. The lock is freed if release count > lock count.
-     * If the remaining lock count > 0 after a successful release, the lock is still held by the endpoint.
-     * The lock is not released if it is a retry of a previous successful release request of the current lock holder.
-     * If the lock is assigned to some other endpoint after this release, wait keys of the new lock holder are returned.
-     * If the release request fails because the requesting endpoint does not hold the lock, all wait keys of the endpoint
-     * are cancelled because that endpoint has stopped waiting for response of the previous lock() invocation.
+     * Releases the lock with the given release count. The lock is freed if
+     * release count > lock count. If the remaining lock count > 0 after
+     * a successful release, the lock is still held by the endpoint.
+     * The lock is not released if it is a retry of a previous successful
+     * release request of the current lock holder. If the lock is assigned to
+     * some other endpoint after this release, wait keys of the new lock holder
+     * are returned. If the release request fails because the requesting
+     * endpoint does not hold the lock, all wait keys of the endpoint are
+     * cancelled because that endpoint has stopped waiting for response of
+     * the previous lock() invocation.
      */
     ReleaseResult release(LockEndpoint endpoint, UUID invocationUid, int releaseCount) {
         // if unlock() is being retried
@@ -174,7 +182,8 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
     }
 
     /**
-     * Releases the lock if it is current held by the given expected fencing token.
+     * Releases the lock if it is current held by the given expected fencing
+     * token.
      */
     ReleaseResult forceRelease(long expectedFence, UUID invocationUid) {
         if (owner != null && owner.commitIndex() == expectedFence) {
@@ -235,7 +244,8 @@ class RaftLock extends BlockingResource<LockInvocationKey> implements Identified
     }
 
     /**
-     * Returns session id of the current lock holder or an empty collection if the lock is not held
+     * Returns session id of the current lock holder or an empty collection if
+     * the lock is not held
      */
     @Override
     protected Collection<Long> getActivelyAttachedSessions() {

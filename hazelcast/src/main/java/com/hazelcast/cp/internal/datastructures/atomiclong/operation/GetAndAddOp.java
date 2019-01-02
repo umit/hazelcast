@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,8 @@ import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLong;
 import java.io.IOException;
 
 /**
- * Operation for {@link IAtomicLong#getAndAdd(long)} (long, long)} and {@link IAtomicLong#get()}
+ * Operation for {@link IAtomicLong#getAndAdd(long)} (long, long)}
+ * and {@link IAtomicLong#get()}
  */
 public class GetAndAddOp extends AbstractAtomicLongOp implements IndeterminateOperationStateAware {
 

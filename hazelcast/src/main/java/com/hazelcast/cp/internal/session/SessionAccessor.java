@@ -33,8 +33,10 @@ public interface SessionAccessor {
     /**
      * Performs a heartbeat for the given session id in the Raft group.
      *
-     * @throws IllegalStateException if there is no {@link RaftSessionRegistry} initialized for the Raft group
-     * @throws SessionExpiredException if there is no active session with the given id in the Raft group
+     * @throws IllegalStateException if there is no {@link RaftSessionRegistry}
+     *         initialized for the Raft group
+     * @throws SessionExpiredException if there is no active session
+     *         with the given id in the Raft group
      */
     void heartbeat(CPGroupId groupId, long sessionId);
 }

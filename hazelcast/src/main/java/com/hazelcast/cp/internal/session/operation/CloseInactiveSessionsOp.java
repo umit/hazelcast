@@ -31,10 +31,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * Closes inactive sessions. A session is considered to be inactive if it is committing heartbeats
- * but has not acquired any resource for {@link CPSubsystemConfig#getSessionTimeToLiveSeconds()}.
- * There is no point for committing heartbeats for such sessions. If clients commit a new session-based operation afterwards,
- * they can create a new session.
+ * Closes inactive sessions. A session is considered to be inactive
+ * if it is committing heartbeats but has not acquired any resource for
+ * {@link CPSubsystemConfig#getSessionTimeToLiveSeconds()}. There is no point
+ * for committing heartbeats for such sessions. If clients commit a new
+ * session-based operation afterwards, they can create a new session.
  */
 public class CloseInactiveSessionsOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 

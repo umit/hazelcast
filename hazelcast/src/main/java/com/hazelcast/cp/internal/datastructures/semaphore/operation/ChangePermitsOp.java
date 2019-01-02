@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,8 @@ import java.util.UUID;
 import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 
 /**
- * Operation for {@link ISemaphore#increasePermits(int)} and {@link ISemaphore#reducePermits(int)}
+ * Operation for {@link ISemaphore#increasePermits(int)}
+ * and {@link ISemaphore#reducePermits(int)}
  *
  * @see RaftSemaphore#change(long, long, UUID, int)
  */

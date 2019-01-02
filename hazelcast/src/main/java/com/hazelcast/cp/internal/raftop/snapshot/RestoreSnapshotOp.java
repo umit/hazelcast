@@ -27,10 +27,13 @@ import com.hazelcast.cp.internal.RaftOp;
 import java.io.IOException;
 
 /**
- * {@code RaftOp} to restore snapshot using related {@link SnapshotAwareService#takeSnapshot(CPGroupId, long)}.
+ * {@code RaftOp} to restore snapshot using related
+ * {@link SnapshotAwareService#takeSnapshot(CPGroupId, long)}.
  * <p>
- * This operation is appended to Raft log in {@link com.hazelcast.cp.internal.raft.impl.log.SnapshotEntry} and send to followers
- * via {@link com.hazelcast.cp.internal.raft.impl.dto.InstallSnapshot} RPC.
+ * This operation is appended to Raft log in
+ * {@link com.hazelcast.cp.internal.raft.impl.log.SnapshotEntry} and sent to
+ * followers via
+ * {@link com.hazelcast.cp.internal.raft.impl.dto.InstallSnapshot} RPC.
  */
 public class RestoreSnapshotOp extends RaftOp implements IdentifiedDataSerializable {
 

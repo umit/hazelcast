@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,8 @@ import static com.hazelcast.util.Preconditions.checkNotNull;
 import static java.util.Collections.newSetFromMap;
 
 /**
- * Contains Raft-based atomic reference instances, implements snapshotting, and creates proxies
+ * Contains Raft-based atomic reference instances, implements snapshotting,
+ * and creates proxies
  */
 public class RaftAtomicRefService implements ManagedService, RaftRemoteService, RaftGroupLifecycleAwareService,
                                              SnapshotAwareService<RaftAtomicRefSnapshot> {

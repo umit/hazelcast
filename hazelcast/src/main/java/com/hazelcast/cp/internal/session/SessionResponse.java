@@ -24,7 +24,8 @@ import java.io.IOException;
 
 /**
  * Represents information of a session that is just created.
- * {@link #ttlMillis} and {@link #heartbeatMillis} must be respected by the caller.
+ * {@link #ttlMillis} and {@link #heartbeatMillis} must be respected
+ * by the caller.
  */
 public class SessionResponse implements IdentifiedDataSerializable {
 

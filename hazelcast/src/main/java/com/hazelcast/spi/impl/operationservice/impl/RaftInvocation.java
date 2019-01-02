@@ -18,13 +18,13 @@ package com.hazelcast.spi.impl.operationservice.impl;
 
 import com.hazelcast.core.IndeterminateOperationState;
 import com.hazelcast.core.MemberLeftException;
-import com.hazelcast.nio.Address;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.exception.LeaderDemotedException;
 import com.hazelcast.cp.exception.NotLeaderException;
 import com.hazelcast.cp.exception.StaleAppendRequestException;
-import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.CPMember;
+import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
+import com.hazelcast.nio.Address;
 import com.hazelcast.spi.ExceptionAction;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.exception.CallerNotMemberException;
@@ -94,6 +94,7 @@ public class RaftInvocation extends Invocation {
         return isRetryable(t) ? RETRY_INVOCATION : op.onInvocationException(t);
     }
 
+    @SuppressWarnings("checkstyle:booleanexpressioncomplexity")
     private boolean isRetryable(Object cause) {
         return cause instanceof NotLeaderException
                 || cause instanceof LeaderDemotedException

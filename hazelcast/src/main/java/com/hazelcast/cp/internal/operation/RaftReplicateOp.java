@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,9 +33,11 @@ import com.hazelcast.spi.Operation;
 import java.io.IOException;
 
 /**
- * The base class that replicates the given {@link RaftOp} to the target Raft group
+ * The base class that replicates the given {@link RaftOp}
+ * to the target Raft group
  * <p/>
- * Please note that this operation is not a {@link RaftOp}, so it is not handled via the Raft layer.
+ * Please note that this operation is not a {@link RaftOp},
+ * so it is not handled via the Raft layer.
  */
 public abstract class RaftReplicateOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation,
                                                                    ExecutionCallback {

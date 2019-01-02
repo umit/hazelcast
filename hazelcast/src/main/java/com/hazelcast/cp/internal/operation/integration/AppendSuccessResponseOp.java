@@ -27,7 +27,8 @@ import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
 import java.io.IOException;
 
 /**
- * Carries a success response from a Raft follower to a Raft leader for a {@link AppendRequest} RPC
+ * Carries a success response from a Raft follower to a Raft leader
+ * for a {@link AppendRequest} RPC
  */
 public class AppendSuccessResponseOp extends AsyncRaftOp {
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,8 +36,8 @@ public class RaftDataService implements SnapshotAwareService<Map<Long, Object>> 
     }
 
     public Object apply(long commitIndex, Object value) {
-        assert !values.containsKey(commitIndex) :
-                "Cannot apply " + value + "since commitIndex: " + commitIndex + " already contains: " + values.get(commitIndex);
+        assert !values.containsKey(commitIndex)
+                : "Cannot apply " + value + "since commitIndex: " + commitIndex + " already contains: " + values.get(commitIndex);
 
         values.put(commitIndex, value);
         return value;

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,7 +67,8 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
- * Maintains the CP subsystem metadata, such as CP groups, active CP members, leaving and joining CP members, etc.
+ * Maintains the CP subsystem metadata, such as CP groups, active CP members,
+ * leaving and joining CP members, etc.
  */
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:classdataabstractioncoupling"})
 public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRaftGroupSnapshot>  {

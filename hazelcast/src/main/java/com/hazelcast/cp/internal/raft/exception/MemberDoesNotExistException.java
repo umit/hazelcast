@@ -20,9 +20,9 @@ import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.exception.CPSubsystemException;
 
 /**
- * A {@code CPSubsystemException} which is thrown when a member,
- * which is requested to be removed from a CP group,
- * is not a member of that group or is already removed from that group.
+ * A {@code CPSubsystemException} which is thrown when a member, which is
+ * requested to be removed from a CP group, is not a member of that group
+ * or is already removed from that group.
  * Handled internally.
  */
 public class MemberDoesNotExistException extends CPSubsystemException {

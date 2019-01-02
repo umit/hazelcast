@@ -29,8 +29,8 @@ import com.hazelcast.cp.internal.raft.impl.util.SimpleCompletableFuture;
 import static com.hazelcast.cp.internal.raft.impl.RaftRole.LEADER;
 
 /**
- * QueryTask is executed to query/read Raft state without appending log entry. It's scheduled by
- * {@link RaftNodeImpl#query(Object, QueryPolicy)}.
+ * QueryTask is executed to query/read Raft state without appending log entry.
+ * It's scheduled by {@link RaftNodeImpl#query(Object, QueryPolicy)}.
  *
  * @see QueryPolicy
  */

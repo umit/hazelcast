@@ -21,13 +21,15 @@ import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.spi.exception.RetryableException;
 
 /**
- * A {@code CPSubsystemException} which is thrown when an entry cannot be replicated.
- * An append request can be rejected when,
+ * A {@code CPSubsystemException} which is thrown when an entry cannot be
+ * replicated, which can occur in one of the following cases:
  * <ul>
  * <li>a member leaves the CP group</li>
  * <li>CP group itself is terminated</li>
- * <li>uncommitted entry count reaches to max (see {@link RaftAlgorithmConfig#uncommittedEntryCountToRejectNewAppends})</li>
- * <li>a membership change is requested before an entry is committed on a term</li>
+ * <li>uncommitted entry count reaches to
+ * (see {@link RaftAlgorithmConfig#uncommittedEntryCountToRejectNewAppends})</li>
+ * <li>a membership change is requested before an entry is committed
+ * on a term</li>
  * </ul>
  */
 public class CannotReplicateException extends CPSubsystemException implements RetryableException {

@@ -20,8 +20,8 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 
 /**
- * Base class for tasks need to know current {@link RaftNodeImpl}. If this not is terminated or stepped down,
- * task will be skipped.
+ * Base class for tasks need to know current {@link RaftNodeImpl}.
+ * If this RaftNode is terminated or stepped down, task will be skipped.
  * <p>
  * Subclasses must implement {@link #innerRun()} method.
  */

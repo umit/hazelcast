@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,15 +79,20 @@ public class RaftSemaphore extends BlockingResource<AcquireInvocationKey> implem
     }
 
     /**
-     * Assigns permits to the endpoint, if sufficient number of permits are available.
-     * If there are no sufficient number of permits and the second argument is true,
-     * a wait key is created and added to the wait queue.
-     * Permits are not assigned if the acquire request is a retry of a successful acquire request of a session-aware proxy.
-     * Permits are assigned again if the acquire request is a retry of a successful acquire request of a sessionless proxy.
-     * If the acquire request is a retry of an endpoint that resides in the wait queue with the same invocation uid,
-     * a duplicate wait key is added to the wait queue because cancelling the previous wait key can cause the caller to fail.
-     * If the acquire request is a new request of an endpoint that resides in the wait queue with a different invocation uid,
-     * the existing wait key is cancelled because it means the caller has stopped waiting for response of the previous invocation.
+     * Assigns permits to the endpoint, if sufficient number of permits are
+     * available. If there are no sufficient number of permits and the second
+     * argument is true, a wait key is created and added to the wait queue.
+     * Permits are not assigned if the acquire request is a retry of
+     * a successful acquire request of a session-aware proxy. Permits are
+     * assigned again if the acquire request is a retry of a successful acquire
+     * request of a sessionless proxy. If the acquire request is a retry of
+     * an endpoint that resides in the wait queue with the same invocation uid,
+     * a duplicate wait key is added to the wait queue because cancelling
+     * the previous wait key can cause the caller to fail. If the acquire
+     * request is a new request of an endpoint that resides in the wait queue
+     * with a different invocation uid, the existing wait key is cancelled
+     * because it means the caller has stopped waiting for response of
+     * the previous invocation.
      */
     AcquireResult acquire(AcquireInvocationKey key, boolean wait) {
         SemaphoreEndpoint endpoint = key.endpoint();
@@ -132,12 +137,15 @@ public class RaftSemaphore extends BlockingResource<AcquireInvocationKey> implem
 
     /**
      * Releases the given number of permits.
-     * Permits are not released if it is a retry of a previous successful release request of a session-aware proxy.
-     * Permits are released again if it is a retry of a successful release request of a sessionless proxy.
-     * If the release request fails because the requesting endpoint does not hold the given number of permits, all wait keys
-     * of the endpoint are cancelled because that endpoint has stopped waiting for response of the previous acquire() invocation.
-     * Returns completed wait keys after successful release if there are any.
-     * Returns cancelled wait keys after failed release if there are any.
+     * Permits are not released if it is a retry of a previous successful
+     * release request of a session-aware proxy. Permits are released again if
+     * it is a retry of a successful release request of a sessionless proxy.
+     * If the release request fails because the requesting endpoint does not
+     * hold the given number of permits, all wait keys of the endpoint are
+     * cancelled because that endpoint has stopped waiting for response of
+     * the previous acquire() invocation. Returns completed wait keys after
+     * successful release if there are any. Returns cancelled wait keys after
+     * failed release if there are any.
      */
     ReleaseResult release(SemaphoreEndpoint endpoint, UUID invocationUid, int permits) {
         checkPositive(permits, "Permits should be positive!");
@@ -225,9 +233,11 @@ public class RaftSemaphore extends BlockingResource<AcquireInvocationKey> implem
 
     /**
      * Assigns all available permits to the <sessionId, threadId> endpoint.
-     * Permits are not assigned if the drain request is a retry of a successful drain request of a session-aware proxy.
-     * Permits are assigned again if the drain request is a retry of a successful drain request of a sessionless proxy.
-     * Returns cancelled wait keys of the same endpoint if there are any.
+     * Permits are not assigned if the drain request is a retry of a successful
+     * drain request of a session-aware proxy. Permits are assigned again if
+     * the drain request is a retry of a successful drain request of
+     * a sessionless proxy. Returns cancelled wait keys of the same endpoint
+     * if there are any.
      */
     AcquireResult drain(SemaphoreEndpoint endpoint, UUID invocationUid) {
         SessionSemaphoreState state = sessionStates.get(endpoint.sessionId());
@@ -250,12 +260,13 @@ public class RaftSemaphore extends BlockingResource<AcquireInvocationKey> implem
     }
 
     /**
-     * Changes the number of permits by adding the given permit value.
-     * Permits are not changed if it is a retry of a previous successful change request of a session-aware proxy.
-     * Permits are changed again if it is a retry of a successful change request of a sessionless proxy.
-     * If number of permits increase, new assignments can be done.
-     * Returns completed wait keys after successful change if there are any.
-     * Returns cancelled wait keys of the same endpoint if there are any.
+     * Changes the number of permits by adding the given permit value. Permits
+     * are not changed if it is a retry of a previous successful change request
+     * of a session-aware proxy. Permits are changed again if it is a retry of
+     * a successful change request of a sessionless proxy. If number of permits
+     * increase, new assignments can be done. Returns completed wait keys after
+     * successful change if there are any. Returns cancelled wait keys of
+     * the same endpoint if there are any.
      */
     ReleaseResult change(SemaphoreEndpoint endpoint, UUID invocationUid, int permits) {
         if (permits == 0) {

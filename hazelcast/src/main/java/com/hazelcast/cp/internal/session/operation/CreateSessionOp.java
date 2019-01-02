@@ -30,7 +30,8 @@ import java.io.IOException;
 
 /**
  * Creates a new session for the given endpoint and returns its id.
- * This operation does not check if the given endpoint has another active session on the Raft group.
+ * This operation does not check if the given endpoint has another
+ * active session on the Raft group.
  */
 public class CreateSessionOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 

@@ -27,7 +27,8 @@ import java.io.IOException;
 /**
  * Struct for successful response to AppendEntries RPC.
  * <p>
- * See <i>5.3 Log replication</i> section of <i>In Search of an Understandable Consensus Algorithm</i>
+ * See <i>5.3 Log replication</i> section of
+ * <i>In Search of an Understandable Consensus Algorithm</i>
  * paper by <i>Diego Ongaro</i> and <i>John Ousterhout</i>.
  *
  * @see AppendRequest

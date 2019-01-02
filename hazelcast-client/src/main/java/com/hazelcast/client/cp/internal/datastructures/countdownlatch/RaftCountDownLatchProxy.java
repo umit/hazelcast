@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.spi.InternalCompletableFuture;
+import com.hazelcast.util.EmptyStatement;
 import com.hazelcast.util.UuidUtil;
 
 import java.util.UUID;
@@ -46,7 +47,7 @@ import static com.hazelcast.cp.internal.datastructures.countdownlatch.client.Cou
 import static com.hazelcast.util.Preconditions.checkNotNull;
 
 /**
- * TODO: Javadoc Pending...
+ * Client-side Raft-based proxy implementation of {@link ICountDownLatch}
  */
 class RaftCountDownLatchProxy extends ClientProxy implements ICountDownLatch {
 
@@ -85,6 +86,7 @@ class RaftCountDownLatchProxy extends ClientProxy implements ICountDownLatch {
                 countDown(round, invocationUid);
                 return;
             } catch (OperationTimeoutException ignored) {
+                EmptyStatement.ignore(ignored);
                 // I can retry safely because my retry would be idempotent...
             }
         }

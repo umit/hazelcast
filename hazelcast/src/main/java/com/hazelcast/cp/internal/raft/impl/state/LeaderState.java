@@ -23,12 +23,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Mutable state maintained by the leader of the Raft group. Leader keeps two indices for each server:
+ * Mutable state maintained by the leader of the Raft group. Leader keeps
+ * two indices for each server:
  * <ul>
  * <li>{@code nextIndex}: index of the next log entry to send to that server
  * (initialized to leader's {@code lastLogIndex + 1})</li>
- * <li>{@code matchIndex}: index of highest log entry known to be replicated on server
- * (initialized to 0, increases monotonically)</li>
+ * <li>{@code matchIndex}: index of highest log entry known to be replicated
+ * on server (initialized to 0, increases monotonically)</li>
  * </ul>
  */
 public class LeaderState {
@@ -45,8 +46,9 @@ public class LeaderState {
     }
 
     /**
-     * Add a new follower with the leader's {@code lastLogIndex}. Follower's {@code nextIndex} will be set
-     * to {@code lastLogIndex + 1} and {@code matchIndex} to 0.
+     * Add a new follower with the leader's {@code lastLogIndex}.
+     * Follower's {@code nextIndex} will be set to {@code lastLogIndex + 1}
+     * and {@code matchIndex} to 0.
      */
     public void add(EndpointIdentifier follower, long lastLogIndex) {
         assertNotFollower(nextIndices, follower);

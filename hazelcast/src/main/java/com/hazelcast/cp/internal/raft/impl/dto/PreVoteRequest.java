@@ -27,7 +27,8 @@ import java.io.IOException;
 /**
  * Struct for PreVoteRequest RPC.
  * <p>
- * See <i>Four modifications for the Raft consensus algorithm</i> by Henrik Ingo.
+ * See <i>Four modifications for the Raft consensus algorithm</i>
+ * by Henrik Ingo.
  *
  * @see VoteRequest
  */

@@ -20,8 +20,9 @@ import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.core.IndeterminateOperationState;
 
 /**
- * A {@code CPSubsystemException} which is thrown when an installed snapshot causes
- * an appended entry to be truncated from the Raft log before its commit status is discovered.
+ * A {@code CPSubsystemException} which is thrown when an installed snapshot
+ * causes an appended entry to be truncated from the Raft log before its commit
+ * status is discovered.
  */
 public class StaleAppendRequestException extends CPSubsystemException implements IndeterminateOperationState {
 

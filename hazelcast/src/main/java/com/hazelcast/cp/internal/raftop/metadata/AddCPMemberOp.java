@@ -33,7 +33,8 @@ import static com.hazelcast.cp.internal.MetadataRaftGroupManager.METADATA_GROUP_
 /**
  * A {@link RaftOp} that adds a new CP member to the CP sub-system.
  * Committed to the Metadata Raft group.
- * Fails with {@link IllegalArgumentException} if the member to be added is already a CP member that is currently being removed.
+ * Fails with {@link IllegalArgumentException} if the member to be added
+ * is already a CP member that is currently being removed.
  */
 public class AddCPMemberOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 

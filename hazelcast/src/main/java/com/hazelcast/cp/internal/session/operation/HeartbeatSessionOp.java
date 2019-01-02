@@ -29,8 +29,8 @@ import com.hazelcast.cp.internal.session.SessionExpiredException;
 import java.io.IOException;
 
 /**
- * Pushes given session's heartbeat timeout forward.
- * Fails with {@link SessionExpiredException} if the given session is already closed.
+ * Pushes given session's heartbeat timeout forward. Fails with
+ * {@link SessionExpiredException} if the given session is already closed.
  */
 public class HeartbeatSessionOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 

@@ -22,7 +22,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Mutable state maintained by each candidate during pre-voting & voting phases.
+ * Mutable state maintained by each candidate during pre-voting & voting phases
  */
 public class CandidateState {
 
@@ -35,7 +35,8 @@ public class CandidateState {
 
     /**
      * Persists vote for the endpoint during election.
-     * This method is idempotent, multiple votes from the same point are counted only once.
+     * This method is idempotent, multiple votes from the same point are
+     * counted only once.
      *
      * @return false if endpoint is already voted, true otherwise
      */

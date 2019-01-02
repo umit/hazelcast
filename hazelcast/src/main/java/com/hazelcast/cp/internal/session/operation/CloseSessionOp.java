@@ -29,8 +29,9 @@ import com.hazelcast.cp.internal.session.SessionAwareService;
 import java.io.IOException;
 
 /**
- * Closes the given session on the Raft group and notifies services via the {@link SessionAwareService} interface.
- * Returns silently if an active session is not found for the given session id.
+ * Closes the given session on the Raft group and notifies services
+ * via the {@link SessionAwareService} interface. Returns silently
+ * if an active session is not found for the given session id.
  */
 public class CloseSessionOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 

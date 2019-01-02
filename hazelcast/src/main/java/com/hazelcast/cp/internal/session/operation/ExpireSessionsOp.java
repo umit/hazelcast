@@ -33,7 +33,8 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Expires sessions that do have not committed any heartbeat for {@link CPSubsystemConfig#getSessionTimeToLiveSeconds()} seconds.
+ * Expires sessions that do have not committed any heartbeat for
+ * {@link CPSubsystemConfig#getSessionTimeToLiveSeconds()} seconds.
  */
 public class ExpireSessionsOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 

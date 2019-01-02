@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,8 @@ import com.hazelcast.spi.NodeEngine;
  * <p>
  * {@code RaftOp} is stored in Raft log by leader and replicated to followers.
  * When at least majority of the members append it to their logs,
- * the log entry which it belongs is committed and {@code RaftOp} is executed eventually on each member.
+ * the log entry which it belongs is committed and {@code RaftOp} is executed
+ * eventually on each member.
  * <p>
  * Note that, implementations of {@code RaftOp} must be deterministic.
  * They should perform the same action and produce the same result always,
@@ -40,11 +41,12 @@ public abstract class RaftOp implements DataSerializable {
     private transient NodeEngine nodeEngine;
 
     /**
-     * Contains actual Raft operation logic. State change represented by this operation should be applied
-     * and execution result should be returned to the caller.
+     * Contains actual Raft operation logic. State change represented by
+     * this operation should be applied and execution result should be
+     * returned to the caller.
      *
      * @param groupId groupId of the specific Raft group
-     * @param commitIndex commitIndex of the log entry containing this operation
+     * @param commitIndex commitIndex of the log entry keeping this operation
      * @return result of the operation execution
      */
     public abstract Object run(CPGroupId groupId, long commitIndex) throws Exception;

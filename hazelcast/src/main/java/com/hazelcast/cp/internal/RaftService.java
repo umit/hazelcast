@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,8 +87,8 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
- * Contains {@link RaftNode} instances that run the Raft consensus algorithm for the created CP groups.
- * Also implements CP subsystem management methods.
+ * Contains {@link RaftNode} instances that run the Raft consensus algorithm
+ * for the created CP groups. Also implements CP subsystem management methods.
  */
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:classfanoutcomplexity", "checkstyle:classdataabstractioncoupling"})
 public class RaftService implements ManagedService, SnapshotAwareService<MetadataRaftGroupSnapshot>, GracefulShutdownAwareService,
@@ -538,7 +538,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             return name;
         }
 
-        checkTrue(name.indexOf("@", i +1) == -1, "Custom group name must be specified at most once");
+        checkTrue(name.indexOf("@", i + 1) == -1, "Custom group name must be specified at most once");
         String groupName = name.substring(i + 1);
         if (groupName.equals(DEFAULT_GROUP_NAME)) {
             return name.substring(0, i);
@@ -554,7 +554,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
 
         checkTrue(i < (name.length() - 1), "Custom group name cannot be empty string");
-        checkTrue(name.indexOf("@", i +1) == -1, "Custom group name must be specified at most once");
+        checkTrue(name.indexOf("@", i + 1) == -1, "Custom group name must be specified at most once");
         String groupName = name.substring(i + 1).trim();
         checkTrue(groupName.length() > 0, "Custom group name cannot be empty string");
         return groupName;
@@ -567,7 +567,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
 
         checkTrue(i < (name.length() - 1), "Object name cannot be empty string");
-        checkTrue(name.indexOf("@", i +1) == -1, "Custom group name must be specified at most once");
+        checkTrue(name.indexOf("@", i + 1) == -1, "Custom group name must be specified at most once");
         String objectName = name.substring(0, i).trim();
         checkTrue(objectName.length() > 0, "Object name cannot be empty string");
         return objectName;

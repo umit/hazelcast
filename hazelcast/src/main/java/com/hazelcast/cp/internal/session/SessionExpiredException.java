@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.session;
 import com.hazelcast.core.HazelcastException;
 
 /**
- * Thrown when an operation is attached to a Raft session that is no longer active.
+ * Thrown when an operation is attached to a Raft session is no longer active
  */
 public class SessionExpiredException extends HazelcastException {
 

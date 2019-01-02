@@ -32,10 +32,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * When a Raft group is destroyed, its members terminate their internal {@link RaftNode} instances.
- * This operation is sent to members of destroyed Raft groups.
+ * When a Raft group is destroyed, its members terminate their internal
+ * {@link RaftNode} instances. This operation is sent to members of destroyed
+ * Raft groups.
  * <p/>
- * Please note that this operation is not a {@link RaftOp}, so it is not handled via the Raft layer.
+ * Please note that this operation is not a {@link RaftOp},
+ * so it is not handled via the Raft layer.
  */
 public class DestroyRaftNodesOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation {
 

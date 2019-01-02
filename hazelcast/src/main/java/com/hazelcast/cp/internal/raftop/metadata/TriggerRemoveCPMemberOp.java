@@ -31,8 +31,10 @@ import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import java.io.IOException;
 
 /**
- * When a CP member is shutting down gracefully, or a crashed CP member is removed from the CP sub-system via
- * {@link RaftService#removeCPMember(EndpointIdentifier)}, this operation is committed to the Metadata Raft group.
+ * When a CP member is shutting down gracefully, or a crashed CP member is
+ * removed from the CP sub-system via
+ * {@link RaftService#removeCPMember(EndpointIdentifier)}, this operation is
+ * committed to the Metadata Raft group.
  */
 public class TriggerRemoveCPMemberOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 

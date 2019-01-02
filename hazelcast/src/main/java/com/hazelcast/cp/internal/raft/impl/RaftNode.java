@@ -35,8 +35,9 @@ import java.util.Collection;
 
 /**
  * {@code RaftNode} maintains the state of a member for a specific Raft group
- * and exposes methods to handle external client requests (such as append requests, queries and membership changes)
- * and internal Raft RPCs (voting, append request, snapshot installing etc).
+ * and exposes methods to handle external client requests (such as append
+ * requests, queries and membership changes) and internal Raft RPCs (voting,
+ * append request, snapshot installing etc).
  */
 public interface RaftNode {
 
@@ -51,7 +52,8 @@ public interface RaftNode {
     EndpointIdentifier getLocalMember();
 
     /**
-     * Returns the known leader endpoint. Leader endpoint might be already changed when this method returns.
+     * Returns the known leader endpoint. Leader endpoint might be already
+     * changed when this method returns.
      */
     EndpointIdentifier getLeader();
 
@@ -66,15 +68,16 @@ public interface RaftNode {
     Collection<EndpointIdentifier> getInitialMembers();
 
     /**
-     * Returns the last committed member list of the raft group this node belongs to.
-     * Please note that the returned member list can be different from the current effective member list,
-     * if there is an ongoing membership change in the group
+     * Returns the last committed member list of the raft group this node
+     * belongs to. Please note that the returned member list can be different
+     * from the current effective member list, if there is an ongoing
+     * membership change in the group.
      */
     Collection<EndpointIdentifier> getCommittedMembers();
 
     /**
-     * Returns true if this node is {@link RaftNodeStatus#TERMINATED} or {@link RaftNodeStatus#STEPPED_DOWN},
-     * false otherwise.
+     * Returns true if this node is {@link RaftNodeStatus#TERMINATED} or
+     * {@link RaftNodeStatus#STEPPED_DOWN}, false otherwise.
      * <p>
      * This method is essentially same as;
      * <pre>
@@ -97,7 +100,8 @@ public interface RaftNode {
     void handlePreVoteRequest(PreVoteRequest request);
 
     /**
-     * Handles {@link PreVoteResponse} for a previously sent request by this node.
+     * Handles {@link PreVoteResponse} for a previously sent request by
+     * this node.
      */
     void handlePreVoteResponse(PreVoteResponse response);
 
@@ -107,7 +111,8 @@ public interface RaftNode {
     void handleVoteRequest(VoteRequest request);
 
     /**
-     * Handles {@link VoteResponse} for a previously sent vote request by this node.
+     * Handles {@link VoteResponse} for a previously sent vote request by
+     * this node.
      */
     void handleVoteResponse(VoteResponse response);
 
@@ -117,12 +122,14 @@ public interface RaftNode {
     void handleAppendRequest(AppendRequest request);
 
     /**
-     * Handles {@link AppendSuccessResponse} for a previously sent append request by this node.
+     * Handles {@link AppendSuccessResponse} for a previously sent
+     * append request by this node.
      */
     void handleAppendResponse(AppendSuccessResponse response);
 
     /**
-     * Handles {@link AppendFailureResponse} for a previously sent append request by this node.
+     * Handles {@link AppendFailureResponse} for a previously sent
+     * append request by this node.
      */
     void handleAppendResponse(AppendFailureResponse response);
 
@@ -132,10 +139,12 @@ public interface RaftNode {
     void handleInstallSnapshot(InstallSnapshot request);
 
     /**
-     * Replicates the given operation to the Raft group. Only leader can process replicate requests.
+     * Replicates the given operation to the Raft group.
+     * Only the leader can process replicate requests.
      * <p>
-     * Otherwise, if this node is not leader, or leader is demoted before committing the operation,
-     * returned future is notified with a related exception.
+     * Otherwise, if this node is not leader, or the leader is demoted before
+     * committing the operation, the returned future is notified with a related
+     * exception.
      *
      * @param operation operation to replicate
      * @return future to get notified about result of the replication
@@ -143,10 +152,12 @@ public interface RaftNode {
     ICompletableFuture replicate(Object operation);
 
     /**
-     * Replicates the membership change to the Raft group. Only leader can process membership change requests.
+     * Replicates the membership change to the Raft group.
+     * Only the leader can process membership change requests.
      * <p>
-     * If this node is not leader, or leader is demoted before committing the operation,
-     * or membership change is not committed for any reason, then returned future is notified with a related exception.
+     * If this node is not leader, or the leader is demoted before committing
+     * the operation, or membership change is not committed for any reason,
+     * then the returned future is notified with a related exception.
      *
      * @param member member to add or remove
      * @param change type of membership change
@@ -155,8 +166,9 @@ public interface RaftNode {
     ICompletableFuture replicateMembershipChange(EndpointIdentifier member, MembershipChangeType change);
 
     /**
-     * Replicates the membership change to the Raft group, if expected members commit index is equal to the actual
-     * one stored in Raft state. Otherwise fails with {@link MismatchingGroupMembersCommitIndexException}.
+     * Replicates the membership change to the Raft group, if expected members
+     * commit index is equal to the actual one stored in Raft state. Otherwise,
+     * fails with {@link MismatchingGroupMembersCommitIndexException}.
      * <p>
      * For more info see {@link #replicate(Object)}.
      *
@@ -165,10 +177,12 @@ public interface RaftNode {
      * @param groupMembersCommitIndex expected members commit index
      * @return future to get notified about result of the membership change
      */
-    ICompletableFuture replicateMembershipChange(EndpointIdentifier member, MembershipChangeType change, long groupMembersCommitIndex);
+    ICompletableFuture replicateMembershipChange(EndpointIdentifier member, MembershipChangeType change,
+                                                 long groupMembersCommitIndex);
 
     /**
-     * Executes the given operation on Raft group depending on the {@link QueryPolicy}
+     * Executes the given operation on Raft group depending
+     * on the {@link QueryPolicy}
      *
      * @param operation operation to query
      * @param queryPolicy query policy to decide where to execute operation

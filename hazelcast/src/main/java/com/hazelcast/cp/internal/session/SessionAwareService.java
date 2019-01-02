@@ -26,7 +26,8 @@ import java.util.Collection;
 public interface SessionAwareService {
 
     /**
-     * Injects {@link SessionAccessor} in order to enable the custom service to validate and trigger session activity
+     * Injects {@link SessionAccessor} in order to enable the custom service to
+     * validate and trigger session activity
      */
     void setSessionAccessor(SessionAccessor accessor);
 
@@ -36,7 +37,8 @@ public interface SessionAwareService {
     void onSessionClose(CPGroupId groupId, long sessionId);
 
     /**
-     * Returns a collection of session ids that this service has attached some resources.
+     * Returns a collection of session ids that this service has attached some
+     * resources.
      */
     Collection<Long> getAttachedSessions(CPGroupId groupId);
 

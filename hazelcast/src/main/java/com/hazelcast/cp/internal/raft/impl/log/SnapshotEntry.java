@@ -29,7 +29,8 @@ import java.util.HashSet;
 /**
  * Represents a snapshot in the {@link RaftLog}.
  * <p>
- * Snapshot entry is sent to followers via {@link com.hazelcast.cp.internal.raft.impl.dto.InstallSnapshot} RPC.
+ * Snapshot entry is sent to followers via
+ * {@link com.hazelcast.cp.internal.raft.impl.dto.InstallSnapshot} RPC.
  */
 public class SnapshotEntry extends LogEntry implements IdentifiedDataSerializable {
     private long groupMembersLogIndex;

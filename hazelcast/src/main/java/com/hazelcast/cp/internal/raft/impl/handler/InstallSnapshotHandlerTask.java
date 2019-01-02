@@ -27,10 +27,12 @@ import com.hazelcast.cp.internal.raft.impl.task.RaftNodeStatusAwareTask;
 import static com.hazelcast.cp.internal.raft.impl.RaftRole.FOLLOWER;
 
 /**
- * Handles {@link InstallSnapshot} request sent by leader. Responds with an {@link AppendSuccessResponse} if snapshot
- * is installed, responds with an {@link AppendFailureResponse} otherwise.
+ * Handles {@link InstallSnapshot} request sent by leader. Responds with
+ * an {@link AppendSuccessResponse} if snapshot is installed, responds with
+ * an {@link AppendFailureResponse} otherwise.
  * <p>
- * See <i>7 Log compaction</i> section of <i>In Search of an Understandable Consensus Algorithm</i>
+ * See <i>7 Log compaction</i> section of
+ * <i>In Search of an Understandable Consensus Algorithm</i>
  * paper by <i>Diego Ongaro</i> and <i>John Ousterhout</i>.
  *
  * @see InstallSnapshot

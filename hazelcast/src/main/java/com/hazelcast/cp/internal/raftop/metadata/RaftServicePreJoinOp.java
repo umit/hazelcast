@@ -28,9 +28,11 @@ import com.hazelcast.spi.Operation;
 import java.io.IOException;
 
 /**
- * If the CP sub-system discovery process is completed, new Hazelcast nodes skip the discovery step.
+ * If the CP sub-system discovery process is completed, new Hazelcast nodes
+ * skip the discovery step.
  * <p/>
- * Please note that this operation is not a {@link RaftOp}, so it is not handled via the Raft layer.
+ * Please note that this operation is not a {@link RaftOp},
+ * so it is not handled via the Raft layer.
  */
 public class RaftServicePreJoinOp extends Operation implements IdentifiedDataSerializable, Versioned {
 

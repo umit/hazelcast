@@ -45,7 +45,8 @@ public class RaftGroupMembers {
     }
 
     /**
-     * Returns the position of the membership change that leads to formation of this group.
+     * Returns the position of the membership change that leads to formation
+     * of this group.
      */
     public long index() {
         return index;

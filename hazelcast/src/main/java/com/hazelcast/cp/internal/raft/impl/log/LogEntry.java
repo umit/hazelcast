@@ -25,9 +25,10 @@ import java.io.IOException;
 
 /**
  * Represents an entry in the {@link RaftLog}.
- * Each log entry stores a state machine command along with the term number when the entry was received by the leader.
- * The term numbers in log entries are used to detect inconsistencies between logs.
- * Each log entry also has an integer index identifying its position in the log.
+ * Each log entry stores a state machine command along with the term number
+ * when the entry was received by the leader. The term numbers in log entries
+ * are used to detect inconsistencies between logs. Each log entry also has
+ * an integer index identifying its position in the log.
  */
 public class LogEntry implements IdentifiedDataSerializable {
     private int term;

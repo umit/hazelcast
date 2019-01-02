@@ -21,9 +21,9 @@ import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import static com.hazelcast.cp.internal.raft.impl.RaftRole.FOLLOWER;
 
 /**
- * PreVoteTimeoutTask is scheduled by {@link PreVoteTask}
- * to trigger pre-voting again if this node is still a follower
- * and a leader is not available after leader election timeout.
+ * PreVoteTimeoutTask is scheduled by {@link PreVoteTask} to trigger pre-voting
+ * again if this node is still a follower and a leader is not available after
+ * leader election timeout.
  */
 public class PreVoteTimeoutTask extends RaftNodeStatusAwareTask implements Runnable {
 

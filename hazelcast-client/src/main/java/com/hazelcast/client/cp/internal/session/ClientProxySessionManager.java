@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,10 @@
 package com.hazelcast.client.cp.internal.session;
 
 import com.hazelcast.client.impl.clientside.ClientExceptionFactory;
+import com.hazelcast.client.impl.clientside.ClientExceptionFactory.ExceptionFactory;
 import com.hazelcast.client.impl.clientside.ClientMessageDecoder;
 import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
@@ -38,13 +38,13 @@ import com.hazelcast.spi.InternalCompletableFuture;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.SESSION_EXPIRED_EXCEPTION;
+import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.WAIT_KEY_CANCELLED_EXCEPTION;
 import static com.hazelcast.cp.internal.datastructures.semaphore.client.SemaphoreMessageTaskFactoryProvider.GENERATE_THREAD_ID_TYPE;
 
 /**
- * TODO: Javadoc Pending...
- *
+ * Client-side implementation of Raft proxy session manager
  */
-// TODO [basri] integrate shutdown() to graceful shutdown of the client
 public class ClientProxySessionManager extends AbstractProxySessionManager {
 
     private static final ClientMessageDecoder SESSION_RESPONSE_DECODER = new SessionResponseDecoder();
@@ -55,13 +55,13 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     public ClientProxySessionManager(HazelcastClientInstanceImpl client) {
         this.client = client;
         ClientExceptionFactory factory = client.getClientExceptionFactory();
-        factory.register(ClientProtocolErrorCodes.SESSION_EXPIRED_EXCEPTION, SessionExpiredException.class, new ClientExceptionFactory.ExceptionFactory() {
+        factory.register(SESSION_EXPIRED_EXCEPTION, SessionExpiredException.class, new ExceptionFactory() {
             @Override
             public Throwable createException(String message, Throwable cause) {
                 return new SessionExpiredException(message, cause);
             }
         });
-        factory.register(ClientProtocolErrorCodes.WAIT_KEY_CANCELLED_EXCEPTION, WaitKeyCancelledException.class, new ClientExceptionFactory.ExceptionFactory() {
+        factory.register(WAIT_KEY_CANCELLED_EXCEPTION, WaitKeyCancelledException.class, new ExceptionFactory() {
             @Override
             public Throwable createException(String message, Throwable cause) {
                 return new WaitKeyCancelledException(message, cause);

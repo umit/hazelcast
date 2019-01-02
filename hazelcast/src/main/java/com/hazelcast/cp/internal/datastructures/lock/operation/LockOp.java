@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package com.hazelcast.cp.internal.datastructures.lock.operation;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.FencedLock;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
-import com.hazelcast.cp.internal.datastructures.lock.LockEndpoint;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockDataSerializerHook;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockOwnershipState;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockService;

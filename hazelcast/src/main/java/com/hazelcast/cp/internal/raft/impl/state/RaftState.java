@@ -28,7 +28,8 @@ import java.util.LinkedHashSet;
 import static java.util.Collections.unmodifiableSet;
 
 /**
- * {@code RaftState} is the mutable state maintained by Raft state machine on every node in the group.
+ * {@code RaftState} is the mutable state maintained by Raft state machine
+ * on every node in the group.
  */
 @SuppressWarnings({"checkstyle:methodcount"})
 public class RaftState {

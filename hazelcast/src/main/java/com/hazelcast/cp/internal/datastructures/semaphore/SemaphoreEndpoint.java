@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,12 +23,11 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import java.io.IOException;
 
 /**
- * SemaphoreEndpoint represents a thread in a Raft client.
- * It is a combination of a session id and a thread id.
- * A SemaphoreEndpoint is a single-threaded unique entity.
- * A semaphore can be used without a session. Therefore,
- * A SemaphoreEndpoint can be created without a session id.
- * When it sends a request X, it can either retry this request X, or send a new request Y.
+ * SemaphoreEndpoint represents a thread in a Raft client. It is a combination
+ * of a session id and a thread id. A SemaphoreEndpoint is a single-threaded
+ * unique entity. A semaphore can be used without a session. Therefore,
+ * A SemaphoreEndpoint can be created without a session id. When it sends
+ * a request X, it can either retry this request X, or send a new request Y.
  * After it sends request Y, it will not retry request X anymore.
  */
 public class SemaphoreEndpoint implements IdentifiedDataSerializable {

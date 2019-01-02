@@ -35,13 +35,16 @@ import java.util.Collection;
 import static com.hazelcast.util.Preconditions.checkState;
 
 /**
- * When a CP member is added to a Raft group, a new member list is committed to the Raft group first.
- * Then, new member list of the Raft group will be also committed to the Raft group.
- * After the new member list is committed to the Raft group itself, the new member can receive append requests
- * and it can try to initialize its local {@link RaftNode} instance. In order to the initialize itself,
- * it can directly ask to the Raft group to verify if it is a current member of the Raft group.
+ * When a CP member is added to a Raft group, a new member list is committed to
+ * the Raft group first. Then, new member list of the Raft group will be also
+ * committed to the Raft group. After the new member list is committed to
+ * the Raft group itself, the new member can receive append requests and it can
+ * try to initialize its local {@link RaftNode} instance. In order to the
+ * initialize itself, it can directly ask to the Raft group to verify if it is
+ * a current member of the Raft group.
  * <p/>
- * This operation is NOT committed to the Metadata group. It is committed to the queried Raft group.
+ * This operation is NOT committed to the Metadata group.
+ * It is committed to the queried Raft group.
  */
 public class GetInitialRaftGroupMembersIfCurrentGroupMemberOp extends RaftOp implements RaftNodeAware,
                                                                                         IndeterminateOperationStateAware,

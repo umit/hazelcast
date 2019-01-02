@@ -33,11 +33,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * On creation of a new Raft group or a membership change in an existing Raft group, this operation is sent to the new members
- * of the Raft group to initiate the {@link RaftNode} on the new member.
- * Members present in this operation are initial members of the Raft group, not the current members.
+ * On creation of a new Raft group or a membership change in an existing Raft
+ * group, this operation is sent to the new members of the Raft group to
+ * initiate the {@link RaftNode} on the new member. Members present in this
+ * operation are initial members of the Raft group, not the current members.
  * <p/>
- * Please note that this operation is not a {@link RaftOp}, so it is not handled via the Raft layer.
+ * Please note that this operation is not a {@link RaftOp},
+ * so it is not handled via the Raft layer.
  */
 public class CreateRaftNodeOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation {
 

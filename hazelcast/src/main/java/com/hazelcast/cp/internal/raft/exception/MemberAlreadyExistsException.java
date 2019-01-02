@@ -20,8 +20,8 @@ import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.exception.CPSubsystemException;
 
 /**
- * A {@code CPSubsystemException} which is thrown when a member,
- * which is requested to be added to a CP group, is already member of that group.
+ * A {@code CPSubsystemException} which is thrown when a member, which is
+ * requested to be added to a CP group, is already member of that group.
  * Handled internally.
  */
 public class MemberAlreadyExistsException extends CPSubsystemException {

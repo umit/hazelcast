@@ -32,8 +32,9 @@ import com.hazelcast.logging.ILogger;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Integration abstraction between Raft state machine and the underlying platform which is responsible
- * for task/operation execution & scheduling, message transportation and failure detection.
+ * Integration abstraction between Raft state machine and the underlying
+ * platform which is responsible for task/operation execution & scheduling,
+ * message transportation and failure detection.
  */
 public interface RaftIntegration {
 
@@ -46,14 +47,16 @@ public interface RaftIntegration {
     ILogger getLogger(String name);
 
     /**
-     * Returns true if underlying platform is ready to operate, false otherwise.
+     * Returns true if underlying platform is ready to operate,
+     * false otherwise.
      *
      * @return true if ready, false otherwise
      */
     boolean isReady();
 
     /**
-     * Returns true if the endpoint is reachable by the time this method is called, false otherwise.
+     * Returns true if the endpoint is reachable by the time this method
+     * is called, false otherwise.
      *
      * @param endpoint endpoint
      * @return true if endpoint is reachable, false otherwise
@@ -64,7 +67,8 @@ public interface RaftIntegration {
      * Sends the {@link PreVoteRequest} to target endpoint to be handled by
      * its {@link RaftNode#handlePreVoteRequest(PreVoteRequest)}.
      *
-     * @return true if request is sent or scheduled to be sent to target, false otherwise
+     * @return true if request is sent or scheduled to be sent to target,
+     *         false otherwise
      */
     boolean send(PreVoteRequest request, EndpointIdentifier target);
 
@@ -72,7 +76,8 @@ public interface RaftIntegration {
      * Sends the {@link PreVoteResponse} to target endpoint to be handled by
      * its {@link RaftNode#handlePreVoteResponse(PreVoteResponse)}.
      *
-     * @return true if response is sent or scheduled to be sent to target, false otherwise
+     * @return true if response is sent or scheduled to be sent to target,
+     *         false otherwise
      */
     boolean send(PreVoteResponse response, EndpointIdentifier target);
 
@@ -80,7 +85,8 @@ public interface RaftIntegration {
      * Sends the {@link VoteRequest} to target endpoint to be handled by
      * its {@link RaftNode#handleVoteRequest(VoteRequest)}.
      *
-     * @return true if request is sent or scheduled to be sent to target, false otherwise
+     * @return true if request is sent or scheduled to be sent to target,
+     *         false otherwise
      */
     boolean send(VoteRequest request, EndpointIdentifier target);
 
@@ -88,7 +94,8 @@ public interface RaftIntegration {
      * Sends the {@link VoteResponse} to target endpoint to be handled by
      * its {@link RaftNode#handleVoteResponse(VoteResponse)}.
      *
-     * @return true if response is sent or scheduled to be sent to target, false otherwise
+     * @return true if response is sent or scheduled to be sent to target,
+     *         false otherwise
      */
     boolean send(VoteResponse response, EndpointIdentifier target);
 
@@ -96,23 +103,26 @@ public interface RaftIntegration {
      * Sends the {@link AppendRequest} to target endpoint to be handled by
      * its {@link RaftNode#handleAppendRequest(AppendRequest)}.
      *
-     * @return true if request is sent or scheduled to be sent to target, false otherwise
+     * @return true if request is sent or scheduled to be sent to target,
+     *         false otherwise
      */
     boolean send(AppendRequest request, EndpointIdentifier target);
 
     /**
-     * Sends the {@link AppendSuccessResponse} to target endpoint to be handled by
-     * its {@link RaftNode#handleAppendResponse(AppendSuccessResponse)}.
+     * Sends the {@link AppendSuccessResponse} to target endpoint to be handled
+     * by its {@link RaftNode#handleAppendResponse(AppendSuccessResponse)}.
      *
-     * @return true if response is sent or scheduled to be sent to target, false otherwise
+     * @return true if response is sent or scheduled to be sent to target,
+     *         false otherwise
      */
     boolean send(AppendSuccessResponse response, EndpointIdentifier target);
 
     /**
-     * Sends the {@link AppendFailureResponse} to target endpoint to be handled by
-     * its {@link RaftNode#handleAppendResponse(AppendFailureResponse)}.
+     * Sends the {@link AppendFailureResponse} to target endpoint to be handled
+     * by its {@link RaftNode#handleAppendResponse(AppendFailureResponse)}.
      *
-     * @return true if response is sent or scheduled to be sent to target, false otherwise
+     * @return true if response is sent or scheduled to be sent to target,
+     *         false otherwise
      */
     boolean send(AppendFailureResponse response, EndpointIdentifier target);
 
@@ -120,7 +130,8 @@ public interface RaftIntegration {
      * Sends the {@link InstallSnapshot} to target endpoint to be handled by
      * its {@link RaftNode#handleInstallSnapshot(InstallSnapshot)}.
      *
-     * @return true if request is sent or scheduled to be sent to target, false otherwise
+     * @return true if request is sent or scheduled to be sent to target,
+     *         false otherwise
      */
     boolean send(InstallSnapshot request, EndpointIdentifier target);
 
@@ -135,7 +146,8 @@ public interface RaftIntegration {
     Object runOperation(Object operation, long commitIndex);
 
     /**
-     * Take a snapshot for the given commit index which is the current commit index
+     * Take a snapshot for the given commit index which is the current commit
+     * index
      *
      * @param commitIndex commit index
      * @return snapshot operation to put into the {@link SnapshotEntry}
@@ -143,7 +155,8 @@ public interface RaftIntegration {
     Object takeSnapshot(long commitIndex);
 
     /**
-     * Restores the snapshot with the given operation for the given commit index
+     * Restores the snapshot with the given operation for the given commit
+     * index
      *
      * @param operation snapshot operation provided by {@link #takeSnapshot(long)}
      * @param commitIndex commit index of the snapshot
@@ -173,7 +186,8 @@ public interface RaftIntegration {
     SimpleCompletableFuture newCompletableFuture();
 
     /**
-     * Returns the entry to be appended if the no-op entry append on leader election feature is enabled.
+     * Returns the entry to be appended if the no-op entry append on leader
+     * election feature is enabled.
      * <p>
      * See <a href="https://groups.google.com/forum/#!msg/raft-dev/t4xj6dJTP6E/d2D9LrWRza8J">
      * <i>Bug in single-server membership changes</i></a> post by Diego Ongaro for more info.

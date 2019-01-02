@@ -17,12 +17,11 @@
 package com.hazelcast.cp.internal.raft.impl.util;
 
 /**
- * The special response class that is used when a Raft entry
- * does not return a response at the time of its commit,
- * and will return a response with another commit in future.
- * Therefore, when this {@link PostponedResponse#INSTANCE}
- * is returned as response of a Raft commit, its future object
- * will not be completed.
+ * The special response class that is used when a Raft entry does not return
+ * a response at the time of its commit, and will return a response with
+ * another commit in future. Therefore, when {@link PostponedResponse#INSTANCE}
+ * is returned as response of a Raft commit, its future object will not be
+ * completed.
  */
 public final class PostponedResponse {
 

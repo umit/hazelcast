@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,8 @@ import java.util.Map.Entry;
 import java.util.UUID;
 
 /**
- * Contains {@link RaftSemaphore} resources and manages wait timeouts based on acquire / release requests
+ * Contains {@link RaftSemaphore} resources and manages wait timeouts
+ * based on acquire / release requests
  */
 public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey, RaftSemaphore>
         implements IdentifiedDataSerializable {

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,8 +32,10 @@ import java.io.IOException;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 
 /**
- * Operation for {@link IAtomicReference#apply(IFunction)}, {@link IAtomicReference#alter(IFunction)},
- * {@link IAtomicReference#alterAndGet(IFunction)}, and {@link IAtomicReference#getAndAlter(IFunction)}
+ * Operation for {@link IAtomicReference#apply(IFunction)},
+ * {@link IAtomicReference#alter(IFunction)},
+ * {@link IAtomicReference#alterAndGet(IFunction)},
+ * and {@link IAtomicReference#getAndAlter(IFunction)}
  */
 public class ApplyOp extends AbstractAtomicRefOp implements IdentifiedDataSerializable {
 

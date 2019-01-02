@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,9 @@ package com.hazelcast.cp.internal.raft;
 import com.hazelcast.cp.CPGroupId;
 
 /**
- * The service interface required to be implemented by services that behave as Raft state machine.
- * Each Raft service must be able to generate a snapshot of its committed data and restore it back.
+ * The service interface required to be implemented by services that behave as
+ * a Raft state machine. Each Raft service must be able to generate a snapshot
+ * of its committed data and restore it back.
  *
  * @param <T> type of snapshot object
  */
@@ -28,12 +29,13 @@ public interface SnapshotAwareService<T> {
 
     /**
      * Creates a snapshot for specified {@link CPGroupId}.
-     * The snapshot object returned from this method will be stored among the Raft log
-     * and it can be sent to other Raft nodes anytime. Therefore, this method must not
-     * return a snapshot object that can mutate after the takeSnapshot() call.
+     * The snapshot object returned from this method will be stored among
+     * the Raft log and it can be sent to other Raft nodes anytime. Therefore,
+     * this method must not return a snapshot object that can mutate after
+     * the takeSnapshot() call.
      *
      * @param groupId {@link CPGroupId} which is snapshot requested for
-     * @param commitIndex commitIndex of the Raft state when the snapshot is requested
+     * @param commitIndex commitIndex of the taken snapshot
      * @return snapshot for specified {@link CPGroupId}.
      */
     T takeSnapshot(CPGroupId groupId, long commitIndex);
@@ -42,7 +44,7 @@ public interface SnapshotAwareService<T> {
      * Restores the snapshot for specified {@link CPGroupId}.
      *
      * @param groupId {@link CPGroupId} of the snapshot to be restored
-     * @param commitIndex commitIndex of the Raft state when snapshot is created
+     * @param commitIndex commitIndex of the restored snapshot
      * @param snapshot snapshot for specified {@link CPGroupId}
      */
     void restoreSnapshot(CPGroupId groupId, long commitIndex, T snapshot);

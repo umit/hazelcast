@@ -28,10 +28,12 @@ import com.hazelcast.util.Clock;
 import static com.hazelcast.cp.internal.raft.impl.RaftRole.FOLLOWER;
 
 /**
- * Handles {@link VoteRequest} sent by a candidate. Responds with a {@link VoteResponse} to the sender.
- * Leader election is initiated by {@link com.hazelcast.cp.internal.raft.impl.task.LeaderElectionTask}.
+ * Handles {@link VoteRequest} sent by a candidate. Responds with
+ * a {@link VoteResponse} to the sender. Leader election is initiated by
+ * {@link com.hazelcast.cp.internal.raft.impl.task.LeaderElectionTask}.
  * <p>
- * See <i>5.2 Leader election</i> section of <i>In Search of an Understandable Consensus Algorithm</i>
+ * See <i>5.2 Leader election</i> section of
+ * <i>In Search of an Understandable Consensus Algorithm</i>
  * paper by <i>Diego Ongaro</i> and <i>John Ousterhout</i>.
  *
  * @see VoteRequest

@@ -31,12 +31,15 @@ import static com.hazelcast.cp.internal.raft.impl.RaftRole.LEADER;
 import static java.util.Arrays.sort;
 
 /**
- * Handles {@link AppendSuccessResponse} sent by {@link AppendRequestHandlerTask} after an append-entries request
- * or {@link InstallSnapshotHandlerTask} after an install snapshot request.
+ * Handles {@link AppendSuccessResponse} sent by
+ * {@link AppendRequestHandlerTask} after an append-entries request or
+ * {@link InstallSnapshotHandlerTask} after an install snapshot request.
  * <p>
- * Advances {@link RaftState#commitIndex} according to {@code matchIndex}es of followers.
+ * Advances {@link RaftState#commitIndex} according to {@code matchIndex}es
+ * of followers.
  * <p>
- * See <i>5.3 Log replication</i> section of <i>In Search of an Understandable Consensus Algorithm</i>
+ * See <i>5.3 Log replication</i> section of
+ * <i>In Search of an Understandable Consensus Algorithm</i>
  * paper by <i>Diego Ongaro</i> and <i>John Ousterhout</i>.
  *
  * @see com.hazelcast.cp.internal.raft.impl.dto.AppendRequest

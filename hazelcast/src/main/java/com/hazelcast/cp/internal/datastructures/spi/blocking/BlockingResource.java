@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,9 +33,10 @@ import java.util.Map;
 import static java.util.Collections.unmodifiableList;
 
 /**
- * Operations on a {@link BlockingResource} may not return a response at commit-time.
- * Such operations register {@link WaitKey} instances.
- * Then, their wait keys can be completed in future when some other operations are committed or a timeout occurs.
+ * Operations on a {@link BlockingResource} may not return a response
+ * at commit-time. Such operations register {@link WaitKey} instances.
+ * Then, their wait keys can be completed in future when some other operations
+ * are committed or a timeout occurs.
  *
  * @param <W> concrete type of the WaitKey
  */

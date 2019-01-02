@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,9 @@ package com.hazelcast.cp.internal;
 import com.hazelcast.cp.internal.raft.impl.RaftNode;
 
 /**
- * A query operation that requires to access RaftNode state can implement this interface.
- * Before the query is executed, {@link RaftNode} will be provided to the query.
+ * A query operation that requires to access RaftNode state can implement
+ * this interface. Before the query is executed, {@link RaftNode} will be
+ * provided to the query.
  */
 public interface RaftNodeAware {
     void setRaftNode(RaftNode raftNode);

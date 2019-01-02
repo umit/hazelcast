@@ -30,10 +30,13 @@ import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import java.io.IOException;
 
 /**
- * If a Raft node loses its majority completely, its remaining members cannot leave the CP subsystem gracefully.
- * It is because we need to make a commit to a halted Raft group, and the system block since we won't be able to do it.
- * To recover from this failure case, we forcefully destroy a Raft group. Status of the Raft group will be directly
- * changed to {@link CPGroupStatus#DESTROYED} without gracefully destroying {@link RaftNode} instances first.
+ * If a Raft node loses its majority completely, its remaining members cannot
+ * leave the CP subsystem gracefully. It is because we need to make a commit to
+ * a halted Raft group, and the system block since we won't be able to do it.
+ * To recover from this failure case, we forcefully destroy a Raft group.
+ * Status of the Raft group will be directly changed to
+ * {@link CPGroupStatus#DESTROYED} without gracefully destroying
+ * {@link RaftNode} instances first.
  * <p/>
  * This operation is committed to the Metadata group.
  */

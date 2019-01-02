@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,14 +48,15 @@ import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.lang.Math.max;
 
 /**
- * Server-side session-aware proxy of Raft-based {@link ISemaphore} API
+ * Server-side session-aware proxy of Raft-based {@link ISemaphore}
  */
 public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements ISemaphore {
 
     /**
-     * Since a proxy does not know how many permits will be drained on the Raft group,
-     * it uses this constant to increment its local session acquire count.
-     * Then, it adjusts the local session acquire count after the drain response is returned.
+     * Since a proxy does not know how many permits will be drained on
+     * the Raft group, it uses this constant to increment its local session
+     * acquire count. Then, it adjusts the local session acquire count after
+     * the drain response is returned.
      */
     public static final int DRAIN_SESSION_ACQ_COUNT = 1024;
 

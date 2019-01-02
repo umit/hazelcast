@@ -42,11 +42,13 @@ import static com.hazelcast.cp.internal.raft.impl.RaftRole.LEADER;
  * If membership change type is ADD but the member already exists in the group,
  * then future is notified with {@link MemberAlreadyExistsException}.
  * <p>
- * If membership change type is REMOVE but the member doesn't exist in the group,
- * then future is notified with {@link MemberDoesNotExistException}.
+ * If membership change type is REMOVE but the member doesn't exist
+ * in the group, then future is notified with
+ * {@link MemberDoesNotExistException}.
  * <p>
- * {@link ApplyRaftGroupMembersCmd} Raft operation is created with members according to the member parameter
- * and membership change and it's replicated via {@link ReplicateTask}.
+ * {@link ApplyRaftGroupMembersCmd} Raft operation is created with members
+ * according to the member parameter and membership change and it's replicated
+ * via {@link ReplicateTask}.
  *
  * @see MembershipChangeType
  */

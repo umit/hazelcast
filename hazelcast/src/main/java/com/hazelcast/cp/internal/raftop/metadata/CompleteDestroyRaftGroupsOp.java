@@ -32,7 +32,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Marks the given Raft groups as {@link CPGroupStatus#DESTROYED} and notifies its CP members
+ * Marks the given Raft groups as {@link CPGroupStatus#DESTROYED}
+ * and notifies its CP members
  */
 public class CompleteDestroyRaftGroupsOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 

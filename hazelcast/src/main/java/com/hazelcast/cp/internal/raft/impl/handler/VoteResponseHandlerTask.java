@@ -31,12 +31,14 @@ import static com.hazelcast.cp.internal.raft.impl.RaftRole.CANDIDATE;
 /**
  * Handles {@link VoteResponse} sent by {@link VoteRequestHandlerTask}.
  * <p>
- * Changes node to {@link RaftRole#LEADER} if if majority of the nodes grants vote for this term
- * via {@link RaftState#toLeader()}.
+ * Changes node to {@link RaftRole#LEADER} if if majority of the nodes
+ * grants vote for this term via {@link RaftState#toLeader()}.
  * <p>
- * Appends a no-op entry if {@link RaftIntegration#getAppendedEntryOnLeaderElection()} is enabled.
+ * Appends a no-op entry if
+ * {@link RaftIntegration#getAppendedEntryOnLeaderElection()} is enabled.
  * <p>
- * See <i>5.2 Leader election</i> section of <i>In Search of an Understandable Consensus Algorithm</i>
+ * See <i>5.2 Leader election</i> section of
+ * <i>In Search of an Understandable Consensus Algorithm</i>
  * paper by <i>Diego Ongaro</i> and <i>John Ousterhout</i>.
  *
  * @see VoteResponse

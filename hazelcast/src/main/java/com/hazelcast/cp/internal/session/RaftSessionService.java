@@ -59,15 +59,19 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
- * This service offers a set of abstractions to track liveliness of Hazelcast clients and servers that use
- * (possibly blocking) data structures on the Raft layer, such as locks and semaphores. From the perspective
- * of the Raft layer, there is no discrimination between Hazelcast clients and servers that use these data structures.
- * A caller starts a session and sends periodic heartbeats to maintain its session. If there is no heartbeat for
- * {@link CPSubsystemConfig#getSessionTimeToLiveSeconds()} seconds, its session is closed. That caller is considered to be alive
- * as long as it is committing heartbeats.
+ * This service offers a set of abstractions to track liveliness of Hazelcast
+ * clients and servers that use (possibly blocking) data structures
+ * on the Raft layer, such as locks and semaphores. From the perspective of
+ * the Raft layer, there is no discrimination between Hazelcast clients and
+ * servers that use these data structures. A caller starts a session and sends
+ * periodic heartbeats to maintain its session. If there is no heartbeat for
+ * {@link CPSubsystemConfig#getSessionTimeToLiveSeconds()} seconds, its session
+ * is closed. That caller is considered to be alive as long as it is committing
+ * heartbeats.
  * <p/>
- * Blocking Raft services can make use of the session abstraction to attach resources to sessions. On session termination,
- * its attached resources will be released automatically.
+ * Blocking Raft services can make use of the session abstraction to attach
+ * resources to sessions. On session termination, its attached resources will
+ * be released automatically.
  */
 public class RaftSessionService implements ManagedService, SnapshotAwareService<RaftSessionRegistry>, SessionAccessor,
                                            TermChangeAwareService, RaftGroupLifecycleAwareService, CPSessionManagementService {

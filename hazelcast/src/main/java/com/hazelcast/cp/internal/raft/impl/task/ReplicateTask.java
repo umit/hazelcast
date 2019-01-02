@@ -36,10 +36,12 @@ import static com.hazelcast.cp.internal.raft.impl.RaftRole.LEADER;
  * {@link com.hazelcast.cp.internal.raft.impl.RaftNode#replicate(Object)}
  * or by {@link MembershipChangeTask} for membership changes.
  * <p>
- * If this node is not the leader, future is immediately notified with {@link NotLeaderException}.
+ * If this node is not the leader, future is immediately notified with
+ * {@link NotLeaderException}.
  * <p>
- * If replication of the operation is not allowed at the moment (see {@link RaftNodeImpl#canReplicateNewEntry(Object)}),
- * future is immediately notified with {@link CannotReplicateException}.
+ * If replication of the operation is not allowed at the moment
+ * (see {@link RaftNodeImpl#canReplicateNewEntry(Object)}), the future is
+ * immediately notified with {@link CannotReplicateException}.
  */
 public class ReplicateTask implements Runnable {
     private final RaftNodeImpl raftNode;

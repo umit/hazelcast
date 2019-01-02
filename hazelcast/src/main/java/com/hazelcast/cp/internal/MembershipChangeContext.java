@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,10 +33,12 @@ import static com.hazelcast.util.Preconditions.checkNotNull;
 import static java.util.Collections.unmodifiableList;
 
 /**
- * When there is a membership change in the CP sub-system, all decided membership changes of Raft groups are maintained here.
+ * When there is a membership change in the CP sub-system,
+ * all decided membership changes of Raft groups are maintained here.
  * {@link RaftGroupMembershipManager} realizes these membership changes.
  *
- * This class is IMMUTABLE because it can be returned as a response to local queries of {@link RaftGroupMembershipManager}
+ * This class is IMMUTABLE because it can be returned as a response to
+ * local queries of {@link RaftGroupMembershipManager}
  */
 public class MembershipChangeContext implements IdentifiedDataSerializable {
 
@@ -74,7 +76,9 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
         return new MembershipChangeContext(leavingMember, remainingChanges);
     }
 
-
+    /**
+     * Contains a membership change that will be performed on a CP group
+     */
     public static class CPGroupMembershipChangeContext implements DataSerializable {
 
         private CPGroupId groupId;

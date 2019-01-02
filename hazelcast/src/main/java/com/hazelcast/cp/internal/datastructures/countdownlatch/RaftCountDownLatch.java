@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+ * Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,8 +53,9 @@ public class RaftCountDownLatch extends BlockingResource<AwaitInvocationKey> imp
 
     /**
      * Reduces remaining count of the latch.
-     * If the expected round is smaller than the current round, it is either a retry or a countDown() request
-     * sent before re-initialization of the latch. In this case, this count down request is ignored.
+     * If the expected round is smaller than the current round, it is either
+     * a retry or a countDown() request sent before re-initialization
+     * of the latch. In this case, this count down request is ignored.
      */
     Tuple2<Integer, Collection<AwaitInvocationKey>> countDown(int expectedRound, UUID invocationUuid) {
         if (expectedRound > round) {
