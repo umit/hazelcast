@@ -99,6 +99,7 @@ public abstract class AbstractLockMessageTask extends AbstractMessageTask implem
         clientMessage.set(ownership.getLockCount());
         clientMessage.set(ownership.getSessionId());
         clientMessage.set(ownership.getThreadId());
+        clientMessage.updateFrameLength();
 
         return clientMessage;
     }

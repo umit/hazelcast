@@ -164,7 +164,9 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
     public final void onSessionClose(CPGroupId groupId, long sessionId) {
         ResourceRegistry<W, R> registry = registries.get(groupId);
         if (registry == null) {
-            logger.warning("Resource registry of " + groupId + " not found to handle closed Session[" + sessionId + "]");
+            if (logger.isFineEnabled()) {
+                logger.fine("Resource registry of " + groupId + " not found to handle closed Session[" + sessionId + "]");
+            }
             return;
         }
 
