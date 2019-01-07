@@ -16,8 +16,8 @@
 
 package com.hazelcast.cp.internal.datastructures.lock.operation;
 
-import com.hazelcast.cp.FencedLock;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.FencedLock;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockDataSerializerHook;
@@ -28,6 +28,9 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
 import java.io.IOException;
 import java.util.UUID;
+
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.writeUUID;
 
 /**
  * Operation for {@link FencedLock#forceUnlock()}
@@ -52,7 +55,7 @@ public class ForceUnlockOp extends RaftOp implements IndeterminateOperationState
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
-        service.forceRelease(groupId, name, expectedFence, invocationUid);
+        service.forceRelease(groupId, commitIndex, name, invocationUid, expectedFence);
         return true;
     }
 
@@ -80,17 +83,14 @@ public class ForceUnlockOp extends RaftOp implements IndeterminateOperationState
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeUTF(name);
         out.writeLong(expectedFence);
-        out.writeLong(invocationUid.getLeastSignificantBits());
-        out.writeLong(invocationUid.getMostSignificantBits());
+        writeUUID(out, invocationUid);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         name = in.readUTF();
         expectedFence = in.readLong();
-        long least = in.readLong();
-        long most = in.readLong();
-        invocationUid = new UUID(most, least);
+        invocationUid = readUUID(in);
     }
 
     @Override

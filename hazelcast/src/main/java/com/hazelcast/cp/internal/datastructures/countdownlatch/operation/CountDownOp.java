@@ -17,37 +17,40 @@
 package com.hazelcast.cp.internal.datastructures.countdownlatch.operation;
 
 import com.hazelcast.core.ICountDownLatch;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchDataSerializerHook;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 
 import java.io.IOException;
 import java.util.UUID;
+
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.writeUUID;
 
 /**
  * Operation for {@link ICountDownLatch#countDown()}
  */
 public class CountDownOp extends AbstractCountDownLatchOp implements IndeterminateOperationStateAware {
 
-    private int expectedRound;
     private UUID invocationUid;
+    private int expectedRound;
 
     public CountDownOp() {
     }
 
-    public CountDownOp(String name, int expectedRound, UUID invocationUid) {
+    public CountDownOp(String name, UUID invocationUid, int expectedRound) {
         super(name);
-        this.expectedRound = expectedRound;
         this.invocationUid = invocationUid;
+        this.expectedRound = expectedRound;
     }
 
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftCountDownLatchService service = getService();
-        return service.countDown(groupId, name, expectedRound, invocationUid);
+        return service.countDown(groupId, name, invocationUid, expectedRound);
     }
 
     @Override
@@ -64,25 +67,22 @@ public class CountDownOp extends AbstractCountDownLatchOp implements Indetermina
     public void writeData(ObjectDataOutput out)
             throws IOException {
         super.writeData(out);
+        writeUUID(out, invocationUid);
         out.writeInt(expectedRound);
-        out.writeLong(invocationUid.getLeastSignificantBits());
-        out.writeLong(invocationUid.getMostSignificantBits());
     }
 
     @Override
     public void readData(ObjectDataInput in)
             throws IOException {
         super.readData(in);
+        invocationUid = readUUID(in);
         expectedRound = in.readInt();
-        long least = in.readLong();
-        long most = in.readLong();
-        invocationUid = new UUID(most, least);
     }
 
     @Override
     protected void toString(StringBuilder sb) {
         super.toString(sb);
-        sb.append(", expectedRound=").append(expectedRound)
-          .append(", invocationUid=").append(invocationUid);
+        sb.append(", invocationUid=").append(invocationUid)
+          .append(", expectedRound=").append(expectedRound);
     }
 }

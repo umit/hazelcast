@@ -44,9 +44,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Future;
 
 import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 import static com.hazelcast.util.Preconditions.checkNotNull;
@@ -147,11 +147,11 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
     public final void restoreSnapshot(CPGroupId groupId, long commitIndex, RR registry) {
         RR prev = registries.put(registry.getGroupId(), registry);
         // do not shift the already existing wait timeouts...
-        Map<W, Tuple2<Long, Long>> existingWaitTimeouts =
-                prev != null ? prev.getWaitTimeouts() : Collections.<W, Tuple2<Long, Long>>emptyMap();
-        Map<W, Long> newWaitKeys = registry.overwriteWaitTimeouts(existingWaitTimeouts);
-        for (Entry<W, Long> e : newWaitKeys.entrySet()) {
-            scheduleTimeout(groupId, e.getKey(), e.getValue());
+        Map<Tuple2<String, UUID>, Tuple2<Long, Long>> existingWaitTimeouts =
+                prev != null ? prev.getWaitTimeouts() : Collections.<Tuple2<String, UUID>, Tuple2<Long, Long>>emptyMap();
+        Map<Tuple2<String, UUID>, Long> newWaitKeys = registry.overwriteWaitTimeouts(existingWaitTimeouts);
+        for (Entry<Tuple2<String, UUID>, Long> e : newWaitKeys.entrySet()) {
+            scheduleTimeout(groupId, e.getKey().element1, e.getKey().element2, e.getValue());
         }
     }
 
@@ -170,9 +170,18 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
             return;
         }
 
-        Map<Long, Object> result = registry.closeSession(sessionId);
+        List<Long> expiredWaitKeys = new ArrayList<Long>();
+        Map<Long, Object> completedWaitKeys = new HashMap<Long, Object>();
+        registry.closeSession(sessionId, expiredWaitKeys, completedWaitKeys);
+
+        if (logger.isFineEnabled() && (expiredWaitKeys.size() > 0 || completedWaitKeys.size() > 0)) {
+            logger.fine("Closed Session[" + sessionId + "] in " + groupId  + " expired wait key commit indices: "
+                    + expiredWaitKeys + " completed wait keys: " + completedWaitKeys);
+        }
+
+        completeFutures(groupId, expiredWaitKeys, new SessionExpiredException());
         RaftNodeImpl raftNode = (RaftNodeImpl) raftService.getRaftNode(groupId);
-        for (Entry<Long, Object> entry : result.entrySet()) {
+        for (Entry<Long, Object> entry : completedWaitKeys.entrySet()) {
             raftNode.completeFuture(entry.getKey(), entry.getValue());
         }
     }
@@ -192,7 +201,7 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
         }
     }
 
-    public final void expireWaitKeys(CPGroupId groupId, Collection<W> keys) {
+    public final void expireWaitKeys(CPGroupId groupId, Collection<Tuple2<String, UUID>> keys) {
         // no need to validate the session. if the session is expired, the corresponding wait key is gone already
         ResourceRegistry<W, R> registry = registries.get(groupId);
         if (registry == null) {
@@ -201,13 +210,8 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
         }
 
         List<Long> expired = new ArrayList<Long>();
-        for (W key : keys) {
-            if (registry.expireWaitKey(key)) {
-                expired.add(key.commitIndex());
-                if (logger.isFineEnabled()) {
-                    logger.fine("Wait key of " + key + " is expired.");
-                }
-            }
+        for (Tuple2<String, UUID> key : keys) {
+            registry.expireWaitKey(key.element1, key.element2, expired);
         }
 
         completeFutures(groupId, expired, expiredWaitKeyResponse());
@@ -227,11 +231,10 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
         return registry;
     }
 
-    protected final void scheduleTimeout(CPGroupId groupId, W waitKey, long timeoutMs) {
+    protected final void scheduleTimeout(CPGroupId groupId, String name, UUID invocationUid, long timeoutMs) {
         if (timeoutMs > 0 && timeoutMs <= WAIT_TIMEOUT_TASK_UPPER_BOUND_MILLIS) {
-            Runnable task = new ExpireWaitKeysTask(groupId, waitKey);
             ExecutionService executionService = nodeEngine.getExecutionService();
-            executionService.schedule(task, timeoutMs, MILLISECONDS);
+            executionService.schedule(new ExpireWaitKeysTask(groupId, Tuple2.of(name, invocationUid)), timeoutMs, MILLISECONDS);
         }
     }
 
@@ -248,9 +251,13 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
         throw new SessionExpiredException("active session: " + sessionId + " does not exist in " + groupId);
     }
 
-    protected final void notifyWaitKeys(CPGroupId groupId, Collection<W> keys, Object result) {
+    protected final void notifyWaitKeys(CPGroupId groupId, String name, Collection<W> keys, Object result) {
         if (keys.isEmpty()) {
             return;
+        }
+
+        if (logger.isFineEnabled()) {
+            logger.fine("Resource[" + name + "] in " + groupId + " completed wait keys: " + keys + " result: " + result);
         }
 
         List<Long> indices = new ArrayList<Long>(keys.size());
@@ -270,12 +277,11 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
         }
     }
 
-    private void locallyInvokeExpireWaitKeysOp(CPGroupId groupId, Collection<W> keys) {
+    private void locallyInvokeExpireWaitKeysOp(CPGroupId groupId, Collection<Tuple2<String, UUID>> keys) {
         try {
             RaftNode raftNode = raftService.getRaftNode(groupId);
             if (raftNode != null) {
-                Future f = raftNode.replicate(new ExpireWaitKeysOp<W>(serviceName(), keys));
-                f.get();
+                raftNode.replicate(new ExpireWaitKeysOp(serviceName(), keys)).get();
             }
         } catch (Exception e) {
             if (logger.isFineEnabled()) {
@@ -286,9 +292,9 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
 
     private class ExpireWaitKeysTask implements Runnable {
         final CPGroupId groupId;
-        final Collection<W> keys;
+        final Collection<Tuple2<String, UUID>> keys;
 
-        ExpireWaitKeysTask(CPGroupId groupId, W key) {
+        ExpireWaitKeysTask(CPGroupId groupId, Tuple2<String, UUID> key) {
             this.groupId = groupId;
             this.keys = Collections.singleton(key);
         }
@@ -302,17 +308,18 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
     private class ExpireWaitKeysPeriodicTask implements Runnable {
         @Override
         public void run() {
-            for (Entry<CPGroupId, Collection<W>> e : getWaitKeysToExpire().entrySet()) {
+            for (Entry<CPGroupId, Collection<Tuple2<String, UUID>>> e : getWaitKeysToExpire().entrySet()) {
                 locallyInvokeExpireWaitKeysOp(e.getKey(), e.getValue());
             }
         }
 
         // queried locally
-        private Map<CPGroupId, Collection<W>> getWaitKeysToExpire() {
-            Map<CPGroupId, Collection<W>> timeouts = new HashMap<CPGroupId, Collection<W>>();
+        private Map<CPGroupId, Collection<Tuple2<String, UUID>>> getWaitKeysToExpire() {
+            Map<CPGroupId, Collection<Tuple2<String, UUID>>> timeouts =
+                    new HashMap<CPGroupId, Collection<Tuple2<String, UUID>>>();
             long now = Clock.currentTimeMillis();
             for (ResourceRegistry<W, R> registry : registries.values()) {
-                Collection<W> t = registry.getWaitKeysToExpire(now);
+                Collection<Tuple2<String, UUID>> t = registry.getWaitKeysToExpire(now);
                 if (t.size() > 0) {
                     timeouts.put(registry.getGroupId(), t);
                 }
@@ -320,6 +327,5 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
 
             return timeouts;
         }
-
     }
 }

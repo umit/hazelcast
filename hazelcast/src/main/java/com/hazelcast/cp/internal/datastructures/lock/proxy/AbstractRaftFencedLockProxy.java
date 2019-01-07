@@ -76,7 +76,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
             long sessionId = acquireSession();
             try {
                 RaftLockOwnershipState ownership = doLock(sessionId, threadId, invocationUid).get();
-                assert ownership.isLocked();
+                assert ownership.isLockedBy(sessionId, threadId);
 
                 // initialize the local state with the lock count returned from the Raft group
                 // since I might have performed some lock() calls that failed with operation timeout
@@ -109,7 +109,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
             long sessionId = acquireSession();
             try {
                 RaftLockOwnershipState ownership = doLock(sessionId, threadId, invocationUid).join();
-                assert ownership.isLocked();
+                assert ownership.isLockedBy(sessionId, threadId);
 
                 // initialize the local state with the lock count returned from the Raft group
                 // since I might have performed some lock() calls that failed with operation timeout
@@ -157,7 +157,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
             long sessionId = acquireSession();
             try {
                 RaftLockOwnershipState ownership = doTryLock(sessionId, threadId, invocationUid, timeoutMillis).join();
-                if (ownership.isLocked()) {
+                if (ownership.isLockedBy(sessionId, threadId)) {
                     // initialize the local state with the lock count returned from the Raft group
                     // since I might have performed some lock() calls that failed with operation timeout
                     // on my side but actually committed on the Raft group.
@@ -266,7 +266,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
         // the session before I made the failed lock() call, so there is no need to acquire it here.
 
         RaftLockOwnershipState ownership = doGetLockOwnershipState().join();
-        if (ownership.getSessionId() == sessionId && ownership.getThreadId() == threadId) {
+        if (ownership.isLockedBy(sessionId, threadId)) {
             lockStates.put(threadId, new LockState(sessionId, ownership.getFence(), ownership.getLockCount()));
             return ownership.getFence();
         }
@@ -290,7 +290,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
         // the session before I made the failed lock() call, so there is no need to acquire it here.
 
         RaftLockOwnershipState ownership = doGetLockOwnershipState().join();
-        if (ownership.getSessionId() == sessionId && ownership.getThreadId() == threadId) {
+        if (ownership.isLockedBy(sessionId, threadId)) {
             lockStates.put(threadId, new LockState(sessionId, ownership.getFence(), ownership.getLockCount()));
             return true;
         }

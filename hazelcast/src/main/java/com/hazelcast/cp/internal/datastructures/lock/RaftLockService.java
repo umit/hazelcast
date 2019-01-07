@@ -51,102 +51,109 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
         super.initImpl();
     }
 
-    public RaftLockOwnershipState acquire(CPGroupId groupId, String name, LockEndpoint endpoint, long commitIndex,
+    public RaftLockOwnershipState acquire(CPGroupId groupId, long commitIndex, String name, LockEndpoint endpoint,
                                           UUID invocationUid) {
         heartbeatSession(groupId, endpoint.sessionId());
-        AcquireResult result = getOrInitRegistry(groupId).acquire(name, endpoint, commitIndex, invocationUid);
+        RaftLockRegistry registry = getOrInitRegistry(groupId);
+        AcquireResult result = registry.acquire(commitIndex, name, endpoint, invocationUid);
 
         if (logger.isFineEnabled()) {
-            logger.fine("Lock[" + name + "] in " + groupId + " acquired: " + result.ownership.isLocked() + " by <" + endpoint
-                    + ", " + invocationUid + ">");
+            if (result.ownership.isLockedBy(endpoint.sessionId(), endpoint.threadId())) {
+                logger.fine("Lock[" + name + "] in " + groupId + " acquired by <" + endpoint + ", " + invocationUid
+                        + "> at commit index: " + commitIndex + ". new lock state: " + result.ownership);
+            } else {
+                logger.fine("Lock[" + name + "] in " + groupId + " wait key added for <" + endpoint + ", " + invocationUid
+                        + "> at commit index: " + commitIndex + ". lock state: " + registry.getLockOwnershipState(name));
+            }
         }
 
         if (!result.ownership.isLocked()) {
-            notifyCancelledWaitKeys(groupId, name, result.cancelled);
+            notifyWaitKeys(groupId, name, result.cancelled, new WaitKeyCancelledException());
         }
 
         return result.ownership;
     }
 
-    public RaftLockOwnershipState tryAcquire(CPGroupId groupId, String name, LockEndpoint endpoint, long commitIndex,
+    public RaftLockOwnershipState tryAcquire(CPGroupId groupId, long commitIndex, String name, LockEndpoint endpoint,
                                              UUID invocationUid, long timeoutMs) {
         heartbeatSession(groupId, endpoint.sessionId());
-        AcquireResult result = getOrInitRegistry(groupId).tryAcquire(name, endpoint, commitIndex, invocationUid, timeoutMs);
+        RaftLockRegistry registry = getOrInitRegistry(groupId);
+        AcquireResult result = registry.tryAcquire(commitIndex, name, endpoint, invocationUid, timeoutMs);
+        boolean success = result.ownership.isLockedBy(endpoint.sessionId(), endpoint.threadId());
 
         if (logger.isFineEnabled()) {
-            logger.fine("Lock[" + name + "] in " + groupId + " acquired: " + result.ownership.isLocked() + " by <" + endpoint
-                    + ", " + invocationUid + ">");
+            if (success) {
+                logger.fine("Lock[" + name + "] in " + groupId + " acquired by <" + endpoint + ", " + invocationUid
+                        + "> at commit index: " + commitIndex + ". new lock state: " + result.ownership);
+            } else if (timeoutMs > 0) {
+                logger.fine("Lock[" + name + "] in " + groupId + " wait key added for <" + endpoint + ", " + invocationUid
+                        + "> at commit index: " + commitIndex + ". lock state: " + registry.getLockOwnershipState(name));
+            } else {
+                logger.fine("Lock[" + name + "] in " + groupId + " not acquired by <" + endpoint + ", " + invocationUid
+                        + "> at commit index: " + commitIndex + ". lock state: " + registry.getLockOwnershipState(name));
+            }
         }
 
-        if (!result.ownership.isLocked()) {
-            scheduleTimeout(groupId, new LockInvocationKey(name, endpoint, commitIndex, invocationUid), timeoutMs);
+        if (!success) {
+            scheduleTimeout(groupId, name, invocationUid, timeoutMs);
             notifyCancelledWaitKeys(groupId, name, result.cancelled);
         }
 
         return result.ownership;
     }
 
-    public void release(CPGroupId groupId, String name, LockEndpoint endpoint, UUID invocationUid, int lockCount) {
+    public void release(CPGroupId groupId, long commitIndex, String name, LockEndpoint endpoint, UUID invocationUid,
+                        int lockCount) {
         heartbeatSession(groupId, endpoint.sessionId());
         RaftLockRegistry registry = getLockRegistryOrFail(groupId, name);
         ReleaseResult result = registry.release(name, endpoint, invocationUid, lockCount);
 
-        if (result.success) {
-            if (logger.isFineEnabled()) {
-                logger.fine("Lock[" + name + "] in " + groupId + " is released by <" + endpoint + ", " + invocationUid + ">");
+        if (logger.isFineEnabled()) {
+            if (result.success) {
+                logger.fine("Lock[" + name + "] in " + groupId + " released by <" + endpoint + ", " + invocationUid
+                        + "> at commit index: " + commitIndex + ". new lock state: " + result.ownership);
+            } else {
+                logger.fine("Lock[" + name + "] in " + groupId + " not released by <" + endpoint + ", " + invocationUid
+                        + "> at commit index: " + commitIndex + ". lock state: " + registry.getLockOwnershipState(name));
             }
+        }
 
-            notifySucceededWaitKeys(groupId, name, result.ownership, result.notifications);
+        if (result.success) {
+            notifyWaitKeys(groupId, name, result.notifications, result.ownership);
         } else {
             notifyCancelledWaitKeys(groupId, name, result.notifications);
             throw new IllegalMonitorStateException("Current thread is not owner of the lock!");
         }
     }
 
-    public void forceRelease(CPGroupId groupId, String name, long expectedFence, UUID invocationUid) {
+    public void forceRelease(CPGroupId groupId, long commitIndex, String name, UUID invocationUid, long expectedFence) {
         RaftLockRegistry registry = getLockRegistryOrFail(groupId, name);
-        ReleaseResult result = registry.forceRelease(name, expectedFence, invocationUid);
+        ReleaseResult result = registry.forceRelease(name, invocationUid, expectedFence);
+
+        if (logger.isFineEnabled()) {
+            if (result.success) {
+                logger.fine("Lock[" + name + "] in " + groupId + " force-released by <" + invocationUid
+                        + "> at commit index: " + commitIndex + ". new lock state: " + result.ownership);
+            } else {
+                logger.fine("Lock[" + name + "] in " + groupId + " not force-released by <" + invocationUid
+                        + "> at commit index: " + commitIndex + ". lock state: " + registry.getLockOwnershipState(name));
+            }
+        }
 
         if (result.success) {
-            if (logger.isFineEnabled()) {
-                logger.fine("Lock[" + name + "] in " + groupId + " is force-released by " + invocationUid + " for fence: "
-                        + expectedFence);
-            }
-
-            notifySucceededWaitKeys(groupId, name, result.ownership, result.notifications);
+            notifyWaitKeys(groupId, name, result.notifications, result.ownership);
         } else {
             notifyCancelledWaitKeys(groupId, name, result.notifications);
             throw new IllegalMonitorStateException("Current thread is not owner of the lock!");
         }
     }
 
-    private void notifySucceededWaitKeys(CPGroupId groupId, String name, RaftLockOwnershipState ownership,
-                                         Collection<LockInvocationKey> waitKeys) {
-        if (waitKeys.isEmpty()) {
+    private void notifyCancelledWaitKeys(CPGroupId groupId, String name, Collection<LockInvocationKey> keys) {
+        if (keys.isEmpty()) {
             return;
         }
 
-        assert ownership.isLocked();
-
-        LockInvocationKey waitKey = waitKeys.iterator().next();
-        if (logger.isFineEnabled()) {
-            logger.fine("Lock[" + name + "] in " + groupId + " is acquired by <" + waitKey.endpoint() + ", "
-                    + waitKey.invocationUid() + ">");
-        }
-
-        notifyWaitKeys(groupId, waitKeys, ownership);
-    }
-
-    private void notifyCancelledWaitKeys(CPGroupId groupId, String name, Collection<LockInvocationKey> waitKeys) {
-        if (waitKeys.isEmpty()) {
-            return;
-        }
-
-        if (logger.isFineEnabled()) {
-            logger.fine("Wait keys: " + waitKeys +  " for Lock[" + name + "] in " + groupId + " are notifications.");
-        }
-
-        notifyWaitKeys(groupId, waitKeys, new WaitKeyCancelledException());
+        notifyWaitKeys(groupId, name, keys, new WaitKeyCancelledException());
     }
 
     public RaftLockOwnershipState getLockOwnershipState(CPGroupId groupId, String name) {

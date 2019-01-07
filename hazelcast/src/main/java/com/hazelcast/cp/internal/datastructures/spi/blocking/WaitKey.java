@@ -18,6 +18,8 @@ package com.hazelcast.cp.internal.datastructures.spi.blocking;
 
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 
+import java.util.UUID;
+
 /**
  * This abstraction is used when an operation does not return a response
  * at commit-time. Such an operation will either return a response in future
@@ -25,11 +27,6 @@ import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
  * implementations of this interface.
  */
 public interface WaitKey {
-
-    /**
-     * Returns name of the data structure to which this wait key is attached.
-     */
-    String name();
 
     /**
      * Returns id of the session to which the corresponding operation is
@@ -44,4 +41,9 @@ public interface WaitKey {
      * at the time of its commit.
      */
     long commitIndex();
+
+    /**
+     * Returns unique id of the committed operation which is provided by the caller.
+     */
+    UUID invocationUid();
 }

@@ -18,10 +18,11 @@ package com.hazelcast.cp.internal.datastructures.semaphore;
 
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.BlockingResource;
+import com.hazelcast.cp.internal.datastructures.spi.blocking.WaitKeyContainer;
+import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.util.collection.Long2ObjectHashMap;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -37,6 +38,8 @@ import java.util.Set;
 import java.util.UUID;
 
 import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.writeUUID;
 import static com.hazelcast.util.Preconditions.checkPositive;
 import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.util.Collections.unmodifiableCollection;
@@ -97,7 +100,7 @@ public class RaftSemaphore extends BlockingResource<AcquireInvocationKey> implem
     AcquireResult acquire(AcquireInvocationKey key, boolean wait) {
         SemaphoreEndpoint endpoint = key.endpoint();
         SessionSemaphoreState state = sessionStates.get(key.sessionId());
-        if (state != null && state.invocationRefUids.containsKey(key.invocationUid())) {
+        if (state != null && state.containsInvocation(endpoint.threadId(), key.invocationUid())) {
             return new AcquireResult(key.permits(), Collections.<AcquireInvocationKey>emptyList());
         }
 
@@ -105,7 +108,7 @@ public class RaftSemaphore extends BlockingResource<AcquireInvocationKey> implem
 
         if (!isAvailable(key.permits())) {
             if (wait) {
-                waitKeys.add(key);
+                addWaitKey(endpoint, key);
             }
 
             return new AcquireResult(0, cancelled);
@@ -129,7 +132,8 @@ public class RaftSemaphore extends BlockingResource<AcquireInvocationKey> implem
             sessionStates.put(sessionId, state);
         }
 
-        if (state.invocationRefUids.put(invocationUid, permits) == null) {
+        Tuple2<UUID, Integer> prev = state.invocationRefUids.put(endpoint.threadId(), Tuple2.of(invocationUid, permits));
+        if (prev == null || !prev.element1.equals(invocationUid)) {
             state.acquiredPermits += permits;
             available -= permits;
         }
@@ -157,7 +161,7 @@ public class RaftSemaphore extends BlockingResource<AcquireInvocationKey> implem
                 return ReleaseResult.failed(cancelWaitKeys(endpoint, invocationUid));
             }
 
-            if (state.invocationRefUids.containsKey(invocationUid)) {
+            if (state.containsInvocation(endpoint.threadId(), invocationUid)) {
                 return ReleaseResult.successful(Collections.<AcquireInvocationKey>emptyList(),
                         Collections.<AcquireInvocationKey>emptyList());
             }
@@ -167,7 +171,7 @@ public class RaftSemaphore extends BlockingResource<AcquireInvocationKey> implem
             }
 
             state.acquiredPermits -= permits;
-            state.invocationRefUids.put(invocationUid, permits);
+            state.invocationRefUids.put(endpoint.threadId(), Tuple2.of(invocationUid, permits));
         }
 
         available += permits;
@@ -183,7 +187,7 @@ public class RaftSemaphore extends BlockingResource<AcquireInvocationKey> implem
         RaftSemaphore clone = new RaftSemaphore();
         clone.groupId = this.groupId;
         clone.name = this.name;
-        clone.waitKeys.addAll(this.waitKeys);
+        clone.waitKeys.putAll(this.waitKeys);
         clone.initialized = this.initialized;
         clone.available = this.available;
         for (Entry<Long, SessionSemaphoreState> e : this.sessionStates.entrySet()) {
@@ -197,34 +201,26 @@ public class RaftSemaphore extends BlockingResource<AcquireInvocationKey> implem
     }
 
     private Collection<AcquireInvocationKey> cancelWaitKeys(SemaphoreEndpoint endpoint, UUID invocationUid) {
-        List<AcquireInvocationKey> cancelled = new ArrayList<AcquireInvocationKey>(0);
-        Iterator<AcquireInvocationKey> iter = waitKeys.iterator();
-        while (iter.hasNext()) {
-            AcquireInvocationKey waitKey = iter.next();
-            if (waitKey.isDifferentInvocationOf(endpoint, invocationUid)) {
-                cancelled.add(waitKey);
-                iter.remove();
-            }
+        List<AcquireInvocationKey> cancelled = null;
+        WaitKeyContainer<AcquireInvocationKey> container = waitKeys.get(endpoint);
+        if (container != null && container.key().isDifferentInvocationOf(endpoint, invocationUid)) {
+            cancelled = container.keyAndRetries();
+            waitKeys.remove(endpoint);
         }
 
-        return cancelled;
+        return cancelled != null ? cancelled : Collections.<AcquireInvocationKey>emptyList();
     }
 
     private Collection<AcquireInvocationKey> assignPermitsToWaitKeys() {
         List<AcquireInvocationKey> assigned = new ArrayList<AcquireInvocationKey>();
-        Set<UUID> assignedInvocationUids = new HashSet<UUID>();
-        Iterator<AcquireInvocationKey> iterator = waitKeys.iterator();
+        Iterator<WaitKeyContainer<AcquireInvocationKey>> iterator = waitKeys.values().iterator();
         while (iterator.hasNext() && available > 0) {
-            AcquireInvocationKey key = iterator.next();
-            if (assignedInvocationUids.contains(key.invocationUid())) {
+            WaitKeyContainer<AcquireInvocationKey> container = iterator.next();
+            AcquireInvocationKey key = container.key();
+            if (key.permits() <= available) {
                 iterator.remove();
-                assigned.add(key);
-            } else if (key.permits() <= available) {
-                iterator.remove();
-                if (assignedInvocationUids.add(key.invocationUid())) {
-                    assigned.add(key);
-                    assignPermitsToInvocation(key.endpoint(), key.invocationUid(), key.permits());
-                }
+                assigned.addAll(container.keyAndRetries());
+                assignPermitsToInvocation(key.endpoint(), key.invocationUid(), key.permits());
             }
         }
 
@@ -242,7 +238,7 @@ public class RaftSemaphore extends BlockingResource<AcquireInvocationKey> implem
     AcquireResult drain(SemaphoreEndpoint endpoint, UUID invocationUid) {
         SessionSemaphoreState state = sessionStates.get(endpoint.sessionId());
         if (state != null) {
-            Integer permits = state.invocationRefUids.get(invocationUid);
+            Integer permits = state.getInvocationResponse(endpoint.threadId(), invocationUid);
             if (permits != null) {
                 return new AcquireResult(permits, Collections.<AcquireInvocationKey>emptyList());
             }
@@ -283,12 +279,13 @@ public class RaftSemaphore extends BlockingResource<AcquireInvocationKey> implem
                 sessionStates.put(sessionId, state);
             }
 
-            if (state.invocationRefUids.containsKey(invocationUid)) {
+            long threadId = endpoint.threadId();
+            if (state.containsInvocation(threadId, invocationUid)) {
                 Collection<AcquireInvocationKey> c = Collections.emptyList();
                 return ReleaseResult.successful(c, c);
             }
 
-            state.invocationRefUids.put(invocationUid, permits);
+            state.invocationRefUids.put(threadId, Tuple2.of(invocationUid, permits));
         }
 
         available += permits;
@@ -304,7 +301,7 @@ public class RaftSemaphore extends BlockingResource<AcquireInvocationKey> implem
      * Releases permits of the closed session.
      */
     @Override
-    protected void onSessionClose(long sessionId, Long2ObjectHashMap<Object> responses) {
+    protected void onSessionClose(long sessionId, Map<Long, Object> responses) {
         SessionSemaphoreState state = sessionStates.get(sessionId);
         if (state != null) {
             // remove the session after release() because release() checks existence of the session
@@ -353,12 +350,11 @@ public class RaftSemaphore extends BlockingResource<AcquireInvocationKey> implem
             out.writeLong(e1.getKey());
             SessionSemaphoreState state = e1.getValue();
             out.writeInt(state.invocationRefUids.size());
-            for (Entry<UUID, Integer> e2 : state.invocationRefUids.entrySet()) {
-                UUID invocationUid = e2.getKey();
-                int permits = e2.getValue();
-                out.writeLong(invocationUid.getLeastSignificantBits());
-                out.writeLong(invocationUid.getMostSignificantBits());
-                out.writeInt(permits);
+            for (Entry<Long, Tuple2<UUID, Integer>> e2 : state.invocationRefUids.entrySet()) {
+                out.writeLong(e2.getKey());
+                Tuple2<UUID, Integer> t = e2.getValue();
+                writeUUID(out, t.element1);
+                out.writeInt(t.element2);
             }
             out.writeInt(state.acquiredPermits);
         }
@@ -375,10 +371,10 @@ public class RaftSemaphore extends BlockingResource<AcquireInvocationKey> implem
             SessionSemaphoreState state = new SessionSemaphoreState();
             int refUidCount = in.readInt();
             for (int j = 0; j < refUidCount; j++) {
-                long least = in.readLong();
-                long most = in.readLong();
+                long threadId = in.readLong();
+                UUID invocationUid = readUUID(in);
                 int permits = in.readInt();
-                state.invocationRefUids.put(new UUID(most, least), permits);
+                state.invocationRefUids.put(threadId, Tuple2.of(invocationUid, permits));
             }
 
             state.acquiredPermits = in.readInt();
@@ -454,11 +450,21 @@ public class RaftSemaphore extends BlockingResource<AcquireInvocationKey> implem
     private static class SessionSemaphoreState {
 
         /**
-         * map of invocationUid -> permits to track last operation of each endpoint
+         * map of threadId -> <invocationUid, permits> to track last operation of each endpoint
          */
-        private final Map<UUID, Integer> invocationRefUids = new HashMap<UUID, Integer>();
+        private final Map<Long, Tuple2<UUID, Integer>> invocationRefUids = new HashMap<Long, Tuple2<UUID, Integer>>();
 
         private int acquiredPermits;
+
+        boolean containsInvocation(long threadId, UUID invocationUid) {
+            Tuple2<UUID, Integer> t = invocationRefUids.get(threadId);
+            return (t != null && t.element1.equals(invocationUid));
+        }
+
+        Integer getInvocationResponse(long threadId, UUID invocationUid) {
+            Tuple2<UUID, Integer> t = invocationRefUids.get(threadId);
+            return (t != null && t.element1.equals(invocationUid)) ? t.element2 : null;
+        }
 
         @Override
         public String toString() {

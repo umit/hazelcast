@@ -166,7 +166,7 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
 
         long sessionTTLMillis = getSessionTTLMillis();
         long sessionId = registry.createNewSession(sessionTTLMillis, endpoint);
-        logger.info("Created new session: " + sessionId + " in " + groupId);
+        logger.info("Created new session: " + sessionId + " in " + groupId + " for " + endpoint);
         return new SessionResponse(sessionId, sessionTTLMillis, getHeartbeatIntervalMillis());
     }
 
@@ -189,6 +189,7 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
         }
 
         if (registry.closeSession(sessionId)) {
+            logger.info("Session: " + sessionId +  " is closed in " + groupId);
             notifyServices(groupId, Collections.singleton(sessionId));
             return true;
         }
@@ -215,6 +216,8 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
             if (logger.isFineEnabled()) {
                 logger.fine("Sessions: " + expired + " are expired in " + groupId);
             }
+
+            logger.fine("Sessions: " + expired + " are expired in " + groupId);
 
             notifyServices(groupId, expired);
         }

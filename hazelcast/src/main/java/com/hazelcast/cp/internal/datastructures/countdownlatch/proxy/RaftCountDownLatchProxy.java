@@ -60,13 +60,13 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
         checkNotNull(unit);
 
         long timeoutMillis = Math.max(0, unit.toMillis(timeout));
-        return invocationManager.<Boolean>invoke(groupId, new AwaitOp(objectName, timeoutMillis)).join();
+        return invocationManager.<Boolean>invoke(groupId, new AwaitOp(objectName, newUnsecureUUID(), timeoutMillis)).join();
     }
 
     @Override
     public void countDown() {
         int round = invocationManager.<Integer>invoke(groupId, new GetRoundOp(objectName)).join();
-        invocationManager.invoke(groupId, new CountDownOp(objectName, round, newUnsecureUUID())).join();
+        invocationManager.invoke(groupId, new CountDownOp(objectName, newUnsecureUUID(), round)).join();
     }
 
     @Override

@@ -346,4 +346,33 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
         }, 20);
     }
 
+    @Test
+    public void testLockAcquired_whenLockOwnerShutsDown() {
+        lock.lock();
+
+        final CountDownLatch remoteLockedLatch = new CountDownLatch(1);
+        spawn(new Runnable() {
+            @Override
+            public void run() {
+                HazelcastInstance otherInstance = instances[0] == lockInstance ? instances[1] : instances[0];
+                FencedLock remoteLock = otherInstance.getCPSubsystem().getLock(proxyName);
+                remoteLock.lock();
+                remoteLockedLatch.countDown();
+            }
+        });
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
+                RaftLock raftLock = service.getRegistryOrNull(lock.getGroupId()).getResourceOrNull(objectName);
+                assertFalse(raftLock.getWaitKeys().isEmpty());
+            }
+        });
+
+        lockInstance.shutdown();
+
+        assertOpenEventually(remoteLockedLatch);
+    }
+
 }

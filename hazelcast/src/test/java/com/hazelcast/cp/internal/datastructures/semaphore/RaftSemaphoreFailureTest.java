@@ -475,7 +475,6 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
             public void run() {
                 RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
                 RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
-                assertNotNull(registry);
                 assertEquals(2, registry.getWaitTimeouts().size());
             }
         });
@@ -488,8 +487,8 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
             public void run() {
                 RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
                 RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
-                assertNotNull(registry);
-                assertEquals(3, registry.getWaitTimeouts().size());
+                RaftSemaphore raftSemaphore = registry.getResourceOrNull(objectName);
+                assertEquals(2, raftSemaphore.getWaitKeys().size());
             }
         });
 
@@ -499,7 +498,6 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
                 semaphore.increasePermits(3);
             }
         }).get();
-
 
         f1.join();
         f2.join();

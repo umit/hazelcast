@@ -17,12 +17,14 @@
 package com.hazelcast.cp.internal.datastructures.lock.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.instance.Node;
-import com.hazelcast.nio.Connection;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.datastructures.lock.operation.ForceUnlockOp;
+import com.hazelcast.instance.Node;
+import com.hazelcast.nio.Connection;
 
 import java.util.UUID;
+
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
 
 /**
  * Client message task for {@link ForceUnlockOp}
@@ -47,9 +49,7 @@ public class ForceUnlockMessageTask extends AbstractLockMessageTask {
     protected Object decodeClientMessage(ClientMessage clientMessage) {
         super.decodeClientMessage(clientMessage);
         threadId = clientMessage.getLong();
-        long least = clientMessage.getLong();
-        long most = clientMessage.getLong();
-        invocationUid = new UUID(most, least);
+        invocationUid = readUUID(clientMessage);
         expectedFence = clientMessage.getLong();
         return null;
     }

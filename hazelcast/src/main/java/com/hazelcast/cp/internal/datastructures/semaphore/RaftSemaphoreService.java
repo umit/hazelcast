@@ -54,7 +54,7 @@ public class RaftSemaphoreService extends AbstractBlockingService<AcquireInvocat
     public boolean initSemaphore(CPGroupId groupId, String name, int permits) {
         try {
             Collection<AcquireInvocationKey> acquired = getOrInitRegistry(groupId).init(name, permits);
-            notifyWaitKeys(groupId, acquired, true);
+            notifyWaitKeys(groupId, name, acquired, true);
 
             return true;
         } catch (IllegalStateException ignored) {
@@ -70,47 +70,78 @@ public class RaftSemaphoreService extends AbstractBlockingService<AcquireInvocat
     public boolean acquirePermits(CPGroupId groupId, long commitIndex, String name, SemaphoreEndpoint endpoint,
                                   UUID invocationUid, int permits, long timeoutMs) {
         heartbeatSession(groupId, endpoint.sessionId());
-        AcquireInvocationKey key = new AcquireInvocationKey(name, commitIndex, endpoint, invocationUid, permits);
+        AcquireInvocationKey key = new AcquireInvocationKey(commitIndex, endpoint, invocationUid, permits);
         AcquireResult result = getOrInitRegistry(groupId).acquire(name, key, timeoutMs);
 
+        boolean success = result.acquired > 0;
         if (logger.isFineEnabled()) {
-            logger.fine("Semaphore[" + name + "] in " + groupId + " acquired permits: " + result.acquired
-                    + " by <" + endpoint + ", " + invocationUid + ">");
+            if (success) {
+                logger.fine("Semaphore[" + name + "] in " + groupId + " acquired permits: " + permits + " by <" + endpoint + ", "
+                        + invocationUid + "> at commit index: " + commitIndex);
+            } else if (timeoutMs != 0) {
+                logger.fine("Semaphore[" + name + "] in " + groupId + " wait key added for permits: " + permits + " by <"
+                        + endpoint + ", " + invocationUid + "> at commit index: " + commitIndex);
+            } else {
+                logger.fine("Semaphore[" + name + "] in " + groupId + " not acquired permits: " + permits + " by <" + endpoint
+                        + ", " + invocationUid + "> at commit index: " + commitIndex);
+            }
         }
 
         notifyCancelledWaitKeys(groupId, name, result.cancelled);
 
-        if (result.acquired == 0) {
-            scheduleTimeout(groupId, key, timeoutMs);
+        if (!success) {
+            scheduleTimeout(groupId, name, invocationUid, timeoutMs);
         }
 
-        return (result.acquired != 0);
+        return success;
     }
 
-    public void releasePermits(CPGroupId groupId, String name, SemaphoreEndpoint endpoint, UUID invocationUid, int permits) {
+    public void releasePermits(CPGroupId groupId, long commitIndex, String name, SemaphoreEndpoint endpoint, UUID invocationUid,
+                               int permits) {
         heartbeatSession(groupId, endpoint.sessionId());
         ReleaseResult result = getOrInitRegistry(groupId).release(name, endpoint, invocationUid, permits);
         notifyCancelledWaitKeys(groupId, name, result.cancelled);
-        notifyWaitKeys(groupId, result.acquired, true);
+        notifyWaitKeys(groupId, name, result.acquired, true);
+
+        if (logger.isFineEnabled()) {
+            if (result.success) {
+                logger.fine("Semaphore[" + name + "] in " + groupId + " released permits: " + permits + " by <" + endpoint + ", "
+                        + invocationUid + "> at commit index: " + commitIndex + " new acquires: " + result.acquired);
+            } else {
+                logger.fine("Semaphore[" + name + "] in " + groupId + " not-released permits: " + permits + " by <" + endpoint
+                        + ", " + invocationUid + "> at commit index: " + commitIndex);
+            }
+        }
 
         if (!result.success) {
             throw new IllegalArgumentException();
         }
     }
 
-    public int drainPermits(CPGroupId groupId, String name, SemaphoreEndpoint endpoint, UUID invocationUid) {
+    public int drainPermits(CPGroupId groupId, String name, long commitIndex, SemaphoreEndpoint endpoint, UUID invocationUid) {
         heartbeatSession(groupId, endpoint.sessionId());
         AcquireResult result = getOrInitRegistry(groupId).drainPermits(name, endpoint, invocationUid);
         notifyCancelledWaitKeys(groupId, name, result.cancelled);
 
+        if (logger.isFineEnabled()) {
+            logger.fine("Semaphore[" + name + "] in " + groupId + " drained permits: " + result.acquired
+                    + " by <" + endpoint + ", " + invocationUid + "> at commit index: " + commitIndex);
+        }
+
         return result.acquired;
     }
 
-    public boolean changePermits(CPGroupId groupId, String name, SemaphoreEndpoint endpoint, UUID invocationUid, int permits) {
+    public boolean changePermits(CPGroupId groupId, long commitIndex, String name, SemaphoreEndpoint endpoint, UUID invocationUid,
+                                 int permits) {
         heartbeatSession(groupId, endpoint.sessionId());
         ReleaseResult result = getOrInitRegistry(groupId).changePermits(name, endpoint, invocationUid, permits);
         notifyCancelledWaitKeys(groupId, name, result.cancelled);
-        notifyWaitKeys(groupId, result.acquired, true);
+        notifyWaitKeys(groupId, name, result.acquired, true);
+
+        if (logger.isFineEnabled()) {
+            logger.fine("Semaphore[" + name + "] in " + groupId + " changed permits: " + permits + " by <" + endpoint + ", "
+                    + invocationUid + "> at commit index: " + commitIndex + ". new acquires: " + result.acquired);
+        }
 
         return result.success;
     }
@@ -124,11 +155,7 @@ public class RaftSemaphoreService extends AbstractBlockingService<AcquireInvocat
             return;
         }
 
-        if (logger.isFineEnabled()) {
-            logger.fine("Wait keys: " + waitKeys +  " for Semaphore[" + name + "] in " + groupId + " are cancelled.");
-        }
-
-        notifyWaitKeys(groupId, waitKeys, new WaitKeyCancelledException());
+        notifyWaitKeys(groupId, name, waitKeys, new WaitKeyCancelledException());
     }
 
     @Override

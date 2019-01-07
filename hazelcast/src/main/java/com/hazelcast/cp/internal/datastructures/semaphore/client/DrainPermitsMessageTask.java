@@ -24,6 +24,8 @@ import com.hazelcast.cp.internal.datastructures.semaphore.operation.DrainPermits
 
 import java.util.UUID;
 
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
+
 /**
  * Client message task for {@link DrainPermitsOp}
  */
@@ -46,9 +48,7 @@ public class DrainPermitsMessageTask extends AbstractSemaphoreMessageTask {
     protected Object decodeClientMessage(ClientMessage clientMessage) {
         super.decodeClientMessage(clientMessage);
         threadId = clientMessage.getLong();
-        long least = clientMessage.getLong();
-        long most = clientMessage.getLong();
-        invocationUid = new UUID(most, least);
+        invocationUid = readUUID(clientMessage);
         return null;
     }
 

@@ -43,8 +43,8 @@ public class LockOp extends AbstractLockOp implements IndeterminateOperationStat
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
-        RaftLockOwnershipState ownership = service.acquire(groupId, name, getLockEndpoint(), commitIndex, invocationUid);
-        return ownership.isLocked() ? ownership : PostponedResponse.INSTANCE;
+        RaftLockOwnershipState ownership = service.acquire(groupId, commitIndex, name, getLockEndpoint(), invocationUid);
+        return ownership.isLockedBy(sessionId, threadId) ? ownership : PostponedResponse.INSTANCE;
     }
 
     @Override

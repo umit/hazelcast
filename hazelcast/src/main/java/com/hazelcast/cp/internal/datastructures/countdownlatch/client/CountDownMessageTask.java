@@ -24,13 +24,15 @@ import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.CountDo
 
 import java.util.UUID;
 
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
+
 /**
  * Client message task for {@link CountDownOp}
  */
 public class CountDownMessageTask extends AbstractCountDownLatchMessageTask {
 
-    private int expectedRound;
     private UUID invocationUid;
+    private int expectedRound;
 
     CountDownMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
@@ -39,16 +41,14 @@ public class CountDownMessageTask extends AbstractCountDownLatchMessageTask {
     @Override
     protected void processMessage() {
         RaftInvocationManager invocationManager = getRaftInvocationManager();
-        invocationManager.invoke(groupId, new CountDownOp(name, expectedRound, invocationUid)).andThen(this);
+        invocationManager.invoke(groupId, new CountDownOp(name, invocationUid, expectedRound)).andThen(this);
     }
 
     @Override
     protected Object decodeClientMessage(ClientMessage clientMessage) {
         super.decodeClientMessage(clientMessage);
+        invocationUid = readUUID(clientMessage);
         expectedRound = clientMessage.getInt();
-        long least = clientMessage.getLong();
-        long most = clientMessage.getLong();
-        invocationUid = new UUID(most, least);
         return null;
     }
 

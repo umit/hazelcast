@@ -24,6 +24,9 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import java.io.IOException;
 import java.util.UUID;
 
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.writeUUID;
+import static com.hazelcast.util.Preconditions.checkNotNull;
 import static com.hazelcast.util.Preconditions.checkTrue;
 
 /**
@@ -36,7 +39,6 @@ import static com.hazelcast.util.Preconditions.checkTrue;
  */
 public class AcquireInvocationKey implements WaitKey, IdentifiedDataSerializable {
 
-    private String name;
     private long commitIndex;
     private SemaphoreEndpoint endpoint;
     private UUID invocationUid;
@@ -45,18 +47,14 @@ public class AcquireInvocationKey implements WaitKey, IdentifiedDataSerializable
     AcquireInvocationKey() {
     }
 
-    AcquireInvocationKey(String name, long commitIndex, SemaphoreEndpoint endpoint, UUID invocationUid, int permits) {
+    AcquireInvocationKey(long commitIndex, SemaphoreEndpoint endpoint, UUID invocationUid, int permits) {
+        checkNotNull(endpoint);
+        checkNotNull(invocationUid);
         checkTrue(permits > 0, "permits must be positive");
-        this.name = name;
         this.commitIndex = commitIndex;
         this.endpoint = endpoint;
         this.invocationUid = invocationUid;
         this.permits = permits;
-    }
-
-    @Override
-    public String name() {
-        return name;
     }
 
     @Override
@@ -69,19 +67,20 @@ public class AcquireInvocationKey implements WaitKey, IdentifiedDataSerializable
         return endpoint.sessionId();
     }
 
-    public SemaphoreEndpoint endpoint() {
-        return endpoint;
-    }
-
+    @Override
     public UUID invocationUid() {
         return invocationUid;
+    }
+
+    public SemaphoreEndpoint endpoint() {
+        return endpoint;
     }
 
     public int permits() {
         return permits;
     }
 
-    public boolean isDifferentInvocationOf(SemaphoreEndpoint endpoint, UUID invocationUid) {
+    boolean isDifferentInvocationOf(SemaphoreEndpoint endpoint, UUID invocationUid) {
         return endpoint().equals(endpoint) && !invocationUid().equals(invocationUid);
     }
 
@@ -97,27 +96,21 @@ public class AcquireInvocationKey implements WaitKey, IdentifiedDataSerializable
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeUTF(name);
         out.writeLong(commitIndex);
         out.writeObject(endpoint);
-        out.writeLong(invocationUid.getLeastSignificantBits());
-        out.writeLong(invocationUid.getMostSignificantBits());
+        writeUUID(out, invocationUid);
         out.writeInt(permits);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
-        name = in.readUTF();
         commitIndex = in.readLong();
         endpoint = in.readObject();
-        long least = in.readLong();
-        long most = in.readLong();
-        invocationUid = new UUID(most, least);
+        invocationUid = readUUID(in);
         permits = in.readInt();
     }
 
     @Override
-    @SuppressWarnings("checkstyle:npathcomplexity")
     public boolean equals(Object o) {
         if (this == o) {
             return true;
@@ -134,9 +127,6 @@ public class AcquireInvocationKey implements WaitKey, IdentifiedDataSerializable
         if (permits != that.permits) {
             return false;
         }
-        if (!name.equals(that.name)) {
-            return false;
-        }
         if (!endpoint.equals(that.endpoint)) {
             return false;
         }
@@ -145,8 +135,7 @@ public class AcquireInvocationKey implements WaitKey, IdentifiedDataSerializable
 
     @Override
     public int hashCode() {
-        int result = name.hashCode();
-        result = 31 * result + (int) (commitIndex ^ (commitIndex >>> 32));
+        int result = (int) (commitIndex ^ (commitIndex >>> 32));
         result = 31 * result + endpoint.hashCode();
         result = 31 * result + invocationUid.hashCode();
         result = 31 * result + permits;
@@ -155,7 +144,7 @@ public class AcquireInvocationKey implements WaitKey, IdentifiedDataSerializable
 
     @Override
     public String toString() {
-        return "SemaphoreInvocationKey{" + "name='" + name + '\'' + ", commitIndex=" + commitIndex + ", endpoint=" + endpoint
+        return "SemaphoreInvocationKey{" + "commitIndex=" + commitIndex + ", endpoint=" + endpoint
                 + ", invocationUid=" + invocationUid + ", permits=" + permits + '}';
     }
 }

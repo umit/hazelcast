@@ -16,16 +16,19 @@
 
 package com.hazelcast.cp.internal.datastructures.semaphore.operation;
 
+import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreDataSerializerHook;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
 import com.hazelcast.cp.internal.datastructures.semaphore.SemaphoreEndpoint;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.internal.RaftOp;
 
 import java.io.IOException;
 import java.util.UUID;
+
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.writeUUID;
 
 /**
  * Base class for operations of Raft-based semaphore
@@ -66,8 +69,7 @@ abstract class AbstractSemaphoreOp extends RaftOp implements IdentifiedDataSeria
         out.writeUTF(name);
         out.writeLong(sessionId);
         out.writeLong(threadId);
-        out.writeLong(invocationUid.getLeastSignificantBits());
-        out.writeLong(invocationUid.getMostSignificantBits());
+        writeUUID(out, invocationUid);
     }
 
     @Override
@@ -75,9 +77,7 @@ abstract class AbstractSemaphoreOp extends RaftOp implements IdentifiedDataSeria
         name = in.readUTF();
         sessionId = in.readLong();
         threadId = in.readLong();
-        long least = in.readLong();
-        long most = in.readLong();
-        invocationUid = new UUID(most, least);
+        invocationUid = readUUID(in);
     }
 
     @Override

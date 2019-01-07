@@ -16,20 +16,22 @@
 
 package com.hazelcast.cp.internal.datastructures.spi.blocking.operation;
 
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.datastructures.RaftDataServiceDataSerializerHook;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.AbstractBlockingService;
-import com.hazelcast.cp.internal.datastructures.spi.blocking.BlockingResource;
-import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
-import com.hazelcast.cp.internal.datastructures.spi.blocking.WaitKey;
+import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.RaftOp;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.UUID;
+
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.writeUUID;
 
 /**
  * Expires the given wait keys on the given blocking service. Invocations that
@@ -39,22 +41,22 @@ import java.util.Collection;
  *
  * @param <W> concrete type of the WaitKey
  */
-public class ExpireWaitKeysOp<W extends WaitKey> extends RaftOp implements IdentifiedDataSerializable {
+public class ExpireWaitKeysOp extends RaftOp implements IdentifiedDataSerializable {
 
     private String serviceName;
-    private Collection<W> keys;
+    private Collection<Tuple2<String, UUID>> keys;
 
     public ExpireWaitKeysOp() {
     }
 
-    public ExpireWaitKeysOp(String serviceName, Collection<W> keys) {
+    public ExpireWaitKeysOp(String serviceName, Collection<Tuple2<String, UUID>> keys) {
         this.serviceName = serviceName;
         this.keys = keys;
     }
 
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
-        AbstractBlockingService<W, BlockingResource<W>, ResourceRegistry<W, BlockingResource<W>>> service = getService();
+        AbstractBlockingService service = getService();
         service.expireWaitKeys(groupId, keys);
         return null;
     }
@@ -78,8 +80,9 @@ public class ExpireWaitKeysOp<W extends WaitKey> extends RaftOp implements Ident
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeUTF(serviceName);
         out.writeInt(keys.size());
-        for (WaitKey key : keys) {
-            out.writeObject(key);
+        for (Tuple2<String, UUID> key : keys) {
+            out.writeUTF(key.element1);
+            writeUUID(out, key.element2);
         }
     }
 
@@ -87,10 +90,11 @@ public class ExpireWaitKeysOp<W extends WaitKey> extends RaftOp implements Ident
     public void readData(ObjectDataInput in) throws IOException {
         serviceName = in.readUTF();
         int size = in.readInt();
-        keys = new ArrayList<W>();
+        keys = new ArrayList<Tuple2<String, UUID>>(size);
         for (int i = 0; i < size; i++) {
-            W key = in.readObject();
-            keys.add(key);
+            String name = in.readUTF();
+            UUID invocationUid = readUUID(in);
+            keys.add(Tuple2.of(name, invocationUid));
         }
     }
 

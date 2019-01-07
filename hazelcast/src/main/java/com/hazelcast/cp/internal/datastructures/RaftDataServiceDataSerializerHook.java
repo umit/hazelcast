@@ -16,6 +16,7 @@
 
 package com.hazelcast.cp.internal.datastructures;
 
+import com.hazelcast.cp.internal.datastructures.spi.blocking.WaitKeyContainer;
 import com.hazelcast.internal.serialization.DataSerializerHook;
 import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
@@ -33,8 +34,10 @@ public class RaftDataServiceDataSerializerHook implements DataSerializerHook {
 
     public static final int F_ID = FactoryIdHelper.getFactoryId(RAFT_DS_FACTORY, FACTORY_ID);
 
-    public static final int EXPIRE_WAIT_KEYS_OP = 1;
-    public static final int DESTROY_RAFT_OBJECT_OP = 2;
+
+    public static final int WAIT_KEY_CONTAINER = 1;
+    public static final int EXPIRE_WAIT_KEYS_OP = 2;
+    public static final int DESTROY_RAFT_OBJECT_OP = 3;
 
     @Override
     public int getFactoryId() {
@@ -47,6 +50,8 @@ public class RaftDataServiceDataSerializerHook implements DataSerializerHook {
             @Override
             public IdentifiedDataSerializable create(int typeId) {
                 switch (typeId) {
+                    case WAIT_KEY_CONTAINER:
+                        return new WaitKeyContainer();
                     case EXPIRE_WAIT_KEYS_OP:
                         return new ExpireWaitKeysOp();
                     case DESTROY_RAFT_OBJECT_OP:

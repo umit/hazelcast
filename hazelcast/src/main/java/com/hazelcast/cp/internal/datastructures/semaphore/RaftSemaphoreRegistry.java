@@ -68,7 +68,7 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
         Collection<AcquireInvocationKey> acquired = getOrInitResource(name).init(permits);
 
         for (AcquireInvocationKey key : acquired) {
-            removeWaitKey(key);
+            removeWaitKey(name, key.invocationUid());
         }
 
         return acquired;
@@ -83,11 +83,11 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
         AcquireResult result = getOrInitResource(name).acquire(key, (timeoutMs != 0));
 
         for (AcquireInvocationKey waitKey : result.cancelled) {
-            removeWaitKey(waitKey);
+            removeWaitKey(name, waitKey.invocationUid());
         }
 
-        if (result.acquired == 0 && timeoutMs > 0) {
-            addWaitKey(key, timeoutMs);
+        if (result.acquired == 0) {
+            addWaitKey(name, key.invocationUid(), timeoutMs);
         }
 
         return result;
@@ -96,11 +96,11 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
     ReleaseResult release(String name, SemaphoreEndpoint endpoint, UUID invocationUid, int permits) {
         ReleaseResult result = getOrInitResource(name).release(endpoint, invocationUid, permits);
         for (AcquireInvocationKey key : result.acquired) {
-            removeWaitKey(key);
+            removeWaitKey(name, key.invocationUid());
         }
 
         for (AcquireInvocationKey key : result.cancelled) {
-            removeWaitKey(key);
+            removeWaitKey(name, key.invocationUid());
         }
 
         return result;
@@ -109,7 +109,7 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
     AcquireResult drainPermits(String name, SemaphoreEndpoint endpoint, UUID invocationUid) {
         AcquireResult result = getOrInitResource(name).drain(endpoint, invocationUid);
         for (AcquireInvocationKey key : result.cancelled) {
-            removeWaitKey(key);
+            removeWaitKey(name, key.invocationUid());
         }
 
         return result;
@@ -118,11 +118,11 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
     ReleaseResult changePermits(String name, SemaphoreEndpoint endpoint, UUID invocationUid, int permits) {
         ReleaseResult result = getOrInitResource(name).change(endpoint, invocationUid, permits);
         for (AcquireInvocationKey key : result.acquired) {
-            removeWaitKey(key);
+            removeWaitKey(name, key.invocationUid());
         }
 
         for (AcquireInvocationKey key : result.cancelled) {
-            removeWaitKey(key);
+            removeWaitKey(name, key.invocationUid());
         }
 
         return result;

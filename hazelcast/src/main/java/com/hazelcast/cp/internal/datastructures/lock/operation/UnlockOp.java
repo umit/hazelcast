@@ -47,7 +47,7 @@ public class UnlockOp extends AbstractLockOp implements IndeterminateOperationSt
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
-        service.release(groupId, name, getLockEndpoint(), invocationUid, lockCount);
+        service.release(groupId, commitIndex, name, getLockEndpoint(), invocationUid, lockCount);
         return true;
     }
 

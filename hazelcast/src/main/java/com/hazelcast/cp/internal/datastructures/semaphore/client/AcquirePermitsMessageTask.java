@@ -17,13 +17,15 @@
 package com.hazelcast.cp.internal.datastructures.semaphore.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.cp.internal.RaftInvocationManager;
+import com.hazelcast.cp.internal.RaftOp;
+import com.hazelcast.cp.internal.datastructures.semaphore.operation.AcquirePermitsOp;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.cp.internal.RaftOp;
-import com.hazelcast.cp.internal.RaftInvocationManager;
-import com.hazelcast.cp.internal.datastructures.semaphore.operation.AcquirePermitsOp;
 
 import java.util.UUID;
+
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
 
 /**
  * Client message task for {@link AcquirePermitsOp}
@@ -50,9 +52,7 @@ public class AcquirePermitsMessageTask extends AbstractSemaphoreMessageTask {
     protected Object decodeClientMessage(ClientMessage clientMessage) {
         super.decodeClientMessage(clientMessage);
         threadId = clientMessage.getLong();
-        long least = clientMessage.getLong();
-        long most = clientMessage.getLong();
-        invocationUid = new UUID(most, least);
+        invocationUid = readUUID(clientMessage);
         permits = clientMessage.getInt();
         timeoutMs = clientMessage.getLong();
         return null;

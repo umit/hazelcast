@@ -17,16 +17,21 @@
 package com.hazelcast.cp.internal.datastructures.countdownlatch.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.instance.Node;
-import com.hazelcast.nio.Connection;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.AwaitOp;
+import com.hazelcast.instance.Node;
+import com.hazelcast.nio.Connection;
+
+import java.util.UUID;
+
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
 
 /**
  * Client message task for {@link AwaitOp}
  */
 public class AwaitMessageTask extends AbstractCountDownLatchMessageTask {
 
+    private UUID invocationUid;
     private long timeoutMillis;
 
     AwaitMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
@@ -36,12 +41,13 @@ public class AwaitMessageTask extends AbstractCountDownLatchMessageTask {
     @Override
     protected void processMessage() {
         RaftInvocationManager invocationManager = getRaftInvocationManager();
-        invocationManager.invoke(groupId, new AwaitOp(name, timeoutMillis)).andThen(this);
+        invocationManager.invoke(groupId, new AwaitOp(name, invocationUid, timeoutMillis)).andThen(this);
     }
 
     @Override
     protected Object decodeClientMessage(ClientMessage clientMessage) {
         super.decodeClientMessage(clientMessage);
+        invocationUid = readUUID(clientMessage);
         timeoutMillis = clientMessage.getLong();
         return null;
     }

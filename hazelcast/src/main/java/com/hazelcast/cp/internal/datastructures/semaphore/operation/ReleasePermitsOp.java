@@ -50,7 +50,7 @@ public class ReleasePermitsOp extends AbstractSemaphoreOp implements Indetermina
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftSemaphoreService service = getService();
-        service.releasePermits(groupId, name, getSemaphoreEndpoint(), invocationUid, permits);
+        service.releasePermits(groupId, commitIndex, name, getSemaphoreEndpoint(), invocationUid, permits);
         return true;
     }
 

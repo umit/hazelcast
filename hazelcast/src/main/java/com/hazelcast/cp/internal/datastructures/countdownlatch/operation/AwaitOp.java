@@ -26,27 +26,33 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 
 import java.io.IOException;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.writeUUID;
 
 /**
  * Operation for {@link ICountDownLatch#await(long, TimeUnit)}
  */
 public class AwaitOp extends AbstractCountDownLatchOp implements IndeterminateOperationStateAware {
 
+    private UUID invocationUid;
     private long timeoutMillis;
 
     public AwaitOp() {
     }
 
-    public AwaitOp(String name, long timeoutMillis) {
+    public AwaitOp(String name, UUID invocationUid, long timeoutMillis) {
         super(name);
+        this.invocationUid = invocationUid;
         this.timeoutMillis = timeoutMillis;
     }
 
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftCountDownLatchService service = getService();
-        if (service.await(groupId, name, commitIndex, timeoutMillis)) {
+        if (service.await(groupId, name, commitIndex, invocationUid, timeoutMillis)) {
             return true;
         }
 
@@ -67,6 +73,7 @@ public class AwaitOp extends AbstractCountDownLatchOp implements IndeterminateOp
     public void writeData(ObjectDataOutput out)
             throws IOException {
         super.writeData(out);
+        writeUUID(out, invocationUid);
         out.writeLong(timeoutMillis);
     }
 
@@ -74,12 +81,13 @@ public class AwaitOp extends AbstractCountDownLatchOp implements IndeterminateOp
     public void readData(ObjectDataInput in)
             throws IOException {
         super.readData(in);
+        invocationUid = readUUID(in);
         timeoutMillis = in.readLong();
     }
 
     @Override
     protected void toString(StringBuilder sb) {
         super.toString(sb);
-        sb.append(", timeoutMillis=").append(timeoutMillis);
+        sb.append(", invocationUid=").append(invocationUid).append(", timeoutMillis=").append(timeoutMillis);
     }
 }

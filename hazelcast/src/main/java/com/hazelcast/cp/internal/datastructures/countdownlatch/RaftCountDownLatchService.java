@@ -49,18 +49,18 @@ public class RaftCountDownLatchService
         return getOrInitRegistry(groupId).trySetCount(name, count);
     }
 
-    public int countDown(CPGroupId groupId, String name, int expectedRound, UUID invocationUuid) {
+    public int countDown(CPGroupId groupId, String name, UUID invocationUuid, int expectedRound) {
         RaftCountDownLatchRegistry registry = getOrInitRegistry(groupId);
-        Tuple2<Integer, Collection<AwaitInvocationKey>> t = registry.countDown(name, expectedRound, invocationUuid);
-        notifyWaitKeys(groupId, t.element2, true);
+        Tuple2<Integer, Collection<AwaitInvocationKey>> t = registry.countDown(name, invocationUuid, expectedRound);
+        notifyWaitKeys(groupId, name, t.element2, true);
 
         return t.element1;
     }
 
-    public boolean await(CPGroupId groupId, String name, long commitIndex, long timeoutMillis) {
-        boolean success = getOrInitRegistry(groupId).await(name, commitIndex, timeoutMillis);
+    public boolean await(CPGroupId groupId, String name, long commitIndex, UUID invocationUid, long timeoutMillis) {
+        boolean success = getOrInitRegistry(groupId).await(name, commitIndex, invocationUid, timeoutMillis);
         if (!success) {
-            scheduleTimeout(groupId, new AwaitInvocationKey(name, commitIndex), timeoutMillis);
+            scheduleTimeout(groupId, name, invocationUid, timeoutMillis);
         }
 
         return success;

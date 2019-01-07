@@ -20,33 +20,44 @@ import com.hazelcast.config.Config;
 import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftOp;
+import com.hazelcast.cp.internal.datastructures.semaphore.operation.AcquirePermitsOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.ChangePermitsOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.DrainPermitsOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.ReleasePermitsOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.proxy.RaftSessionAwareSemaphoreProxy;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
+import com.hazelcast.cp.internal.datastructures.spi.blocking.WaitKeyContainer;
+import com.hazelcast.cp.internal.datastructures.spi.blocking.operation.ExpireWaitKeysOp;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
 import com.hazelcast.cp.internal.raftop.snapshot.RestoreSnapshotOp;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.cp.internal.session.ProxySessionManagerService;
 import com.hazelcast.cp.internal.session.RaftSessionService;
+import com.hazelcast.cp.internal.util.Tuple2;
+import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.impl.NodeEngineImpl;
+import com.hazelcast.spi.impl.PartitionSpecificRunnable;
+import com.hazelcast.spi.impl.operationservice.impl.OperationServiceImpl;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import com.hazelcast.util.RandomPicker;
+import com.hazelcast.util.ThreadUtil;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -57,6 +68,7 @@ import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_S
 import static com.hazelcast.util.ThreadUtil.getThreadId;
 import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -437,6 +449,140 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
 
         assertEquals(3, drained2);
         assertEquals(1, semaphore.availablePermits());
+    }
+
+    @Test
+    public void testRetriedWaitKeysAreExpiredTogether() {
+        semaphore.init(1);
+
+        final CountDownLatch releaseLatch = new CountDownLatch(1);
+        spawn(new Runnable() {
+            @Override
+            public void run() {
+                semaphore.acquire();
+                assertOpenEventually(releaseLatch);
+                semaphore.release();
+            }
+        });
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertEquals(0, semaphore.availablePermits());
+            }
+        });
+
+        // there is a session id now
+
+        final CPGroupId groupId = semaphore.getGroupId();
+        final NodeEngineImpl nodeEngine = getNodeEngineImpl(semaphoreInstance);
+        final RaftSemaphoreService service = nodeEngine.getService(RaftSemaphoreService.SERVICE_NAME);
+
+        ProxySessionManagerService sessionManager = nodeEngine.getService(ProxySessionManagerService.SERVICE_NAME);
+        long sessionId = sessionManager.getSession(groupId);
+        assertNotEquals(NO_SESSION_ID, sessionId);
+
+        RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
+        UUID invUid = newUnsecureUUID();
+        final Tuple2[] acquireWaitTimeoutKeyRef = new Tuple2[1];
+
+        InternalCompletableFuture<Boolean> f1 = invocationManager
+                .invoke(groupId, new AcquirePermitsOp(objectName, sessionId, ThreadUtil.getThreadId(), invUid, 1, SECONDS.toMillis(300)));
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+
+                RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
+                Map<Tuple2<String, UUID>, Tuple2<Long, Long>> waitTimeouts = registry.getWaitTimeouts();
+                assertEquals(1, waitTimeouts.size());
+                acquireWaitTimeoutKeyRef[0] = waitTimeouts.keySet().iterator().next();
+            }
+        });
+
+        InternalCompletableFuture<Boolean> f2 = invocationManager
+                .invoke(groupId, new AcquirePermitsOp(objectName, sessionId, ThreadUtil.getThreadId(), invUid, 1, SECONDS.toMillis(300)));
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() throws Exception {
+                final int partitionId = nodeEngine.getPartitionService().getPartitionId(groupId);
+                final RaftSemaphoreRegistry registry = service.getRegistryOrNull(groupId);
+                final boolean[] verified = new boolean[1];
+                final CountDownLatch latch = new CountDownLatch(1);
+                OperationServiceImpl operationService = (OperationServiceImpl) nodeEngine.getOperationService();
+                operationService.execute(new PartitionSpecificRunnable() {
+                    @Override
+                    public int getPartitionId() {
+                        return partitionId;
+                    }
+
+                    @Override
+                    public void run() {
+                        RaftSemaphore raftSemaphore = registry.getResourceOrNull(objectName);
+                        final Map<Object, WaitKeyContainer<AcquireInvocationKey>> waitKeys = raftSemaphore.getWaitKeys();
+                        verified[0] = (waitKeys.size() == 1 && waitKeys.values().iterator().next().retryCount() == 1);
+                        latch.countDown();
+                    }
+                });
+
+                latch.await(60, SECONDS);
+
+                assertTrue(verified[0]);
+            }
+        });
+
+        RaftOp op = new ExpireWaitKeysOp(RaftSemaphoreService.SERVICE_NAME,
+                Collections.<Tuple2<String, UUID>>singletonList(acquireWaitTimeoutKeyRef[0]));
+        invocationManager.invoke(groupId, op).join();
+
+        assertTrue(service.getRegistryOrNull(groupId).getWaitTimeouts().isEmpty());
+
+        releaseLatch.countDown();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertEquals(1, semaphore.availablePermits());
+            }
+        });
+
+        assertFalse(f1.join());
+        assertFalse(f2.join());
+    }
+
+    @Test
+    public void testPermitAcquired_whenPermitOwnerShutsDown() {
+        semaphore.init(1);
+        semaphore.acquire();
+
+        final CountDownLatch acquiredLatch = new CountDownLatch(1);
+        spawn(new Runnable() {
+            @Override
+            public void run() {
+                HazelcastInstance otherInstance = instances[0] == semaphoreInstance ? instances[1] : instances[0];
+                ISemaphore remoteSemaphore = otherInstance.getCPSubsystem().getSemaphore(proxyName);
+                try {
+                    remoteSemaphore.acquire();
+                    acquiredLatch.countDown();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
+                RaftSemaphore raftSemaphore = service.getRegistryOrNull(semaphore.getGroupId()).getResourceOrNull(objectName);
+                assertFalse(raftSemaphore.getWaitKeys().isEmpty());
+            }
+        });
+
+        semaphoreInstance.shutdown();
+
+        assertOpenEventually(acquiredLatch);
     }
 
     private AbstractProxySessionManager getSessionManager() {

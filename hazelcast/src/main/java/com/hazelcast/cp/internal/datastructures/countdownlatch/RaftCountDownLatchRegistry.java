@@ -60,20 +60,20 @@ public class RaftCountDownLatchRegistry extends ResourceRegistry<AwaitInvocation
         return getOrInitResource(name).trySetCount(count);
     }
 
-    Tuple2<Integer, Collection<AwaitInvocationKey>> countDown(String name, int expectedRound, UUID invocationUuid) {
+    Tuple2<Integer, Collection<AwaitInvocationKey>> countDown(String name, UUID invocationUuid, int expectedRound) {
         RaftCountDownLatch latch = getOrInitResource(name);
-        Tuple2<Integer, Collection<AwaitInvocationKey>> t = latch.countDown(expectedRound, invocationUuid);
+        Tuple2<Integer, Collection<AwaitInvocationKey>> t = latch.countDown(invocationUuid, expectedRound);
         for (AwaitInvocationKey key : t.element2) {
-            removeWaitKey(key);
+            removeWaitKey(name, key.invocationUid());
         }
 
         return t;
     }
 
-    boolean await(String name, long commitIndex, long timeoutMs) {
-        boolean success = getOrInitResource(name).await(commitIndex, timeoutMs > 0);
+    boolean await(String name, long commitIndex, UUID invocationUid, long timeoutMs) {
+        boolean success = getOrInitResource(name).await(commitIndex, invocationUid, (timeoutMs > 0));
         if (!success) {
-            addWaitKey(new AwaitInvocationKey(name, commitIndex), timeoutMs);
+            addWaitKey(name, invocationUid, timeoutMs);
         }
 
         return success;

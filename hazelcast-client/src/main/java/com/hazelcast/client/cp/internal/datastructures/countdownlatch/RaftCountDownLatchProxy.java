@@ -31,7 +31,6 @@ import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatc
 import com.hazelcast.nio.Bits;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.util.EmptyStatement;
-import com.hazelcast.util.UuidUtil;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -45,6 +44,7 @@ import static com.hazelcast.cp.internal.datastructures.countdownlatch.client.Cou
 import static com.hazelcast.cp.internal.datastructures.countdownlatch.client.CountDownLatchMessageTaskFactoryProvider.GET_ROUND_TYPE;
 import static com.hazelcast.cp.internal.datastructures.countdownlatch.client.CountDownLatchMessageTaskFactoryProvider.TRY_SET_COUNT_TYPE;
 import static com.hazelcast.util.Preconditions.checkNotNull;
+import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 
 /**
  * Client-side Raft-based proxy implementation of {@link ICountDownLatch}
@@ -67,10 +67,14 @@ class RaftCountDownLatchProxy extends ClientProxy implements ICountDownLatch {
     public boolean await(long timeout, TimeUnit unit) {
         checkNotNull(unit);
 
+        UUID invocationUid = newUnsecureUUID();
         long timeoutMillis = Math.max(0, unit.toMillis(timeout));
 
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(objectName) + Bits.LONG_SIZE_IN_BYTES;
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(objectName)
+                + Bits.LONG_SIZE_IN_BYTES * 3;
         ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, AWAIT_TYPE);
+        msg.set(invocationUid.getLeastSignificantBits());
+        msg.set(invocationUid.getMostSignificantBits());
         msg.set(timeoutMillis);
         msg.updateFrameLength();
 
@@ -80,13 +84,13 @@ class RaftCountDownLatchProxy extends ClientProxy implements ICountDownLatch {
     @Override
     public void countDown() {
         int round = getRound();
-        UUID invocationUid = UuidUtil.newUnsecureUUID();
+        UUID invocationUid = newUnsecureUUID();
         for (;;) {
             try {
                 countDown(round, invocationUid);
                 return;
-            } catch (OperationTimeoutException ignored) {
-                EmptyStatement.ignore(ignored);
+            } catch (OperationTimeoutException e) {
+                EmptyStatement.ignore(e);
                 // I can retry safely because my retry would be idempotent...
             }
         }
@@ -101,12 +105,12 @@ class RaftCountDownLatchProxy extends ClientProxy implements ICountDownLatch {
     }
 
     private void countDown(int round, UUID invocationUid) {
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(objectName) + Bits.INT_SIZE_IN_BYTES
-                + Bits.LONG_SIZE_IN_BYTES * 2;
+        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(objectName) + Bits.LONG_SIZE_IN_BYTES * 2
+                + Bits.INT_SIZE_IN_BYTES;
         ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, COUNT_DOWN_TYPE);
-        msg.set(round);
         msg.set(invocationUid.getLeastSignificantBits());
         msg.set(invocationUid.getMostSignificantBits());
+        msg.set(round);
         msg.updateFrameLength();
 
         invoke(msg, INT_RESPONSE_DECODER).join();

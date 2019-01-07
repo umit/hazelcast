@@ -16,16 +16,19 @@
 
 package com.hazelcast.cp.internal.datastructures.lock.operation;
 
+import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.datastructures.lock.LockEndpoint;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockDataSerializerHook;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockService;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.internal.RaftOp;
 
 import java.io.IOException;
 import java.util.UUID;
+
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.writeUUID;
 
 /**
  * Base class for operations of Raft-based lock
@@ -34,8 +37,8 @@ import java.util.UUID;
 abstract class AbstractLockOp extends RaftOp implements IdentifiedDataSerializable {
 
     String name;
-    private long sessionId;
-    private long threadId;
+    long sessionId;
+    long threadId;
     UUID invocationUid;
 
     AbstractLockOp() {
@@ -67,8 +70,7 @@ abstract class AbstractLockOp extends RaftOp implements IdentifiedDataSerializab
         out.writeUTF(name);
         out.writeLong(sessionId);
         out.writeLong(threadId);
-        out.writeLong(invocationUid.getLeastSignificantBits());
-        out.writeLong(invocationUid.getMostSignificantBits());
+        writeUUID(out, invocationUid);
     }
 
     @Override
@@ -76,9 +78,7 @@ abstract class AbstractLockOp extends RaftOp implements IdentifiedDataSerializab
         name = in.readUTF();
         sessionId = in.readLong();
         threadId = in.readLong();
-        long least = in.readLong();
-        long most = in.readLong();
-        invocationUid = new UUID(most, least);
+        invocationUid = readUUID(in);
     }
 
     @Override

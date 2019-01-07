@@ -16,22 +16,23 @@
 
 package com.hazelcast.cp.internal.datastructures.countdownlatch;
 
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.datastructures.spi.blocking.BlockingResource;
+import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.util.Tuple2;
-import com.hazelcast.cp.internal.datastructures.spi.blocking.BlockingResource;
-import com.hazelcast.util.collection.Long2ObjectHashMap;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.writeUUID;
 import static com.hazelcast.util.Preconditions.checkTrue;
 import static java.lang.Math.max;
 
@@ -57,7 +58,7 @@ public class RaftCountDownLatch extends BlockingResource<AwaitInvocationKey> imp
      * a retry or a countDown() request sent before re-initialization
      * of the latch. In this case, this count down request is ignored.
      */
-    Tuple2<Integer, Collection<AwaitInvocationKey>> countDown(int expectedRound, UUID invocationUuid) {
+    Tuple2<Integer, Collection<AwaitInvocationKey>> countDown(UUID invocationUuid, int expectedRound) {
         if (expectedRound > round) {
             throw new IllegalArgumentException("expected round: " + expectedRound + ", actual round: " + round);
         }
@@ -74,7 +75,7 @@ public class RaftCountDownLatch extends BlockingResource<AwaitInvocationKey> imp
             return Tuple2.of(remaining, c);
         }
 
-        Collection<AwaitInvocationKey> w = new ArrayList<AwaitInvocationKey>(waitKeys);
+        Collection<AwaitInvocationKey> w = getAllWaitKeys();
         waitKeys.clear();
 
         return Tuple2.of(0, w);
@@ -94,10 +95,10 @@ public class RaftCountDownLatch extends BlockingResource<AwaitInvocationKey> imp
         return true;
     }
 
-    boolean await(long commitIndex, boolean wait) {
+    boolean await(long commitIndex, UUID invocationUid, boolean wait) {
         boolean success = (getRemainingCount() == 0);
         if (!success && wait) {
-            waitKeys.add(new AwaitInvocationKey(name, commitIndex));
+            addWaitKey(invocationUid, new AwaitInvocationKey(commitIndex, invocationUid));
         }
 
         return success;
@@ -115,7 +116,7 @@ public class RaftCountDownLatch extends BlockingResource<AwaitInvocationKey> imp
         RaftCountDownLatch clone = new RaftCountDownLatch();
         clone.groupId = this.groupId;
         clone.name = this.name;
-        clone.waitKeys.addAll(this.waitKeys);
+        clone.waitKeys.putAll(this.waitKeys);
         clone.round = this.round;
         clone.countDownFrom = this.countDownFrom;
         clone.countDownUids.addAll(this.countDownUids);
@@ -124,7 +125,7 @@ public class RaftCountDownLatch extends BlockingResource<AwaitInvocationKey> imp
     }
 
     @Override
-    protected void onSessionClose(long sessionId, Long2ObjectHashMap<Object> responses) {
+    protected void onSessionClose(long sessionId, Map<Long, Object> responses) {
     }
 
     @Override
@@ -150,8 +151,7 @@ public class RaftCountDownLatch extends BlockingResource<AwaitInvocationKey> imp
         out.writeInt(countDownFrom);
         out.writeInt(countDownUids.size());
         for (UUID uid : countDownUids) {
-            out.writeLong(uid.getLeastSignificantBits());
-            out.writeLong(uid.getMostSignificantBits());
+            writeUUID(out, uid);
         }
     }
 
@@ -163,10 +163,7 @@ public class RaftCountDownLatch extends BlockingResource<AwaitInvocationKey> imp
         countDownFrom = in.readInt();
         int count = in.readInt();
         for (int i = 0; i < count; i++) {
-            long least = in.readLong();
-            long most = in.readLong();
-            UUID uid = new UUID(most, least);
-            countDownUids.add(uid);
+            countDownUids.add(readUUID(in));
         }
     }
 

@@ -426,6 +426,10 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             return;
         }
 
+        initializeMembershipChangeContextForLeavingMember(leavingMember);
+    }
+
+    private void initializeMembershipChangeContextForLeavingMember(CPMember leavingMember) {
         List<CPGroupId> leavingGroupIds = new ArrayList<CPGroupId>();
         List<CPGroupMembershipChangeContext> leavingGroups = new ArrayList<CPGroupMembershipChangeContext>();
         for (RaftGroup group : groups.values()) {
@@ -439,16 +443,10 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
                 leavingGroupIds.add(groupId);
                 leavingGroups.add(new CPGroupMembershipChangeContext(groupId, group.getMembersCommitIndex(),
                         group.memberImpls(), substitute, leavingMember));
-                if (logger.isFineEnabled()) {
-                    logger.fine("Substituted " + leavingMember + " with " + substitute + " in " + group);
-                }
             } else {
                 leavingGroupIds.add(groupId);
                 leavingGroups.add(new CPGroupMembershipChangeContext(groupId, group.getMembersCommitIndex(),
                         group.memberImpls(), null, leavingMember));
-                if (logger.isFineEnabled()) {
-                    logger.fine("Could not find a substitute for " + leavingMember + " in " + group);
-                }
             }
         }
 
@@ -760,12 +758,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
 
         @Override
         public void run() {
-            if (isDiscoveryCompleted()) {
-                return;
-            }
-
-            if (!nodeEngine.getClusterService().isJoined()) {
-                scheduleDiscoveryInitialCPMembersTask();
+            if (shouldSkipOrReschedule()) {
                 return;
             }
 
@@ -777,25 +770,16 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
                     return;
                 }
             }
+
             latestMembers = members;
 
-            if (members.size() < config.getCPMemberCount()) {
-                if (logger.isFineEnabled()) {
-                    logger.warning("Waiting for " + config.getCPMemberCount() + " CP members to join the cluster. "
-                            + "Current CP member count: " + members.size());
-                }
-                scheduleDiscoveryInitialCPMembersTask();
+            if (rescheduleIfCPMemberCountNotSatisfied(members)) {
                 return;
             }
 
             List<CPMember> cpMembers = getInitialCPMembers(members);
 
-            if (!cpMembers.contains(getLocalMember())) {
-                if (logger.isFineEnabled()) {
-                    logger.fine("I am not an initial CP member! I'll serve as an AP member.");
-                }
-                localMember.set(null);
-                disableDiscovery();
+            if (completeDiscoveryIfNotCPMember(cpMembers)) {
                 return;
             }
 
@@ -811,6 +795,46 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             broadcastActiveMembers();
             discoveryCompleted.set(true);
             scheduleRaftGroupMembershipManagementTasks();
+        }
+
+        private boolean shouldSkipOrReschedule() {
+            if (isDiscoveryCompleted()) {
+                return true;
+            }
+
+            if (!nodeEngine.getClusterService().isJoined()) {
+                scheduleDiscoveryInitialCPMembersTask();
+                return true;
+            }
+
+            return false;
+        }
+
+        private boolean rescheduleIfCPMemberCountNotSatisfied(Collection<Member> members) {
+            if (members.size() < config.getCPMemberCount()) {
+                if (logger.isFineEnabled()) {
+                    logger.fine("Waiting for " + config.getCPMemberCount() + " CP members to join the cluster. "
+                            + "Current CP member count: " + members.size());
+                }
+
+                scheduleDiscoveryInitialCPMembersTask();
+                return true;
+            }
+            return false;
+        }
+
+        private boolean completeDiscoveryIfNotCPMember(List<CPMember> cpMembers) {
+            if (!cpMembers.contains(getLocalMember())) {
+                if (logger.isFineEnabled()) {
+                    logger.fine("I am not an initial CP member! I'll serve as an AP member.");
+                }
+
+                localMember.set(null);
+                disableDiscovery();
+                return true;
+            }
+
+            return false;
         }
 
         @SuppressWarnings("unchecked")

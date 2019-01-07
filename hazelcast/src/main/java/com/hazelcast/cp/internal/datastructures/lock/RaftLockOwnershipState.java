@@ -55,6 +55,10 @@ public class RaftLockOwnershipState implements IdentifiedDataSerializable {
         return fence != INVALID_FENCE;
     }
 
+    public boolean isLockedBy(long sessionId, long threadId) {
+        return fence != INVALID_FENCE && this.sessionId == sessionId && this.threadId == threadId;
+    }
+
     /**
      * Returns fencing token of the lock if it is currently hold by some endpoint. {@link FencedLock#INVALID_FENCE} otherwise
      */
@@ -105,5 +109,11 @@ public class RaftLockOwnershipState implements IdentifiedDataSerializable {
         lockCount = in.readInt();
         sessionId = in.readLong();
         threadId = in.readLong();
+    }
+
+    @Override
+    public String toString() {
+        return "RaftLockOwnershipState{" + "fence=" + fence + ", lockCount=" + lockCount + ", sessionId=" + sessionId
+                + ", threadId=" + threadId + '}';
     }
 }

@@ -24,6 +24,8 @@ import com.hazelcast.cp.internal.datastructures.semaphore.operation.ReleasePermi
 
 import java.util.UUID;
 
+import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
+
 /**
  * Client message task for {@link ReleasePermitsOp}
  */
@@ -47,9 +49,7 @@ public class ReleasePermitsMessageTask extends AbstractSemaphoreMessageTask {
     protected Object decodeClientMessage(ClientMessage clientMessage) {
         super.decodeClientMessage(clientMessage);
         threadId = clientMessage.getLong();
-        long least = clientMessage.getLong();
-        long most = clientMessage.getLong();
-        invocationUid = new UUID(most, least);
+        invocationUid = readUUID(clientMessage);
         permits = clientMessage.getInt();
         return null;
     }
