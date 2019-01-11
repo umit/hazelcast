@@ -19,6 +19,7 @@ package com.hazelcast.config;
 import com.hazelcast.config.PermissionConfig.PermissionType;
 import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.config.cp.FencedLockConfig;
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.config.helpers.DummyMapStore;
 import com.hazelcast.core.HazelcastInstance;
@@ -2920,7 +2921,7 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
                 + "    <commit-index-advance-count-to-snapshot>250</commit-index-advance-count-to-snapshot>\n"
                 + "    <uncommitted-entry-count-to-reject-new-appends>75</uncommitted-entry-count-to-reject-new-appends>\n"
                 + "  </raft-algorithm>\n"
-                + "  <cp-semaphores>\n"
+                + "  <semaphores>\n"
                 + "    <cp-semaphore>\n"
                 + "      <name>sem1</name>\n"
                 + "      <jdk-compatible>true</jdk-compatible>\n"
@@ -2929,7 +2930,17 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
                 + "      <name>sem2</name>\n"
                 + "      <jdk-compatible>false</jdk-compatible>\n"
                 + "    </cp-semaphore>\n"
-                + "  </cp-semaphores>\n"
+                + "  </semaphores>\n"
+                + "  <locks>\n"
+                + "    <fenced-lock>\n"
+                + "      <name>lock1</name>\n"
+                + "      <lock-acquire-limit>1</lock-acquire-limit>\n"
+                + "    </fenced-lock>\n"
+                + "    <fenced-lock>\n"
+                + "      <name>lock2</name>\n"
+                + "      <lock-acquire-limit>2</lock-acquire-limit>\n"
+                + "    </fenced-lock>\n"
+                + "  </locks>\n"
                 + "</cp-subsystem>"
                 + HAZELCAST_END_TAG;
         Config config = new InMemoryXmlConfig(xml);
@@ -2946,12 +2957,18 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
         assertEquals(25, raftAlgorithmConfig.getAppendRequestMaxEntryCount());
         assertEquals(250, raftAlgorithmConfig.getCommitIndexAdvanceCountToSnapshot());
         assertEquals(75, raftAlgorithmConfig.getUncommittedEntryCountToRejectNewAppends());
-        CPSemaphoreConfig cpSemaphoreConfig1 = cpSubsystemConfig.findCPSemaphoreConfig("sem1");
-        CPSemaphoreConfig cpSemaphoreConfig2 = cpSubsystemConfig.findCPSemaphoreConfig("sem2");
-        assertNotNull(cpSemaphoreConfig1);
-        assertNotNull(cpSemaphoreConfig2);
-        assertTrue(cpSemaphoreConfig1.isJdkCompatible());
-        assertFalse(cpSemaphoreConfig2.isJdkCompatible());
+        CPSemaphoreConfig semaphoreConfig1 = cpSubsystemConfig.findSemaphoreConfig("sem1");
+        CPSemaphoreConfig semaphoreConfig2 = cpSubsystemConfig.findSemaphoreConfig("sem2");
+        assertNotNull(semaphoreConfig1);
+        assertNotNull(semaphoreConfig2);
+        assertTrue(semaphoreConfig1.isJDKCompatible());
+        assertFalse(semaphoreConfig2.isJDKCompatible());
+        FencedLockConfig lockConfig1 = cpSubsystemConfig.findLockConfig("lock1");
+        FencedLockConfig lockConfig2 = cpSubsystemConfig.findLockConfig("lock2");
+        assertNotNull(lockConfig1);
+        assertNotNull(lockConfig2);
+        assertEquals(1, lockConfig1.getLockAcquireLimit());
+        assertEquals(2, lockConfig2.getLockAcquireLimit());
     }
 
     @Test

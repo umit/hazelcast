@@ -48,7 +48,7 @@ public class RaftSemaphoreService extends AbstractBlockingService<AcquireInvocat
     }
 
     private CPSemaphoreConfig getConfig(String name) {
-        return nodeEngine.getConfig().getCPSubsystemConfig().findCPSemaphoreConfig(name);
+        return nodeEngine.getConfig().getCPSubsystemConfig().findSemaphoreConfig(name);
     }
 
     public boolean initSemaphore(CPGroupId groupId, String name, int permits) {
@@ -179,7 +179,7 @@ public class RaftSemaphoreService extends AbstractBlockingService<AcquireInvocat
             CPGroupId groupId = raftService.createRaftGroupForProxy(proxyName);
             String objectName = getObjectNameForProxy(proxyName);
             CPSemaphoreConfig config = getConfig(proxyName);
-            return config != null && config.isJdkCompatible()
+            return config != null && config.isJDKCompatible()
                     ? new RaftSessionlessSemaphoreProxy(nodeEngine, groupId, proxyName, objectName)
                     : new RaftSessionAwareSemaphoreProxy(nodeEngine, groupId, proxyName, objectName);
         } catch (Exception e) {

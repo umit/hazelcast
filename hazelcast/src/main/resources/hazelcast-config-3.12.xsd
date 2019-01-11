@@ -4159,7 +4159,7 @@
                     </xs:documentation>
                 </xs:annotation>
             </xs:element>
-            <xs:element name="cp-semaphores" minOccurs="0" maxOccurs="1">
+            <xs:element name="semaphores" minOccurs="0" maxOccurs="1">
                 <xs:annotation>
                     <xs:documentation>
                         Configurations for CP semaphore instances
@@ -4168,6 +4168,18 @@
                 <xs:complexType>
                     <xs:sequence>
                         <xs:element name="cp-semaphore" type="cp-semaphore" minOccurs="0" maxOccurs="unbounded"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="locks" minOccurs="0" maxOccurs="1">
+                <xs:annotation>
+                    <xs:documentation>
+                        Configurations for FencedLock instances
+                    </xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="fenced-lock" type="fenced-lock" minOccurs="0" maxOccurs="unbounded"/>
                     </xs:sequence>
                 </xs:complexType>
             </xs:element>
@@ -4245,6 +4257,34 @@
                         HazelcastInstance. So there is a minor behavioral difference
                         to the Semaphore#release() method.
                         JDK compatibility is disabled by default.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+        </xs:all>
+    </xs:complexType>
+
+    <xs:complexType name="fenced-lock">
+        <xs:all>
+            <xs:element name="name" type="xs:string">
+                <xs:annotation>
+                    <xs:documentation>
+                        Name of the FencedLock
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="lock-acquire-limit" type="xs:nonNegativeInteger" default="0">
+                <xs:annotation>
+                    <xs:documentation>
+                        Maximum number of reentrant lock acquires. Once a caller acquires
+                        the lock this many times, it will not be able to acquire the lock again,
+                        until it makes at least one unlock() call.
+                        By default, no upper bound is set for the number of reentrant lock
+                        acquires, which means that once a caller acquires a FencedLock,
+                        all of its further lock() calls will succeed. However, for instance,
+                        if you set lock-acquire-limit to 2, once a caller acquires
+                        the lock, it will be able to acquire it once more, but its third lock()
+                        call will not succeed.
+                        If lock-acquire-limit is set to 1, then the lock becomes non-reentrant.
                     </xs:documentation>
                 </xs:annotation>
             </xs:element>

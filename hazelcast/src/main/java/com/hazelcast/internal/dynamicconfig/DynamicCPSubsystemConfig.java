@@ -18,7 +18,10 @@ package com.hazelcast.internal.dynamicconfig;
 
 import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.config.cp.FencedLockConfig;
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
+
+import java.util.Map;
 
 /**
  * {@link CPSubsystemConfig} wrapper that disables updates to config object of a Hazelcast instance
@@ -65,7 +68,22 @@ class DynamicCPSubsystemConfig extends CPSubsystemConfig {
     }
 
     @Override
-    public CPSubsystemConfig addCPSemaphoreConfig(CPSemaphoreConfig cpSemaphoreConfig) {
+    public CPSubsystemConfig addSemaphoreConfig(CPSemaphoreConfig cpSemaphoreConfig) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public CPSubsystemConfig setSemaphoreConfigs(Map<String, CPSemaphoreConfig> cpSemaphoreConfigs) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public CPSubsystemConfig addLockConfig(FencedLockConfig lockConfig) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public CPSubsystemConfig setLockConfigs(Map<String, FencedLockConfig> lockConfigs) {
         throw new UnsupportedOperationException();
     }
 

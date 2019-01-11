@@ -21,6 +21,7 @@ import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig.Duration
 import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig.TimedExpiryPolicyFactoryConfig;
 import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.config.cp.FencedLockConfig;
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.internal.util.RuntimeAvailableProcessors;
@@ -714,19 +715,34 @@ public class ConfigCompatibilityChecker {
                 return false;
             }
 
-            Map<String, CPSemaphoreConfig> semaphores1 = c1.getCPSemaphoreConfigs();
+            Map<String, CPSemaphoreConfig> semaphores1 = c1.getSemaphoreConfigs();
 
-
-            if (semaphores1.size() != c2.getCPSemaphoreConfigs().size()) {
+            if (semaphores1.size() != c2.getSemaphoreConfigs().size()) {
                 return false;
             }
 
             for (Entry<String, CPSemaphoreConfig> e : semaphores1.entrySet()) {
-                CPSemaphoreConfig s2 = c2.findCPSemaphoreConfig(e.getKey());
+                CPSemaphoreConfig s2 = c2.findSemaphoreConfig(e.getKey());
                 if (s2 == null) {
                     return false;
                 }
-                if (e.getValue().isJdkCompatible() != s2.isJdkCompatible()) {
+                if (e.getValue().isJDKCompatible() != s2.isJDKCompatible()) {
+                    return false;
+                }
+            }
+
+            Map<String, FencedLockConfig> locks1 = c1.getLockConfigs();
+
+            if (locks1.size() != c2.getLockConfigs().size()) {
+                return false;
+            }
+
+            for (Entry<String, FencedLockConfig> e : locks1.entrySet()) {
+                FencedLockConfig s2 = c2.findLockConfig(e.getKey());
+                if (s2 == null) {
+                    return false;
+                }
+                if (e.getValue().getLockAcquireLimit() != s2.getLockAcquireLimit()) {
                     return false;
                 }
             }

@@ -26,27 +26,36 @@ import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.lock.exception.LockAcquireLimitExceededException;
+import com.hazelcast.cp.lock.exception.LockOwnershipLostException;
 import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.cp.internal.session.SessionExpiredException;
 import com.hazelcast.cp.internal.session.SessionResponse;
 import com.hazelcast.cp.internal.session.client.SessionMessageTaskFactoryProvider;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.spi.InternalCompletableFuture;
 
+import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.LOCK_ACQUIRE_LIMIT_EXCEEDED_EXCEPTION;
+import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.LOCK_OWNERSHIP_LOST_EXCEPTION;
 import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.SESSION_EXPIRED_EXCEPTION;
 import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.WAIT_KEY_CANCELLED_EXCEPTION;
 import static com.hazelcast.cp.internal.datastructures.semaphore.client.SemaphoreMessageTaskFactoryProvider.GENERATE_THREAD_ID_TYPE;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * Client-side implementation of Raft proxy session manager
  */
 public class ClientProxySessionManager extends AbstractProxySessionManager {
 
+    public static final long SHUTDOWN_TIMEOUT_SECONDS = 60;
+    public static final long SHUTDOWN_WAIT_SLEEP_MILLIS = 10;
     private static final ClientMessageDecoder SESSION_RESPONSE_DECODER = new SessionResponseDecoder();
     private static final ClientMessageDecoder BOOLEAN_RESPONSE_DECODER = new BooleanResponseDecoder();
 
@@ -65,6 +74,18 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
             @Override
             public Throwable createException(String message, Throwable cause) {
                 return new WaitKeyCancelledException(message, cause);
+            }
+        });
+        factory.register(LOCK_ACQUIRE_LIMIT_EXCEEDED_EXCEPTION, LockAcquireLimitExceededException.class, new ExceptionFactory() {
+            @Override
+            public Throwable createException(String message, Throwable cause) {
+                return new LockAcquireLimitExceededException(message);
+            }
+        });
+        factory.register(LOCK_OWNERSHIP_LOST_EXCEPTION, LockOwnershipLostException.class, new ExceptionFactory() {
+            @Override
+            public Throwable createException(String message, Throwable cause) {
+                return new LockOwnershipLostException(message);
             }
         });
     }
@@ -135,6 +156,49 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
         msg.updateFrameLength();
 
         return invoke(msg, BOOLEAN_RESPONSE_DECODER);
+    }
+
+    @Override
+    public Map<CPGroupId, ICompletableFuture<Object>> shutdown() {
+        Map<CPGroupId, ICompletableFuture<Object>> futures = super.shutdown();
+
+        ILogger logger = client.getLoggingService().getLogger(getClass());
+
+        long remainingTimeNanos = TimeUnit.SECONDS.toNanos(SHUTDOWN_TIMEOUT_SECONDS);
+
+        while (remainingTimeNanos > 0) {
+            int closed = 0;
+
+            for (Map.Entry<CPGroupId, ICompletableFuture<Object>> entry : futures.entrySet()) {
+                CPGroupId groupId = entry.getKey();
+                ICompletableFuture<Object> f = entry.getValue();
+                if (f.isDone()) {
+                    closed++;
+                    try {
+                        f.get();
+                        logger.fine("Session closed for " + groupId);
+                    } catch (Exception e) {
+                        logger.warning("Close session failed for " + groupId, e);
+
+                    }
+                }
+            }
+
+            if (closed == futures.size()) {
+                break;
+            }
+
+            try {
+                Thread.sleep(SHUTDOWN_WAIT_SLEEP_MILLIS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return futures;
+            }
+
+            remainingTimeNanos -= MILLISECONDS.toNanos(SHUTDOWN_WAIT_SLEEP_MILLIS);
+        }
+
+        return futures;
     }
 
     private <T> InternalCompletableFuture<T> invoke(ClientMessage msg, ClientMessageDecoder decoder) {

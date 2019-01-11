@@ -22,7 +22,7 @@ import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.CPSubsystem;
 import com.hazelcast.cp.CPSubsystemManagementService;
-import com.hazelcast.cp.FencedLock;
+import com.hazelcast.cp.lock.FencedLock;
 import com.hazelcast.cp.CPSessionManagementService;
 import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongService;
 import com.hazelcast.cp.internal.datastructures.atomicref.RaftAtomicRefService;

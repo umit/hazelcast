@@ -29,6 +29,7 @@ import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.spi.client.RaftGroupTaskFactoryProvider;
+import com.hazelcast.cp.lock.FencedLock;
 import com.hazelcast.spi.InternalCompletableFuture;
 
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
@@ -36,7 +37,7 @@ import static com.hazelcast.cp.internal.RaftService.getObjectNameForProxy;
 
 /**
  * Creates client-side proxies for
- * Raft-based {@link com.hazelcast.cp.FencedLock}
+ * Raft-based {@link FencedLock}
  */
 public class RaftFencedLockProxyFactory extends ClientProxyFactoryWithContext implements ClientProxyFactory {
 

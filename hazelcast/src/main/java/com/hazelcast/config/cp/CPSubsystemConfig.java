@@ -22,6 +22,7 @@ import com.hazelcast.core.ISemaphore;
 import com.hazelcast.core.IndeterminateOperationStateException;
 import com.hazelcast.cp.CPGroup;
 import com.hazelcast.cp.CPSubsystem;
+import com.hazelcast.cp.lock.FencedLock;
 import com.hazelcast.cp.internal.CPMember;
 
 import java.util.Map;
@@ -212,7 +213,12 @@ public class CPSubsystemConfig {
     /**
      * Configurations for CP {@link ISemaphore} instances
      */
-    private final Map<String, CPSemaphoreConfig> cpSemaphoreConfigs = new ConcurrentHashMap<String, CPSemaphoreConfig>();
+    private final Map<String, CPSemaphoreConfig> semaphoreConfigs = new ConcurrentHashMap<String, CPSemaphoreConfig>();
+
+    /**
+     * Configurations for {@link FencedLock} instances
+     */
+    private final Map<String, FencedLockConfig> lockConfigs = new ConcurrentHashMap<String, FencedLockConfig>();
 
     private final ConfigPatternMatcher configPatternMatcher = new MatchingPointConfigPatternMatcher();
 
@@ -227,8 +233,11 @@ public class CPSubsystemConfig {
         this.sessionHeartbeatIntervalSeconds = config.sessionHeartbeatIntervalSeconds;
         this.failOnIndeterminateOperationState = config.failOnIndeterminateOperationState;
         this.missingCPMemberAutoRemovalSeconds = config.missingCPMemberAutoRemovalSeconds;
-        for (CPSemaphoreConfig semaphoreConfig : config.cpSemaphoreConfigs.values()) {
-            this.cpSemaphoreConfigs.put(semaphoreConfig.getName(), new CPSemaphoreConfig(semaphoreConfig));
+        for (CPSemaphoreConfig semaphoreConfig : config.semaphoreConfigs.values()) {
+            this.semaphoreConfigs.put(semaphoreConfig.getName(), new CPSemaphoreConfig(semaphoreConfig));
+        }
+        for (FencedLockConfig lockConfig : config.lockConfigs.values()) {
+            this.lockConfigs.put(lockConfig.getName(), new FencedLockConfig(lockConfig));
         }
     }
 
@@ -405,8 +414,8 @@ public class CPSubsystemConfig {
      *
      * @return the map of CP {@link ISemaphore} configurations
      */
-    public Map<String, CPSemaphoreConfig> getCPSemaphoreConfigs() {
-        return cpSemaphoreConfigs;
+    public Map<String, CPSemaphoreConfig> getSemaphoreConfigs() {
+        return semaphoreConfigs;
     }
 
     /**
@@ -419,8 +428,8 @@ public class CPSubsystemConfig {
      * @param name name of the CP {@link ISemaphore}
      * @return the CP {@link ISemaphore} configuration
      */
-    public CPSemaphoreConfig findCPSemaphoreConfig(String name) {
-        return lookupByPattern(configPatternMatcher, cpSemaphoreConfigs, getBaseName(name));
+    public CPSemaphoreConfig findSemaphoreConfig(String name) {
+        return lookupByPattern(configPatternMatcher, semaphoreConfigs, getBaseName(name));
     }
 
     /**
@@ -431,8 +440,8 @@ public class CPSubsystemConfig {
      * @param cpSemaphoreConfig the CP {@link ISemaphore} configuration
      * @return this config instance
      */
-    public CPSubsystemConfig addCPSemaphoreConfig(CPSemaphoreConfig cpSemaphoreConfig) {
-        cpSemaphoreConfigs.put(cpSemaphoreConfig.getName(), cpSemaphoreConfig);
+    public CPSubsystemConfig addSemaphoreConfig(CPSemaphoreConfig cpSemaphoreConfig) {
+        semaphoreConfigs.put(cpSemaphoreConfig.getName(), cpSemaphoreConfig);
         return this;
     }
 
@@ -444,10 +453,63 @@ public class CPSubsystemConfig {
      * @param cpSemaphoreConfigs the CP {@link ISemaphore} config map to set
      * @return this config instance
      */
-    public CPSubsystemConfig setCPSemaphoreConfigs(Map<String, CPSemaphoreConfig> cpSemaphoreConfigs) {
-        this.cpSemaphoreConfigs.clear();
-        this.cpSemaphoreConfigs.putAll(cpSemaphoreConfigs);
-        for (final Entry<String, CPSemaphoreConfig> entry : this.cpSemaphoreConfigs.entrySet()) {
+    public CPSubsystemConfig setSemaphoreConfigs(Map<String, CPSemaphoreConfig> cpSemaphoreConfigs) {
+        this.semaphoreConfigs.clear();
+        this.semaphoreConfigs.putAll(cpSemaphoreConfigs);
+        for (Entry<String, CPSemaphoreConfig> entry : this.semaphoreConfigs.entrySet()) {
+            entry.getValue().setName(entry.getKey());
+        }
+        return this;
+    }
+
+    /**
+     * Returns the map of {@link FencedLock} configurations
+     *
+     * @return the map of {@link FencedLock} configurations
+     */
+    public Map<String, FencedLockConfig> getLockConfigs() {
+        return lockConfigs;
+    }
+
+    /**
+     * Returns the {@link FencedLock} configuration for the given name.
+     * <p>
+     * The name is matched by stripping the {@link CPGroup} name from
+     * the given {@code name} if present.
+     * Returns null if there is no config found by the given {@code name}
+     *
+     * @param name name of the {@link FencedLock}
+     * @return the {@link FencedLock} configuration
+     */
+    public FencedLockConfig findLockConfig(String name) {
+        return lookupByPattern(configPatternMatcher, lockConfigs, getBaseName(name));
+    }
+
+    /**
+     * Adds the {@link FencedLock} configuration. Name of the
+     * {@link FencedLock} could optionally contain a {@link CPGroup} name,
+     * like "myLock@group1".
+     *
+     * @param lockConfig the {@link FencedLock} configuration
+     * @return this config instance
+     */
+    public CPSubsystemConfig addLockConfig(FencedLockConfig lockConfig) {
+        lockConfigs.put(lockConfig.getName(), lockConfig);
+        return this;
+    }
+
+    /**
+     * Sets the map of {@link FencedLock} configurations, mapped by config
+     * name. Names could optionally contain a {@link CPGroup} name, such as
+     * "myLock@group1".
+     *
+     * @param lockConfigs the {@link FencedLock} config map to set
+     * @return this config instance
+     */
+    public CPSubsystemConfig setLockConfigs(Map<String, FencedLockConfig> lockConfigs) {
+        this.lockConfigs.clear();
+        this.lockConfigs.putAll(lockConfigs);
+        for (Entry<String, FencedLockConfig> entry : this.lockConfigs.entrySet()) {
             entry.getValue().setName(entry.getKey());
         }
         return this;
@@ -459,6 +521,6 @@ public class CPSubsystemConfig {
                 + ", sessionTimeToLiveSeconds=" + sessionTimeToLiveSeconds + ", sessionHeartbeatIntervalSeconds="
                 + sessionHeartbeatIntervalSeconds + ", missingCPMemberAutoRemovalSeconds=" + missingCPMemberAutoRemovalSeconds
                 + ", failOnIndeterminateOperationState=" + failOnIndeterminateOperationState + ", raftAlgorithmConfig="
-                + raftAlgorithmConfig + ", cpSemaphoreConfigs=" + cpSemaphoreConfigs + '}';
+                + raftAlgorithmConfig + ", semaphoreConfigs=" + semaphoreConfigs + ", lockConfigs=" + lockConfigs + '}';
     }
 }

@@ -34,8 +34,8 @@ public class GetSemaphoreTypeMessageTask extends AbstractSemaphoreMessageTask {
 
     @Override
     protected void processMessage() {
-        CPSemaphoreConfig config = nodeEngine.getConfig().getCPSubsystemConfig().findCPSemaphoreConfig(proxyName);
-        boolean jdkCompatible = (config != null && config.isJdkCompatible());
+        CPSemaphoreConfig config = nodeEngine.getConfig().getCPSubsystemConfig().findSemaphoreConfig(proxyName);
+        boolean jdkCompatible = (config != null && config.isJDKCompatible());
         sendResponse(jdkCompatible);
     }
 

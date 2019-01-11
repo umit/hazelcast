@@ -24,7 +24,7 @@ import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.FencedLock;
+import com.hazelcast.cp.lock.FencedLock;
 import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockOwnershipState;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockService;
@@ -40,7 +40,6 @@ import java.util.concurrent.locks.Condition;
 import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
 import static com.hazelcast.cp.internal.RaftGroupId.dataSize;
 import static com.hazelcast.cp.internal.datastructures.lock.client.LockMessageTaskFactoryProvider.DESTROY_TYPE;
-import static com.hazelcast.cp.internal.datastructures.lock.client.LockMessageTaskFactoryProvider.FORCE_UNLOCK_TYPE;
 import static com.hazelcast.cp.internal.datastructures.lock.client.LockMessageTaskFactoryProvider.LOCK_OWNERSHIP_STATE;
 import static com.hazelcast.cp.internal.datastructures.lock.client.LockMessageTaskFactoryProvider.LOCK_TYPE;
 import static com.hazelcast.cp.internal.datastructures.lock.client.LockMessageTaskFactoryProvider.TRY_LOCK_TYPE;
@@ -53,6 +52,7 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
 
     private static final ClientMessageDecoder BOOLEAN_RESPONSE_DECODER = new BooleanResponseDecoder();
     private static final ClientMessageDecoder LOCK_OWNERSHIP_STATE_RESPONSE_DECODER = new RaftLockOwnershipStateResponseDecoder();
+    private static final ClientMessageDecoder LONG_RESPONSE_DECODER = new LongResponseDecoder();
 
 
     private final FencedLockImpl lock;
@@ -103,11 +103,6 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
     }
 
     @Override
-    public void forceUnlock() {
-        lock.forceUnlock();
-    }
-
-    @Override
     public long getFence() {
         return lock.getFence();
     }
@@ -123,8 +118,8 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
     }
 
     @Override
-    public int getLockCountIfLockedByCurrentThread() {
-        return lock.getLockCountIfLockedByCurrentThread();
+    public int getLockCount() {
+        return lock.getLockCount();
     }
 
     @Override
@@ -162,17 +157,6 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
         int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4;
         ClientMessage msg = prepareClientMessage(groupId, name, dataSize, messageTypeId);
         setRequestParams(msg, sessionId, threadId, invUid);
-        msg.updateFrameLength();
-        return msg;
-    }
-
-    private static ClientMessage encodeRequest(int messageTypeId, CPGroupId groupId, String name, long sessionId,
-                                               long threadId, UUID invUid, int val) {
-        int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4
-                + Bits.INT_SIZE_IN_BYTES;
-        ClientMessage msg = prepareClientMessage(groupId, name, dataSize, messageTypeId);
-        setRequestParams(msg, sessionId, threadId, invUid);
-        msg.set(val);
         msg.updateFrameLength();
         return msg;
     }
@@ -231,35 +215,35 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
         }
     }
 
+    private static class LongResponseDecoder implements ClientMessageDecoder {
+        @Override
+        public Long decodeClientMessage(ClientMessage msg) {
+            return msg.getLong();
+        }
+    }
+
     private class FencedLockImpl extends AbstractRaftFencedLockProxy {
         FencedLockImpl(AbstractProxySessionManager sessionManager, CPGroupId groupId, String proxyName, String objectName) {
             super(sessionManager, groupId, proxyName, objectName);
         }
 
         @Override
-        protected InternalCompletableFuture<RaftLockOwnershipState> doLock(long sessionId, long threadId, UUID invocationUid) {
+        protected InternalCompletableFuture<Long> doLock(long sessionId, long threadId, UUID invocationUid) {
             ClientMessage msg = encodeRequest(LOCK_TYPE, groupId, objectName, sessionId, threadId, invocationUid);
-            return invoke(objectName, msg, LOCK_OWNERSHIP_STATE_RESPONSE_DECODER);
+            return invoke(objectName, msg, LONG_RESPONSE_DECODER);
         }
 
         @Override
-        protected InternalCompletableFuture<RaftLockOwnershipState> doTryLock(long sessionId, long threadId, UUID invocationUid,
-                                                                              long timeoutMillis) {
+        protected InternalCompletableFuture<Long> doTryLock(long sessionId, long threadId, UUID invocationUid,
+                                                            long timeoutMillis) {
             ClientMessage msg = encodeRequest(TRY_LOCK_TYPE, groupId, objectName, sessionId, threadId, invocationUid,
                     timeoutMillis);
-            return invoke(objectName, msg, LOCK_OWNERSHIP_STATE_RESPONSE_DECODER);
+            return invoke(objectName, msg, LONG_RESPONSE_DECODER);
         }
 
         @Override
-        protected InternalCompletableFuture<Object> doUnlock(long sessionId, long threadId, UUID invocationUid,
-                                                             int releaseCount) {
-            ClientMessage msg = encodeRequest(UNLOCK_TYPE, groupId, objectName, sessionId, threadId, invocationUid, releaseCount);
-            return invoke(objectName, msg, BOOLEAN_RESPONSE_DECODER);
-        }
-
-        @Override
-        protected InternalCompletableFuture<Object> doForceUnlock(UUID invocationUid, long expectedFence) {
-            ClientMessage msg = encodeRequest(FORCE_UNLOCK_TYPE, groupId, objectName, -1, -1, invocationUid, expectedFence);
+        protected InternalCompletableFuture<Boolean> doUnlock(long sessionId, long threadId, UUID invocationUid) {
+            ClientMessage msg = encodeRequest(UNLOCK_TYPE, groupId, objectName, sessionId, threadId, invocationUid);
             return invoke(objectName, msg, BOOLEAN_RESPONSE_DECODER);
         }
 

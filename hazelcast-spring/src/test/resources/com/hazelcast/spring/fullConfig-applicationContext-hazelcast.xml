@@ -828,7 +828,7 @@
                     <hz:commit-index-advance-count-to-snapshot>250</hz:commit-index-advance-count-to-snapshot>
                     <hz:uncommitted-entry-count-to-reject-new-appends>75</hz:uncommitted-entry-count-to-reject-new-appends>
                 </hz:raft-algorithm>
-                <hz:cp-semaphores>
+                <hz:semaphores>
                     <hz:cp-semaphore>
                         <hz:name>sem1</hz:name>
                         <hz:jdk-compatible>true</hz:jdk-compatible>
@@ -837,7 +837,17 @@
                         <hz:name>sem2</hz:name>
                         <hz:jdk-compatible>false</hz:jdk-compatible>
                     </hz:cp-semaphore>
-                </hz:cp-semaphores>
+                </hz:semaphores>
+                <hz:locks>
+                    <hz:fenced-lock>
+                        <hz:name>lock1</hz:name>
+                        <hz:lock-acquire-limit>1</hz:lock-acquire-limit>
+                    </hz:fenced-lock>
+                    <hz:fenced-lock>
+                        <hz:name>lock2</hz:name>
+                        <hz:lock-acquire-limit>2</hz:lock-acquire-limit>
+                    </hz:fenced-lock>
+                </hz:locks>
             </hz:cp-subsystem>
         </hz:config>
     </hz:hazelcast>

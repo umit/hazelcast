@@ -16,12 +16,12 @@
 
 package com.hazelcast.cp.internal.datastructures.lock.operation;
 
-import com.hazelcast.cp.FencedLock;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.lock.FencedLock;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.datastructures.lock.LockEndpoint;
+import com.hazelcast.cp.internal.datastructures.lock.AcquireResult;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockDataSerializerHook;
-import com.hazelcast.cp.internal.datastructures.lock.RaftLockOwnershipState;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockService;
 import com.hazelcast.cp.internal.raft.impl.util.PostponedResponse;
 import com.hazelcast.nio.ObjectDataInput;
@@ -29,6 +29,8 @@ import com.hazelcast.nio.ObjectDataOutput;
 
 import java.io.IOException;
 import java.util.UUID;
+
+import static com.hazelcast.cp.internal.datastructures.lock.AcquireResult.AcquireStatus.WAIT_KEY_ADDED;
 
 /**
  * Operation for {@link FencedLock#lock()}
@@ -51,14 +53,13 @@ public class TryLockOp extends AbstractLockOp implements IndeterminateOperationS
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
         LockEndpoint endpoint = getLockEndpoint();
-        RaftLockOwnershipState ownership = service.tryAcquire(groupId, commitIndex, name, endpoint, invocationUid, timeoutMs);
-        if (ownership.isLockedBy(sessionId, threadId)) {
-            return ownership;
-        } else if (timeoutMs  > 0) {
+        AcquireResult result = service.tryAcquire(groupId, commitIndex, name, endpoint, invocationUid, timeoutMs);
+        if (result.status() == WAIT_KEY_ADDED) {
             return PostponedResponse.INSTANCE;
         }
 
-        return ownership;
+        // SUCCESSFUL or FAILED
+        return result.fence();
     }
 
     @Override

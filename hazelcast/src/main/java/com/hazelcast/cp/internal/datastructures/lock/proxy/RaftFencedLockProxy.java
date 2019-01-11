@@ -17,18 +17,17 @@
 package com.hazelcast.cp.internal.datastructures.lock.proxy;
 
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.RaftOp;
+import com.hazelcast.cp.lock.FencedLock;
 import com.hazelcast.cp.internal.RaftInvocationManager;
-import com.hazelcast.cp.FencedLock;
+import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
-import com.hazelcast.cp.internal.datastructures.lock.operation.LockOp;
-import com.hazelcast.cp.internal.session.ProxySessionManagerService;
-import com.hazelcast.cp.internal.datastructures.spi.operation.DestroyRaftObjectOp;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockOwnershipState;
-import com.hazelcast.cp.internal.datastructures.lock.operation.ForceUnlockOp;
 import com.hazelcast.cp.internal.datastructures.lock.operation.GetLockOwnershipStateOp;
+import com.hazelcast.cp.internal.datastructures.lock.operation.LockOp;
 import com.hazelcast.cp.internal.datastructures.lock.operation.TryLockOp;
 import com.hazelcast.cp.internal.datastructures.lock.operation.UnlockOp;
+import com.hazelcast.cp.internal.datastructures.spi.operation.DestroyRaftObjectOp;
+import com.hazelcast.cp.internal.session.ProxySessionManagerService;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.ProxyService;
@@ -52,25 +51,19 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
     }
 
     @Override
-    protected final InternalCompletableFuture<RaftLockOwnershipState> doLock(long sessionId, long threadId, UUID invocationUid) {
+    protected final InternalCompletableFuture<Long> doLock(long sessionId, long threadId, UUID invocationUid) {
         return invoke(new LockOp(objectName, sessionId, threadId, invocationUid));
     }
 
     @Override
-    protected final InternalCompletableFuture<RaftLockOwnershipState> doTryLock(long sessionId, long threadId, UUID invocationUid,
-                                                                                long timeoutMillis) {
+    protected final InternalCompletableFuture<Long> doTryLock(long sessionId, long threadId, UUID invocationUid,
+                                                              long timeoutMillis) {
         return invoke(new TryLockOp(objectName, sessionId, threadId, invocationUid, timeoutMillis));
     }
 
     @Override
-    protected final InternalCompletableFuture<Object> doUnlock(long sessionId, long threadId, UUID invocationUid,
-                                                               int releaseCount) {
-        return invoke(new UnlockOp(objectName, sessionId, threadId, invocationUid, releaseCount));
-    }
-
-    @Override
-    protected final InternalCompletableFuture<Object> doForceUnlock(UUID invocationUid, long expectedFence) {
-        return invoke(new ForceUnlockOp(objectName, expectedFence, invocationUid));
+    protected final InternalCompletableFuture<Boolean> doUnlock(long sessionId, long threadId, UUID invocationUid) {
+        return invoke(new UnlockOp(objectName, sessionId, threadId, invocationUid));
     }
 
     @Override
@@ -84,9 +77,12 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
 
     @Override
     public void destroy() {
-        invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), objectName)).join();
-        proxyService.destroyDistributedObject(getServiceName(), proxyName);
-        super.destroy();
+        try {
+            invocationManager.invoke(groupId, new DestroyRaftObjectOp(getServiceName(), objectName)).join();
+            proxyService.destroyDistributedObject(getServiceName(), proxyName);
+        } finally {
+            super.destroy();
+        }
     }
 
 }

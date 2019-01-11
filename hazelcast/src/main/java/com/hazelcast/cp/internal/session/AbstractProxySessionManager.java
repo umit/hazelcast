@@ -155,7 +155,7 @@ public abstract class AbstractProxySessionManager {
     /**
      * Invokes a shutdown call on server to close all existing sessions.
      */
-    public final Map<CPGroupId, ICompletableFuture<Object>> shutdown() {
+    public Map<CPGroupId, ICompletableFuture<Object>> shutdown() {
         lock.writeLock().lock();
         try {
             Map<CPGroupId, ICompletableFuture<Object>> futures = new HashMap<CPGroupId, ICompletableFuture<Object>>();

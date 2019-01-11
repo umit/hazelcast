@@ -16,15 +16,14 @@
 
 package com.hazelcast.cp.internal.datastructures.lock;
 
+import com.hazelcast.cp.internal.datastructures.lock.operation.GetLockOwnershipStateOp;
 import com.hazelcast.cp.internal.datastructures.lock.operation.LockOp;
+import com.hazelcast.cp.internal.datastructures.lock.operation.TryLockOp;
+import com.hazelcast.cp.internal.datastructures.lock.operation.UnlockOp;
 import com.hazelcast.internal.serialization.DataSerializerHook;
 import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.internal.datastructures.lock.operation.ForceUnlockOp;
-import com.hazelcast.cp.internal.datastructures.lock.operation.GetLockOwnershipStateOp;
-import com.hazelcast.cp.internal.datastructures.lock.operation.TryLockOp;
-import com.hazelcast.cp.internal.datastructures.lock.operation.UnlockOp;
 
 @SuppressWarnings("checkstyle:declarationorder")
 public class RaftLockDataSerializerHook implements DataSerializerHook {
@@ -41,8 +40,7 @@ public class RaftLockDataSerializerHook implements DataSerializerHook {
     public static final int LOCK_OP = 6;
     public static final int TRY_LOCK_OP = 7;
     public static final int UNLOCK_OP = 8;
-    public static final int FORCE_UNLOCK_OP = 9;
-    public static final int GET_RAFT_LOCK_OWNERSHIP_STATE_OP = 10;
+    public static final int GET_RAFT_LOCK_OWNERSHIP_STATE_OP = 9;
 
     @Override
     public int getFactoryId() {
@@ -71,8 +69,6 @@ public class RaftLockDataSerializerHook implements DataSerializerHook {
                         return new TryLockOp();
                     case UNLOCK_OP:
                         return new UnlockOp();
-                    case FORCE_UNLOCK_OP:
-                        return new ForceUnlockOp();
                     case GET_RAFT_LOCK_OWNERSHIP_STATE_OP:
                         return new GetLockOwnershipStateOp();
                     default:

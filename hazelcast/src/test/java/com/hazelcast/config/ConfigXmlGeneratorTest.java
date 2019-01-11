@@ -25,6 +25,7 @@ import com.hazelcast.config.ConfigCompatibilityChecker.MapMerkleTreeConfigChecke
 import com.hazelcast.config.ConfigCompatibilityChecker.QuorumConfigChecker;
 import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.config.cp.FencedLockConfig;
 import com.hazelcast.memory.MemorySize;
 import com.hazelcast.memory.MemoryUnit;
 import com.hazelcast.quorum.QuorumType;
@@ -1385,8 +1386,12 @@ public class ConfigXmlGeneratorTest {
               .setUncommittedEntryCountToRejectNewAppends(75);
 
         config.getCPSubsystemConfig()
-              .addCPSemaphoreConfig(new CPSemaphoreConfig("sem1", true))
-              .addCPSemaphoreConfig(new CPSemaphoreConfig("sem2", false));
+              .addSemaphoreConfig(new CPSemaphoreConfig("sem1", true))
+              .addSemaphoreConfig(new CPSemaphoreConfig("sem2", false));
+
+        config.getCPSubsystemConfig()
+              .addLockConfig(new FencedLockConfig("lock1", 1))
+              .addLockConfig(new FencedLockConfig("lock1", 2));
 
 
         CPSubsystemConfig generatedConfig = getNewConfigViaXMLGenerator(config).getCPSubsystemConfig();

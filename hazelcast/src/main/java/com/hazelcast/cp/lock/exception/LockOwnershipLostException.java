@@ -14,8 +14,23 @@
  * limitations under the License.
  */
 
+package com.hazelcast.cp.lock.exception;
+
+import com.hazelcast.cp.lock.FencedLock;
+
 /**
- * Contains client-side proxy impl of
- * Raft-based {@link com.hazelcast.cp.lock.FencedLock}
+ * Thrown when session of a lock holder is closed and the lock holder attempts
+ * a new lock / unlock operation on the lock.
+ *
+ * @see FencedLock
  */
-package com.hazelcast.client.cp.internal.datastructures.lock;
+public class LockOwnershipLostException extends IllegalMonitorStateException {
+
+    public LockOwnershipLostException() {
+    }
+
+    public LockOwnershipLostException(String message) {
+        super(message);
+    }
+
+}

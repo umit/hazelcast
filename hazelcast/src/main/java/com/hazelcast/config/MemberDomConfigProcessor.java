@@ -19,6 +19,7 @@ package com.hazelcast.config;
 import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig.TimedExpiryPolicyFactoryConfig.ExpiryPolicyType;
 import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.config.cp.FencedLockConfig;
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.logging.ILogger;
@@ -2395,8 +2396,10 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
             String nodeName = cleanNodeName(child);
             if ("raft-algorithm".equals(nodeName)) {
                 handleRaftAlgorithm(cpSubsystemConfig.getRaftAlgorithmConfig(), child);
-            } else if ("cp-semaphores".equals(nodeName)) {
+            } else if ("semaphores".equals(nodeName)) {
                 handleCPSemaphores(cpSubsystemConfig, child);
+            } else if ("locks".equals(nodeName)) {
+                handleFencedLocks(cpSubsystemConfig, child);
             } else {
                 String value = getTextContent(child).trim();
                 if ("cp-member-count".equals(nodeName)) {
@@ -2443,10 +2446,26 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
                 if ("name".equals(nodeName)) {
                     cpSemaphoreConfig.setName(value);
                 } else if ("jdk-compatible".equals(nodeName)) {
-                    cpSemaphoreConfig.setJdkCompatible(Boolean.parseBoolean(value));
+                    cpSemaphoreConfig.setJDKCompatible(Boolean.parseBoolean(value));
                 }
             }
-            cpSubsystemConfig.addCPSemaphoreConfig(cpSemaphoreConfig);
+            cpSubsystemConfig.addSemaphoreConfig(cpSemaphoreConfig);
+        }
+    }
+
+    private void handleFencedLocks(CPSubsystemConfig cpSubsystemConfig, Node node) {
+        for (Node child : childElements(node)) {
+            FencedLockConfig lockConfig = new FencedLockConfig();
+            for (Node subChild : childElements(child)) {
+                String nodeName = cleanNodeName(subChild);
+                String value = getTextContent(subChild).trim();
+                if ("name".equals(nodeName)) {
+                    lockConfig.setName(value);
+                } else if ("lock-acquire-limit".equals(nodeName)) {
+                    lockConfig.setLockAcquireLimit(Integer.parseInt(value));
+                }
+            }
+            cpSubsystemConfig.addLockConfig(lockConfig);
         }
     }
 }

@@ -16,6 +16,6 @@
 
 /**
  * Contains service classes for the Raft-based {@link com.hazelcast.core.ILock}
- * and {@link com.hazelcast.cp.FencedLock} implementation
+ * and {@link com.hazelcast.cp.lock.FencedLock} implementation
  */
 package com.hazelcast.cp.internal.datastructures.lock;

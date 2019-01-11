@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.datastructures.lock;
 
-import com.hazelcast.cp.FencedLock;
+import com.hazelcast.cp.lock.FencedLock;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
@@ -24,7 +24,7 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
 import java.io.IOException;
 
-import static com.hazelcast.cp.FencedLock.INVALID_FENCE;
+import static com.hazelcast.cp.lock.FencedLock.INVALID_FENCE;
 
 /**
  * Represents ownership state of a RaftLock
@@ -56,7 +56,7 @@ public class RaftLockOwnershipState implements IdentifiedDataSerializable {
     }
 
     public boolean isLockedBy(long sessionId, long threadId) {
-        return fence != INVALID_FENCE && this.sessionId == sessionId && this.threadId == threadId;
+        return isLocked() && this.sessionId == sessionId && this.threadId == threadId;
     }
 
     /**

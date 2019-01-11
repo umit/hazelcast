@@ -21,6 +21,7 @@ import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig.Duration
 import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig.TimedExpiryPolicyFactoryConfig;
 import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.config.cp.FencedLockConfig;
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
@@ -1337,12 +1338,21 @@ public class ConfigXmlGenerator {
                    raftAlgorithmConfig.getUncommittedEntryCountToRejectNewAppends())
            .close();
 
-        gen.open("cp-semaphores");
+        gen.open("semaphores");
 
-        for (CPSemaphoreConfig cpSemaphoreConfig : cpSubsystemConfig.getCPSemaphoreConfigs().values()) {
+        for (CPSemaphoreConfig semaphoreConfig : cpSubsystemConfig.getSemaphoreConfigs().values()) {
             gen.open("cp-semaphore")
-               .node("name", cpSemaphoreConfig.getName())
-               .node("jdk-compatible", cpSemaphoreConfig.isJdkCompatible())
+               .node("name", semaphoreConfig.getName())
+               .node("jdk-compatible", semaphoreConfig.isJDKCompatible())
+               .close();
+        }
+
+        gen.close().open("locks");
+
+        for (FencedLockConfig lockConfig : cpSubsystemConfig.getLockConfigs().values()) {
+            gen.open("fenced-lock")
+               .node("name", lockConfig.getName())
+               .node("lock-acquire-limit", lockConfig.getLockAcquireLimit())
                .close();
         }
 

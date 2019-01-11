@@ -15,7 +15,6 @@
  */
 
 /**
- * Contains client-side proxy impl of
- * Raft-based {@link com.hazelcast.cp.lock.FencedLock}
+ * Contains locking APIs of the CP subsystem
  */
-package com.hazelcast.client.cp.internal.datastructures.lock;
+package com.hazelcast.cp.lock;

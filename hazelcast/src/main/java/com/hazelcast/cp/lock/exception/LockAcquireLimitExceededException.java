@@ -14,28 +14,27 @@
  * limitations under the License.
  */
 
-package com.hazelcast.config.cp;
+package com.hazelcast.cp.lock.exception;
+
+import com.hazelcast.config.cp.FencedLockConfig;
+import com.hazelcast.core.HazelcastException;
+import com.hazelcast.cp.lock.FencedLock;
 
 /**
- * TODO: Javadoc Pending...
+ * Thrown when the current lock holder could not acquired the lock reentrantly
+ * because the configured lock acquire limit is reached.
+ * See {@link FencedLockConfig} and {@link FencedLock} for more information.
  *
+ * @see FencedLockConfig
+ * @see FencedLock
  */
-abstract class AbstractCPObjectConfig {
+public class LockAcquireLimitExceededException extends HazelcastException {
 
-    protected String name;
-
-    AbstractCPObjectConfig() {
+    public LockAcquireLimitExceededException() {
     }
 
-    AbstractCPObjectConfig(String name) {
-        this.name = name;
-    }
-
-    /**
-     * Returns name of the CP object
-     */
-    public String getName() {
-        return name;
+    public LockAcquireLimitExceededException(String message) {
+        super(message);
     }
 
 }

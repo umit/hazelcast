@@ -33,7 +33,6 @@ public class UnlockMessageTask extends AbstractLockMessageTask {
 
     private long threadId;
     private UUID invocationUid;
-    private int lockCount;
 
     UnlockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
@@ -42,7 +41,7 @@ public class UnlockMessageTask extends AbstractLockMessageTask {
     @Override
     protected void processMessage() {
         RaftInvocationManager invocationManager = getRaftInvocationManager();
-        invocationManager.invoke(groupId, new UnlockOp(name, sessionId, threadId, invocationUid, lockCount)).andThen(this);
+        invocationManager.invoke(groupId, new UnlockOp(name, sessionId, threadId, invocationUid)).andThen(this);
     }
 
     @Override
@@ -55,7 +54,6 @@ public class UnlockMessageTask extends AbstractLockMessageTask {
         super.decodeClientMessage(clientMessage);
         threadId = clientMessage.getLong();
         invocationUid = readUUID(clientMessage);
-        lockCount = clientMessage.getInt();
         return null;
     }
 }

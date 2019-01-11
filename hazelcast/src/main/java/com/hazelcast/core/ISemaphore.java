@@ -96,7 +96,7 @@ import java.util.concurrent.TimeUnit;
  * HazelcastInstance, but not different instances of HazelcastInstance. This
  * behaviour is not compatible with {@link Semaphore#release()}. You can use
  * the session-aware CP {@link ISemaphore} impl by disabling JDK compatibility
- * via {@link CPSemaphoreConfig#setJdkCompatible(boolean)}. Although
+ * via {@link CPSemaphoreConfig#setJDKCompatible(boolean)}. Although
  * the session-aware impl has a minor difference to the JDK Semaphore, we think
  * it is a better fit for distributed environments because of its safe
  * auto-cleanup mechanism for acquired permits. Please see
@@ -111,7 +111,7 @@ import java.util.concurrent.TimeUnit;
  * server or a client fails while holding some permits, they will not be
  * automatically released. You can use the sessionless CP {@link ISemaphore}
  * impl by enabling JDK compatibility via
- * {@link CPSemaphoreConfig#setJdkCompatible(boolean)}.
+ * {@link CPSemaphoreConfig#setJDKCompatible(boolean)}.
  * </li>
  * </ul>
  * <p>

@@ -16,14 +16,17 @@
 
 package com.hazelcast.cp.internal.datastructures.lock;
 
+import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.config.cp.FencedLockConfig;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.datastructures.lock.RaftLock.AcquireResult;
-import com.hazelcast.cp.internal.datastructures.lock.RaftLock.ReleaseResult;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
 import java.util.Map.Entry;
 import java.util.UUID;
+
+import static com.hazelcast.config.cp.FencedLockConfig.DEFAULT_LOCK_ACQUIRE_LIMIT;
+import static com.hazelcast.cp.internal.datastructures.lock.AcquireResult.AcquireStatus.WAIT_KEY_ADDED;
 
 /**
  * Contains {@link RaftLock} resources and manages wait timeouts
@@ -31,16 +34,27 @@ import java.util.UUID;
  */
 class RaftLockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> implements IdentifiedDataSerializable {
 
+    private CPSubsystemConfig cpSubsystemConfig;
+
     RaftLockRegistry() {
     }
 
-    RaftLockRegistry(CPGroupId groupId) {
+    RaftLockRegistry(CPSubsystemConfig cpSubsystemConfig, CPGroupId groupId) {
         super(groupId);
+        this.cpSubsystemConfig = cpSubsystemConfig;
+    }
+
+    public void setCpSubsystemConfig(CPSubsystemConfig cpSubsystemConfig) {
+        this.cpSubsystemConfig = cpSubsystemConfig;
     }
 
     @Override
     protected RaftLock createNewResource(CPGroupId groupId, String name) {
-        return new RaftLock(groupId, name);
+        FencedLockConfig lockConfig = cpSubsystemConfig.findLockConfig(name);
+        int lockCountLimit = (lockConfig != null)
+                ? lockConfig.getLockAcquireLimit() : DEFAULT_LOCK_ACQUIRE_LIMIT;
+
+        return new RaftLock(groupId, name, lockCountLimit);
     }
 
     @Override
@@ -59,8 +73,8 @@ class RaftLockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> imp
     AcquireResult acquire(long commitIndex, String name, LockEndpoint endpoint, UUID invocationUid) {
         AcquireResult result = getOrInitResource(name).acquire(commitIndex, endpoint, invocationUid, true);
 
-        for (LockInvocationKey waitKey : result.cancelled) {
-            removeWaitKey(name, waitKey.invocationUid());
+        for (LockInvocationKey key : result.cancelledWaitKeys()) {
+            removeWaitKey(name, key);
         }
 
         return result;
@@ -69,40 +83,26 @@ class RaftLockRegistry extends ResourceRegistry<LockInvocationKey, RaftLock> imp
     AcquireResult tryAcquire(long commitIndex, String name, LockEndpoint endpoint, UUID invocationUid, long timeoutMs) {
         AcquireResult result = getOrInitResource(name).acquire(commitIndex, endpoint, invocationUid, (timeoutMs > 0));
 
-        for (LockInvocationKey waitKey : result.cancelled) {
-            removeWaitKey(name, waitKey.invocationUid());
+        for (LockInvocationKey key : result.cancelledWaitKeys()) {
+            removeWaitKey(name, key);
         }
 
-        if (!result.ownership.isLockedBy(endpoint.sessionId(), endpoint.threadId())) {
+        if (result.status() == WAIT_KEY_ADDED) {
             addWaitKey(name, invocationUid, timeoutMs);
         }
 
         return result;
     }
 
-    ReleaseResult release(String name, LockEndpoint endpoint, UUID invocationUid, int lockCount) {
+    ReleaseResult release(String name, LockEndpoint endpoint, UUID invocationUid) {
         RaftLock lock = getResourceOrNull(name);
         if (lock == null) {
             return ReleaseResult.FAILED;
         }
 
-        ReleaseResult result = lock.release(endpoint, invocationUid, lockCount);
-        for (LockInvocationKey key : result.notifications) {
-            removeWaitKey(name, key.invocationUid());
-        }
-
-        return result;
-    }
-
-    ReleaseResult forceRelease(String name, UUID invocationUid, long expectedFence) {
-        RaftLock lock = getResourceOrNull(name);
-        if (lock == null) {
-            return ReleaseResult.FAILED;
-        }
-
-        ReleaseResult result = lock.forceRelease(expectedFence, invocationUid);
-        for (LockInvocationKey key : result.notifications) {
-            removeWaitKey(name, key.invocationUid());
+        ReleaseResult result = lock.release(endpoint, invocationUid);
+        for (LockInvocationKey key : result.completedWaitKeys()) {
+            removeWaitKey(name, key);
         }
 
         return result;

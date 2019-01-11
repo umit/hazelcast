@@ -14,27 +14,44 @@
  * limitations under the License.
  */
 
-package com.hazelcast.cp;
+package com.hazelcast.cp.lock;
 
 import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.config.cp.FencedLockConfig;
 import com.hazelcast.core.DistributedObject;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.CPSession;
+import com.hazelcast.cp.CPSessionManagementService;
+import com.hazelcast.cp.CPSubsystem;
+import com.hazelcast.cp.lock.exception.LockAcquireLimitExceededException;
+import com.hazelcast.cp.lock.exception.LockOwnershipLostException;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 
 /**
- * A reentrant & linearizable & distributed implementation of {@link Lock}.
+ * A linearizable & distributed & reentrant implementation of {@link Lock}.
  * <p>
  * {@link FencedLock} is accessed via {@link CPSubsystem#getLock(String)}.
  * <p>
  * {@link FencedLock} is CP with respect to the CAP principle. It works on top
- * of the Raft consensus algorithm. It offers linearizability during crash
+ * of the Raft consensus algorithm. It offers linearizability during crash-stop
  * failures and network partitions. If a network partition occurs, it remains
  * available on at most one side of the partition.
  * <p>
  * {@link FencedLock} works on top of CP sessions. Please see {@link CPSession}
  * for more information about CP sessions.
+ * <p>
+ * By default, {@link FencedLock} is reentrant. Once a caller acquires
+ * the lock, it can acquire the lock reentrantly as many times as it wants
+ * in a linearizable manner. Reentrancy behaviour can be configured via
+ * {@link FencedLockConfig}. For instance, reentrancy can be disabled and
+ * {@link FencedLock} can work as a non-reentrant mutex. One can also set
+ * a custom reentrancy limit. When reentrancy limit is exceeded,
+ * {@link FencedLock} does not block a lock call. Instead, it fails with
+ * {@link LockAcquireLimitExceededException} or a specified return value.
+ * Please check the locking methods to see details about the behaviour.
  * <p>
  * Distributed locks are unfortunately NOT EQUIVALENT to single-node mutexes
  * because of the complexities in distributed systems, such as uncertain
@@ -66,10 +83,9 @@ import java.util.concurrent.locks.Lock;
  * Just after that, Client-1 hits a long GC pause and eventually loses
  * ownership of the lock because it misses to commit CP session heartbeats.
  * Then, Client-2 chimes in and acquires the lock. Similar to Client-1,
- * Client-2 passes its fencing token to the external service as well. After
- * this moment, once Client-1 comes back alive, its write request will be
- * rejected by the external service, and Client-2 will be able to safely talk
- * to the external service.
+ * Client-2 passes its fencing token to the external service. After that,
+ * once Client-1 comes back alive, its write request will be rejected
+ * by the external service, and only Client-2 will be able to safely talk it.
  * <p>
  *                                                       CLIENT-1's session is expired.
  *                                                                    |
@@ -77,29 +93,35 @@ import java.util.concurrent.locks.Lock;
  * |       LOCK       | . . . . . . . - - - - - - - - - - - - - - - - | . . + + + + + + + + + + + + + + + + + + + + + + + + + + +
  * |------------------|             /\ \ fence = 1                    |   /| \ fence = 2
  *                                 /    \                                /    \
- * |------------------|           /      \                              /      \          CLIENT-1 wakes up.
- * |     CLIENT-1     | . . . . ./. . . . \/. . . _ _ _ _ _ _ _ _ _ _  /_ _ _ _ \ _ _ _ _ . . . . . . . . . . . . . . . . . . . .
- * |------------------|    lock()            \   CLIENT-1 is paused.  /          \    write(A) \
+ * |------------------|           /      \       |                      /      \         | CLIENT-1 wakes up.
+ * |     CLIENT-1     | . . . . ./. . . . \/. . .|_ _ _ _ _ _ _ _ _ _  /_ _ _ _ \ _ _ _ _|. . . . . . . . . . . . . . . . . . . .
+ * |------------------|    lock()            \    CLIENT-1 is paused. /          \    write(A) \
  *                               set_fence(1) \                      /            \             \
  * |------------------|                        \                    /              \             \
  * |     CLIENT-2     | . . . . . . . . . . . . \ . . . . . . . . ./. . . . . . . . \/. . . . . . \ . . . . . . . . . . . . . . .
  * |------------------|                          \           lock()                    \           \      write(B) \
  *                                                \                        set_fence(2) \           \               \
- * |------------------|                            \                                     \           \               \
- * | EXTERNAL SERVICE | . . . . . . . . . . . . . . \/  - - - - - - - - - - - - - - - - - \/  + + + + \/  + + + + + + \/  + + + +
- * |------------------|                                                                         write(A) fails.    write(B) ok.
- *                                                       SERVICE belongs to CLIENT-1.         SERVICE belongs to CLIENT-2.
+ * |------------------|                            \   |                                 \   |       \               \
+ * | EXTERNAL SERVICE | . . . . . . . . . . . . . . \/ |- - - - - - - - - - - - - - - - - \/ |+ + + + \/  + + + + + + \/  + + + +
+ * |------------------|                                |                                     | write(A) fails.    write(B) ok.
+ *                                                     | SERVICE belongs to CLIENT-1.        | SERVICE belongs to CLIENT-2.
  * <p>
- * You can read more about the idea in Martin Kleppmann's
+ * You can read more about the fencing token idea in Martin Kleppmann's
  * "How to do distributed locking" blog post and Google's Chubby paper.
- * {@link FencedLock} integrates this fencing token idea with the good old
- * {@link Lock} abstraction.
+ * {@link FencedLock} integrates this idea with the good old {@link Lock}
+ * abstraction.
  * <p>
- * All of the API methods in the new {@link FencedLock} impl offer
+ * All of the API methods in the new {@link FencedLock} abstraction offer
  * the exactly-once execution semantics. For instance, even if
- * a {@link #lock()} call is internally retried because of a crashed
- * Hazelcast member, the lock is acquired only once. The same rule
- * also applies to the other methods in the API.
+ * a {@link #lock()} call is internally retried because of a crashed CP member,
+ * the lock is acquired only once. The same rule also applies to the other
+ * methods in the API.
+ *
+ * @see FencedLockConfig
+ * @see CPSessionManagementService
+ * @see CPSession
+ * @see LockOwnershipLostException
+ * @see LockAcquireLimitExceededException
  */
 public interface FencedLock extends Lock, DistributedObject {
 
@@ -111,6 +133,11 @@ public interface FencedLock extends Lock, DistributedObject {
 
     /**
      * Acquires the lock.
+     * <p>
+     * When the caller already holds the lock and the current lock() call is
+     * reentrant, the call can fail with
+     * {@link LockAcquireLimitExceededException} if the lock acquire limit is
+     * exceeded. Please see {@link FencedLockConfig} for more information.
      * <p>
      * If the lock is not available then the current thread becomes disabled
      * for thread scheduling purposes and lies dormant until the lock has been
@@ -130,21 +157,28 @@ public interface FencedLock extends Lock, DistributedObject {
      * its CP session will be closed on the corresponding CP group because
      * it could not commit session heartbeats in the meantime. After the JVM
      * instance wakes up again, the same thread attempts to acquire the lock
-     * reentrantly. Before the second lock attempt, if the proxy notices that
-     * its CP session is closed, then the second lock() call fails by throwing
-     * {@link IllegalMonitorStateException}. However, this is not guaranteed
-     * because CP session heartbeats are committed periodically and the second
-     * lock attempt could occur before the proxy notices termination of its
-     * session on the next session heartbeat commit.
+     * reentrantly. In this case, the second lock() call fails by throwing
+     * {@link LockOwnershipLostException} which extends
+     * {@link IllegalMonitorStateException}. If the caller wants to deal with
+     * its session loss by taking some custom actions, it can handle the thrown
+     * {@link LockOwnershipLostException} instance. Otherwise, it can treat it
+     * as a regular {@link IllegalMonitorStateException}.
      *
-     * @throws IllegalMonitorStateException if the underlying CP session is
+     * @throws LockOwnershipLostException if the underlying CP session is
      *         closed while locking reentrantly
+     * @throws LockAcquireLimitExceededException if the lock call is reentrant
+     *         and the configured lock acquire limit is exceeded.
      */
     void lock();
 
     /**
      * Acquires the lock unless the current thread is
      * {@linkplain Thread#interrupt interrupted}.
+     * <p>
+     * When the caller already holds the lock and the current lock() call is
+     * reentrant, the call can fail with
+     * {@link LockAcquireLimitExceededException} if the lock acquire limit is
+     * exceeded. Please see {@link FencedLockConfig} for more information.
      * <p>
      * If the lock is not available then the current thread becomes disabled
      * for thread scheduling purposes and lies dormant until the lock has been
@@ -172,25 +206,33 @@ public interface FencedLock extends Lock, DistributedObject {
      * its CP session will be closed on the corresponding CP group because
      * it could not commit session heartbeats in the meantime. After the JVM
      * instance wakes up again, the same thread attempts to acquire the lock
-     * reentrantly. Before the second lock attempt, if the proxy notices that
-     * its CP session is closed, then the second lock() call fails by throwing
-     * {@link IllegalMonitorStateException}. However, this is not guaranteed
-     * because CP session heartbeats are committed periodically and the second
-     * lock attempt could occur before the proxy notices termination of its
-     * session on the next session heartbeat commit.
+     * reentrantly. In this case, the second lock() call fails by throwing
+     * {@link LockOwnershipLostException} which extends
+     * {@link IllegalMonitorStateException}. If the caller wants to deal with
+     * its session loss by taking some custom actions, it can handle the thrown
+     * {@link LockOwnershipLostException} instance. Otherwise, it can treat it
+     * as a regular {@link IllegalMonitorStateException}.
      *
      * @throws InterruptedException if the current thread is interrupted while
      *         acquiring the lock.
      *
-     * @throws IllegalMonitorStateException if the underlying CP session is
+     * @throws LockOwnershipLostException if the underlying CP session is
      *         closed while locking reentrantly
+     * @throws LockAcquireLimitExceededException if the lock call is reentrant
+     *         and the configured lock acquire limit is exceeded.
      */
     void lockInterruptibly() throws InterruptedException;
 
     /**
      * Acquires the lock and returns the fencing token assigned to the current
      * thread for this lock acquire. If the lock is acquired reentrantly,
-     * the same fencing token is returned.
+     * the same fencing token is returned, or the lock() call can fail with
+     * {@link LockAcquireLimitExceededException} if the lock acquire limit is
+     * exceeded. Please see {@link FencedLockConfig} for more information.
+     * <p>
+     * If the lock is not available then the current thread becomes disabled
+     * for thread scheduling purposes and lies dormant until the lock has been
+     * acquired.
      * <p>
      * This is a convenience method for the following pattern:
      * <pre>
@@ -198,10 +240,6 @@ public interface FencedLock extends Lock, DistributedObject {
      *     lock.lock();
      *     return lock.getFence();
      * </pre>
-     * <p>
-     * If the lock is not available then the current thread becomes disabled
-     * for thread scheduling purposes and lies dormant until the lock has been
-     * acquired.
      * <p>
      * Consider the following scenario where the lock is free initially:
      * <pre>
@@ -217,16 +255,16 @@ public interface FencedLock extends Lock, DistributedObject {
      * its CP session will be closed on the corresponding CP group because
      * it could not commit session heartbeats in the meantime. After the JVM
      * instance wakes up again, the same thread attempts to acquire the lock
-     * reentrantly. Before the second lock attempt, if the proxy notices that
-     * its CP session is closed, then the second lock() call fails by throwing
-     * {@link IllegalMonitorStateException}. However, this is not guaranteed
-     * because CP session heartbeats are committed periodically and the second
-     * lock attempt could occur before the proxy notices termination of its
-     * session on the next session heartbeat commit.
+     * reentrantly. In this case, the second lock() call fails by throwing
+     * {@link LockOwnershipLostException} which extends
+     * {@link IllegalMonitorStateException}. If the caller wants to deal with
+     * its session loss by taking some custom actions, it can handle the thrown
+     * {@link LockOwnershipLostException} instance. Otherwise, it can treat it
+     * as a regular {@link IllegalMonitorStateException}.
      * <p>
      * Fencing tokens are monotonic numbers that are incremented each time
-     * the lock switches from the not-acquired state to the acquired state.
-     * They are simply used for ordering lock holders. A lock holder can pass
+     * the lock switches from the free state to the acquired state. They are
+     * simply used for ordering lock holders. A lock holder can pass
      * its fencing to the shared resource to fence off previous lock holders.
      * When this resource receives an operation, it can validate the fencing
      * token in the operation.
@@ -251,16 +289,21 @@ public interface FencedLock extends Lock, DistributedObject {
      * is not reentrant, its fencing token is guaranteed to be larger than the
      * previous tokens, independent of the thread that has acquired the lock.
      *
-     * @throws IllegalMonitorStateException if the underlying CP session is
+     * @throws LockOwnershipLostException if the underlying CP session is
      *         closed while locking reentrantly
+     * @throws LockAcquireLimitExceededException if the lock call is reentrant
+     *         and the configured lock acquire limit is exceeded.
      */
     long lockAndGetFence();
 
     /**
      * Acquires the lock if it is available or already held by the current
-     * thread, and returns immediately with the value {@code true}.
-     * If the lock is not available, then this method will return immediately
-     * with the value {@code false}.
+     * thread at the time of invocation & the acquire limit is not exceeded,
+     * and immediately returns with the value {@code true}. If the lock is not
+     * available, then this method immediately returns with the value
+     * {@code false}. When the call is reentrant, it can return {@code false}
+     * if the lock acquire limit is exceeded. Please see
+     * {@link FencedLockConfig} for more information.
      * <p>
      * A typical usage idiom for this method would be:
      * <pre>
@@ -281,18 +324,20 @@ public interface FencedLock extends Lock, DistributedObject {
      * @return {@code true} if the lock was acquired and
      *         {@code false} otherwise
      *
-     * @throws IllegalMonitorStateException if the underlying CP session is
+     * @throws LockOwnershipLostException if the underlying CP session is
      *         closed while locking reentrantly
      */
     boolean tryLock();
 
     /**
      * Acquires the lock only if it is free or already held by the current
-     * thread at the time of invocation, and returns the fencing token assigned
-     * to the current thread for this lock acquire. If the lock is acquired
-     * reentrantly, the same fencing token is returned. If not acquired,
-     * then this method will return immediately with {@link #INVALID_FENCE}
-     * that represents a failed lock attempt.
+     * thread at the time of invocation & the acquire limit is not exceeded,
+     * and returns the fencing token assigned to the current thread for this
+     * lock acquire. If the lock is acquired reentrantly, the same fencing
+     * token is returned. If the lock is already held by another caller or
+     * the lock acquire limit is exceeded, then this method immediately returns
+     * {@link #INVALID_FENCE} that represents a failed lock attempt.
+     * Please see {@link FencedLockConfig} for more information.
      * <p>
      * This is a convenience method for the following pattern:
      * <pre>
@@ -318,16 +363,16 @@ public interface FencedLock extends Lock, DistributedObject {
      * its CP session will be closed on the corresponding CP group because
      * it could not commit session heartbeats in the meantime. After the JVM
      * instance wakes up again, the same thread attempts to acquire the lock
-     * reentrantly. Before the second lock attempt, if the proxy notices that
-     * its CP session is closed, then the second lock() call fails by throwing
-     * {@link IllegalMonitorStateException}. However, this is not guaranteed
-     * because CP session heartbeats are committed periodically and the second
-     * lock attempt could occur before the proxy notices termination of its
-     * session on the next session heartbeat commit.
+     * reentrantly. In this case, the second lock() call fails by throwing
+     * {@link LockOwnershipLostException} which extends
+     * {@link IllegalMonitorStateException}. If the caller wants to deal with
+     * its session loss by taking some custom actions, it can handle the thrown
+     * {@link LockOwnershipLostException} instance. Otherwise, it can treat it
+     * as a regular {@link IllegalMonitorStateException}.
      * <p>
      * Fencing tokens are monotonic numbers that are incremented each time
-     * the lock switches from the not-acquired state to the acquired state.
-     * They are simply used for ordering lock holders. A lock holder can pass
+     * the lock switches from the free state to the acquired state. They are
+     * simply used for ordering lock holders. A lock holder can pass
      * its fencing to the shared resource to fence off previous lock holders.
      * When this resource receives an operation, it can validate the fencing
      * token in the operation.
@@ -355,7 +400,7 @@ public interface FencedLock extends Lock, DistributedObject {
      * @return the fencing token if the lock was acquired and
      *         {@link #INVALID_FENCE} otherwise
      *
-     * @throws IllegalMonitorStateException if the underlying CP session is
+     * @throws LockOwnershipLostException if the underlying CP session is
      *         closed while locking reentrantly
      */
     long tryLockAndGetFence();
@@ -364,16 +409,21 @@ public interface FencedLock extends Lock, DistributedObject {
      * Acquires the lock if it is free within the given waiting time,
      * or already held by the current thread.
      * <p>
-     * If the lock is available or already held by the current thread, this
-     * method returns immediately with the value {@code true}. If the lock is
-     * not available then the current thread becomes disabled for thread
-     * scheduling purposes and lies dormant until the lock is acquired by the
-     * current thread or the specified waiting time elapses.
+     * If the lock is available, this method returns immediately with the value
+     * {@code true}. When the call is reentrant, it immediately returns
+     * {@code true} if the lock acquire limit is not exceeded. Otherwise,
+     * it returns {@code false} on the reentrant lock attempt if the acquire
+     * limit is exceeded. Please see {@link FencedLockConfig} for more
+     * information.
+     * <p>
+     * If the lock is not available then the current thread becomes disabled
+     * for thread scheduling purposes and lies dormant until the lock is
+     * acquired by the current thread or the specified waiting time elapses.
      * <p>
      * If the lock is acquired, then the value {@code true} is returned.
      * <p>
      * If the specified waiting time elapses, then the value {@code false}
-     * is returned. If the time is less than or equal to zero, the method will
+     * is returned. If the time is less than or equal to zero, the method does
      * not wait at all.
      *
      * @param time the maximum time to wait for the lock
@@ -381,23 +431,27 @@ public interface FencedLock extends Lock, DistributedObject {
      * @return {@code true} if the lock was acquired and {@code false}
      *         if the waiting time elapsed before the lock was acquired
      *
-     * @throws IllegalMonitorStateException if the underlying CP session is
+     * @throws LockOwnershipLostException if the underlying CP session is
      *         closed while locking reentrantly
      */
     boolean tryLock(long time, TimeUnit unit);
 
     /**
      * Acquires the lock if it is free within the given waiting time,
-     * or already held by the current thread, and returns the fencing token
+     * or already held by the current thread at the time of invocation &
+     * the acquire limit is not exceeded, and returns the fencing token
      * assigned to the current thread for this lock acquire. If the lock is
-     * acquired reentrantly, the same fencing token is returned.
+     * acquired reentrantly, the same fencing token is returned. If the lock
+     * acquire limit is exceeded, then this method immediately returns
+     * {@link #INVALID_FENCE} that represents a failed lock attempt.
+     * Please see {@link FencedLockConfig} for more information.
      * <p>
      * If the lock is not available then the current thread becomes disabled
      * for thread scheduling purposes and lies dormant until the lock is
      * acquired by the current thread or the specified waiting time elapses.
      * <p>
      * If the specified waiting time elapses, then {@link #INVALID_FENCE}
-     * is returned. If the time is less than or equal to zero, the method will
+     * is returned. If the time is less than or equal to zero, the method does
      * not wait at all.
      * <p>
      * This is a convenience method for the following pattern:
@@ -424,16 +478,16 @@ public interface FencedLock extends Lock, DistributedObject {
      * its CP session will be closed on the corresponding CP group because
      * it could not commit session heartbeats in the meantime. After the JVM
      * instance wakes up again, the same thread attempts to acquire the lock
-     * reentrantly. Before the second lock attempt, if the proxy notices that
-     * its CP session is closed, then the second lock() call fails by throwing
-     * {@link IllegalMonitorStateException}. However, this is not guaranteed
-     * because CP session heartbeats are committed periodically and the second
-     * lock attempt could occur before the proxy notices termination of its
-     * session on the next session heartbeat commit.
+     * reentrantly. In this case, the second lock() call fails by throwing
+     * {@link LockOwnershipLostException} which extends
+     * {@link IllegalMonitorStateException}. If the caller wants to deal with
+     * its session loss by taking some custom actions, it can handle the thrown
+     * {@link LockOwnershipLostException} instance. Otherwise, it can treat it
+     * as a regular {@link IllegalMonitorStateException}.
      * <p>
      * Fencing tokens are monotonic numbers that are incremented each time
-     * the lock switches from the not-acquired state to the acquired state.
-     * They are simply used for ordering lock holders. A lock holder can pass
+     * the lock switches from the free state to the acquired state. They are
+     * simply used for ordering lock holders. A lock holder can pass
      * its fencing to the shared resource to fence off previous lock holders.
      * When this resource receives an operation, it can validate the fencing
      * token in the operation.
@@ -463,7 +517,7 @@ public interface FencedLock extends Lock, DistributedObject {
      * @return the fencing token if the lock was acquired and
      *         {@link #INVALID_FENCE} otherwise
      *
-     * @throws IllegalMonitorStateException if the underlying CP session is
+     * @throws LockOwnershipLostException if the underlying CP session is
      *         closed while locking reentrantly
      */
     long tryLockAndGetFence(long time, TimeUnit unit);
@@ -473,24 +527,17 @@ public interface FencedLock extends Lock, DistributedObject {
      *
      * @throws IllegalMonitorStateException if the lock is not held by
      *         the current thread
+     * @throws LockOwnershipLostException if the underlying CP session is
+     *         closed before the current thread releases the lock
      */
     void unlock();
-
-    /**
-     * Releases the lock if it is held by any thread in the cluster,
-     * not necessarily the current thread.
-     *
-     * @throws IllegalMonitorStateException if the lock is not held by
-     *         any thread in the cluster
-     */
-    void forceUnlock();
 
     /**
      * Returns the fencing token if the lock is held by the current thread.
      * <p>
      * Fencing tokens are monotonic numbers that are incremented each time
-     * the lock switches from the not-acquired state to the acquired state.
-     * They are simply used for ordering lock holders. A lock holder can pass
+     * the lock switches from the free state to the acquired state. They are
+     * simply used for ordering lock holders. A lock holder can pass
      * its fencing to the shared resource to fence off previous lock holders.
      * When this resource receives an operation, it can validate the fencing
      * token in the operation.
@@ -499,6 +546,8 @@ public interface FencedLock extends Lock, DistributedObject {
      *
      * @throws IllegalMonitorStateException if the lock is not held by
      *         the current thread
+     * @throws LockOwnershipLostException if the underlying CP session is
+     *         closed while the current thread is holding the lock
      */
     long getFence();
 
@@ -507,6 +556,9 @@ public interface FencedLock extends Lock, DistributedObject {
      *
      * @return {@code true} if this lock is locked by any thread
      *         in the cluster, {@code false} otherwise.
+     *
+     * @throws LockOwnershipLostException if the underlying CP session is
+     *         closed while the current thread is holding the lock
      */
     boolean isLocked();
 
@@ -515,23 +567,28 @@ public interface FencedLock extends Lock, DistributedObject {
      *
      * @return {@code true} if the lock is held by the current thread or not,
      *         {@code false} otherwise.
+     *
+     * @throws LockOwnershipLostException if the underlying CP session is
+     *         closed while the current thread is holding the lock
      */
     boolean isLockedByCurrentThread();
 
     /**
-     * Returns the reentrant lock count if the lock is held by
-     * the current thread, or 0 if the lock is held by some other thread
-     * in the cluster, or not held at all.
+     * Returns the reentrant lock count if the lock is held by any thread
+     * in the cluster.
      *
-     * @return the reentrant lock count if the lock is held by the current thread,
-     *         0 otherwise
+     * @return the reentrant lock count if the lock is held by any thread
+     *         in the cluster
+     *
+     * @throws LockOwnershipLostException if the underlying CP session is
+     *         closed while the current thread is holding the lock
      */
-    int getLockCountIfLockedByCurrentThread();
+    int getLockCount();
 
     /**
-     * Returns id of the {@link CPGroup} that runs this {@link FencedLock} instance
+     * Returns id of the CP group that runs this {@link FencedLock} instance
      *
-     * @return id of the {@link CPGroup} that runs this {@link FencedLock} instance
+     * @return id of the CP group that runs this {@link FencedLock} instance
      */
     CPGroupId getGroupId();
 

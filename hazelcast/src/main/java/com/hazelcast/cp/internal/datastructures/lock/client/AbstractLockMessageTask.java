@@ -59,9 +59,6 @@ public abstract class AbstractLockMessageTask extends AbstractMessageTask implem
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        if (response instanceof Integer) {
-            return encodeLongResponse((Integer) response);
-        }
         if (response instanceof Long) {
             return encodeLongResponse((Long) response);
         }

@@ -598,7 +598,7 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
         cpSubsystemConfig.setSessionHeartbeatIntervalSeconds(1);
 
         CPSemaphoreConfig semaphoreConfig = new CPSemaphoreConfig(objectName, false);
-        cpSubsystemConfig.addCPSemaphoreConfig(semaphoreConfig);
+        cpSubsystemConfig.addSemaphoreConfig(semaphoreConfig);
         return config;
     }
 }

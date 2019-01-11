@@ -20,8 +20,9 @@ import com.hazelcast.config.Config;
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.FencedLock;
+import com.hazelcast.cp.lock.FencedLock;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
+import com.hazelcast.cp.internal.datastructures.lock.operation.UnlockOp;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
@@ -43,8 +44,11 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
+import static com.hazelcast.cp.internal.datastructures.lock.FencedLockBasicTest.lockByOtherThread;
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getSnapshotEntry;
 import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
+import static com.hazelcast.util.ThreadUtil.getThreadId;
+import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -54,7 +58,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
-public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
+public class FencedLockAdvancedTest extends HazelcastRaftTestSupport {
 
     private static final int LOG_ENTRY_COUNT_TO_SNAPSHOT = 10;
 
@@ -126,7 +130,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
 
     @Test
     public void testFailedTryLockClearsWaitTimeouts() {
-        RaftFencedLockBasicTest.lockByOtherThread(lock);
+        lockByOtherThread(lock);
 
         CPGroupId groupId = lock.getGroupId();
         HazelcastInstance leader = getLeaderInstance(instances, groupId);
@@ -141,7 +145,7 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
 
     @Test
     public void testDestroyClearsWaitTimeouts() {
-        RaftFencedLockBasicTest.lockByOtherThread(lock);
+        lockByOtherThread(lock);
 
         CPGroupId groupId = lock.getGroupId();
         HazelcastInstance leader = getLeaderInstance(instances, groupId);
@@ -262,7 +266,11 @@ public class RaftFencedLockAdvancedTest extends HazelcastRaftTestSupport {
             }
         });
 
-        lock.forceUnlock();
+        RaftSessionService sessionService = getNodeEngineImpl(lockInstance).getService(RaftSessionService.SERVICE_NAME);
+        long sessionId = sessionService.getAllSessions(groupId).iterator().next().id();
+
+        getRaftInvocationManager(lockInstance)
+                .invoke(groupId, new UnlockOp(objectName, sessionId, getThreadId(), newUnsecureUUID())).join();
 
         assertTrueEventually(new AssertTask() {
             @Override

@@ -68,7 +68,7 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
         Collection<AcquireInvocationKey> acquired = getOrInitResource(name).init(permits);
 
         for (AcquireInvocationKey key : acquired) {
-            removeWaitKey(name, key.invocationUid());
+            removeWaitKey(name, key);
         }
 
         return acquired;
@@ -83,7 +83,7 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
         AcquireResult result = getOrInitResource(name).acquire(key, (timeoutMs != 0));
 
         for (AcquireInvocationKey waitKey : result.cancelled) {
-            removeWaitKey(name, waitKey.invocationUid());
+            removeWaitKey(name, waitKey);
         }
 
         if (result.acquired == 0) {
@@ -96,11 +96,11 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
     ReleaseResult release(String name, SemaphoreEndpoint endpoint, UUID invocationUid, int permits) {
         ReleaseResult result = getOrInitResource(name).release(endpoint, invocationUid, permits);
         for (AcquireInvocationKey key : result.acquired) {
-            removeWaitKey(name, key.invocationUid());
+            removeWaitKey(name, key);
         }
 
         for (AcquireInvocationKey key : result.cancelled) {
-            removeWaitKey(name, key.invocationUid());
+            removeWaitKey(name, key);
         }
 
         return result;
@@ -109,7 +109,7 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
     AcquireResult drainPermits(String name, SemaphoreEndpoint endpoint, UUID invocationUid) {
         AcquireResult result = getOrInitResource(name).drain(endpoint, invocationUid);
         for (AcquireInvocationKey key : result.cancelled) {
-            removeWaitKey(name, key.invocationUid());
+            removeWaitKey(name, key);
         }
 
         return result;
@@ -118,11 +118,11 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
     ReleaseResult changePermits(String name, SemaphoreEndpoint endpoint, UUID invocationUid, int permits) {
         ReleaseResult result = getOrInitResource(name).change(endpoint, invocationUid, permits);
         for (AcquireInvocationKey key : result.acquired) {
-            removeWaitKey(name, key.invocationUid());
+            removeWaitKey(name, key);
         }
 
         for (AcquireInvocationKey key : result.cancelled) {
-            removeWaitKey(name, key.invocationUid());
+            removeWaitKey(name, key);
         }
 
         return result;

@@ -65,21 +65,31 @@ public class CPSemaphoreConfig extends AbstractCPObjectConfig {
         this.jdkCompatible = jdkCompatible;
     }
 
-    public CPSemaphoreConfig(CPSemaphoreConfig config) {
+    CPSemaphoreConfig(CPSemaphoreConfig config) {
         super(config.name);
         this.jdkCompatible = config.jdkCompatible;
     }
 
+    /**
+     * Sets name of the semaphore
+     */
     public CPSemaphoreConfig setName(String name) {
         this.name = name;
         return this;
     }
 
-    public boolean isJdkCompatible() {
+    /**
+     * Returns true if the CP {@link ISemaphore} is compatible with
+     * its JDK counterpart
+     */
+    public boolean isJDKCompatible() {
         return jdkCompatible;
     }
 
-    public CPSemaphoreConfig setJdkCompatible(boolean jdkCompatible) {
+    /**
+     * Sets JDK compatibility mode of the CP {@link ISemaphore}
+     */
+    public CPSemaphoreConfig setJDKCompatible(boolean jdkCompatible) {
         this.jdkCompatible = jdkCompatible;
         return this;
     }

@@ -50,7 +50,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
-import static com.hazelcast.cp.FencedLock.INVALID_FENCE;
+import static com.hazelcast.cp.internal.datastructures.lock.FencedLockBasicTest.assertInvalidFence;
 import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 import static com.hazelcast.util.ThreadUtil.getThreadId;
 import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
@@ -65,7 +65,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
-public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
+public class FencedLockFailureTest extends HazelcastRaftTestSupport {
 
     private HazelcastInstance[] instances;
     private HazelcastInstance lockInstance;
@@ -334,7 +334,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), invUid)).join();
         invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), invUid)).join();
 
-        assertEquals(1, lock.getLockCountIfLockedByCurrentThread());
+        assertEquals(1, lock.getLockCount());
     }
 
     @Test
@@ -356,7 +356,66 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), invUid2)).join();
         invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), invUid2)).join();
 
-        assertEquals(2, lock.getLockCountIfLockedByCurrentThread());
+        assertEquals(2, lock.getLockCount());
+    }
+
+    @Test
+    public void testPendingLockAcquireRetry() {
+        final CountDownLatch unlockLatch = new CountDownLatch(1);
+        spawn(new Runnable() {
+            @Override
+            public void run() {
+                lock.lock();
+                assertOpenEventually(unlockLatch);
+                lock.unlock();
+            }
+        });
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertTrue(lock.isLocked());
+            }
+        });
+
+        final CPGroupId groupId = lock.getGroupId();
+        long sessionId = getSessionManager().getSession(groupId);
+        assertNotEquals(NO_SESSION_ID, sessionId);
+
+        RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
+        UUID invUid = newUnsecureUUID();
+
+        InternalCompletableFuture<Long> f1 = invocationManager
+                .invoke(groupId, new TryLockOp(objectName, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
+                assertFalse(service.getRegistryOrNull(groupId).getWaitTimeouts().isEmpty());
+            }
+        });
+
+        unlockLatch.countDown();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
+                assertTrue(service.getRegistryOrNull(groupId).getWaitTimeouts().isEmpty());
+                assertTrue(lock.isLocked());
+            }
+        });
+
+        InternalCompletableFuture<Long> f2 = invocationManager
+                .invoke(groupId, new TryLockOp(objectName, sessionId, getThreadId(), invUid, MINUTES.toMillis(5)));
+
+        long fence1 = f1.join();
+        long fence2 = f2.join();
+
+        assertEquals(fence1, lock.getFence());
+        assertEquals(fence1, fence2);
+        assertEquals(1, lock.getLockCount());
     }
 
     @Test
@@ -368,142 +427,125 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
         UUID invUid = newUnsecureUUID();
 
-        invocationManager.invoke(groupId, new UnlockOp(objectName, sessionId, getThreadId(), invUid, 1)).join();
+        invocationManager.invoke(groupId, new UnlockOp(objectName, sessionId, getThreadId(), invUid)).join();
 
         lockByOtherThread();
 
-        invocationManager.invoke(groupId, new UnlockOp(objectName, sessionId, getThreadId(), invUid, 1)).join();
+        invocationManager.invoke(groupId, new UnlockOp(objectName, sessionId, getThreadId(), invUid)).join();
     }
 
     @Test
-    public void testIsLockedByCurrentThreadCallInitializesLocalLockState() {
+    public void testIsLockedByCurrentThreadCallInitializesLockedSessionId() {
         lock.lock();
         lock.unlock();
 
         // there is a session id now
 
-        final CPGroupId groupId = lock.getGroupId();
+        long threadId = getThreadId();
+        CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
-        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), newUnsecureUUID())).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, threadId, newUnsecureUUID())).join();
 
         // the current thread acquired the lock once and we pretend that there was a operation timeout in lock.lock() call
 
         assertTrue(lock.isLockedByCurrentThread());
-        assertEquals(1, lock.getLocalLockCount());
-        assertNotEquals(INVALID_FENCE, lock.getLocalLockFence());
+        Long lockedSessionId = lock.getLockedSessionId(threadId);
+        assertNotNull(lockedSessionId);
+        assertEquals(sessionId, (long) lockedSessionId);
     }
 
     @Test
-    public void testIsLockedByCurrentThreadCallInitializesLocalReentrantLockState() {
+    public void testLockCallInitializesLockedSessionId() {
         lock.lock();
         lock.unlock();
 
         // there is a session id now
 
-        final CPGroupId groupId = lock.getGroupId();
+        long threadId = getThreadId();
+        CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
-        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), newUnsecureUUID())).join();
-        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), newUnsecureUUID())).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, threadId, newUnsecureUUID())).join();
 
-        // the current thread acquired the lock twice and we pretend that both lock.lock() calls failed with operation timeout
+        lock.lock();
 
-        assertTrue(lock.isLockedByCurrentThread());
-        assertEquals(2, lock.getLocalLockCount());
-        assertNotEquals(INVALID_FENCE, lock.getLocalLockFence());
+        Long lockedSessionId = lock.getLockedSessionId(threadId);
+        assertNotNull(lockedSessionId);
+        assertEquals(sessionId, (long) lockedSessionId);
     }
 
     @Test
-    public void testLockCallInitializesLocalReentrantLockState() {
+    public void testUnlockCallInitializesLockedSessionId() {
         lock.lock();
         lock.unlock();
 
         // there is a session id now
 
-        final CPGroupId groupId = lock.getGroupId();
+        long threadId = getThreadId();
+        CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
-        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), newUnsecureUUID())).join();
-        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), newUnsecureUUID())).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, threadId, newUnsecureUUID())).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, threadId, newUnsecureUUID())).join();
 
-        lock.lock();
+        lock.unlock();
 
-        assertEquals(3, lock.getLocalLockCount());
-        assertNotEquals(INVALID_FENCE, lock.getLocalLockFence());
+        Long lockedSessionId = lock.getLockedSessionId(threadId);
+        assertNotNull(lockedSessionId);
+        assertEquals(sessionId, (long) lockedSessionId);
     }
 
     @Test
-    public void testUnlockReleasesObservedAcquiresOneByOne() {
+    public void testIsLockedCallInitializesLockedSessionId() {
         lock.lock();
         lock.unlock();
 
         // there is a session id now
 
-        final CPGroupId groupId = lock.getGroupId();
+        long threadId = getThreadId();
+        CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
-        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), newUnsecureUUID())).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, threadId, newUnsecureUUID())).join();
 
-        lock.lock();
+        boolean locked = lock.isLocked();
 
-        lock.unlock();
-
-        assertEquals(1, lock.getLocalLockCount());
-        assertNotEquals(INVALID_FENCE, lock.getLocalLockFence());
-
-        lock.unlock();
-
-        assertEquals(0, lock.getLocalLockCount());
-        assertEquals(INVALID_FENCE, lock.getLocalLockFence());
-
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() {
-                RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
-                RaftLockRegistry registry = service.getRegistryOrNull(groupId);
-                assertFalse(registry.getLockOwnershipState(objectName).isLocked());
-            }
-        });
+        assertTrue(locked);
+        Long lockedSessionId = lock.getLockedSessionId(threadId);
+        assertNotNull(lockedSessionId);
+        assertEquals(sessionId, (long) lockedSessionId);
     }
 
     @Test
-    public void testUnlockReleasesNotObservedAcquiresAllAtOnce() {
+    public void testGetLockCountCallInitializesLockedSessionId() {
         lock.lock();
         lock.unlock();
 
         // there is a session id now
 
-        final CPGroupId groupId = lock.getGroupId();
+        long threadId = getThreadId();
+        CPGroupId groupId = lock.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 
         RaftInvocationManager invocationManager = getRaftInvocationManager(lockInstance);
-        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), newUnsecureUUID())).join();
-        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, getThreadId(), newUnsecureUUID())).join();
+        invocationManager.invoke(groupId, new LockOp(objectName, sessionId, threadId, newUnsecureUUID())).join();
 
-        lock.unlock();
+        int getLockCount = lock.getLockCount();
 
-        assertFalse(lock.isLockedByCurrentThread());
-        assertEquals(0, lock.getLocalLockCount());
-        assertEquals(INVALID_FENCE, lock.getLocalLockFence());
-
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() {
-                RaftLockService service = getNodeEngineImpl(lockInstance).getService(RaftLockService.SERVICE_NAME);
-                RaftLockRegistry registry = service.getRegistryOrNull(groupId);
-                assertFalse(registry.getLockOwnershipState(objectName).isLocked());
-            }
-        });
+        assertEquals(1, getLockCount);
+        Long lockedSessionId = lock.getLockedSessionId(threadId);
+        assertNotNull(lockedSessionId);
+        assertEquals(sessionId, (long) lockedSessionId);
     }
 
     @Test
@@ -535,7 +577,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
         UUID invUid = newUnsecureUUID();
         final Tuple2[] lockWaitTimeoutKeyRef = new Tuple2[1];
 
-        InternalCompletableFuture<RaftLockOwnershipState> f1 = invocationManager
+        InternalCompletableFuture<Long> f1 = invocationManager
                 .invoke(groupId, new TryLockOp(objectName, sessionId, getThreadId(), invUid, SECONDS.toMillis(300)));
 
         final NodeEngineImpl nodeEngine = getNodeEngineImpl(lockInstance);
@@ -551,7 +593,7 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             }
         });
 
-        InternalCompletableFuture<RaftLockOwnershipState> f2 = invocationManager
+        InternalCompletableFuture<Long> f2 = invocationManager
                 .invoke(groupId, new TryLockOp(objectName, sessionId, getThreadId(), invUid, SECONDS.toMillis(300)));
 
         assertTrueEventually(new AssertTask() {
@@ -598,11 +640,11 @@ public class RaftFencedLockFailureTest extends HazelcastRaftTestSupport {
             }
         });
 
-        RaftLockOwnershipState response1 = f1.join();
-        RaftLockOwnershipState response2 = f2.join();
+        long fence1 = f1.join();
+        long fence2 = f2.join();
 
-        assertFalse(response1.isLocked());
-        assertFalse(response2.isLocked());
+        assertInvalidFence(fence1);
+        assertInvalidFence(fence2);
     }
 
     public void lockByOtherThread() {

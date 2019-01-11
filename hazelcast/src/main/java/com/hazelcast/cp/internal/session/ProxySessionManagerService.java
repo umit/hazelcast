@@ -36,6 +36,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
@@ -123,7 +124,7 @@ public class ProxySessionManagerService extends AbstractProxySessionManager impl
                 return false;
             }
 
-            remainingTimeNanos -= SHUTDOWN_TASK_PERIOD_IN_MILLIS;
+            remainingTimeNanos -= MILLISECONDS.toNanos(SHUTDOWN_TASK_PERIOD_IN_MILLIS);
         }
 
         return successful && futures.isEmpty();

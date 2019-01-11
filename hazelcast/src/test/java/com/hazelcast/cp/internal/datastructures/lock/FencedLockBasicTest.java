@@ -18,13 +18,13 @@ package com.hazelcast.cp.internal.datastructures.lock;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.FencedLock;
+import com.hazelcast.cp.lock.FencedLock;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
+import com.hazelcast.cp.internal.datastructures.lock.proxy.AbstractRaftFencedLockProxy;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.cp.internal.session.ProxySessionManagerService;
-import com.hazelcast.cp.internal.session.RaftSessionService;
+import com.hazelcast.cp.lock.exception.LockOwnershipLostException;
 import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
-import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -40,18 +40,20 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.hazelcast.cp.FencedLock.INVALID_FENCE;
+import static com.hazelcast.cp.lock.FencedLock.INVALID_FENCE;
 import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
+import static com.hazelcast.util.ThreadUtil.getThreadId;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
-public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
+public class FencedLockBasicTest extends HazelcastRaftTestSupport {
 
     protected HazelcastInstance[] instances;
     protected HazelcastInstance lockInstance;
@@ -77,9 +79,9 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
     @Test
     public void testLock_whenNotLocked() {
         long fence = lock.lockAndGetFence();
-        assertTrue(fence > 0);
-        assertTrue(this.lock.isLockedByCurrentThread());
-        assertEquals(1, lock.getLockCountIfLockedByCurrentThread());
+        assertValidFence(fence);
+        assertTrue(lock.isLockedByCurrentThread());
+        assertEquals(1, lock.getLockCount());
         assertEquals(fence, lock.getFence());
     }
 
@@ -87,27 +89,27 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
     public void testLockInterruptibly_whenNotLocked() throws InterruptedException {
         lock.lockInterruptibly();
         assertTrue(lock.isLockedByCurrentThread());
-        assertEquals(1, lock.getLockCountIfLockedByCurrentThread());
-        assertNotEquals(INVALID_FENCE, lock.getFence());
+        assertEquals(1, lock.getLockCount());
+        assertValidFence(lock.getFence());
     }
 
     @Test
     public void testLock_whenLockedBySelf() {
         long fence = lock.lockAndGetFence();
-        assertTrue(fence > 0);
+        assertValidFence(fence);
 
         long newFence = lock.lockAndGetFence();
         assertEquals(fence, newFence);
         assertTrue(lock.isLockedByCurrentThread());
-        assertEquals(2, lock.getLockCountIfLockedByCurrentThread());
+        assertEquals(2, lock.getLockCount());
     }
 
     @Test
     public void testLock_whenLockedByOther() throws InterruptedException {
         long fence = lock.lockAndGetFence();
-        assertTrue(fence > 0);
+        assertValidFence(fence);
         assertTrue(lock.isLocked());
-        assertEquals(1, lock.getLockCountIfLockedByCurrentThread());
+        assertEquals(1, lock.getLockCount());
         assertTrue(lock.isLockedByCurrentThread());
 
         final CountDownLatch latch = new CountDownLatch(1);
@@ -120,7 +122,7 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
         };
 
         t.start();
-        assertFalse(latch.await(3000, TimeUnit.MILLISECONDS));
+        assertFalse(latch.await(5000, TimeUnit.MILLISECONDS));
     }
 
     @Test(expected = IllegalMonitorStateException.class)
@@ -134,31 +136,52 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
     }
 
     @Test
+    public void testIsLocked_whenFree() {
+        assertFalse(lock.isLocked());
+    }
+
+    @Test
+    public void testIsLockedByCurrentThread_whenFree() {
+        assertFalse(lock.isLockedByCurrentThread());
+    }
+
+    @Test
+    public void testGetLockCount_whenFree() {
+        assertEquals(0, lock.getLockCount());
+    }
+
+    @Test
     public void testUnlock_whenLockedBySelf() {
         lock.lock();
 
         lock.unlock();
 
         assertFalse(lock.isLocked());
-        assertEquals(0, lock.getLockCountIfLockedByCurrentThread());
+        assertEquals(0, lock.getLockCount());
+        try {
+            lock.getFence();
+            fail();
+        } catch (IllegalMonitorStateException ignored) {
+        }
     }
 
     @Test
     public void testUnlock_whenReentrantlyLockedBySelf() {
         long fence = lock.lockAndGetFence();
+        assertValidFence(fence);
         lock.lock();
-
         lock.unlock();
 
         assertTrue(lock.isLockedByCurrentThread());
         assertTrue(lock.isLocked());
-        assertEquals(1, lock.getLockCountIfLockedByCurrentThread());
+        assertEquals(1, lock.getLockCount());
         assertEquals(fence, lock.getFence());
     }
 
     @Test(timeout = 60000)
     public void testLock_Unlock_thenLock() {
         long fence = lock.lockAndGetFence();
+        assertValidFence(fence);
         lock.unlock();
 
         final AtomicReference<Long> newFenceRef = new AtomicReference<Long>();
@@ -179,7 +202,7 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
 
         assertTrue(newFenceRef.get() > fence);
         assertTrue(lock.isLocked());
-        assertEquals(0, lock.getLockCountIfLockedByCurrentThread());
+        assertEquals(1, lock.getLockCount());
         assertFalse(lock.isLockedByCurrentThread());
         try {
             lock.getFence();
@@ -190,13 +213,21 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
 
     @Test(timeout = 60000)
     public void testUnlock_whenPendingLockOfOtherThread() {
-        final long fence = lock.lockAndGetFence();
+        long fence = lock.lockAndGetFence();
         final AtomicReference<Long> newFenceRef = new AtomicReference<Long>();
         spawn(new Runnable() {
             @Override
             public void run() {
-                long newFence = lock.lockAndGetFence();
+                long newFence = lock.tryLockAndGetFence(60, TimeUnit.SECONDS);
                 newFenceRef.set(newFence);
+            }
+        });
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                RaftLockService service = getNodeEngineImpl(instances[0]).getService(RaftLockService.SERVICE_NAME);
+                assertFalse(service.getRegistryOrNull(lock.getGroupId()).getWaitTimeouts().isEmpty());
             }
         });
 
@@ -213,7 +244,7 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
 
         assertTrue(lock.isLocked());
         assertFalse(lock.isLockedByCurrentThread());
-        assertEquals(0, lock.getLockCountIfLockedByCurrentThread());
+        assertEquals(1, lock.getLockCount());
         try {
             lock.getFence();
             fail();
@@ -232,29 +263,29 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
         }
 
         assertTrue(lock.isLocked());
-        assertEquals(0, lock.getLockCountIfLockedByCurrentThread());
+        assertEquals(1, lock.getLockCount());
     }
 
     @Test
     public void testTryLock_whenNotLocked() {
         long fence = lock.tryLockAndGetFence();
 
-        assertTrue(fence > 0);
+        assertValidFence(fence);
         assertEquals(fence, lock.getFence());
         assertTrue(lock.isLockedByCurrentThread());
-        assertEquals(1, lock.getLockCountIfLockedByCurrentThread());
+        assertEquals(1, lock.getLockCount());
     }
 
     @Test
     public void testTryLock_whenLockedBySelf() {
         long fence = lock.lockAndGetFence();
-        assertTrue(fence > 0);
+        assertValidFence(fence);
 
         long newFence = lock.tryLockAndGetFence();
         assertEquals(fence, newFence);
         assertEquals(fence, lock.getFence());
         assertTrue(lock.isLockedByCurrentThread());
-        assertEquals(2, lock.getLockCountIfLockedByCurrentThread());
+        assertEquals(2, lock.getLockCount());
     }
 
     @Test(timeout = 60000)
@@ -263,32 +294,32 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
 
         long fence = lock.tryLockAndGetFence();
 
-        assertEquals(0, fence);
+        assertInvalidFence(fence);
         assertTrue(lock.isLocked());
         assertFalse(lock.isLockedByCurrentThread());
-        assertEquals(0, lock.getLockCountIfLockedByCurrentThread());
+        assertEquals(1, lock.getLockCount());
     }
 
     @Test
     public void testTryLockTimeout() {
         long fence = lock.tryLockAndGetFence(1, TimeUnit.SECONDS);
 
-        assertTrue(fence > 0);
+        assertValidFence(fence);
         assertTrue(lock.isLockedByCurrentThread());
-        assertEquals(1, lock.getLockCountIfLockedByCurrentThread());
+        assertEquals(1, lock.getLockCount());
     }
 
     @Test
     public void testTryLockTimeout_whenLockedBySelf() {
         long fence = lock.lockAndGetFence();
-        assertTrue(fence > 0);
+        assertValidFence(fence);
 
         long newFence = lock.tryLockAndGetFence(1, TimeUnit.SECONDS);
 
         assertEquals(fence, newFence);
         assertEquals(fence, lock.getFence());
         assertTrue(lock.isLockedByCurrentThread());
-        assertEquals(2, lock.getLockCountIfLockedByCurrentThread());
+        assertEquals(2, lock.getLockCount());
     }
 
     @Test(timeout = 60000)
@@ -297,10 +328,10 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
 
         long fence = lock.tryLockAndGetFence(100, TimeUnit.MILLISECONDS);
 
-        assertEquals(0, fence);
+        assertInvalidFence(fence);
         assertTrue(lock.isLocked());
         assertFalse(lock.isLockedByCurrentThread());
-        assertEquals(0, lock.getLockCountIfLockedByCurrentThread());
+        assertEquals(1, lock.getLockCount());
     }
 
     @Test(timeout = 60000)
@@ -309,16 +340,16 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
 
         long fence = lock.tryLockAndGetFence(RaftLockService.WAIT_TIMEOUT_TASK_UPPER_BOUND_MILLIS + 1, TimeUnit.MILLISECONDS);
 
-        assertEquals(0, fence);
+        assertInvalidFence(fence);
         assertTrue(lock.isLocked());
         assertFalse(lock.isLockedByCurrentThread());
-        assertEquals(0, lock.getLockCountIfLockedByCurrentThread());
+        assertEquals(1, lock.getLockCount());
     }
 
     @Test
-    public void test_ReentrantLockFails_whenSessionClosed() throws ExecutionException, InterruptedException {
+    public void testReentrantLockFails_whenSessionClosed() throws ExecutionException, InterruptedException {
         long fence = lock.lockAndGetFence();
-        assertTrue(fence > 0);
+        assertValidFence(fence);
 
         final AbstractProxySessionManager sessionManager = getSessionManager(lockInstance);
         final CPGroupId groupId = lock.getGroupId();
@@ -336,14 +367,14 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
 
         try {
             lock.lock();
-        } catch (IllegalMonitorStateException ignored) {
+        } catch (LockOwnershipLostException ignored) {
         }
     }
 
     @Test
-    public void test_ReentrantTryLockFails_whenSessionClosed() throws ExecutionException, InterruptedException {
+    public void testReentrantTryLockFails_whenSessionClosed() throws ExecutionException, InterruptedException {
         long fence = lock.lockAndGetFence();
-        assertTrue(fence > 0);
+        assertValidFence(fence);
 
         final AbstractProxySessionManager sessionManager = getSessionManager(lockInstance);
         final CPGroupId groupId = lock.getGroupId();
@@ -361,14 +392,14 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
 
         try {
             lock.tryLock();
-        } catch (IllegalMonitorStateException ignored) {
+        } catch (LockOwnershipLostException ignored) {
         }
     }
 
     @Test
-    public void test_ReentrantTryLockWithTimeoutFails_whenSessionClosed() throws ExecutionException, InterruptedException {
+    public void testReentrantTryLockWithTimeoutFails_whenSessionClosed() throws ExecutionException, InterruptedException {
         long fence = lock.lockAndGetFence();
-        assertTrue(fence > 0);
+        assertValidFence(fence);
 
         final AbstractProxySessionManager sessionManager = getSessionManager(lockInstance);
         final CPGroupId groupId = lock.getGroupId();
@@ -386,70 +417,103 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
 
         try {
             lock.tryLock(1, TimeUnit.SECONDS);
-        } catch (IllegalMonitorStateException ignored) {
+        } catch (LockOwnershipLostException ignored) {
         }
     }
 
     @Test
-    public void test_forceUnlock_whenLocked() {
+    public void testUnlockFails_whenSessionClosed() throws ExecutionException, InterruptedException {
         long fence = lock.lockAndGetFence();
-        assertTrue(fence > 0);
+        assertValidFence(fence);
 
-        lock.forceUnlock();
+        final AbstractProxySessionManager sessionManager = getSessionManager(lockInstance);
+        final CPGroupId groupId = lock.getGroupId();
+        final long sessionId = sessionManager.getSession(groupId);
+        assertNotEquals(NO_SESSION_ID, sessionId);
 
-        assertFalse(lock.isLockedByCurrentThread());
-        assertFalse(lock.isLocked());
-    }
+        closeSession(instances[0], groupId, sessionId);
 
-    @Test(timeout = 60000)
-    public void test_forceUnlock_byOtherEndpoint() {
-        long fence = lock.lockAndGetFence();
-        assertTrue(fence > 0);
-
-        final CountDownLatch latch = new CountDownLatch(1);
-        spawn(new Runnable() {
+        assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                lock.forceUnlock();
-                latch.countDown();
+                assertNotEquals(sessionId, sessionManager.getSession(groupId));
             }
         });
 
-        assertOpenEventually(latch);
-    }
-
-    @Test
-    public void test_forceUnlock_whenNotLocked() {
         try {
-            lock.forceUnlock();
-            fail();
-        } catch (IllegalMonitorStateException ignored) {
+            lock.unlock();
+        } catch (LockOwnershipLostException ignored) {
         }
 
         assertFalse(lock.isLockedByCurrentThread());
         assertFalse(lock.isLocked());
+        assertNoLockedSessionId();
     }
 
-    @Test(timeout = 60000)
-    public void test_reentrantLock_whenForceUnlockedByOtherEndpoint() throws ExecutionException, InterruptedException {
-        long fence1 = lock.lockAndGetFence();
-        assertTrue(fence1 > 0);
+    @Test
+    public void testUnlockFails_whenNewSessionCreated() throws ExecutionException, InterruptedException {
+        long fence = lock.lockAndGetFence();
+        assertValidFence(fence);
 
-        spawn(new Runnable() {
+        final AbstractProxySessionManager sessionManager = getSessionManager(lockInstance);
+        final CPGroupId groupId = lock.getGroupId();
+        final long sessionId = sessionManager.getSession(groupId);
+        assertNotEquals(NO_SESSION_ID, sessionId);
+
+        closeSession(instances[0], groupId, sessionId);
+
+        assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                lock.forceUnlock();
+                assertNotEquals(sessionId, sessionManager.getSession(groupId));
             }
-        }).get();
+        });
 
-        lock.lock();
+        lockByOtherThread(lock);
 
-        assertTrue(lock.isLockedByCurrentThread());
-        assertEquals(2, lock.getLockCountIfLockedByCurrentThread());
+        // now we have a new session
+
+        try {
+            lock.unlock();
+        } catch (LockOwnershipLostException ignored) {
+        }
+
+        assertFalse(lock.isLockedByCurrentThread());
+    }
+
+    @Test
+    public void testGetFenceFails_whenNewSessionCreated() throws ExecutionException, InterruptedException {
+        long fence = lock.lockAndGetFence();
+        assertValidFence(fence);
+
+        final AbstractProxySessionManager sessionManager = getSessionManager(lockInstance);
+        final CPGroupId groupId = lock.getGroupId();
+        final long sessionId = sessionManager.getSession(groupId);
+        assertNotEquals(NO_SESSION_ID, sessionId);
+
+        closeSession(instances[0], groupId, sessionId);
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertNotEquals(sessionId, sessionManager.getSession(groupId));
+            }
+        });
+
+        lockByOtherThread(lock);
+
+        // now we have a new session
+
+        try {
+            lock.getFence();
+        } catch (LockOwnershipLostException ignored) {
+        }
+
+        assertFalse(lock.isLockedByCurrentThread());
     }
 
     @Test(timeout = 60000)
-    public void test_failedTryLock_doesNotAcquireSession() {
+    public void testFailedTryLock_doesNotAcquireSession() {
         lockByOtherThread(lock);
 
         final AbstractProxySessionManager sessionManager = getSessionManager(lockInstance);
@@ -459,14 +523,16 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
         assertEquals(1, sessionManager.getSessionAcquireCount(groupId, sessionId));
 
         long fence = lock.tryLockAndGetFence();
-        assertEquals(INVALID_FENCE, fence);
+        assertInvalidFence(fence);
         assertEquals(1, sessionManager.getSessionAcquireCount(groupId, sessionId));
     }
 
     @Test(expected = DistributedObjectDestroyedException.class)
     public void test_destroy() {
+        lock.lock();
         lock.destroy();
 
+        assertNoLockedSessionId();
         lock.lock();
     }
 
@@ -510,10 +576,22 @@ public class RaftFencedLockBasicTest extends HazelcastRaftTestSupport {
         });
     }
 
+    static void assertValidFence(long fence) {
+        assertNotEquals(INVALID_FENCE, fence);
+    }
+
+    static void assertInvalidFence(long fence) {
+        assertEquals(INVALID_FENCE, fence);
+    }
+
+    private void assertNoLockedSessionId() {
+        if (lock instanceof AbstractRaftFencedLockProxy) {
+            assertNull(((AbstractRaftFencedLockProxy) lock).getLockedSessionId(getThreadId()));
+        }
+    }
+
     private void closeSession(HazelcastInstance instance, CPGroupId groupId, long sessionId) throws ExecutionException, InterruptedException {
-        NodeEngineImpl nodeEngine = getNodeEngineImpl(instance);
-        RaftSessionService service = nodeEngine.getService(RaftSessionService.SERVICE_NAME);
-        service.forceCloseSession(groupId, sessionId).get();
+        instance.getCPSubsystem().getCPSessionManagementService().forceCloseSession(groupId, sessionId).get();
     }
 
     static void lockByOtherThread(final FencedLock lock) {

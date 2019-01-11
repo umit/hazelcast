@@ -126,6 +126,9 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
      */
     protected abstract Object expiredWaitKeyResponse();
 
+    protected void onRegistryRestored(RR registry) {
+    }
+
     @Override
     public boolean destroyRaftObject(CPGroupId groupId, String name) {
         Collection<Long> indices = getOrInitRegistry(groupId).destroyResource(name);
@@ -153,6 +156,7 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
         for (Entry<Tuple2<String, UUID>, Long> e : newWaitKeys.entrySet()) {
             scheduleTimeout(groupId, e.getKey().element1, e.getKey().element2, e.getValue());
         }
+        onRegistryRestored(registry);
     }
 
     @Override

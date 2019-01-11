@@ -17,14 +17,16 @@
 package com.hazelcast.cp.internal.datastructures.lock.operation;
 
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.FencedLock;
+import com.hazelcast.cp.lock.FencedLock;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
+import com.hazelcast.cp.internal.datastructures.lock.AcquireResult;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockDataSerializerHook;
-import com.hazelcast.cp.internal.datastructures.lock.RaftLockOwnershipState;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockService;
 import com.hazelcast.cp.internal.raft.impl.util.PostponedResponse;
 
 import java.util.UUID;
+
+import static com.hazelcast.cp.internal.datastructures.lock.AcquireResult.AcquireStatus.WAIT_KEY_ADDED;
 
 /**
  * Operation for {@link FencedLock#lock()}
@@ -43,8 +45,13 @@ public class LockOp extends AbstractLockOp implements IndeterminateOperationStat
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
-        RaftLockOwnershipState ownership = service.acquire(groupId, commitIndex, name, getLockEndpoint(), invocationUid);
-        return ownership.isLockedBy(sessionId, threadId) ? ownership : PostponedResponse.INSTANCE;
+        AcquireResult result = service.acquire(groupId, commitIndex, name, getLockEndpoint(), invocationUid);
+        if (result.status() == WAIT_KEY_ADDED) {
+            return PostponedResponse.INSTANCE;
+        }
+
+        // SUCCESSFUL or FAILED
+        return result.fence();
     }
 
     @Override

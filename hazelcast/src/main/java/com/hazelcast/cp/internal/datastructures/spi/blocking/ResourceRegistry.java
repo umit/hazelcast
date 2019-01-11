@@ -103,6 +103,10 @@ public abstract class ResourceRegistry<W extends WaitKey, R extends BlockingReso
         }
     }
 
+    protected final void removeWaitKey(String name, W key) {
+        removeWaitKey(name, key.invocationUid());
+    }
+
     protected final void removeWaitKey(String name, UUID invocationUid) {
         waitTimeouts.remove(Tuple2.of(name, invocationUid));
     }

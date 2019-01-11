@@ -64,7 +64,7 @@ public class RaftCountDownLatchRegistry extends ResourceRegistry<AwaitInvocation
         RaftCountDownLatch latch = getOrInitResource(name);
         Tuple2<Integer, Collection<AwaitInvocationKey>> t = latch.countDown(invocationUuid, expectedRound);
         for (AwaitInvocationKey key : t.element2) {
-            removeWaitKey(name, key.invocationUid());
+            removeWaitKey(name, key);
         }
 
         return t;

@@ -109,6 +109,7 @@ import com.hazelcast.config.WanReplicationRef;
 import com.hazelcast.config.WanSyncConfig;
 import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.config.cp.FencedLockConfig;
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.map.eviction.MapEvictionPolicy;
 import com.hazelcast.memory.MemorySize;
@@ -387,7 +388,7 @@ public class HazelcastConfigBeanDefinitionParser extends AbstractHazelcastBeanDe
         private void handleCPSubSystem(Node node) {
             BeanDefinitionBuilder cpSubsystemConfigBuilder = createBeanBuilder(CPSubsystemConfig.class);
 
-            fillValues(node, cpSubsystemConfigBuilder, "raftAlgorithm", "cpSemaphores", "cpMemberCount",
+            fillValues(node, cpSubsystemConfigBuilder, "raftAlgorithm", "semaphores", "locks", "cpMemberCount",
                     "missingCpMemberAutoRemovalSeconds");
 
             for (Node child : childElements(node)) {
@@ -397,10 +398,14 @@ public class HazelcastConfigBeanDefinitionParser extends AbstractHazelcastBeanDe
                     fillValues(child, raftAlgorithmConfigBuilder);
                     cpSubsystemConfigBuilder.addPropertyValue("raftAlgorithmConfig",
                             raftAlgorithmConfigBuilder.getBeanDefinition());
-                } else if ("cp-semaphores".equals(nodeName)) {
-                    ManagedMap<String, AbstractBeanDefinition> cpSemaphores = new ManagedMap<String, AbstractBeanDefinition>();
-                    handleCPSemaphores(cpSemaphores, child);
-                    cpSubsystemConfigBuilder.addPropertyValue("CPSemaphoreConfigs", cpSemaphores);
+                } else if ("semaphores".equals(nodeName)) {
+                    ManagedMap<String, AbstractBeanDefinition> semaphores = new ManagedMap<String, AbstractBeanDefinition>();
+                    handleCPSemaphores(semaphores, child);
+                    cpSubsystemConfigBuilder.addPropertyValue("SemaphoreConfigs", semaphores);
+                } else if ("locks".equals(nodeName)) {
+                    ManagedMap<String, AbstractBeanDefinition> locks = new ManagedMap<String, AbstractBeanDefinition>();
+                    handleFencedLocks(locks, child);
+                    cpSubsystemConfigBuilder.addPropertyValue("LockConfigs", locks);
                 } else {
                     String value = getTextContent(child).trim();
                     if ("cp-member-count".equals(nodeName)) {
@@ -419,10 +424,28 @@ public class HazelcastConfigBeanDefinitionParser extends AbstractHazelcastBeanDe
         private void handleCPSemaphores(ManagedMap<String, AbstractBeanDefinition> cpSemaphores, Node node) {
             for (Node child : childElements(node)) {
                 BeanDefinitionBuilder cpSemaphoreConfigBuilder = createBeanBuilder(CPSemaphoreConfig.class);
-                fillValues(child, cpSemaphoreConfigBuilder);
+                for (Node subChild : childElements(child)) {
+                    String nodeName = cleanNodeName(subChild);
+                    String value = getTextContent(subChild).trim();
+                    if ("name".equals(nodeName)) {
+                        cpSemaphoreConfigBuilder.addPropertyValue("name", value);
+                    } else if ("jdk-compatible".equals(nodeName)) {
+                        cpSemaphoreConfigBuilder.addPropertyValue("JDKCompatible", getBooleanValue(value));
+                    }
+                }
                 AbstractBeanDefinition beanDefinition = cpSemaphoreConfigBuilder.getBeanDefinition();
                 String name = (String) beanDefinition.getPropertyValues().get("name");
                 cpSemaphores.put(name, beanDefinition);
+            }
+        }
+
+        private void handleFencedLocks(ManagedMap<String, AbstractBeanDefinition> locks, Node node) {
+            for (Node child : childElements(node)) {
+                BeanDefinitionBuilder lockConfigBuilder = createBeanBuilder(FencedLockConfig.class);
+                fillValues(child, lockConfigBuilder);
+                AbstractBeanDefinition beanDefinition = lockConfigBuilder.getBeanDefinition();
+                String name = (String) beanDefinition.getPropertyValues().get("name");
+                locks.put(name, beanDefinition);
             }
         }
 

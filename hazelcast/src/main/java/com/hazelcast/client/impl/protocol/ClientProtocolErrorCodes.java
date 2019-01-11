@@ -113,6 +113,8 @@ public final class ClientProtocolErrorCodes {
     public static final int CONSISTENCY_LOST_EXCEPTION = 88;
     public static final int SESSION_EXPIRED_EXCEPTION = 89;
     public static final int WAIT_KEY_CANCELLED_EXCEPTION = 90;
+    public static final int LOCK_ACQUIRE_LIMIT_EXCEEDED_EXCEPTION = 91;
+    public static final int LOCK_OWNERSHIP_LOST_EXCEPTION = 92;
 
     // These exception codes are reserved to by used by hazelcast-jet project
     public static final int JET_EXCEPTIONS_RANGE_START = 500;

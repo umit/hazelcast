@@ -19,7 +19,7 @@ package com.hazelcast.client.cp.internal.datastructures.lock;
 import com.hazelcast.client.impl.clientside.HazelcastClientProxy;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.cp.internal.datastructures.lock.RaftFencedLockBasicTest;
+import com.hazelcast.cp.internal.datastructures.lock.FencedLockBasicTest;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
@@ -33,7 +33,7 @@ import static org.junit.Assert.assertFalse;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
-public class RaftFencedLockClientBasicTest extends RaftFencedLockBasicTest {
+public class FencedLockClientBasicTest extends FencedLockBasicTest {
 
     @Override
     protected TestHazelcastInstanceFactory createTestFactory() {

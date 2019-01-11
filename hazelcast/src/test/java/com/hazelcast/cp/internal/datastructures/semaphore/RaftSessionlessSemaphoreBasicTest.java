@@ -487,7 +487,7 @@ public class RaftSessionlessSemaphoreBasicTest extends HazelcastRaftTestSupport 
         Config config = super.createConfig(cpNodeCount, groupSize);
 
         CPSemaphoreConfig semaphoreConfig = new CPSemaphoreConfig(objectName, true);
-        config.getCPSubsystemConfig().addCPSemaphoreConfig(semaphoreConfig);
+        config.getCPSubsystemConfig().addSemaphoreConfig(semaphoreConfig);
         return config;
     }
 }

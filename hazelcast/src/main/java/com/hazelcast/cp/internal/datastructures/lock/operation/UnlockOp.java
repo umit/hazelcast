@@ -16,15 +16,12 @@
 
 package com.hazelcast.cp.internal.datastructures.lock.operation;
 
-import com.hazelcast.cp.FencedLock;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.lock.FencedLock;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockDataSerializerHook;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockService;
-import com.hazelcast.nio.ObjectDataInput;
-import com.hazelcast.nio.ObjectDataOutput;
 
-import java.io.IOException;
 import java.util.UUID;
 
 /**
@@ -34,21 +31,17 @@ import java.util.UUID;
  */
 public class UnlockOp extends AbstractLockOp implements IndeterminateOperationStateAware {
 
-    private int lockCount;
-
     public UnlockOp() {
     }
 
-    public UnlockOp(String name, long sessionId, long threadId, UUID invUid, int lockCount) {
+    public UnlockOp(String name, long sessionId, long threadId, UUID invUid) {
         super(name, sessionId, threadId, invUid);
-        this.lockCount = lockCount;
     }
 
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftLockService service = getService();
-        service.release(groupId, commitIndex, name, getLockEndpoint(), invocationUid, lockCount);
-        return true;
+        return service.release(groupId, commitIndex, name, getLockEndpoint(), invocationUid);
     }
 
     @Override
@@ -59,23 +52,5 @@ public class UnlockOp extends AbstractLockOp implements IndeterminateOperationSt
     @Override
     public int getId() {
         return RaftLockDataSerializerHook.UNLOCK_OP;
-    }
-
-    @Override
-    public void writeData(ObjectDataOutput out) throws IOException {
-        super.writeData(out);
-        out.writeInt(lockCount);
-    }
-
-    @Override
-    public void readData(ObjectDataInput in) throws IOException {
-        super.readData(in);
-        lockCount = in.readInt();
-    }
-
-    @Override
-    protected void toString(StringBuilder sb) {
-        super.toString(sb);
-        sb.append(", lockCount=").append(lockCount);
     }
 }

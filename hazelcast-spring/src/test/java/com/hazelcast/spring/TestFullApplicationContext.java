@@ -99,6 +99,7 @@ import com.hazelcast.config.WanReplicationRef;
 import com.hazelcast.config.WanSyncConfig;
 import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.config.cp.FencedLockConfig;
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.core.EntryListener;
 import com.hazelcast.core.HazelcastInstance;
@@ -1437,11 +1438,17 @@ public class TestFullApplicationContext extends HazelcastTestSupport {
         assertEquals(25, raftAlgorithmConfig.getAppendRequestMaxEntryCount());
         assertEquals(250, raftAlgorithmConfig.getCommitIndexAdvanceCountToSnapshot());
         assertEquals(75, raftAlgorithmConfig.getUncommittedEntryCountToRejectNewAppends());
-        CPSemaphoreConfig cpSemaphoreConfig1 = cpSubsystemConfig.findCPSemaphoreConfig("sem1");
-        CPSemaphoreConfig cpSemaphoreConfig2 = cpSubsystemConfig.findCPSemaphoreConfig("sem2");
+        CPSemaphoreConfig cpSemaphoreConfig1 = cpSubsystemConfig.findSemaphoreConfig("sem1");
+        CPSemaphoreConfig cpSemaphoreConfig2 = cpSubsystemConfig.findSemaphoreConfig("sem2");
         assertNotNull(cpSemaphoreConfig1);
         assertNotNull(cpSemaphoreConfig2);
-        assertTrue(cpSemaphoreConfig1.isJdkCompatible());
-        assertFalse(cpSemaphoreConfig2.isJdkCompatible());
+        assertTrue(cpSemaphoreConfig1.isJDKCompatible());
+        assertFalse(cpSemaphoreConfig2.isJDKCompatible());
+        FencedLockConfig lockConfig1 = cpSubsystemConfig.findLockConfig("lock1");
+        FencedLockConfig lockConfig2 = cpSubsystemConfig.findLockConfig("lock2");
+        assertNotNull(lockConfig1);
+        assertNotNull(lockConfig2);
+        assertEquals(1, lockConfig1.getLockAcquireLimit());
+        assertEquals(2, lockConfig2.getLockAcquireLimit());
     }
 }
