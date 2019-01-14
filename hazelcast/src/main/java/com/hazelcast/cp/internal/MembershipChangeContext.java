@@ -42,18 +42,18 @@ import static java.util.Collections.unmodifiableList;
  */
 public class MembershipChangeContext implements IdentifiedDataSerializable {
 
-    private CPMember leavingMember;
+    private CPMemberInfo leavingMember;
     private final List<CPGroupMembershipChangeContext> changes = new ArrayList<CPGroupMembershipChangeContext>();
 
     MembershipChangeContext() {
     }
 
-    MembershipChangeContext(CPMember leavingMember, List<CPGroupMembershipChangeContext> changes) {
+    MembershipChangeContext(CPMemberInfo leavingMember, List<CPGroupMembershipChangeContext> changes) {
         this.leavingMember = leavingMember;
         this.changes.addAll(changes);
     }
 
-    CPMember getLeavingMember() {
+    CPMemberInfo getLeavingMember() {
         return leavingMember;
     }
 
@@ -85,17 +85,17 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
 
         private long membersCommitIndex;
 
-        private Collection<CPMember> members;
+        private Collection<CPMemberInfo> members;
 
-        private CPMember memberToAdd;
+        private CPMemberInfo memberToAdd;
 
-        private CPMember memberToRemove;
+        private CPMemberInfo memberToRemove;
 
         CPGroupMembershipChangeContext() {
         }
 
-        CPGroupMembershipChangeContext(CPGroupId groupId, long membersCommitIndex, Collection<CPMember> members,
-                                       CPMember memberToAdd, CPMember memberToRemove) {
+        CPGroupMembershipChangeContext(CPGroupId groupId, long membersCommitIndex, Collection<CPMemberInfo> members,
+                                       CPMemberInfo memberToAdd, CPMemberInfo memberToRemove) {
             this.groupId = groupId;
             this.membersCommitIndex = membersCommitIndex;
             this.members = members;
@@ -111,15 +111,15 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
             return membersCommitIndex;
         }
 
-        Collection<CPMember> getMembers() {
+        Collection<CPMemberInfo> getMembers() {
             return members;
         }
 
-        CPMember getMemberToAdd() {
+        CPMemberInfo getMemberToAdd() {
             return memberToAdd;
         }
 
-        CPMember getMemberToRemove() {
+        CPMemberInfo getMemberToRemove() {
             return memberToRemove;
         }
 
@@ -127,7 +127,7 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
         public void writeData(ObjectDataOutput out) throws IOException {
             out.writeLong(membersCommitIndex);
             out.writeInt(members.size());
-            for (CPMember member : members) {
+            for (CPMemberInfo member : members) {
                 out.writeObject(member);
             }
             out.writeObject(memberToAdd);
@@ -138,9 +138,9 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
         public void readData(ObjectDataInput in) throws IOException {
             membersCommitIndex = in.readLong();
             int len = in.readInt();
-            members = new HashSet<CPMember>(len);
+            members = new HashSet<CPMemberInfo>(len);
             for (int i = 0; i < len; i++) {
-                CPMember member = in.readObject();
+                CPMemberInfo member = in.readObject();
                 members.add(member);
             }
             memberToAdd = in.readObject();

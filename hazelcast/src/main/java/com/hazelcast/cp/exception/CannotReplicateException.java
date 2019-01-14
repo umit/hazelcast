@@ -27,7 +27,7 @@ import com.hazelcast.spi.exception.RetryableException;
  * <li>a member leaves the CP group</li>
  * <li>CP group itself is terminated</li>
  * <li>uncommitted entry count reaches to
- * (see {@link RaftAlgorithmConfig#uncommittedEntryCountToRejectNewAppends})</li>
+ * (see {@link RaftAlgorithmConfig#getUncommittedEntryCountToRejectNewAppends()})</li>
  * <li>a membership change is requested before an entry is committed
  * on a term</li>
  * </ul>

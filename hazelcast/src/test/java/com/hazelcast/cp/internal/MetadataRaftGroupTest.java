@@ -254,10 +254,10 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
-                Future<RaftGroup> f = invocationService.query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId),
+                Future<CPGroupInfo> f = invocationService.query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId),
                         LEADER_LOCAL);
 
-                RaftGroup group = f.get();
+                CPGroupInfo group = f.get();
                 assertEquals(CPGroupStatus.DESTROYED, group.status());
             }
         });
@@ -314,7 +314,7 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
 
         getRaftService(instances[0]).forceDestroyCPGroup(groupId).get();
 
-        RaftGroup groupInfo = getRaftInvocationManager(instances[0]).<RaftGroup>query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId), LEADER_LOCAL).get();
+        CPGroupInfo groupInfo = getRaftInvocationManager(instances[0]).<CPGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId), LEADER_LOCAL).get();
         assertEquals(CPGroupStatus.DESTROYED, groupInfo.status());
 
         assertTrueEventually(new AssertTask() {
@@ -338,13 +338,13 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
 
         final CPGroupId groupId = createNewRaftGroup(instances[0], "id", 3);
 
-        RaftGroup groupInfo = getRaftInvocationManager(instances[0]).<RaftGroup>query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId), LEADER_LOCAL).get();
-        final CPMember[] groupMembers = groupInfo.membersArray();
+        CPGroupInfo groupInfo = getRaftInvocationManager(instances[0]).<CPGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId), LEADER_LOCAL).get();
+        final CPMemberInfo[] groupMembers = groupInfo.membersArray();
 
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                for (CPMember member : groupMembers) {
+                for (CPMemberInfo member : groupMembers) {
                     HazelcastInstance instance = factory.getInstance(member.getAddress());
                     assertNotNull(getRaftNode(instance, groupId));
                 }
@@ -357,7 +357,7 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
         final HazelcastInstance runningInstance = factory.getInstance(groupMembers[2].getAddress());
         getRaftService(runningInstance).forceDestroyCPGroup(groupId).get();
 
-        groupInfo = getRaftInvocationManager(runningInstance).<RaftGroup>query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId), LEADER_LOCAL).get();
+        groupInfo = getRaftInvocationManager(runningInstance).<CPGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId), LEADER_LOCAL).get();
         assertEquals(CPGroupStatus.DESTROYED, groupInfo.status());
 
         assertTrueEventually(new AssertTask() {
@@ -381,7 +381,7 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
         }
 
         waitAllForLeaderElection(instances, METADATA_GROUP_ID);
-        CPMember leaderEndpoint = getLeaderMember(getRaftNode(instances[0], METADATA_GROUP_ID));
+        CPMemberInfo leaderEndpoint = getLeaderMember(getRaftNode(instances[0], METADATA_GROUP_ID));
 
         final HazelcastInstance leader = factory.getInstance(leaderEndpoint.getAddress());
         HazelcastInstance follower = null;
@@ -429,17 +429,17 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
 
         HazelcastInstance leaderInstance = getLeaderInstance(instances, METADATA_GROUP_ID);
         final RaftService raftService = getRaftService(leaderInstance);
-        Collection<CPMember> allEndpoints = raftService.getMetadataGroupManager().getActiveMembers();
+        Collection<CPMemberInfo> allEndpoints = raftService.getMetadataGroupManager().getActiveMembers();
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
                 assertNotNull(raftService.getCPGroupLocally(METADATA_GROUP_ID));
             }
         });
-        RaftGroup metadataGroup = raftService.getCPGroupLocally(METADATA_GROUP_ID);
+        CPGroupInfo metadataGroup = raftService.getCPGroupLocally(METADATA_GROUP_ID);
 
-        final Collection<CPMember> endpoints = new HashSet<CPMember>(otherRaftGroupSize);
-        for (CPMember endpoint : allEndpoints) {
+        final Collection<CPMemberInfo> endpoints = new HashSet<CPMemberInfo>(otherRaftGroupSize);
+        for (CPMemberInfo endpoint : allEndpoints) {
             if (!metadataGroup.containsMember(endpoint)) {
                 endpoints.add(endpoint);
             }
@@ -500,7 +500,7 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
         CPGroupId groupId1 = createNewRaftGroup(instances[0], "id1", atomicLong1GroupSize);
         CPGroupId groupId2 = createNewRaftGroup(instances[0], "id2", cpNodeCount);
 
-        CPMember endpoint = findCommonEndpoint(instances[0], METADATA_GROUP_ID, groupId1);
+        CPMemberInfo endpoint = findCommonEndpoint(instances[0], METADATA_GROUP_ID, groupId1);
         assertNotNull(endpoint);
 
         RaftInvocationManager invocationService = null;
@@ -514,28 +514,28 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
 
         factory.getInstance(endpoint.getAddress()).shutdown();
 
-        ICompletableFuture<List<CPMember>> f1 = invocationService.query(METADATA_GROUP_ID, new GetActiveCPMembersOp(),
+        ICompletableFuture<List<CPMemberInfo>> f1 = invocationService.query(METADATA_GROUP_ID, new GetActiveCPMembersOp(),
                 LEADER_LOCAL);
 
-        List<CPMember> activeEndpoints = f1.get();
+        List<CPMemberInfo> activeEndpoints = f1.get();
         assertThat(activeEndpoints, not(hasItem(endpoint)));
 
-        ICompletableFuture<RaftGroup> f2 = invocationService.query(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID),
+        ICompletableFuture<CPGroupInfo> f2 = invocationService.query(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID),
                 LEADER_LOCAL);
 
-        ICompletableFuture<RaftGroup> f3 = invocationService.query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId1),
+        ICompletableFuture<CPGroupInfo> f3 = invocationService.query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId1),
                 LEADER_LOCAL);
 
-        ICompletableFuture<RaftGroup> f4 = invocationService.query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId2),
+        ICompletableFuture<CPGroupInfo> f4 = invocationService.query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId2),
                 LEADER_LOCAL);
 
-        RaftGroup metadataGroup = f2.get();
+        CPGroupInfo metadataGroup = f2.get();
         assertFalse(metadataGroup.containsMember(endpoint));
         assertEquals(metadataGroupSize, metadataGroup.memberCount());
-        RaftGroup atomicLongGroup1 = f3.get();
+        CPGroupInfo atomicLongGroup1 = f3.get();
         assertFalse(atomicLongGroup1.containsMember(endpoint));
         assertEquals(atomicLong1GroupSize, atomicLongGroup1.memberCount());
-        RaftGroup atomicLongGroup2 = f4.get();
+        CPGroupInfo atomicLongGroup2 = f4.get();
         assertFalse(atomicLongGroup2.containsMember(endpoint));
         assertEquals(cpNodeCount - 1, atomicLongGroup2.memberCount());
     }
@@ -549,14 +549,14 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 for (HazelcastInstance instance : instances) {
-                    Collection<CPMember> raftMembers = getRaftService(instance).getMetadataGroupManager().getActiveMembers();
+                    Collection<CPMemberInfo> raftMembers = getRaftService(instance).getMetadataGroupManager().getActiveMembers();
                     assertFalse(raftMembers.isEmpty());
                 }
             }
         });
 
-        CPMember endpoint3 = getRaftService(instances[3]).getLocalMember();
-        CPMember endpoint4 = getRaftService(instances[4]).getLocalMember();
+        CPMemberInfo endpoint3 = getRaftService(instances[3]).getLocalMember();
+        CPMemberInfo endpoint4 = getRaftService(instances[4]).getLocalMember();
         instances[3].getLifecycleService().terminate();
         instances[4].getLifecycleService().terminate();
 
@@ -565,12 +565,12 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
         CPGroupId g4 = invocationManager.createRaftGroup("g4", 4).get();
 
         RaftNodeImpl leaderNode = waitAllForLeaderElection(Arrays.copyOf(instances, 3), METADATA_GROUP_ID);
-        HazelcastInstance leader = factory.getInstance(((CPMember) leaderNode.getLocalMember()).getAddress());
-        RaftGroup g3Group = getRaftGroupLocally(leader, g3);
+        HazelcastInstance leader = factory.getInstance(((CPMemberInfo) leaderNode.getLocalMember()).getAddress());
+        CPGroupInfo g3Group = getRaftGroupLocally(leader, g3);
         assertThat(g3Group.memberImpls(), not(hasItem(endpoint3)));
         assertThat(g3Group.memberImpls(), not(hasItem(endpoint4)));
 
-        RaftGroup g4Group = getRaftGroupLocally(leader, g4);
+        CPGroupInfo g4Group = getRaftGroupLocally(leader, g4);
         boolean b3 = g4Group.containsMember(endpoint3);
         boolean b4 = g4Group.containsMember(endpoint4);
         assertTrue(b3 ^ b4);
@@ -601,18 +601,18 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
         }
     }
 
-    private CPMember findCommonEndpoint(HazelcastInstance instance, final CPGroupId groupId1, final CPGroupId groupId2)
+    private CPMemberInfo findCommonEndpoint(HazelcastInstance instance, final CPGroupId groupId1, final CPGroupId groupId2)
             throws ExecutionException, InterruptedException {
         RaftInvocationManager invocationService = getRaftInvocationManager(instance);
-        ICompletableFuture<RaftGroup> f1 = invocationService.query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId1),
+        ICompletableFuture<CPGroupInfo> f1 = invocationService.query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId1),
                 LEADER_LOCAL);
-        ICompletableFuture<RaftGroup> f2 = invocationService.query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId2),
+        ICompletableFuture<CPGroupInfo> f2 = invocationService.query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId2),
                 LEADER_LOCAL);
-        RaftGroup group1 = f1.get();
-        RaftGroup group2 = f2.get();
+        CPGroupInfo group1 = f1.get();
+        CPGroupInfo group2 = f2.get();
 
-        Set<CPMember> members = new HashSet<CPMember>(group1.memberImpls());
-        members.retainAll(group2.members());
+        Set<CPMemberInfo> members = new HashSet<CPMemberInfo>(group1.memberImpls());
+        members.retainAll(group2.memberImpls());
 
         return members.isEmpty() ? null : members.iterator().next();
     }

@@ -18,6 +18,7 @@ package com.hazelcast.cp.internal;
 
 import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.CPMember;
 import com.hazelcast.cp.internal.operation.integration.AppendFailureResponseOp;
 import com.hazelcast.cp.internal.operation.integration.AppendRequestOp;
 import com.hazelcast.cp.internal.operation.integration.AppendSuccessResponseOp;
@@ -215,7 +216,7 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
     }
 
     private boolean send(Operation operation, EndpointIdentifier target) {
-        return operationService.send(operation.setPartitionId(partitionId), ((CPMember) target).getAddress());
+        return operationService.send(operation.setPartitionId(partitionId), ((CPMemberInfo) target).getAddress());
     }
 
     @Override

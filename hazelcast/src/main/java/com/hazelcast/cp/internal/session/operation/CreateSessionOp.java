@@ -16,15 +16,16 @@
 
 package com.hazelcast.cp.internal.session.operation;
 
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.session.CPSession.CPSessionOwnerType;
+import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
+import com.hazelcast.cp.internal.RaftOp;
+import com.hazelcast.cp.internal.session.RaftSessionService;
+import com.hazelcast.cp.internal.session.RaftSessionServiceDataSerializerHook;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.RaftOp;
-import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
-import com.hazelcast.cp.internal.session.RaftSessionService;
-import com.hazelcast.cp.internal.session.RaftSessionServiceDataSerializerHook;
 
 import java.io.IOException;
 
@@ -35,20 +36,28 @@ import java.io.IOException;
  */
 public class CreateSessionOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
-    // used for diagnostics
     private Address endpoint;
+
+    private String endpointName;
+
+    private CPSessionOwnerType endpointType;
+
+    private long creationTime;
 
     public CreateSessionOp() {
     }
 
-    public CreateSessionOp(Address endpoint) {
+    public CreateSessionOp(Address endpoint, String endpointName, CPSessionOwnerType endpointType, long creationTime) {
         this.endpoint = endpoint;
+        this.endpointName = endpointName;
+        this.endpointType = endpointType;
+        this.creationTime = creationTime;
     }
 
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftSessionService service = getService();
-        return service.createNewSession(groupId, endpoint);
+        return service.createNewSession(groupId, endpoint, endpointName, endpointType, creationTime);
     }
 
     @Override
@@ -74,15 +83,24 @@ public class CreateSessionOp extends RaftOp implements IndeterminateOperationSta
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeObject(endpoint);
+        out.writeUTF(endpointName);
+        out.writeUTF(endpointType.name());
+        out.writeLong(creationTime);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         endpoint = in.readObject();
+        endpointName = in.readUTF();
+        endpointType = CPSessionOwnerType.valueOf(in.readUTF());
+        creationTime = in.readLong();
     }
 
     @Override
     protected void toString(StringBuilder sb) {
-        sb.append(", endpoint=").append(endpoint);
+        sb.append(", endpoint=").append(endpoint)
+          .append(", endpointName=").append(endpointName)
+          .append(", endpointType=").append(endpointType)
+          .append(", creationTime=").append(creationTime);
     }
 }

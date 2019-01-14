@@ -26,6 +26,8 @@ import com.hazelcast.core.IMap;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.core.ISet;
 import com.hazelcast.cp.lock.FencedLock;
+import com.hazelcast.cp.session.CPSession;
+import com.hazelcast.cp.session.CPSessionManagementService;
 import com.hazelcast.spi.annotation.Beta;
 
 /**
@@ -45,14 +47,15 @@ import com.hazelcast.spi.annotation.Beta;
  * CP members and they can also contain data for other regular Hazelcast data
  * structures, such as {@link IMap}, {@link ISet}, etc.
  * <p>
- * Data structures in the CP subsystem run in CP groups. A CP group consists of
- * an odd number of CP members between 3 and 7. Each CP group independently
- * runs the Raft consensus algorithm. Operations are committed & executed only
- * after they are successfully replicated to the majority of the CP members
- * in a CP group. For instance, in a CP group of 5 CP members, operations are
- * committed when they are replicated to at least 3 CP members. Size of
- * CP groups are specified via {@link CPSubsystemConfig#setGroupSize(int)}
- * and each CP group contains the same number of CP members.
+ * Data structures in the CP subsystem run in {@link CPGroup}s. A CP group
+ * consists of an odd number of {@link CPMember}s between 3 and 7.
+ * Each CP group independently runs the Raft consensus algorithm. Operations
+ * are committed & executed only after they are successfully replicated to
+ * the majority of the CP members in a CP group. For instance, in a CP group of
+ * 5 CP members, operations are committed when they are replicated to at least
+ * 3 CP members. Size of CP groups are specified via
+ * {@link CPSubsystemConfig#setGroupSize(int)} and each CP group contains
+ * the same number of CP members.
  * <p>
  * Please note that size of CP groups do not have to be same with
  * the CP member count. Namely, number of CP members in the cluster can be

@@ -29,24 +29,24 @@ import java.util.Collection;
  */
 public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializable {
 
-    private final Collection<CPMember> members = new ArrayList<CPMember>();
-    private final Collection<RaftGroup> raftGroups = new ArrayList<RaftGroup>();
+    private final Collection<CPMemberInfo> members = new ArrayList<CPMemberInfo>();
+    private final Collection<CPGroupInfo> groups = new ArrayList<CPGroupInfo>();
     private MembershipChangeContext membershipChangeContext;
 
-    public void addRaftGroup(RaftGroup group) {
-        raftGroups.add(group);
+    public void addRaftGroup(CPGroupInfo group) {
+        groups.add(group);
     }
 
-    public void addMember(CPMember member) {
+    public void addMember(CPMemberInfo member) {
         members.add(member);
     }
 
-    public Collection<CPMember> getMembers() {
+    public Collection<CPMemberInfo> getMembers() {
         return members;
     }
 
-    public Collection<RaftGroup> getRaftGroups() {
-        return raftGroups;
+    public Collection<CPGroupInfo> getGroups() {
+        return groups;
     }
 
     public MembershipChangeContext getMembershipChangeContext() {
@@ -70,11 +70,11 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeInt(members.size());
-        for (CPMember member : members) {
+        for (CPMemberInfo member : members) {
             out.writeObject(member);
         }
-        out.writeInt(raftGroups.size());
-        for (RaftGroup group : raftGroups) {
+        out.writeInt(groups.size());
+        for (CPGroupInfo group : groups) {
             out.writeObject(group);
         }
         out.writeObject(membershipChangeContext);
@@ -84,14 +84,14 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
     public void readData(ObjectDataInput in) throws IOException {
         int len = in.readInt();
         for (int i = 0; i < len; i++) {
-            CPMember member = in.readObject();
+            CPMemberInfo member = in.readObject();
             members.add(member);
         }
 
         len = in.readInt();
         for (int i = 0; i < len; i++) {
-            RaftGroup group = in.readObject();
-            raftGroups.add(group);
+            CPGroupInfo group = in.readObject();
+            groups.add(group);
         }
         membershipChangeContext = in.readObject();
     }

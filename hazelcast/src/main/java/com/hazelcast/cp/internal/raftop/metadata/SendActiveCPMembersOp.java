@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.raftop.metadata;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.internal.CPMember;
+import com.hazelcast.cp.internal.CPMemberInfo;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftSystemOperation;
 import com.hazelcast.cp.internal.RaftService;
@@ -39,12 +39,12 @@ import java.util.Collection;
  */
 public class SendActiveCPMembersOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation {
 
-    private Collection<CPMember> members;
+    private Collection<CPMemberInfo> members;
 
     public SendActiveCPMembersOp() {
     }
 
-    public SendActiveCPMembersOp(Collection<CPMember> members) {
+    public SendActiveCPMembersOp(Collection<CPMemberInfo> members) {
         this.members = members;
     }
 
@@ -78,7 +78,7 @@ public class SendActiveCPMembersOp extends Operation implements IdentifiedDataSe
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeInt(members.size());
-        for (CPMember member : members) {
+        for (CPMemberInfo member : members) {
             out.writeObject(member);
         }
     }
@@ -87,9 +87,9 @@ public class SendActiveCPMembersOp extends Operation implements IdentifiedDataSe
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         int len = in.readInt();
-        members = new ArrayList<CPMember>(len);
+        members = new ArrayList<CPMemberInfo>(len);
         for (int i = 0; i < len; i++) {
-            CPMember member = in.readObject();
+            CPMemberInfo member = in.readObject();
             members.add(member);
         }
     }

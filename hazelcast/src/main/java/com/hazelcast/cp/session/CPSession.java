@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package com.hazelcast.cp;
+package com.hazelcast.cp.session;
 
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.nio.Address;
 
 /**
  * Represents a CP session.
- *
+ * <p>
  * For CP data structures that are doing ownership management of resources,
  * such as lock or semaphore, a session is required to keep track liveliness
  * of the caller. In this context, caller means an entity that uses
@@ -42,7 +42,9 @@ import com.hazelcast.nio.Address;
  * A session is closed when the caller does not touch the session during
  * a predefined duration. In this case, the caller is assumed to be crashed and
  * all its resources are released automatically. This duration is specified in
- * {@link CPSubsystemConfig#getSessionTimeToLiveSeconds()}.
+ * {@link CPSubsystemConfig#getSessionTimeToLiveSeconds()}. Please check
+ * {@link CPSubsystemConfig} to read recommendations for choosing a reasonable
+ * session time-to-live duration.
  * <p>
  * Sessions offer a trade-off between liveliness and safety. If a very small
  * value is set to {@link CPSubsystemConfig#setSessionTimeToLiveSeconds(int)},
@@ -50,8 +52,25 @@ import com.hazelcast.nio.Address;
  * resources can be released prematurely. On the other hand, if a large value
  * is set, a session could be kept alive for an unnecessarily long duration
  * even if its owner actually crashes.
+ *
+ * @see CPSubsystemConfig
  */
 public interface CPSession {
+
+    /**
+     * Represents type of endpoints that create CP sessions
+     */
+    enum CPSessionOwnerType {
+        /**
+         * Represents a Hazelcast server
+         */
+        SERVER,
+
+        /**
+         * Represents a Hazelcast Java client
+         */
+        JAVA_CLIENT
+    }
 
     /**
      * Returns id of the session
@@ -83,4 +102,14 @@ public interface CPSession {
      * Returns the endpoint that has created this session
      */
     Address endpoint();
+
+    /**
+     * Returns type of the endpoint that has created this session
+     */
+    CPSessionOwnerType endpointType();
+
+    /**
+     * Returns name of the endpoint that has created this session
+     */
+    String endpointName();
 }

@@ -19,6 +19,7 @@ package com.hazelcast.cp.internal.session;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
+import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.GenerateThreadIdOp;
 import com.hazelcast.cp.internal.session.operation.CloseSessionOp;
@@ -36,6 +37,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import static com.hazelcast.cp.session.CPSession.CPSessionOwnerType.SERVER;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -67,7 +69,9 @@ public class ProxySessionManagerService extends AbstractProxySessionManager impl
 
     @Override
     protected SessionResponse requestNewSession(CPGroupId groupId) {
-        CreateSessionOp op = new CreateSessionOp(nodeEngine.getThisAddress());
+        String instanceName = nodeEngine.getConfig().getInstanceName();
+        long creationTime = System.currentTimeMillis();
+        RaftOp op = new CreateSessionOp(nodeEngine.getThisAddress(), instanceName, SERVER, creationTime);
         ICompletableFuture<SessionResponse> future = getInvocationManager().invoke(groupId, op);
         try {
             return future.get();

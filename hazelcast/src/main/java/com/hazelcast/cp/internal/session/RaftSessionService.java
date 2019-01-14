@@ -19,8 +19,9 @@ package com.hazelcast.cp.internal.session;
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.CPSession;
-import com.hazelcast.cp.CPSessionManagementService;
+import com.hazelcast.cp.session.CPSession;
+import com.hazelcast.cp.session.CPSession.CPSessionOwnerType;
+import com.hazelcast.cp.session.CPSessionManagementService;
 import com.hazelcast.cp.internal.RaftGroupLifecycleAwareService;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.TermChangeAwareService;
@@ -154,7 +155,8 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
         return raftService.getInvocationManager().invoke(groupId, new CloseSessionOp(sessionId));
     }
 
-    public SessionResponse createNewSession(CPGroupId groupId, Address endpoint) {
+    public SessionResponse createNewSession(CPGroupId groupId, Address endpoint, String endpointName,
+                                            CPSessionOwnerType endpointType, long creationTime) {
         RaftSessionRegistry registry = registries.get(groupId);
         if (registry == null) {
             registry = new RaftSessionRegistry(groupId);
@@ -165,8 +167,8 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
         }
 
         long sessionTTLMillis = getSessionTTLMillis();
-        long sessionId = registry.createNewSession(sessionTTLMillis, endpoint);
-        logger.info("Created new session: " + sessionId + " in " + groupId + " for " + endpoint);
+        long sessionId = registry.createNewSession(sessionTTLMillis, endpoint, endpointName, endpointType, creationTime);
+        logger.info("Created new session: " + sessionId + " in " + groupId + " for " + endpointType + " -> " + endpoint);
         return new SessionResponse(sessionId, sessionTTLMillis, getHeartbeatIntervalMillis());
     }
 

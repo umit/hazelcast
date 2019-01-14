@@ -19,17 +19,20 @@ package com.hazelcast.cp.internal.session.client;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.instance.Node;
-import com.hazelcast.nio.Bits;
-import com.hazelcast.nio.Connection;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
+import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.session.SessionResponse;
 import com.hazelcast.cp.internal.session.operation.CreateSessionOp;
+import com.hazelcast.instance.Node;
+import com.hazelcast.nio.Bits;
+import com.hazelcast.nio.Connection;
 
 import java.security.Permission;
+
+import static com.hazelcast.cp.session.CPSession.CPSessionOwnerType.JAVA_CLIENT;
 
 /**
  * Client message task for {@link CreateSessionOp}
@@ -37,6 +40,8 @@ import java.security.Permission;
 public class CreateSessionMessageTask extends AbstractMessageTask implements ExecutionCallback {
 
     private CPGroupId groupId;
+
+    private String endpointName;
 
     CreateSessionMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
@@ -46,12 +51,14 @@ public class CreateSessionMessageTask extends AbstractMessageTask implements Exe
     protected void processMessage() {
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         RaftInvocationManager invocationManager = service.getInvocationManager();
-        invocationManager.invoke(groupId, new CreateSessionOp(connection.getEndPoint())).andThen(this);
+        RaftOp op = new CreateSessionOp(connection.getEndPoint(), endpointName, JAVA_CLIENT, System.currentTimeMillis());
+        invocationManager.invoke(groupId, op).andThen(this);
     }
 
     @Override
     protected Object decodeClientMessage(ClientMessage clientMessage) {
         groupId = RaftGroupId.readFrom(clientMessage);
+        endpointName = clientMessage.getStringUtf8();
         return null;
     }
 

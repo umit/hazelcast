@@ -17,13 +17,11 @@
 package com.hazelcast.cp.internal.session;
 
 import com.hazelcast.config.Config;
-import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.CPSession;
+import com.hazelcast.cp.internal.CPMemberInfo;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.cp.internal.RaftInvocationManager;
-import com.hazelcast.cp.internal.CPMember;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
 import com.hazelcast.cp.internal.RaftTestApplyOp;
@@ -31,7 +29,9 @@ import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.session.operation.CloseSessionOp;
 import com.hazelcast.cp.internal.session.operation.CreateSessionOp;
 import com.hazelcast.cp.internal.session.operation.HeartbeatSessionOp;
+import com.hazelcast.cp.session.CPSession;
 import com.hazelcast.instance.Node;
+import com.hazelcast.nio.Address;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -43,13 +43,16 @@ import org.junit.experimental.categories.Category;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 
+import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.concurrent.ExecutionException;
 
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getLeaderMember;
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getSnapshotEntry;
+import static com.hazelcast.cp.session.CPSession.CPSessionOwnerType.SERVER;
 import static com.hazelcast.test.PacketFiltersUtil.dropOperationsBetween;
 import static com.hazelcast.test.PacketFiltersUtil.resetPacketFiltersFrom;
+import static java.lang.System.currentTimeMillis;
 import static java.util.Arrays.asList;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasItem;
@@ -83,8 +86,8 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testSessionCreate() throws ExecutionException, InterruptedException {
-        final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, new CreateSessionOp()).get();
+    public void testSessionCreate() throws ExecutionException, InterruptedException, UnknownHostException {
+        final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, newCreateSessionOp()).get();
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
@@ -104,8 +107,8 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testSessionHeartbeat() throws ExecutionException, InterruptedException {
-        final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, new CreateSessionOp()).get();
+    public void testSessionHeartbeat() throws ExecutionException, InterruptedException, UnknownHostException {
+        final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, newCreateSessionOp()).get();
         final RaftSession[] sessions = new RaftSession[instances.length];
         assertTrueEventually(new AssertTask() {
             @Override
@@ -139,8 +142,8 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testSessionClose() throws ExecutionException, InterruptedException {
-        final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, new CreateSessionOp()).get();
+    public void testSessionClose() throws ExecutionException, InterruptedException, UnknownHostException {
+        final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, newCreateSessionOp()).get();
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
@@ -170,8 +173,8 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testHeartbeatFailsAfterSessionClose() throws ExecutionException, InterruptedException {
-        final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, new CreateSessionOp()).get();
+    public void testHeartbeatFailsAfterSessionClose() throws ExecutionException, InterruptedException, UnknownHostException {
+        final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, newCreateSessionOp()).get();
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
@@ -192,8 +195,8 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testLeaderFailureShiftsSessionExpirationTimes() throws ExecutionException, InterruptedException {
-        final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, new CreateSessionOp()).get();
+    public void testLeaderFailureShiftsSessionExpirationTimes() throws ExecutionException, InterruptedException, UnknownHostException {
+        final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, newCreateSessionOp()).get();
         final RaftSession[] sessions = new RaftSession[instances.length];
         assertTrueEventually(new AssertTask() {
             @Override
@@ -209,7 +212,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
             }
         });
 
-        CPMember leaderEndpoint = getLeaderMember(getRaftNode(instances[0], groupId));
+        CPMemberInfo leaderEndpoint = getLeaderMember(getRaftNode(instances[0], groupId));
         final HazelcastInstance leader = factory.getInstance(leaderEndpoint.getAddress());
         leader.getLifecycleService().terminate();
 
@@ -236,8 +239,8 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testSessionHeartbeatTimeout() throws ExecutionException, InterruptedException {
-        final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, new CreateSessionOp()).get();
+    public void testSessionHeartbeatTimeout() throws ExecutionException, InterruptedException, UnknownHostException {
+        final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, newCreateSessionOp()).get();
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
@@ -266,14 +269,14 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testSnapshotRestore() throws ExecutionException, InterruptedException {
+    public void testSnapshotRestore() throws ExecutionException, InterruptedException, UnknownHostException {
         final HazelcastInstance leader = getLeaderInstance(instances, groupId);
         final HazelcastInstance follower = getRandomFollowerInstance(instances, groupId);
 
         // the follower falls behind the leader. It neither append entries nor installs snapshots.
         dropOperationsBetween(leader, follower, RaftServiceDataSerializerHook.F_ID, asList(RaftServiceDataSerializerHook.APPEND_REQUEST_OP, RaftServiceDataSerializerHook.INSTALL_SNAPSHOT_OP));
 
-        final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, new CreateSessionOp()).get();
+        final SessionResponse response = invocationManager.<SessionResponse>invoke(groupId, newCreateSessionOp()).get();
 
         for (int i = 0; i < LOG_ENTRY_COUNT_TO_SNAPSHOT; i++) {
             invocationManager.invoke(groupId, new RaftTestApplyOp("value" + i)).get();
@@ -355,8 +358,9 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
     @Override
     protected Config createConfig(int cpNodeCount, int groupSize) {
         Config config = super.createConfig(cpNodeCount, groupSize);
-        CPSubsystemConfig cpSubsystemConfig = config.getCPSubsystemConfig();
-        cpSubsystemConfig.getRaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(LOG_ENTRY_COUNT_TO_SNAPSHOT);
+        config.getCPSubsystemConfig()
+              .setSessionTimeToLiveSeconds(20)
+              .getRaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(LOG_ENTRY_COUNT_TO_SNAPSHOT);
 
         return config;
     }
@@ -369,5 +373,9 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
         }
 
         return registry.getSession(sessionId);
+    }
+
+    private CreateSessionOp newCreateSessionOp() throws UnknownHostException {
+        return new CreateSessionOp(new Address("localhost", 1111), "server1", SERVER, currentTimeMillis());
     }
 }

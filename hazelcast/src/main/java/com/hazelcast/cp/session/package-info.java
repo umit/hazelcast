@@ -15,6 +15,6 @@
  */
 
 /**
- * Contains public APIs of the CP subsystem
+ * Contains session abstractions of the CP subsystem
  */
-package com.hazelcast.cp;
+package com.hazelcast.cp.session;

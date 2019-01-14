@@ -21,19 +21,19 @@ import com.hazelcast.client.impl.clientside.ClientExceptionFactory.ExceptionFact
 import com.hazelcast.client.impl.clientside.ClientMessageDecoder;
 import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.impl.protocol.util.ParameterUtil;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.lock.exception.LockAcquireLimitExceededException;
-import com.hazelcast.cp.lock.exception.LockOwnershipLostException;
 import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.cp.internal.session.SessionExpiredException;
 import com.hazelcast.cp.internal.session.SessionResponse;
-import com.hazelcast.cp.internal.session.client.SessionMessageTaskFactoryProvider;
+import com.hazelcast.cp.lock.exception.LockAcquireLimitExceededException;
+import com.hazelcast.cp.lock.exception.LockOwnershipLostException;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Bits;
 import com.hazelcast.spi.InternalCompletableFuture;
@@ -47,6 +47,9 @@ import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.LOCK_O
 import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.SESSION_EXPIRED_EXCEPTION;
 import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.WAIT_KEY_CANCELLED_EXCEPTION;
 import static com.hazelcast.cp.internal.datastructures.semaphore.client.SemaphoreMessageTaskFactoryProvider.GENERATE_THREAD_ID_TYPE;
+import static com.hazelcast.cp.internal.session.client.SessionMessageTaskFactoryProvider.CLOSE_SESSION_TYPE;
+import static com.hazelcast.cp.internal.session.client.SessionMessageTaskFactoryProvider.CREATE_TYPE;
+import static com.hazelcast.cp.internal.session.client.SessionMessageTaskFactoryProvider.HEARTBEAT_TYPE;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
@@ -54,8 +57,8 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  */
 public class ClientProxySessionManager extends AbstractProxySessionManager {
 
-    public static final long SHUTDOWN_TIMEOUT_SECONDS = 60;
-    public static final long SHUTDOWN_WAIT_SLEEP_MILLIS = 10;
+    private static final long SHUTDOWN_TIMEOUT_SECONDS = 60;
+    private static final long SHUTDOWN_WAIT_SLEEP_MILLIS = 10;
     private static final ClientMessageDecoder SESSION_RESPONSE_DECODER = new SessionResponseDecoder();
     private static final ClientMessageDecoder BOOLEAN_RESPONSE_DECODER = new BooleanResponseDecoder();
 
@@ -113,12 +116,14 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
 
     @Override
     protected SessionResponse requestNewSession(CPGroupId groupId) {
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId);
+        String clientName = client.getName();
+        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + ParameterUtil.calculateDataSize(clientName);
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
-        msg.setMessageType(SessionMessageTaskFactoryProvider.CREATE_TYPE);
+        msg.setMessageType(CREATE_TYPE);
         msg.setRetryable(false);
         msg.setOperationName("");
         RaftGroupId.writeTo(groupId, msg);
+        msg.set(clientName);
         msg.updateFrameLength();
 
         InternalCompletableFuture<SessionResponse> future = invoke(msg, SESSION_RESPONSE_DECODER);
@@ -134,7 +139,7 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     protected ICompletableFuture<Object> heartbeat(CPGroupId groupId, long sessionId) {
         int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
-        msg.setMessageType(SessionMessageTaskFactoryProvider.HEARTBEAT_TYPE);
+        msg.setMessageType(HEARTBEAT_TYPE);
         msg.setRetryable(false);
         msg.setOperationName("");
         RaftGroupId.writeTo(groupId, msg);
@@ -148,7 +153,7 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     protected ICompletableFuture<Object> closeSession(CPGroupId groupId, Long sessionId) {
         int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
-        msg.setMessageType(SessionMessageTaskFactoryProvider.CLOSE_SESSION_TYPE);
+        msg.setMessageType(CLOSE_SESSION_TYPE);
         msg.setRetryable(false);
         msg.setOperationName("");
         RaftGroupId.writeTo(groupId, msg);

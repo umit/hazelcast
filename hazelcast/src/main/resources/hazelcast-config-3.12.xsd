@@ -4068,11 +4068,14 @@
             <xs:element name="cp-member-count" type="xs:unsignedInt" default="0">
                 <xs:annotation>
                     <xs:documentation>
-                        Number of CP members to will initialize the CP subsystem. It is 0
-                        by default and the CP subsystem is disabled. The CP subsystem is enabled
-                        when a positive value is set. After the CP subsystem is initialized
-                        successfully, more CP members can be added at run-time and number of
-                        active CP members can go beyond the configured CP member count.
+                        Number of CP members to initialize the CP subsystem.
+                        It is 0 by default and the CP subsystem is disabled. The CP subsystem
+                        is enabled when a positive value is set. After the CP subsystem is
+                        initialized successfully, more CP members can be added at run-time
+                        and number of active CP members can go beyond the configured CP member
+                        count. Number of CP members can be smaller than total size
+                        of the Hazelcast cluster. For instance, one can run 5 CP members in a
+                        20-member Hazelcast cluster.
                         If set, must be greater than or equal to group-size.
                     </xs:documentation>
                 </xs:annotation>
@@ -4089,9 +4092,20 @@
             <xs:element name="session-time-to-live-seconds" type="xs:unsignedInt" minOccurs="0" maxOccurs="1" default="60">
                 <xs:annotation>
                     <xs:documentation>
-                        Duration for a CP session to be kept alive after the last heartbeat
-                        it ha received. The session will be closed if there is no new heartbeat
-                        during this duration.
+                        Duration for a CP session to be kept alive after the last heartbeat it has
+                        received. The session will be closed if there is no new heartbeat during
+                        this duration. Session TTL must be decided wisely. If a very low value is set,
+                        CP session of a Hazelcast instance can be closed prematurely if the instance
+                        temporarily loses connectivity to the CP subsystem because of a network
+                        partition or a GC pause. In such an occasion, all CP resources of this Hazelcast
+                        instance, such as FencedLock or ISemaphore, are released. On the other hand,
+                        if a very large value is set, CP resources can remain assigned to an actually
+                        crashed Hazelcast instance for too long and liveliness problems can occur.
+                        The CP subsystem offers an API, CPSessionManagementService, to deal with
+                        liveliness issues related to CP sessions. In order to prevent premature
+                        session expires, session TTL configuration can be set a relatively large value
+                        and CPSessionManagementService#forceCloseSession() can be manually called to
+                        close CP session of a crashed Hazelcast instance.
                         Must be greater than session-heartbeat-interval-seconds, and
                         smaller than or equal to missing-cp-member-auto-removal-seconds.
                     </xs:documentation>
@@ -4102,7 +4116,7 @@
                     <xs:documentation>
                         Interval for the periodically-committed CP session heartbeats.
                         A CP session is started on a CP group with the first session-based
-                        request of a Hazelcast server or a client. After that, heartbeats are
+                        request of a Hazelcast instance. After that moment, heartbeats are
                         periodically committed to the CP group.
                         Must be smaller than session-time-to-live-seconds.
                     </xs:documentation>

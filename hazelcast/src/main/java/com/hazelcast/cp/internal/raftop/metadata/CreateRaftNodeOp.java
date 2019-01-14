@@ -16,8 +16,8 @@
 
 package com.hazelcast.cp.internal.raftop.metadata;
 
-import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.CPMemberInfo;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
@@ -44,12 +44,12 @@ import java.util.Collection;
 public class CreateRaftNodeOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation {
 
     private CPGroupId groupId;
-    private Collection<EndpointIdentifier> initialMembers;
+    private Collection<CPMemberInfo> initialMembers;
 
     public CreateRaftNodeOp() {
     }
 
-    public CreateRaftNodeOp(CPGroupId groupId, Collection<EndpointIdentifier> initialMembers) {
+    public CreateRaftNodeOp(CPGroupId groupId, Collection<CPMemberInfo> initialMembers) {
         this.groupId = groupId;
         this.initialMembers = initialMembers;
     }
@@ -85,7 +85,7 @@ public class CreateRaftNodeOp extends Operation implements IdentifiedDataSeriali
         super.writeInternal(out);
         out.writeObject(groupId);
         out.writeInt(initialMembers.size());
-        for (EndpointIdentifier member : initialMembers) {
+        for (CPMemberInfo member : initialMembers) {
             out.writeObject(member);
         }
     }
@@ -95,9 +95,9 @@ public class CreateRaftNodeOp extends Operation implements IdentifiedDataSeriali
         super.readInternal(in);
         groupId = in.readObject();
         int count = in.readInt();
-        initialMembers = new ArrayList<EndpointIdentifier>(count);
+        initialMembers = new ArrayList<CPMemberInfo>(count);
         for (int i = 0; i < count; i++) {
-            EndpointIdentifier member = in.readObject();
+            CPMemberInfo member = in.readObject();
             initialMembers.add(member);
         }
     }

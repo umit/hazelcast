@@ -19,7 +19,7 @@ package com.hazelcast.core;
 import com.hazelcast.config.QuorumConfig;
 import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.config.cp.CPSubsystemConfig;
-import com.hazelcast.cp.CPSession;
+import com.hazelcast.cp.session.CPSession;
 import com.hazelcast.cp.CPSubsystem;
 
 import java.util.concurrent.Semaphore;

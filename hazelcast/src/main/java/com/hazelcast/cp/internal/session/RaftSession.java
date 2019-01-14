@@ -20,7 +20,7 @@ import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.CPSession;
+import com.hazelcast.cp.session.CPSession;
 import com.hazelcast.util.Clock;
 
 import java.io.IOException;
@@ -35,29 +35,31 @@ public class RaftSession implements CPSession, IdentifiedDataSerializable {
 
     private long id;
 
+    private long version;
+
+    private Address endpoint;
+
+    private String endpointName;
+
+    private CPSessionOwnerType endpointType;
+
     private long creationTime;
 
     private long expirationTime;
 
-    private long version;
-
-    // used for diagnostics
-    private Address endpoint;
-
     public RaftSession() {
     }
 
-    RaftSession(long id, long creationTime, long expirationTime, Address endpoint) {
-        this(id, creationTime, expirationTime, 0, endpoint);
-    }
-
-    RaftSession(long id, long creationTime, long expirationTime, long version, Address endpoint) {
+    RaftSession(long id, long version, Address endpoint, String endpointName, CPSessionOwnerType endpointType, long creationTime,
+                long expirationTime) {
         checkTrue(version >= 0, "Session: " + id + " cannot have a negative version: " + version);
         this.id = id;
-        this.creationTime = creationTime;
-        this.expirationTime = expirationTime;
         this.version = version;
         this.endpoint = endpoint;
+        this.endpointName = endpointName;
+        this.endpointType = endpointType;
+        this.creationTime = creationTime;
+        this.expirationTime = expirationTime;
     }
 
     @Override
@@ -91,31 +93,13 @@ public class RaftSession implements CPSession, IdentifiedDataSerializable {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-
-        RaftSession session = (RaftSession) o;
-
-        if (id != session.id) {
-            return false;
-        }
-        if (version != session.version) {
-            return false;
-        }
-        return endpoint != null ? endpoint.equals(session.endpoint) : session.endpoint == null;
+    public CPSessionOwnerType endpointType() {
+        return endpointType;
     }
 
     @Override
-    public int hashCode() {
-        int result = (int) (id ^ (id >>> 32));
-        result = 31 * result + (int) (version ^ (version >>> 32));
-        result = 31 * result + (endpoint != null ? endpoint.hashCode() : 0);
-        return result;
+    public String endpointName() {
+        return endpointName;
     }
 
     RaftSession heartbeat(long ttlMs) {
@@ -129,7 +113,7 @@ public class RaftSession implements CPSession, IdentifiedDataSerializable {
     }
 
     private RaftSession newSession(long newExpirationTime) {
-        return new RaftSession(id, creationTime, newExpirationTime, version + 1, endpoint);
+        return new RaftSession(id, version + 1, endpoint, endpointName, endpointType, creationTime, newExpirationTime);
     }
 
     static long toExpirationTime(long timestamp, long ttlMillis) {
@@ -138,9 +122,51 @@ public class RaftSession implements CPSession, IdentifiedDataSerializable {
     }
 
     @Override
+    @SuppressWarnings("checkstyle:npathcomplexity")
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        RaftSession that = (RaftSession) o;
+
+        if (id != that.id) {
+            return false;
+        }
+        if (version != that.version) {
+            return false;
+        }
+        if (creationTime != that.creationTime) {
+            return false;
+        }
+        if (!endpoint.equals(that.endpoint)) {
+            return false;
+        }
+        if (!endpointName.equals(that.endpointName)) {
+            return false;
+        }
+        return endpointType == that.endpointType;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = (int) (id ^ (id >>> 32));
+        result = 31 * result + (int) (version ^ (version >>> 32));
+        result = 31 * result + endpoint.hashCode();
+        result = 31 * result + endpointName.hashCode();
+        result = 31 * result + endpointType.hashCode();
+        result = 31 * result + (int) (creationTime ^ (creationTime >>> 32));
+        return result;
+    }
+
+    @Override
     public String toString() {
-        return "Session{" + "id=" + id + ", creationTime=" + creationTime + ", expirationTime=" + expirationTime
-                + ", version=" + version + ", endpoint=" + endpoint + '}';
+        return "CPSession{" + "id=" + id + ", version=" + version + ", endpoint=" + endpoint + ", endpointName='" + endpointName
+                + '\'' + ", endpointType=" + endpointType + ", creationTime=" + creationTime + ", expirationTime="
+                + expirationTime + '}';
     }
 
     @Override
@@ -160,6 +186,8 @@ public class RaftSession implements CPSession, IdentifiedDataSerializable {
         out.writeLong(expirationTime);
         out.writeLong(version);
         out.writeObject(endpoint);
+        out.writeUTF(endpointName);
+        out.writeUTF(endpointType.name());
     }
 
     @Override
@@ -169,5 +197,7 @@ public class RaftSession implements CPSession, IdentifiedDataSerializable {
         expirationTime = in.readLong();
         version = in.readLong();
         endpoint = in.readObject();
+        endpointName = in.readUTF();
+        endpointType = CPSessionOwnerType.valueOf(in.readUTF());
     }
 }

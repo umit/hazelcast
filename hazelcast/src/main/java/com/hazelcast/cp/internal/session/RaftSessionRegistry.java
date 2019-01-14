@@ -17,7 +17,8 @@
 package com.hazelcast.cp.internal.session;
 
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.CPSession;
+import com.hazelcast.cp.session.CPSession;
+import com.hazelcast.cp.session.CPSession.CPSessionOwnerType;
 import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
@@ -58,10 +59,12 @@ class RaftSessionRegistry implements IdentifiedDataSerializable {
         return sessions.get(sessionId);
     }
 
-    long createNewSession(long sessionTTLMs, Address endpoint) {
+    long createNewSession(long sessionTTLMs, Address endpoint, String endpointName, CPSessionOwnerType endpointType,
+                          long creationTime) {
         long id = ++nextSessionId;
-        long creationTime = Clock.currentTimeMillis();
-        sessions.put(id, new RaftSession(id, creationTime, toExpirationTime(creationTime, sessionTTLMs), endpoint));
+        long expirationTime = toExpirationTime(creationTime, sessionTTLMs);
+        RaftSession session = new RaftSession(id, 0, endpoint, endpointName, endpointType, creationTime, expirationTime);
+        sessions.put(id, session);
         return id;
     }
 
@@ -144,11 +147,7 @@ class RaftSessionRegistry implements IdentifiedDataSerializable {
         out.writeLong(nextSessionId);
         out.writeInt(sessions.size());
         for (RaftSession session : sessions.values()) {
-            out.writeLong(session.id());
-            out.writeLong(session.creationTime());
-            out.writeLong(session.expirationTime());
-            out.writeLong(session.version());
-            out.writeObject(session.endpoint());
+            out.writeObject(session);
         }
     }
 
@@ -158,12 +157,8 @@ class RaftSessionRegistry implements IdentifiedDataSerializable {
         nextSessionId = in.readLong();
         int size = in.readInt();
         for (int i = 0; i < size; i++) {
-            long id = in.readLong();
-            long creationTime = in.readLong();
-            long expirationTime = in.readLong();
-            long version = in.readLong();
-            Address endpoint = in.readObject();
-            sessions.put(id, new RaftSession(id, creationTime, expirationTime, version, endpoint));
+            RaftSession session = in.readObject();
+            sessions.put(session.id(), session);
         }
     }
 

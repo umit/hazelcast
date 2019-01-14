@@ -16,8 +16,8 @@
 
 package com.hazelcast.cp.internal;
 
-import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.core.Member;
+import com.hazelcast.cp.CPMember;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
@@ -32,22 +32,22 @@ import java.io.Serializable;
  * {@code CPMember} represents a member in Raft group.
  * Each member must have a unique address and id in the group.
  */
-public class CPMember implements EndpointIdentifier, Serializable, IdentifiedDataSerializable {
+public class CPMemberInfo implements CPMember, Serializable, IdentifiedDataSerializable {
 
     private static final long serialVersionUID = 5628148969327743953L;
 
     private transient String uuid;
     private transient Address address;
 
-    public CPMember() {
+    public CPMemberInfo() {
     }
 
-    public CPMember(String id, Address address) {
+    public CPMemberInfo(String id, Address address) {
         this.uuid = id;
         this.address = address;
     }
 
-    public CPMember(Member member) {
+    public CPMemberInfo(Member member) {
         this.uuid = member.getUuid();
         this.address = member.getAddress();
     }
@@ -102,11 +102,11 @@ public class CPMember implements EndpointIdentifier, Serializable, IdentifiedDat
         if (this == o) {
             return true;
         }
-        if (!(o instanceof CPMember)) {
+        if (!(o instanceof CPMemberInfo)) {
             return false;
         }
 
-        CPMember that = (CPMember) o;
+        CPMemberInfo that = (CPMemberInfo) o;
 
         if (uuid != null ? !uuid.equals(that.uuid) : that.uuid != null) {
             return false;

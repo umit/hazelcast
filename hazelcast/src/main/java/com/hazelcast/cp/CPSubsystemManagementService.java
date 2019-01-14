@@ -17,7 +17,6 @@
 package com.hazelcast.cp;
 
 import com.hazelcast.config.cp.CPSubsystemConfig;
-import com.hazelcast.core.EndpointIdentifier;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.internal.raft.exception.RaftGroupDestroyedException;
 
@@ -103,6 +102,9 @@ import java.util.Collection;
  * CP member is currently alive, {@link #resetAndInit()} must be called on this
  * CP member and 4 regular Hazelcast members. New Hazelcast members can be
  * started to satisfy {@link CPSubsystemConfig#getCPMemberCount()}.
+ *
+ * @see CPMember
+ * @see CPSubsystemConfig
  */
 public interface CPSubsystemManagementService {
 
@@ -117,26 +119,37 @@ public interface CPSubsystemManagementService {
     CPGroup getCPGroup(CPGroupId groupId);
 
     /**
-     * Wipes & resets the local CP state and initializes it as if this member
-     * is starting up initially.
-     * This method must be used only when the Metadata CP group loses
-     * its majority and cannot make progress anymore.
+     * Unconditionally destroys the given CP group without using
+     * the Raft algorithm mechanics. This method must be used only when
+     * the given CP group loses its majority and cannot make progress anymore.
+     * Normally, membership changes in CP groups, such as CP member promotion
+     * or removal, are done via the Raft consensus algorithm. However, when
+     * a CP group loses its majority, it will not be able to commit any new
+     * request. Therefore, this method ungracefully terminates the remaining
+     * members of the given CP group. It also performs a Raft commit to
+     * the Metadata CP group in order to update status of the destroyed group.
      * <p>
-     * After this method is called, all CP state and data will be wiped
-     * and CP members will start with empty state.
-     * <p>
-     * <strong>Use with caution:
-     * This method is NOT idempotent and multiple invocations
-     * on the same member can break the whole system!</strong>
+     * This method is idempotent. It has no effect if the given CP group is
+     * already destroyed.
+     *
+     * @return a Future representing pending completion of the operation
      */
-    void resetAndInit();
+    ICompletableFuture<Void> forceDestroyCPGroup(CPGroupId groupId);
+
+    /**
+     * Returns the current list of CP members
+     *
+     * @return the current list of CP members
+     */
+    ICompletableFuture<Collection<CPMember>> getCPMembers();
 
     /**
      * Promotes the local Hazelcast member to a CP member.
      * <p>
      * This method is idempotent.
-     * If the local member is already in the active CP members list,
-     * then this method will have no effect.
+     * If the local member is already in the active CP members list, then this
+     * method will have no effect. When the current member is promoted to CP
+     * member, its member UUID is assigned as CP member UUID.
      * <p>
      * If the local member is currently being removed from
      * the active CP members list, then the returning Future object
@@ -167,24 +180,21 @@ public interface CPSubsystemManagementService {
      *         the Hazelcast cluster or another CP member is being removed
      *         from the CP sub-system
      */
-    ICompletableFuture<Void> removeCPMember(EndpointIdentifier member);
+    ICompletableFuture<Void> removeCPMember(String cpMemberUuid);
 
     /**
-     * Unconditionally destroys the given CP group without using
-     * the Raft algorithm mechanics. This method must be used only when
-     * the given CP group loses its majority and cannot make progress anymore.
-     * Normally, membership changes in CP groups, such as CP member promotion
-     * or removal, are done via the Raft consensus algorithm. However, when
-     * a CP group loses its majority, it will not be able to commit any new
-     * request. Therefore, this method ungracefully terminates the remaining
-     * members of the given CP group. It also performs a Raft commit to
-     * the Metadata CP group in order to update status of the destroyed group.
+     * Wipes & resets the local CP state and initializes it as if this member
+     * is starting up initially.
+     * This method must be used only when the Metadata CP group loses
+     * its majority and cannot make progress anymore.
      * <p>
-     * This method is idempotent. It has no effect if the given CP group is
-     * already destroyed.
-     *
-     * @return a Future representing pending completion of the operation
+     * After this method is called, all CP state and data will be wiped
+     * and CP members will start with empty state.
+     * <p>
+     * <strong>Use with caution:
+     * This method is NOT idempotent and multiple invocations
+     * on the same member can break the whole system!</strong>
      */
-    ICompletableFuture<Void> forceDestroyCPGroup(CPGroupId groupId);
+    void resetAndInit();
 
 }

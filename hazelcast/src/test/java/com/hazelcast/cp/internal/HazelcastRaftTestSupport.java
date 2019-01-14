@@ -77,7 +77,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
     }
 
     protected HazelcastInstance getRandomFollowerInstance(HazelcastInstance[] instances, RaftNodeImpl leader) {
-        Address address = ((CPMember) leader.getLocalMember()).getAddress();
+        Address address = ((CPMemberInfo) leader.getLocalMember()).getAddress();
         for (HazelcastInstance instance : instances) {
             if (!getAddress(instance).equals(address)) {
                 return instance;
@@ -168,7 +168,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
 
         RaftNodeImpl raftNode = raftNodeRef[0];
         waitUntilLeaderElected(raftNode);
-        CPMember leaderEndpoint = getLeaderMember(raftNode);
+        CPMemberInfo leaderEndpoint = getLeaderMember(raftNode);
 
         for (HazelcastInstance instance : instances) {
             if (getAddress(instance).equals(leaderEndpoint.getAddress())) {
@@ -197,7 +197,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
 
         RaftNodeImpl raftNode = raftNodeRef[0];
         waitUntilLeaderElected(raftNode);
-        CPMember leaderEndpoint = getLeaderMember(raftNode);
+        CPMemberInfo leaderEndpoint = getLeaderMember(raftNode);
 
         for (HazelcastInstance instance : instances) {
             if (!getAddress(instance).equals(leaderEndpoint.getAddress())) {
@@ -222,7 +222,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         return (RaftNodeImpl) getRaftService(instance).getRaftNode(groupId);
     }
 
-    public static RaftGroup getRaftGroupLocally(HazelcastInstance instance, CPGroupId groupId) {
+    public static CPGroupInfo getRaftGroupLocally(HazelcastInstance instance, CPGroupId groupId) {
         return getRaftService(instance).getMetadataGroupManager().getRaftGroup(groupId);
     }
 }

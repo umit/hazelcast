@@ -20,7 +20,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.CPMember;
+import com.hazelcast.cp.internal.CPMemberInfo;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.MetadataRaftGroupManager;
@@ -52,12 +52,12 @@ import java.util.Collection;
 public class CreateRaftGroupOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
     private String groupName;
-    private Collection<CPMember> members;
+    private Collection<CPMemberInfo> members;
 
     public CreateRaftGroupOp() {
     }
 
-    public CreateRaftGroupOp(String groupName, Collection<CPMember> members) {
+    public CreateRaftGroupOp(String groupName, Collection<CPMemberInfo> members) {
         this.groupName = groupName;
         this.members = members;
     }
@@ -93,7 +93,7 @@ public class CreateRaftGroupOp extends RaftOp implements IndeterminateOperationS
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeUTF(groupName);
         out.writeInt(members.size());
-        for (CPMember member : members) {
+        for (CPMemberInfo member : members) {
             out.writeObject(member);
         }
     }
@@ -102,9 +102,9 @@ public class CreateRaftGroupOp extends RaftOp implements IndeterminateOperationS
     public void readData(ObjectDataInput in) throws IOException {
         groupName = in.readUTF();
         int len = in.readInt();
-        members = new ArrayList<CPMember>(len);
+        members = new ArrayList<CPMemberInfo>(len);
         for (int i = 0; i < len; i++) {
-            CPMember member = in.readObject();
+            CPMemberInfo member = in.readObject();
             members.add(member);
         }
     }

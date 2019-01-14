@@ -22,9 +22,9 @@ package com.hazelcast.core;
 public interface EndpointIdentifier {
 
     /**
-     * Returns the unique UUID for this endpoint.
+     * Returns the UUID of this endpoint
      *
-     * @return the unique UUID for this endpoint
+     * @return the UUID of this endpoint
      */
     String getUuid();
 

@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-package com.hazelcast.cp;
+package com.hazelcast.cp.session;
 
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.ICompletableFuture;
+import com.hazelcast.cp.CPGroupId;
 
 import java.util.Collection;
 
@@ -33,10 +34,9 @@ public interface CPSessionManagementService {
     Collection<CPSession> getAllSessions(CPGroupId groupId);
 
     /**
-     * If owner of a session crashes, which can be either a Hazelcast server or
-     * a client, its session is not terminated immediately. Instead,
-     * the session will be closed after
-     * {@link CPSubsystemConfig#getSessionTimeToLiveSeconds()} seconds passes.
+     * If a Hazelcast instance that owns a CP session crashes, its CP session
+     * is not terminated immediately. Instead, the session will be closed after
+     * {@link CPSubsystemConfig#getSessionTimeToLiveSeconds()} passes.
      * If it is known for sure that the session owner is not partitioned and
      * definitely crashed, this method can be used for closing the session and
      * releasing its resources immediately.

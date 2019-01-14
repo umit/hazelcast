@@ -20,7 +20,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.CPMember;
+import com.hazelcast.cp.internal.CPMemberInfo;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
@@ -31,19 +31,19 @@ import java.io.IOException;
 import static com.hazelcast.cp.internal.MetadataRaftGroupManager.METADATA_GROUP_ID;
 
 /**
- * A {@link RaftOp} that adds a new CP member to the CP sub-system.
+ * A {@link RaftOp} that adds a new CP member to the CP subsystem.
  * Committed to the Metadata Raft group.
  * Fails with {@link IllegalArgumentException} if the member to be added
  * is already a CP member that is currently being removed.
  */
 public class AddCPMemberOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
-    private CPMember member;
+    private CPMemberInfo member;
 
     public AddCPMemberOp() {
     }
 
-    public AddCPMemberOp(CPMember member) {
+    public AddCPMemberOp(CPMemberInfo member) {
         this.member = member;
     }
 

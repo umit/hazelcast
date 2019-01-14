@@ -20,7 +20,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.CPMember;
+import com.hazelcast.cp.internal.CPMemberInfo;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
@@ -43,7 +43,7 @@ public class GetActiveCPMembersOp extends RaftOp implements IndeterminateOperati
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftService service = getService();
         // returning array list to be able to serialize response
-        return new ArrayList<CPMember>(service.getMetadataGroupManager().getActiveMembers());
+        return new ArrayList<CPMemberInfo>(service.getMetadataGroupManager().getActiveMembers());
     }
 
     @Override

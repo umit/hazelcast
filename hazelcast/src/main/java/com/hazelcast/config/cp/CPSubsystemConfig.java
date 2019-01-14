@@ -21,13 +21,17 @@ import com.hazelcast.config.matcher.MatchingPointConfigPatternMatcher;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.core.IndeterminateOperationStateException;
 import com.hazelcast.cp.CPGroup;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.CPMember;
 import com.hazelcast.cp.CPSubsystem;
 import com.hazelcast.cp.lock.FencedLock;
-import com.hazelcast.cp.internal.CPMember;
+import com.hazelcast.cp.session.CPSession;
+import com.hazelcast.cp.session.CPSessionManagementService;
 
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.internal.config.ConfigUtils.lookupByPattern;
 import static com.hazelcast.partition.strategy.StringPartitioningStrategy.getBaseName;
@@ -43,8 +47,8 @@ import static com.hazelcast.util.Preconditions.checkTrue;
  * {@link CPSubsystemConfig#setCPMemberCount(int)} value. In this code,
  * we set 3 to {@link CPSubsystemConfig#setCPMemberCount(int)}, and we don't
  * set any value to {@link CPSubsystemConfig#setGroupSize(int)}. Therefore,
- * there will be 3 {@link CPMember} instances and {@link CPGroup}s will have
- * 3 members.
+ * there will be 3 CP members in the CP subsystem and each CP groups will have
+ * 3 CP members as well.
  * <pre>
  *     int cpMemberCount = 3;
  *     int apMemberCount = 2;
@@ -68,8 +72,8 @@ import static com.hazelcast.util.Preconditions.checkTrue;
  * In the following code snippet, we configure
  * {@link CPSubsystemConfig#setCPMemberCount(int)} to 5 and
  * {@link CPSubsystemConfig#setGroupSize(int)} to 3, therefore there will be 5
- * {@link CPMember}s and {@link CPGroup}s will be initialized by selecting 3
- * random {@link CPMember}s among them.
+ * CP members and CP groups will be initialized by selecting 3 random CP members
+ * among them.
  * <pre>
  *     int cpMemberCount = 5;
  *     int apMemberCount = 2;
@@ -92,6 +96,10 @@ import static com.hazelcast.util.Preconditions.checkTrue;
  *     cpLong = instances[cpMemberCount].getCPSubsystem().getAtomicLong("myLong");
  *     System.out.println(cpLong.get());
  * </pre>
+ *
+ * @see CPSubsystem
+ * @see CPMember
+ * @see CPSession
  */
 public class CPSubsystemConfig {
 
@@ -99,7 +107,7 @@ public class CPSubsystemConfig {
      * Default value for a CP session to be kept alive after the last heartbeat
      * it has received. See {@link #sessionTimeToLiveSeconds}
      */
-    public static final int DEFAULT_SESSION_TTL_SECONDS = 60;
+    public static final int DEFAULT_SESSION_TTL_SECONDS = (int) TimeUnit.MINUTES.toSeconds(5);
 
     /**
      * Default value of interval for the periodically-committed CP session
@@ -123,11 +131,14 @@ public class CPSubsystemConfig {
 
 
     /**
-     * Number of CP members to will initialize the CP subsystem. It is 0
-     * by default and the CP subsystem is disabled. The CP subsystem is enabled
-     * when a positive value is set. After the CP subsystem is initialized
-     * successfully, more CP members can be added at run-time and number of
-     * active CP members can go beyond the configured CP member count.
+     * Number of {@link CPMember}s to initialize the {@link CPSubsystem}.
+     * It is 0 by default and the CP subsystem is disabled. The CP subsystem
+     * is enabled when a positive value is set. After the CP subsystem is
+     * initialized successfully, more CP members can be added at run-time
+     * and number of active CP members can go beyond the configured CP member
+     * count. Number of CP members can be smaller than total size
+     * of the Hazelcast cluster. For instance, one can run 5 CP members in a
+     * 20-member Hazelcast cluster.
      * <p>
      * If set, must be greater than or equal to {@link #groupSize}
      */
@@ -144,8 +155,22 @@ public class CPSubsystemConfig {
 
     /**
      * Duration for a CP session to be kept alive after the last heartbeat
-     * it ha received. The session will be closed if there is no new heartbeat
-     * during this duration.
+     * it has received. The session will be closed if there is no new heartbeat
+     * during this duration. Session TTL must be decided wisely. If a very low
+     * value is set, CP session of a Hazelcast instance can be closed
+     * prematurely if the instance temporarily loses connectivity to the CP
+     * subsystem because of a network partition or a GC pause. In such an
+     * occasion, all CP resources of this Hazelcast instance, such as
+     * {@link FencedLock} or {@link ISemaphore}, are released. On the other
+     * hand, if a very large value is set, CP resources can remain assigned to
+     * an actually crashed Hazelcast instance for too long and liveliness
+     * problems can occur. The CP subsystem offers an API,
+     * {@link CPSessionManagementService}, to deal with liveliness issues
+     * related to CP sessions. In order to prevent premature session expires,
+     * session TTL configuration can be set a relatively large value and
+     * {@link CPSessionManagementService#forceCloseSession(CPGroupId, long)}
+     * can be manually called to close CP session of a crashed Hazelcast
+     * instance.
      * <p>
      * Must be greater than {@link #sessionHeartbeatIntervalSeconds}, and
      * smaller than or equal to {@link #missingCPMemberAutoRemovalSeconds}
@@ -155,7 +180,7 @@ public class CPSubsystemConfig {
     /**
      * Interval for the periodically-committed CP session heartbeats.
      * A CP session is started on a CP group with the first session-based
-     * request of a Hazelcast server or a client. After that, heartbeats are
+     * request of a Hazelcast instance. After that moment, heartbeats are
      * periodically committed to the CP group.
      * <p>
      * Must be smaller than {@link #sessionTimeToLiveSeconds}

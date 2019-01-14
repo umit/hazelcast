@@ -16,34 +16,33 @@
 
 package com.hazelcast.cp.internal.raftop.metadata;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.CPMemberInfo;
+import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
+import com.hazelcast.cp.internal.MetadataRaftGroupManager;
+import com.hazelcast.cp.internal.RaftOp;
+import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.CPMember;
-import com.hazelcast.cp.internal.RaftOp;
-import com.hazelcast.cp.internal.MetadataRaftGroupManager;
-import com.hazelcast.cp.internal.RaftService;
-import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
-import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 
 import java.io.IOException;
 
 /**
  * When a CP member is shutting down gracefully, or a crashed CP member is
  * removed from the CP sub-system via
- * {@link RaftService#removeCPMember(EndpointIdentifier)}, this operation is
+ * {@link RaftService#removeCPMember(String)}, this operation is
  * committed to the Metadata Raft group.
  */
 public class TriggerRemoveCPMemberOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
-    private CPMember member;
+    private CPMemberInfo member;
 
     public TriggerRemoveCPMemberOp() {
     }
 
-    public TriggerRemoveCPMemberOp(CPMember member) {
+    public TriggerRemoveCPMemberOp(CPMemberInfo member) {
         this.member = member;
     }
 

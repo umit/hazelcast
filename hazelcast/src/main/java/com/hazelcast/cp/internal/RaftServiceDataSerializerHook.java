@@ -115,7 +115,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                     case GROUP_ID:
                         return new RaftGroupId();
                     case RAFT_GROUP_INFO:
-                        return new RaftGroup();
+                        return new CPGroupInfo();
                     case PRE_VOTE_REQUEST_OP:
                         return new PreVoteRequestOp();
                     case PRE_VOTE_RESPONSE_OP:
@@ -173,7 +173,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                     case NOTIFY_TERM_CHANGE_OP:
                         return new NotifyTermChangeOp();
                     case CP_MEMBER:
-                        return new CPMember();
+                        return new CPMemberInfo();
                     case SEND_ACTIVE_CP_MEMBERS_OP:
                         return new SendActiveCPMembersOp();
                     case ADD_CP_MEMBER_OP:

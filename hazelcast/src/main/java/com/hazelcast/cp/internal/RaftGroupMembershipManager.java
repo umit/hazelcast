@@ -97,7 +97,7 @@ class RaftGroupMembershipManager {
                 CHECK_LOCAL_RAFT_NODES_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
     }
 
-    private CPMember getLocalMember() {
+    private CPMemberInfo getLocalMember() {
         return raftService.getMetadataGroupManager().getLocalMember();
     }
 
@@ -119,11 +119,11 @@ class RaftGroupMembershipManager {
                     continue;
                 }
 
-                ICompletableFuture<RaftGroup> f = queryMetadata(new GetRaftGroupOp(groupId));
+                ICompletableFuture<CPGroupInfo> f = queryMetadata(new GetRaftGroupOp(groupId));
 
-                f.andThen(new ExecutionCallback<RaftGroup>() {
+                f.andThen(new ExecutionCallback<CPGroupInfo>() {
                     @Override
-                    public void onResponse(RaftGroup group) {
+                    public void onResponse(CPGroupInfo group) {
                         if (group == null) {
                             logger.severe("Could not find CP group for local raft node of " + groupId);
                         } else if (group.status() == CPGroupStatus.DESTROYED) {
@@ -162,7 +162,7 @@ class RaftGroupMembershipManager {
             }
 
             OperationService operationService = nodeEngine.getOperationService();
-            for (CPMember member : raftService.getMetadataGroupManager().getActiveMembers()) {
+            for (CPMemberInfo member : raftService.getMetadataGroupManager().getActiveMembers()) {
                 if (!member.equals(raftService.getLocalMember())) {
                     operationService.send(new DestroyRaftNodesOp(destroyedGroupIds), member.getAddress());
                 }
@@ -358,7 +358,7 @@ class RaftGroupMembershipManager {
                     return NA_MEMBERS_COMMIT_INDEX;
                 }
 
-                for (CPMember member : ctx.getMembers()) {
+                for (CPMemberInfo member : ctx.getMembers()) {
                     if (!m.getMembers().contains(member)) {
                         logger.severe(msg);
                         return NA_MEMBERS_COMMIT_INDEX;
@@ -374,7 +374,7 @@ class RaftGroupMembershipManager {
         }
 
         private long getMemberRemoveCommitIndex(CPGroupMembershipChangeContext ctx, Throwable t) {
-            CPMember removedMember = ctx.getMemberToRemove();
+            CPMemberInfo removedMember = ctx.getMemberToRemove();
 
             if (t.getCause() instanceof MismatchingGroupMembersCommitIndexException) {
                 MismatchingGroupMembersCommitIndexException m = (MismatchingGroupMembersCommitIndexException) t.getCause();
@@ -407,7 +407,7 @@ class RaftGroupMembershipManager {
                     return NA_MEMBERS_COMMIT_INDEX;
                 }
 
-                for (CPMember member : ctx.getMembers()) {
+                for (CPMemberInfo member : ctx.getMembers()) {
                     // Other group members except the removed one and added one must be still present...
                     if (!member.equals(removedMember) && !m.getMembers().contains(member)) {
                         logger.severe(msg);
