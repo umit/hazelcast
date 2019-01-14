@@ -20,6 +20,7 @@ import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
+import com.hazelcast.cp.CPGroup;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.CPMember;
 import com.hazelcast.cp.CPSubsystemManagementService;
@@ -40,7 +41,7 @@ import com.hazelcast.cp.internal.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.cp.internal.raftop.metadata.AddCPMemberOp;
 import com.hazelcast.cp.internal.raftop.metadata.ForceDestroyRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetActiveCPMembersOp;
-import com.hazelcast.cp.internal.raftop.metadata.GetActiveRaftGroupIdOp;
+import com.hazelcast.cp.internal.raftop.metadata.GetActiveRaftGroupByNameOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetInitialRaftGroupMembersIfCurrentGroupMemberOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupIdsOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupOp;
@@ -152,13 +153,18 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     }
 
     @Override
-    public Collection<CPGroupId> getCPGroupIds() {
-        return invocationManager.<Collection<CPGroupId>>invoke(METADATA_GROUP_ID, new GetRaftGroupIdsOp()).join();
+    public ICompletableFuture<Collection<CPGroupId>> getCPGroupIds() {
+        return invocationManager.invoke(METADATA_GROUP_ID, new GetRaftGroupIdsOp());
     }
 
     @Override
-    public CPGroupInfo getCPGroup(CPGroupId groupId) {
-        return invocationManager.<CPGroupInfo>invoke(METADATA_GROUP_ID, new GetRaftGroupOp(groupId)).join();
+    public ICompletableFuture<CPGroup> getCPGroup(CPGroupId groupId) {
+        return invocationManager.invoke(METADATA_GROUP_ID, new GetRaftGroupOp(groupId));
+    }
+
+    @Override
+    public ICompletableFuture<CPGroup> getActiveCPGroup(String name) {
+        return invocationManager.invoke(METADATA_GROUP_ID, new GetActiveRaftGroupByNameOp(name));
     }
 
     /**
@@ -226,7 +232,8 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             }
         };
 
-        getCPMembers().andThen(new ExecutionCallback<Collection<CPMember>>() {
+        invocationManager.<Collection<CPMember>>invoke(METADATA_GROUP_ID, new GetActiveCPMembersOp())
+                .andThen(new ExecutionCallback<Collection<CPMember>>() {
             @Override
             public void onResponse(Collection<CPMember> cpMembers) {
                 CPMemberInfo cpMemberToRemove = null;
@@ -263,8 +270,8 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
      * this method is idempotent
      */
     @Override
-    public ICompletableFuture<Void> forceDestroyCPGroup(CPGroupId groupId) {
-        return invocationManager.invoke(METADATA_GROUP_ID, new ForceDestroyRaftGroupOp(groupId));
+    public ICompletableFuture<Void> forceDestroyCPGroup(String groupName) {
+        return invocationManager.invoke(METADATA_GROUP_ID, new ForceDestroyRaftGroupOp(groupName));
     }
 
     @Override
@@ -571,7 +578,9 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
     public CPGroupId getGroupIdForProxy(String name) {
         String groupName = getGroupNameForProxy(name);
-        return invocationManager.<CPGroupId>invoke(METADATA_GROUP_ID, new GetActiveRaftGroupIdOp(groupName)).join();
+        RaftOp op = new GetActiveRaftGroupByNameOp(groupName);
+        CPGroup group = invocationManager.<CPGroup>invoke(METADATA_GROUP_ID, op).join();
+        return group != null ? group.id() : null;
     }
 
     private ICompletableFuture<Void> invokeTriggerRemoveMember(CPMemberInfo member) {

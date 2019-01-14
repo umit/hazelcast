@@ -16,12 +16,10 @@
 
 package com.hazelcast.cp.internal;
 
-import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupIdsOp;
-import com.hazelcast.internal.serialization.DataSerializerHook;
-import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
-import com.hazelcast.nio.serialization.DataSerializableFactory;
-import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.internal.raftop.NotifyTermChangeOp;
+import com.hazelcast.cp.internal.operation.ChangeRaftGroupMembershipOp;
+import com.hazelcast.cp.internal.operation.DefaultRaftReplicateOp;
+import com.hazelcast.cp.internal.operation.DestroyRaftGroupOp;
+import com.hazelcast.cp.internal.operation.RaftQueryOp;
 import com.hazelcast.cp.internal.operation.integration.AppendFailureResponseOp;
 import com.hazelcast.cp.internal.operation.integration.AppendRequestOp;
 import com.hazelcast.cp.internal.operation.integration.AppendSuccessResponseOp;
@@ -30,6 +28,7 @@ import com.hazelcast.cp.internal.operation.integration.PreVoteRequestOp;
 import com.hazelcast.cp.internal.operation.integration.PreVoteResponseOp;
 import com.hazelcast.cp.internal.operation.integration.VoteRequestOp;
 import com.hazelcast.cp.internal.operation.integration.VoteResponseOp;
+import com.hazelcast.cp.internal.raftop.NotifyTermChangeOp;
 import com.hazelcast.cp.internal.raftop.metadata.AddCPMemberOp;
 import com.hazelcast.cp.internal.raftop.metadata.CompleteDestroyRaftGroupsOp;
 import com.hazelcast.cp.internal.raftop.metadata.CompleteRaftGroupMembershipChangesOp;
@@ -38,21 +37,22 @@ import com.hazelcast.cp.internal.raftop.metadata.CreateRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.CreateRaftNodeOp;
 import com.hazelcast.cp.internal.raftop.metadata.DestroyRaftNodesOp;
 import com.hazelcast.cp.internal.raftop.metadata.ForceDestroyRaftGroupOp;
-import com.hazelcast.cp.internal.raftop.metadata.GetActiveRaftGroupIdOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetActiveCPMembersOp;
+import com.hazelcast.cp.internal.raftop.metadata.GetActiveRaftGroupByNameOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetDestroyingRaftGroupIdsOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetInitialRaftGroupMembersIfCurrentGroupMemberOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetMembershipChangeContextOp;
+import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupIdsOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.RaftServicePreJoinOp;
 import com.hazelcast.cp.internal.raftop.metadata.SendActiveCPMembersOp;
 import com.hazelcast.cp.internal.raftop.metadata.TriggerDestroyRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.TriggerRemoveCPMemberOp;
 import com.hazelcast.cp.internal.raftop.snapshot.RestoreSnapshotOp;
-import com.hazelcast.cp.internal.operation.ChangeRaftGroupMembershipOp;
-import com.hazelcast.cp.internal.operation.DefaultRaftReplicateOp;
-import com.hazelcast.cp.internal.operation.DestroyRaftGroupOp;
-import com.hazelcast.cp.internal.operation.RaftQueryOp;
+import com.hazelcast.internal.serialization.DataSerializerHook;
+import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
+import com.hazelcast.nio.serialization.DataSerializableFactory;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
 @SuppressWarnings("checkstyle:declarationorder")
 public final class RaftServiceDataSerializerHook implements DataSerializerHook {
@@ -87,7 +87,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int GET_DESTROYING_RAFT_GROUP_IDS_OP = 23;
     public static final int GET_MEMBERSHIP_CHANGE_CONTEXT_OP = 24;
     public static final int GET_RAFT_GROUP_OP = 25;
-    public static final int GET_ACTIVE_RAFT_GROUP_ID_OP = 26;
+    public static final int GET_ACTIVE_RAFT_GROUP_BY_NAME_OP = 26;
     public static final int CREATE_RAFT_NODE_OP = 27;
     public static final int DESTROY_RAFT_GROUP_OP = 28;
     public static final int RESTORE_SNAPSHOT_OP = 29;
@@ -162,8 +162,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new GetMembershipChangeContextOp();
                     case GET_RAFT_GROUP_OP:
                         return new GetRaftGroupOp();
-                    case GET_ACTIVE_RAFT_GROUP_ID_OP:
-                        return new GetActiveRaftGroupIdOp();
+                    case GET_ACTIVE_RAFT_GROUP_BY_NAME_OP:
+                        return new GetActiveRaftGroupByNameOp();
                     case CREATE_RAFT_NODE_OP:
                         return new CreateRaftNodeOp();
                     case DESTROY_RAFT_GROUP_OP:

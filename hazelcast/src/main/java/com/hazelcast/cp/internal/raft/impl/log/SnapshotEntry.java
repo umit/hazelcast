@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.log;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.cp.internal.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
@@ -34,13 +34,13 @@ import java.util.HashSet;
  */
 public class SnapshotEntry extends LogEntry implements IdentifiedDataSerializable {
     private long groupMembersLogIndex;
-    private Collection<EndpointIdentifier> groupMembers;
+    private Collection<Endpoint> groupMembers;
 
     public SnapshotEntry() {
     }
 
     public SnapshotEntry(int term, long index, Object operation,
-                         long groupMembersLogIndex, Collection<EndpointIdentifier> groupMembers) {
+                         long groupMembersLogIndex, Collection<Endpoint> groupMembers) {
         super(term, index, operation);
         this.groupMembersLogIndex = groupMembersLogIndex;
         this.groupMembers = groupMembers;
@@ -50,7 +50,7 @@ public class SnapshotEntry extends LogEntry implements IdentifiedDataSerializabl
         return groupMembersLogIndex;
     }
 
-    public Collection<EndpointIdentifier> groupMembers() {
+    public Collection<Endpoint> groupMembers() {
         return groupMembers;
     }
 
@@ -59,7 +59,7 @@ public class SnapshotEntry extends LogEntry implements IdentifiedDataSerializabl
         super.writeData(out);
         out.writeLong(groupMembersLogIndex);
         out.writeInt(groupMembers.size());
-        for (EndpointIdentifier endpoint : groupMembers) {
+        for (Endpoint endpoint : groupMembers) {
             out.writeObject(endpoint);
         }
     }
@@ -69,9 +69,9 @@ public class SnapshotEntry extends LogEntry implements IdentifiedDataSerializabl
         super.readData(in);
         groupMembersLogIndex = in.readLong();
         int count = in.readInt();
-        groupMembers = new HashSet<EndpointIdentifier>(count);
+        groupMembers = new HashSet<Endpoint>(count);
         for (int i = 0; i < count; i++) {
-            EndpointIdentifier endpoint = in.readObject();
+            Endpoint endpoint = in.readObject();
             groupMembers.add(endpoint);
         }
     }

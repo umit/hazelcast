@@ -16,47 +16,45 @@
 
 package com.hazelcast.cp.internal.raftop.metadata;
 
-import com.hazelcast.nio.ObjectDataInput;
-import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
 import java.io.IOException;
 
 /**
- * Returns {@link CPGroupId} of the given currently active Raft group
- * <p/>
- * This operation is committed to the Metadata group.
+ * Returns an active CP group by its name
  */
-public class GetActiveRaftGroupIdOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
+public class GetActiveRaftGroupByNameOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
     private String groupName;
 
-    public GetActiveRaftGroupIdOp() {
+    public GetActiveRaftGroupByNameOp() {
     }
 
-    public GetActiveRaftGroupIdOp(String groupName) {
+    public GetActiveRaftGroupByNameOp(String groupName) {
         this.groupName = groupName;
     }
 
     @Override
-    public Object run(CPGroupId groupId, long commitIndex) {
+    public Object run(CPGroupId groupId, long commitIndex) throws Exception {
         RaftService service = getNodeEngine().getService(RaftService.SERVICE_NAME);
-        return service.getMetadataGroupManager().getActiveRaftGroupId(groupName);
-    }
-
-    @Override
-    public boolean isRetryableOnIndeterminateOperationState() {
-        return true;
+        return service.getMetadataGroupManager().getActiveRaftGroup(groupName);
     }
 
     @Override
     protected String getServiceName() {
         return RaftService.SERVICE_NAME;
+    }
+
+    @Override
+    public boolean isRetryableOnIndeterminateOperationState() {
+        return true;
     }
 
     @Override
@@ -66,7 +64,7 @@ public class GetActiveRaftGroupIdOp extends RaftOp implements IndeterminateOpera
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.GET_ACTIVE_RAFT_GROUP_ID_OP;
+        return RaftServiceDataSerializerHook.GET_ACTIVE_RAFT_GROUP_BY_NAME_OP;
     }
 
     @Override

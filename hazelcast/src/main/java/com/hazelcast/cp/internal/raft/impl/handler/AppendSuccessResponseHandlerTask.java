@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.handler;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
@@ -35,7 +35,7 @@ import static java.util.Arrays.sort;
  * {@link AppendRequestHandlerTask} after an append-entries request or
  * {@link InstallSnapshotHandlerTask} after an install snapshot request.
  * <p>
- * Advances {@link RaftState#commitIndex} according to {@code matchIndex}es
+ * Advances {@link RaftState#commitIndex()} according to {@code matchIndex}es
  * of followers.
  * <p>
  * See <i>5.3 Log replication</i> section of
@@ -92,7 +92,7 @@ public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTas
     }
 
     private void updateFollowerIndices(RaftState state) {
-        EndpointIdentifier follower = resp.follower();
+        Endpoint follower = resp.follower();
         LeaderState leaderState = state.leaderState();
         long matchIndex = leaderState.getMatchIndex(follower);
         long followerLastLogIndex = resp.lastLogIndex();
@@ -149,7 +149,7 @@ public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTas
     }
 
     @Override
-    protected EndpointIdentifier sender() {
+    protected Endpoint sender() {
         return resp.follower();
     }
 }

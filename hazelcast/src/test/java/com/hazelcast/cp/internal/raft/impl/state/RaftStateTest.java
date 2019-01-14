@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.state;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.raft.impl.RaftRole;
 import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
@@ -54,13 +54,13 @@ public class RaftStateTest {
     private String name = randomName();
     private CPGroupId groupId;
     private TestRaftMember localMember;
-    private Collection<EndpointIdentifier> members;
+    private Collection<Endpoint> members;
 
     @Before
     public void setup() {
         groupId = new TestRaftGroupId(name);
         localMember = newRaftMember(5000);
-        members = new HashSet<EndpointIdentifier>(asList(localMember,
+        members = new HashSet<Endpoint>(asList(localMember,
                 newRaftMember(5001),
                 newRaftMember(5002),
                 newRaftMember(5003),
@@ -77,7 +77,7 @@ public class RaftStateTest {
 
         assertEquals(members, state.members());
 
-        Collection<EndpointIdentifier> remoteMembers = new HashSet<EndpointIdentifier>(members);
+        Collection<Endpoint> remoteMembers = new HashSet<Endpoint>(members);
         remoteMembers.remove(localMember);
         assertEquals(remoteMembers, state.remoteMembers());
 
@@ -197,7 +197,7 @@ public class RaftStateTest {
         LeaderState leaderState = state.leaderState();
         assertNotNull(leaderState);
 
-        for (EndpointIdentifier endpoint : state.remoteMembers()) {
+        for (Endpoint endpoint : state.remoteMembers()) {
             assertEquals(0, leaderState.getMatchIndex(endpoint));
             assertEquals(lastLogIndex + 1, leaderState.getNextIndex(endpoint));
         }
@@ -211,7 +211,7 @@ public class RaftStateTest {
 
     @Test
     public void isKnownEndpoint() {
-        for (EndpointIdentifier endpoint : members) {
+        for (Endpoint endpoint : members) {
             assertTrue(state.isKnownMember(endpoint));
         }
 
@@ -231,7 +231,7 @@ public class RaftStateTest {
     }
 
     private void test_majority(int count) {
-        members = new HashSet<EndpointIdentifier>();
+        members = new HashSet<Endpoint>();
         members.add(localMember);
 
         for (int i = 1; i < count; i++) {

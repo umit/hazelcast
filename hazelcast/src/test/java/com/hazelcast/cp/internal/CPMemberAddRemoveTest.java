@@ -144,7 +144,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         factory.getInstance(crashedMember.getAddress()).getLifecycleService().terminate();
 
-        runningInstance.getCPSubsystem().getCPSubsystemManagementService().forceDestroyCPGroup(groupId).get();
+        runningInstance.getCPSubsystem().getCPSubsystemManagementService().forceDestroyCPGroup(groupId.name()).get();
         runningInstance.getCPSubsystem().getCPSubsystemManagementService().removeCPMember(crashedMember.getUuid()).get();
 
         final RaftInvocationManager invocationManager = getRaftInvocationManager(runningInstance);
@@ -194,7 +194,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         // force-destroy the raft group.
         // Now, the pending membership change in the "test" group will fail and we will fix it in the metadata group.
-        runningInstance.getCPSubsystem().getCPSubsystemManagementService().forceDestroyCPGroup(groupId).get();
+        runningInstance.getCPSubsystem().getCPSubsystemManagementService().forceDestroyCPGroup(groupId.name()).get();
 
         assertTrueEventually(new AssertTask() {
             @Override

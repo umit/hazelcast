@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.state;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -27,7 +27,7 @@ import java.util.Set;
 public class CandidateState {
 
     private final int majority;
-    private final Set<EndpointIdentifier> voters = new HashSet<EndpointIdentifier>();
+    private final Set<Endpoint> voters = new HashSet<Endpoint>();
 
     CandidateState(int majority) {
         this.majority = majority;
@@ -40,7 +40,7 @@ public class CandidateState {
      *
      * @return false if endpoint is already voted, true otherwise
      */
-    public boolean grantVote(EndpointIdentifier address) {
+    public boolean grantVote(Endpoint address) {
         return voters.add(address);
     }
 

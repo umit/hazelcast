@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.handler;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.cp.internal.raft.impl.state.LeaderState;
@@ -99,7 +99,7 @@ public class AppendFailureResponseHandlerTask extends AbstractResponseHandlerTas
     }
 
     @Override
-    protected EndpointIdentifier sender() {
+    protected Endpoint sender() {
         return resp.follower();
     }
 }

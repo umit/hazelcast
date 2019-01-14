@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.exception;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 
 /**
  * A {@code CPSubsystemException} which is thrown when
@@ -24,7 +24,7 @@ import com.hazelcast.core.EndpointIdentifier;
  */
 public class LeaderDemotedException extends CPSubsystemException {
 
-    public LeaderDemotedException(EndpointIdentifier local, EndpointIdentifier leader) {
+    public LeaderDemotedException(Endpoint local, Endpoint leader) {
         super(local + " is not LEADER anymore. Known leader is: "
                 + (leader != null ? leader : "N/A") , leader);
     }

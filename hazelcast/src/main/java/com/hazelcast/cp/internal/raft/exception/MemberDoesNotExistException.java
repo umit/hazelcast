@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.exception;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.cp.exception.CPSubsystemException;
 
 /**
@@ -27,7 +27,7 @@ import com.hazelcast.cp.exception.CPSubsystemException;
  */
 public class MemberDoesNotExistException extends CPSubsystemException {
 
-    public MemberDoesNotExistException(EndpointIdentifier member) {
+    public MemberDoesNotExistException(Endpoint member) {
         super("Member does not exist: " + member, null);
     }
 }

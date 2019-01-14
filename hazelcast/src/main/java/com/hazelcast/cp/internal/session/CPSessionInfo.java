@@ -29,9 +29,9 @@ import static com.hazelcast.util.Preconditions.checkTrue;
 import static java.lang.Math.max;
 
 /**
- * Represents state of a Raft session.
+ * Represents state of a CP session.
  */
-public class RaftSession implements CPSession, IdentifiedDataSerializable {
+public class CPSessionInfo implements CPSession, IdentifiedDataSerializable {
 
     private long id;
 
@@ -47,11 +47,11 @@ public class RaftSession implements CPSession, IdentifiedDataSerializable {
 
     private long expirationTime;
 
-    public RaftSession() {
+    public CPSessionInfo() {
     }
 
-    RaftSession(long id, long version, Address endpoint, String endpointName, CPSessionOwnerType endpointType, long creationTime,
-                long expirationTime) {
+    CPSessionInfo(long id, long version, Address endpoint, String endpointName, CPSessionOwnerType endpointType,
+                  long creationTime, long expirationTime) {
         checkTrue(version >= 0, "Session: " + id + " cannot have a negative version: " + version);
         this.id = id;
         this.version = version;
@@ -102,18 +102,18 @@ public class RaftSession implements CPSession, IdentifiedDataSerializable {
         return endpointName;
     }
 
-    RaftSession heartbeat(long ttlMs) {
+    CPSessionInfo heartbeat(long ttlMs) {
         long newExpirationTime = max(expirationTime, toExpirationTime(Clock.currentTimeMillis(), ttlMs));
         return newSession(newExpirationTime);
     }
 
-    RaftSession shiftExpirationTime(long durationMs) {
+    CPSessionInfo shiftExpirationTime(long durationMs) {
         long newExpirationTime = toExpirationTime(expirationTime, durationMs);
         return newSession(newExpirationTime);
     }
 
-    private RaftSession newSession(long newExpirationTime) {
-        return new RaftSession(id, version + 1, endpoint, endpointName, endpointType, creationTime, newExpirationTime);
+    private CPSessionInfo newSession(long newExpirationTime) {
+        return new CPSessionInfo(id, version + 1, endpoint, endpointName, endpointType, creationTime, newExpirationTime);
     }
 
     static long toExpirationTime(long timestamp, long ttlMillis) {
@@ -131,7 +131,7 @@ public class RaftSession implements CPSession, IdentifiedDataSerializable {
             return false;
         }
 
-        RaftSession that = (RaftSession) o;
+        CPSessionInfo that = (CPSessionInfo) o;
 
         if (id != that.id) {
             return false;
@@ -164,8 +164,8 @@ public class RaftSession implements CPSession, IdentifiedDataSerializable {
 
     @Override
     public String toString() {
-        return "CPSession{" + "id=" + id + ", version=" + version + ", endpoint=" + endpoint + ", endpointName='" + endpointName
-                + '\'' + ", endpointType=" + endpointType + ", creationTime=" + creationTime + ", expirationTime="
+        return "CPSessionInfo{" + "id=" + id + ", version=" + version + ", endpoint=" + endpoint + ", endpointName='"
+                + endpointName + '\'' + ", endpointType=" + endpointType + ", creationTime=" + creationTime + ", expirationTime="
                 + expirationTime + '}';
     }
 

@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.handler;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.dto.VoteRequest;
 import com.hazelcast.cp.internal.raft.impl.dto.VoteResponse;
@@ -53,7 +53,7 @@ public class VoteRequestHandlerTask extends RaftNodeStatusAwareTask implements R
     // Justification: It is easier to follow the RequestVoteRPC logic in a single method
     protected void innerRun() {
         RaftState state = raftNode.state();
-        EndpointIdentifier localEndpoint = raftNode.getLocalMember();
+        Endpoint localEndpoint = raftNode.getLocalMember();
 
         // Reply false if last AppendEntries call was received less than election timeout ago (leader stickiness)
         if (raftNode.lastAppendEntriesTimestamp() > Clock.currentTimeMillis() - raftNode.getLeaderElectionTimeoutInMillis()) {

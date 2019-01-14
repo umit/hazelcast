@@ -49,7 +49,7 @@ public final class RaftGroupId implements CPGroupId, IdentifiedDataSerializable 
     }
 
     @Override
-    public long commitIndex() {
+    public long id() {
         return commitIndex;
     }
 
@@ -109,7 +109,7 @@ public final class RaftGroupId implements CPGroupId, IdentifiedDataSerializable 
 
     public static void writeTo(CPGroupId groupId, ClientMessage message) {
         message.set(groupId.name());
-        message.set(groupId.commitIndex());
+        message.set(groupId.id());
     }
 
     public static int dataSize(CPGroupId groupId) {

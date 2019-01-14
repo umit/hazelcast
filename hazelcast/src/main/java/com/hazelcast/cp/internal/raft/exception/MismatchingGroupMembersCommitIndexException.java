@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.exception;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.cp.exception.CPSubsystemException;
 
 import java.io.IOException;
@@ -35,9 +35,9 @@ public class MismatchingGroupMembersCommitIndexException extends CPSubsystemExce
 
     private transient long commitIndex;
 
-    private transient Collection<EndpointIdentifier> members;
+    private transient Collection<Endpoint> members;
 
-    public MismatchingGroupMembersCommitIndexException(long commitIndex, Collection<EndpointIdentifier> members) {
+    public MismatchingGroupMembersCommitIndexException(long commitIndex, Collection<Endpoint> members) {
         super(null);
         this.commitIndex = commitIndex;
         this.members = members;
@@ -47,7 +47,7 @@ public class MismatchingGroupMembersCommitIndexException extends CPSubsystemExce
         return commitIndex;
     }
 
-    public Collection<EndpointIdentifier> getMembers() {
+    public Collection<Endpoint> getMembers() {
         return members;
     }
 
@@ -55,7 +55,7 @@ public class MismatchingGroupMembersCommitIndexException extends CPSubsystemExce
         out.defaultWriteObject();
         out.writeLong(commitIndex);
         out.writeInt(members.size());
-        for (EndpointIdentifier endpoint : members) {
+        for (Endpoint endpoint : members) {
             out.writeObject(endpoint);
         }
     }
@@ -64,9 +64,9 @@ public class MismatchingGroupMembersCommitIndexException extends CPSubsystemExce
         in.defaultReadObject();
         commitIndex = in.readLong();
         int count = in.readInt();
-        members = new HashSet<EndpointIdentifier>(count);
+        members = new HashSet<Endpoint>(count);
         for (int i = 0; i < count; i++) {
-            members.add((EndpointIdentifier) in.readObject());
+            members.add((Endpoint) in.readObject());
         }
     }
 }

@@ -70,8 +70,8 @@ public final class CPGroupInfo implements CPGroup, IdentifiedDataSerializable {
         return id.name();
     }
 
-    public long commitIndex() {
-        return id.commitIndex();
+    public long groupIdCommitIndex() {
+        return id.id();
     }
 
     public int initialMemberCount() {
@@ -89,7 +89,6 @@ public final class CPGroupInfo implements CPGroup, IdentifiedDataSerializable {
     }
 
     @SuppressWarnings("unchecked")
-    @Override
     public Collection<CPMember> initialMembers() {
         return (Collection) initialMembers;
     }
@@ -216,7 +215,7 @@ public final class CPGroupInfo implements CPGroup, IdentifiedDataSerializable {
 
     @Override
     public String toString() {
-        return "CPGroup{" + "id=" + id + ", initialMembers=" + initialMembers + ", membersCommitIndex=" + membersCommitIndex
+        return "CPGroupInfo{" + "id=" + id + ", initialMembers=" + initialMembers + ", membersCommitIndex=" + membersCommitIndex
                 + ", members=" + members() + ", status=" + status + '}';
     }
 }

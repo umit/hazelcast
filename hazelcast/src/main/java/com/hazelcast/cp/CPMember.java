@@ -18,7 +18,7 @@ package com.hazelcast.cp;
 
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.Cluster;
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.nio.Address;
 
 /**
@@ -33,7 +33,7 @@ import com.hazelcast.nio.Address;
  * When a Hazelcast member is elected as a CP member during the cluster startup
  * process, UUID of the member is assigned as CP member UUID. If this member
  * splits from the cluster, it will get a new member UUID while merging back
- * to the cluster, but its CP member UUID, which is returned by this method,
+ * to the cluster, but its CP member UUID, which is returned by this interface,
  * will NOT change. It is because a split-member merges to the cluster
  * as a new Hazelcast member. However, the CP subsystem does not perform any
  * special treatment to network partitions and does not perform any action
@@ -43,7 +43,7 @@ import com.hazelcast.nio.Address;
  * @see CPSubsystemConfig
  * @see CPSubsystemManagementService
  */
-public interface CPMember extends EndpointIdentifier {
+public interface CPMember extends Endpoint {
 
     /**
      * Returns the address of this CP member.
@@ -53,12 +53,5 @@ public interface CPMember extends EndpointIdentifier {
      *         {@link Cluster#getLocalMember()}.
      */
     Address getAddress();
-
-    /**
-     * Returns the UUID of this CP member.
-     *
-     * @return the UUID of this CP member.
-     */
-    String getUuid();
 
 }

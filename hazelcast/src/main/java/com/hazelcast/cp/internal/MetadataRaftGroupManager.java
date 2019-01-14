@@ -161,8 +161,8 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
 
         MetadataRaftGroupSnapshot snapshot = new MetadataRaftGroupSnapshot();
         for (CPGroupInfo group : groups.values()) {
-            assert group.commitIndex() <= commitIndex
-                    : "Group commit index: " + group.commitIndex() + ", snapshot commit index: " + commitIndex;
+            assert group.groupIdCommitIndex() <= commitIndex
+                    : "Group commit index: " + group.groupIdCommitIndex() + ", snapshot commit index: " + commitIndex;
             snapshot.addRaftGroup(group);
         }
         for (CPMemberInfo member : activeMembers) {
@@ -231,10 +231,10 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         return groups.get(groupId);
     }
 
-    public CPGroupId getActiveRaftGroupId(String groupName) {
+    public CPGroupInfo getActiveRaftGroup(String groupName) {
         for (CPGroupInfo group : groups.values()) {
             if (group.status() == CPGroupStatus.ACTIVE && group.name().equals(groupName)) {
-                return group.id();
+                return group;
             }
         }
 
@@ -384,18 +384,27 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         }
     }
 
-    public void forceDestroyRaftGroup(CPGroupId groupId) {
-        checkNotNull(groupId);
-        checkFalse(METADATA_GROUP_ID.equals(groupId), "Cannot force-destroy the METADATA CP group!");
+    public void forceDestroyRaftGroup(String groupName) {
+        checkNotNull(groupName);
+        checkFalse(METADATA_GROUP_ID.name().equals(groupName), "Cannot force-destroy the METADATA CP group!");
 
-        CPGroupInfo group = groups.get(groupId);
-        checkNotNull(group, groupId + " does not exist to force-destroy");
+        boolean found = false;
 
-        if (group.forceSetDestroyed()) {
-            logger.info(groupId + " is force-destroyed.");
-            sendDestroyRaftNodeOps(group);
-        } else if (logger.isFineEnabled()) {
-            logger.fine(groupId + " is already force-destroyed.");
+        for (CPGroupInfo group : groups.values()) {
+            if (group.name().equals(groupName)) {
+                if (group.forceSetDestroyed()) {
+                    logger.info(group.id() + " is force-destroyed.");
+                    sendDestroyRaftNodeOps(group);
+                } else if (logger.isFineEnabled()) {
+                    logger.fine(group.id() + " is already force-destroyed.");
+                }
+
+                found = true;
+            }
+        }
+
+        if (!found) {
+            throw new IllegalArgumentException("CP group with name: " + groupName + " does not exist to force-destroy!");
         }
     }
 

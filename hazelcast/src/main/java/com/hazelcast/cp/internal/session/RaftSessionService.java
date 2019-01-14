@@ -146,8 +146,8 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
     }
 
     @Override
-    public Collection<CPSession> getAllSessions(CPGroupId groupId) {
-        return raftService.getInvocationManager().<Collection<CPSession>>invoke(groupId, new GetSessionsOp()).join();
+    public ICompletableFuture<Collection<CPSession>> getAllSessions(CPGroupId groupId) {
+        return raftService.getInvocationManager().invoke(groupId, new GetSessionsOp());
     }
 
     @Override
@@ -285,7 +285,7 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
         if (sessionRegistry == null) {
             return false;
         }
-        RaftSession session = sessionRegistry.getSession(sessionId);
+        CPSessionInfo session = sessionRegistry.getSession(sessionId);
         return session != null;
     }
 

@@ -19,7 +19,9 @@ package com.hazelcast.cp;
 import java.util.Collection;
 
 /**
- * Contains information about a CP group
+ * Contains information about a CP group.
+ * <p>
+ * There can be at most one active CP group with a given name.
  *
  * @see CPSubsystemManagementService
  */
@@ -63,11 +65,6 @@ public interface CPGroup {
      * Returns status of the CP group
      */
     CPGroupStatus status();
-
-    /**
-     * Returns members that the CP group is initialized with.
-     */
-    Collection<CPMember> initialMembers();
 
     /**
      * Returns current members of the CP group

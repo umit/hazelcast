@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.dto;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.cp.internal.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.cp.internal.raft.impl.log.SnapshotEntry;
 import com.hazelcast.nio.ObjectDataInput;
@@ -37,7 +37,7 @@ import java.io.IOException;
  */
 public class InstallSnapshot implements IdentifiedDataSerializable {
 
-    private EndpointIdentifier leader;
+    private Endpoint leader;
 
     private int term;
 
@@ -46,13 +46,13 @@ public class InstallSnapshot implements IdentifiedDataSerializable {
     public InstallSnapshot() {
     }
 
-    public InstallSnapshot(EndpointIdentifier leader, int term, SnapshotEntry snapshot) {
+    public InstallSnapshot(Endpoint leader, int term, SnapshotEntry snapshot) {
         this.leader = leader;
         this.term = term;
         this.snapshot = snapshot;
     }
 
-    public EndpointIdentifier leader() {
+    public Endpoint leader() {
         return leader;
     }
 

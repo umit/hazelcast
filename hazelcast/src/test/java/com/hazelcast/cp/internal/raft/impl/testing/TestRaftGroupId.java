@@ -33,7 +33,7 @@ public class TestRaftGroupId implements CPGroupId {
     }
 
     @Override
-    public long commitIndex() {
+    public long id() {
         return 1;
     }
 

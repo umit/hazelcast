@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.raft.MembershipChangeType;
@@ -49,13 +49,13 @@ public interface RaftNode {
     /**
      * Returns the Raft endpoint for this node.
      */
-    EndpointIdentifier getLocalMember();
+    Endpoint getLocalMember();
 
     /**
      * Returns the known leader endpoint. Leader endpoint might be already
      * changed when this method returns.
      */
-    EndpointIdentifier getLeader();
+    Endpoint getLeader();
 
     /**
      * Returns the current status of this node.
@@ -65,7 +65,7 @@ public interface RaftNode {
     /**
      * Returns the initial member list of the Raft group this node belongs to.
      */
-    Collection<EndpointIdentifier> getInitialMembers();
+    Collection<Endpoint> getInitialMembers();
 
     /**
      * Returns the last committed member list of the raft group this node
@@ -73,7 +73,7 @@ public interface RaftNode {
      * from the current effective member list, if there is an ongoing
      * membership change in the group.
      */
-    Collection<EndpointIdentifier> getCommittedMembers();
+    Collection<Endpoint> getCommittedMembers();
 
     /**
      * Returns true if this node is {@link RaftNodeStatus#TERMINATED} or
@@ -163,7 +163,7 @@ public interface RaftNode {
      * @param change type of membership change
      * @return future to get notified about result of the membership change
      */
-    ICompletableFuture replicateMembershipChange(EndpointIdentifier member, MembershipChangeType change);
+    ICompletableFuture replicateMembershipChange(Endpoint member, MembershipChangeType change);
 
     /**
      * Replicates the membership change to the Raft group, if expected members
@@ -177,8 +177,7 @@ public interface RaftNode {
      * @param groupMembersCommitIndex expected members commit index
      * @return future to get notified about result of the membership change
      */
-    ICompletableFuture replicateMembershipChange(EndpointIdentifier member, MembershipChangeType change,
-                                                 long groupMembersCommitIndex);
+    ICompletableFuture replicateMembershipChange(Endpoint member, MembershipChangeType change, long groupMembersCommitIndex);
 
     /**
      * Executes the given operation on Raft group depending

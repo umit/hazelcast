@@ -31,7 +31,7 @@ public interface CPSessionManagementService {
      * Returns a non-null collection of CP sessions that are currently active
      * in the given CP group.
      */
-    Collection<CPSession> getAllSessions(CPGroupId groupId);
+    ICompletableFuture<Collection<CPSession>> getAllSessions(CPGroupId groupId);
 
     /**
      * If a Hazelcast instance that owns a CP session crashes, its CP session

@@ -16,9 +16,11 @@
 
 package com.hazelcast.cp.internal.raft.impl.testing;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 
-public class TestRaftMember implements EndpointIdentifier {
+import java.net.SocketAddress;
+
+public class TestRaftMember implements Endpoint {
 
     private String uuid;
 
@@ -32,6 +34,11 @@ public class TestRaftMember implements EndpointIdentifier {
     @Override
     public String getUuid() {
         return uuid;
+    }
+
+    @Override
+    public SocketAddress getSocketAddress() {
+        return null;
     }
 
     public int getPort() {

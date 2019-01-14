@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.command;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.cp.internal.raft.MembershipChangeType;
 import com.hazelcast.cp.internal.raft.command.RaftGroupCmd;
 import com.hazelcast.cp.internal.raft.impl.RaftDataSerializerHook;
@@ -34,25 +34,24 @@ import java.util.LinkedHashSet;
  */
 public class ApplyRaftGroupMembersCmd extends RaftGroupCmd implements IdentifiedDataSerializable {
 
-    private Collection<EndpointIdentifier> members;
-    private EndpointIdentifier member;
+    private Collection<Endpoint> members;
+    private Endpoint member;
     private MembershipChangeType changeType;
 
     public ApplyRaftGroupMembersCmd() {
     }
 
-    public ApplyRaftGroupMembersCmd(Collection<EndpointIdentifier> members, EndpointIdentifier member,
-                                    MembershipChangeType changeType) {
+    public ApplyRaftGroupMembersCmd(Collection<Endpoint> members, Endpoint member, MembershipChangeType changeType) {
         this.members = members;
         this.member = member;
         this.changeType = changeType;
     }
 
-    public Collection<EndpointIdentifier> getMembers() {
+    public Collection<Endpoint> getMembers() {
         return members;
     }
 
-    public EndpointIdentifier getMember() {
+    public Endpoint getMember() {
         return member;
     }
 
@@ -73,7 +72,7 @@ public class ApplyRaftGroupMembersCmd extends RaftGroupCmd implements Identified
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeInt(members.size());
-        for (EndpointIdentifier member : members) {
+        for (Endpoint member : members) {
             out.writeObject(member);
         }
         out.writeObject(member);
@@ -83,9 +82,9 @@ public class ApplyRaftGroupMembersCmd extends RaftGroupCmd implements Identified
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         int count = in.readInt();
-        Collection<EndpointIdentifier> members = new LinkedHashSet<EndpointIdentifier>();
+        Collection<Endpoint> members = new LinkedHashSet<Endpoint>();
         for (int i = 0; i < count; i++) {
-            EndpointIdentifier member = in.readObject();
+            Endpoint member = in.readObject();
             members.add(member);
         }
         this.members = members;

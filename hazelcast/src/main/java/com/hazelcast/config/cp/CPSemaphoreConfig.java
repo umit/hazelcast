@@ -24,12 +24,18 @@ import java.util.concurrent.Semaphore;
 /**
  * Contains configuration options for the CP {@link ISemaphore}
  */
-public class CPSemaphoreConfig extends AbstractCPObjectConfig {
+public class CPSemaphoreConfig {
 
     /**
      * Default value for JDK compatibility mode of the CP {@link ISemaphore}
      */
     public static final boolean DEFAULT_SEMAPHORE_JDK_COMPATIBILITY = false;
+
+
+    /**
+     * Name of the CP semaphore
+     */
+    private String name;
 
     /**
      * Enables / disables JDK compatibility of the CP {@link ISemaphore}.
@@ -57,17 +63,24 @@ public class CPSemaphoreConfig extends AbstractCPObjectConfig {
     }
 
     public CPSemaphoreConfig(String name) {
-        super(name);
+        this.name = name;
     }
 
     public CPSemaphoreConfig(String name, boolean jdkCompatible) {
-        super(name);
+        this.name = name;
         this.jdkCompatible = jdkCompatible;
     }
 
     CPSemaphoreConfig(CPSemaphoreConfig config) {
-        super(config.name);
+        this.name = config.name;
         this.jdkCompatible = config.jdkCompatible;
+    }
+
+    /**
+     * Returns name of the CP semaphore
+     */
+    public String getName() {
+        return name;
     }
 
     /**

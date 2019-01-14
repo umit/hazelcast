@@ -105,6 +105,8 @@ import com.hazelcast.spi.annotation.Beta;
  * to be improved.
  *
  * @see CPSubsystemConfig
+ * @see CPMember
+ * @see CPSession
  */
 @Beta
 public interface CPSubsystem {

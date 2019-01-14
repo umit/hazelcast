@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.raft.impl;
 
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.cp.internal.raft.impl.dataservice.RaftDataService;
 import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
 import com.hazelcast.cp.internal.raft.impl.state.LeaderState;
@@ -51,10 +51,10 @@ public class RaftUtil {
         return readRaftState(node, task);
     }
 
-    public static <T extends EndpointIdentifier> T getLeaderMember(final RaftNodeImpl node) {
-        Callable<EndpointIdentifier> task = new Callable<EndpointIdentifier>() {
+    public static <T extends Endpoint> T getLeaderMember(final RaftNodeImpl node) {
+        Callable<Endpoint> task = new Callable<Endpoint>() {
             @Override
-            public EndpointIdentifier call() {
+            public Endpoint call() {
                 return node.state().leader();
             }
         };
@@ -105,7 +105,7 @@ public class RaftUtil {
         return readRaftState(node, task);
     }
 
-    public static long getNextIndex(final RaftNodeImpl leader, final EndpointIdentifier follower) {
+    public static long getNextIndex(final RaftNodeImpl leader, final Endpoint follower) {
         Callable<Long> task = new Callable<Long>() {
             @Override
             public Long call() {
@@ -117,7 +117,7 @@ public class RaftUtil {
         return readRaftState(leader, task);
     }
 
-    public static long getMatchIndex(final RaftNodeImpl leader, final EndpointIdentifier follower) {
+    public static long getMatchIndex(final RaftNodeImpl leader, final Endpoint follower) {
         Callable<Long> task = new Callable<Long>() {
             @Override
             public Long call() {

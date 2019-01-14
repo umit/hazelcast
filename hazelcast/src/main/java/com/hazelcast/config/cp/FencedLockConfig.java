@@ -22,13 +22,19 @@ import com.hazelcast.util.Preconditions;
 /**
  * Contains configuration options for {@link FencedLock}
  */
-public class FencedLockConfig extends AbstractCPObjectConfig {
+public class FencedLockConfig {
 
     /**
      * Default reentrant lock acquire limit of {@link FencedLock}.
      * 0 means there is no upper bound for number of reentrant lock acquires.
      */
     public static final int DEFAULT_LOCK_ACQUIRE_LIMIT = 0;
+
+
+    /**
+     * Name of the FencedLock
+     */
+    private String name;
 
     /**
      * Maximum number of reentrant lock acquires. Once a caller acquires
@@ -52,17 +58,24 @@ public class FencedLockConfig extends AbstractCPObjectConfig {
     }
 
     public FencedLockConfig(String name) {
-        super(name);
+        this.name = name;
     }
 
     public FencedLockConfig(String name, int lockAcquireLimit) {
-        super(name);
+        this.name = name;
         this.lockAcquireLimit = lockAcquireLimit;
     }
 
     FencedLockConfig(FencedLockConfig config) {
-        super(config.name);
+        this.name = config.name;
         this.lockAcquireLimit = config.lockAcquireLimit;
+    }
+
+    /**
+     * Returns name of the FencedLock
+     */
+    public String getName() {
+        return name;
     }
 
     /**

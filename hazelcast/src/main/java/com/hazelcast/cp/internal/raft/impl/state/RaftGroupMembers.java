@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.state;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -32,14 +32,14 @@ public class RaftGroupMembers {
 
     private final long index;
 
-    private final Collection<EndpointIdentifier> members;
+    private final Collection<Endpoint> members;
 
-    private final Collection<EndpointIdentifier> remoteMembers;
+    private final Collection<Endpoint> remoteMembers;
 
-    RaftGroupMembers(long index, Collection<EndpointIdentifier> endpoints, EndpointIdentifier localEndpoint) {
+    RaftGroupMembers(long index, Collection<Endpoint> endpoints, Endpoint localEndpoint) {
         this.index = index;
-        this.members = unmodifiableSet(new LinkedHashSet<EndpointIdentifier>(endpoints));
-        Set<EndpointIdentifier> remoteMembers = new LinkedHashSet<EndpointIdentifier>(endpoints);
+        this.members = unmodifiableSet(new LinkedHashSet<Endpoint>(endpoints));
+        Set<Endpoint> remoteMembers = new LinkedHashSet<Endpoint>(endpoints);
         remoteMembers.remove(localEndpoint);
         this.remoteMembers = unmodifiableSet(remoteMembers);
     }
@@ -57,14 +57,14 @@ public class RaftGroupMembers {
      *
      * @see #remoteMembers()
      */
-    public Collection<EndpointIdentifier> members() {
+    public Collection<Endpoint> members() {
         return members;
     }
 
     /**
      * Returns remote members in this group, excluding the local member.
      */
-    public Collection<EndpointIdentifier> remoteMembers() {
+    public Collection<Endpoint> remoteMembers() {
         return remoteMembers;
     }
 
@@ -85,7 +85,7 @@ public class RaftGroupMembers {
     /**
      * Returns true if the endpoint is a member of this group, false otherwise.
      */
-    public boolean isKnownMember(EndpointIdentifier endpoint) {
+    public boolean isKnownMember(Endpoint endpoint) {
         return members.contains(endpoint);
     }
 

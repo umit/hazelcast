@@ -109,32 +109,42 @@ import java.util.Collection;
 public interface CPSubsystemManagementService {
 
     /**
-     * Returns all CP group ids.
+     * Returns all CP group ids, including destroyed group ids.
      */
-    Collection<CPGroupId> getCPGroupIds();
+    ICompletableFuture<Collection<CPGroupId>> getCPGroupIds();
 
     /**
      * Returns the CP group associated with the group id.
+     * The returned CP group can be destroyed.
      */
-    CPGroup getCPGroup(CPGroupId groupId);
+    ICompletableFuture<CPGroup> getCPGroup(CPGroupId groupId);
 
     /**
-     * Unconditionally destroys the given CP group without using
+     * Returns the active CP group with the given name.
+     * There can be at most one active CP group with a given name.
+     */
+    ICompletableFuture<CPGroup> getActiveCPGroup(String name);
+
+    /**
+     * Unconditionally destroys the given active CP group without using
      * the Raft algorithm mechanics. This method must be used only when
-     * the given CP group loses its majority and cannot make progress anymore.
+     * a CP group loses its majority and cannot make progress anymore.
      * Normally, membership changes in CP groups, such as CP member promotion
-     * or removal, are done via the Raft consensus algorithm. However, when
-     * a CP group loses its majority, it will not be able to commit any new
-     * request. Therefore, this method ungracefully terminates the remaining
-     * members of the given CP group. It also performs a Raft commit to
-     * the Metadata CP group in order to update status of the destroyed group.
+     * or removal, are done via the Raft consensus algorithm mechanics.
+     * However, when a CP group loses its majority, it will not be able to
+     * commit any new operation. Therefore, this method ungracefully terminates
+     * remaining members of the given CP group. It also performs a Raft commit
+     * to the Metadata CP group to update status of the destroyed group.
+     * <p>
+     * Once a CP group is destroyed, it can be created again with a new set of
+     * CP members.
      * <p>
      * This method is idempotent. It has no effect if the given CP group is
      * already destroyed.
      *
      * @return a Future representing pending completion of the operation
      */
-    ICompletableFuture<Void> forceDestroyCPGroup(CPGroupId groupId);
+    ICompletableFuture<Void> forceDestroyCPGroup(String groupName);
 
     /**
      * Returns the current list of CP members

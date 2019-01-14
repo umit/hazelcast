@@ -56,7 +56,7 @@ public class RaftSessionServiceDataSerializerHook implements DataSerializerHook 
             public IdentifiedDataSerializable create(int typeId) {
                 switch (typeId) {
                     case RAFT_SESSION:
-                        return new RaftSession();
+                        return new CPSessionInfo();
                     case RAFT_SESSION_REGISTRY:
                         return new RaftSessionRegistry();
                     case SESSION_RESPONSE:

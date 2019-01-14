@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.state;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
@@ -41,13 +41,13 @@ import static org.junit.Assert.assertEquals;
 public class LeaderStateTest {
 
     private LeaderState state;
-    private Set<EndpointIdentifier> remoteEndpoints;
+    private Set<Endpoint> remoteEndpoints;
     private int lastLogIndex;
 
     @Before
     public void setUp() throws Exception {
         lastLogIndex = 123;
-        remoteEndpoints = new HashSet<EndpointIdentifier>(asList(
+        remoteEndpoints = new HashSet<Endpoint>(asList(
                 newRaftMember(5001),
                 newRaftMember(5002),
                 newRaftMember(5003),
@@ -58,7 +58,7 @@ public class LeaderStateTest {
 
     @Test
     public void test_initialState() {
-        for (EndpointIdentifier endpoint : remoteEndpoints) {
+        for (Endpoint endpoint : remoteEndpoints) {
             assertEquals(0, state.getMatchIndex(endpoint));
             assertEquals(lastLogIndex + 1, state.getNextIndex(endpoint));
         }
@@ -72,14 +72,14 @@ public class LeaderStateTest {
 
     @Test
     public void test_nextIndex() {
-        Map<EndpointIdentifier, Integer> indices = new HashMap<EndpointIdentifier, Integer>();
-        for (EndpointIdentifier endpoint : remoteEndpoints) {
+        Map<Endpoint, Integer> indices = new HashMap<Endpoint, Integer>();
+        for (Endpoint endpoint : remoteEndpoints) {
             int index = 1 + RandomPicker.getInt(100);
             state.setNextIndex(endpoint, index);
             indices.put(endpoint, index);
         }
 
-        for (EndpointIdentifier endpoint : remoteEndpoints) {
+        for (Endpoint endpoint : remoteEndpoints) {
             int index = indices.get(endpoint);
             assertEquals(index, state.getNextIndex(endpoint));
         }
@@ -87,14 +87,14 @@ public class LeaderStateTest {
 
     @Test
     public void test_matchIndex() {
-        Map<EndpointIdentifier, Long> indices = new HashMap<EndpointIdentifier, Long>();
-        for (EndpointIdentifier endpoint : remoteEndpoints) {
+        Map<Endpoint, Long> indices = new HashMap<Endpoint, Long>();
+        for (Endpoint endpoint : remoteEndpoints) {
             long index = 1 + RandomPicker.getInt(100);
             state.setMatchIndex(endpoint, index);
             indices.put(endpoint, index);
         }
 
-        for (EndpointIdentifier endpoint : remoteEndpoints) {
+        for (Endpoint endpoint : remoteEndpoints) {
             long index = indices.get(endpoint);
             assertEquals(index, state.getMatchIndex(endpoint));
         }

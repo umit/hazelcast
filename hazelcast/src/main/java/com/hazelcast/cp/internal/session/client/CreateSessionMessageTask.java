@@ -32,7 +32,7 @@ import com.hazelcast.nio.Connection;
 
 import java.security.Permission;
 
-import static com.hazelcast.cp.session.CPSession.CPSessionOwnerType.JAVA_CLIENT;
+import static com.hazelcast.cp.session.CPSession.CPSessionOwnerType.CLIENT;
 
 /**
  * Client message task for {@link CreateSessionOp}
@@ -51,7 +51,7 @@ public class CreateSessionMessageTask extends AbstractMessageTask implements Exe
     protected void processMessage() {
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         RaftInvocationManager invocationManager = service.getInvocationManager();
-        RaftOp op = new CreateSessionOp(connection.getEndPoint(), endpointName, JAVA_CLIENT, System.currentTimeMillis());
+        RaftOp op = new CreateSessionOp(connection.getEndPoint(), endpointName, CLIENT, System.currentTimeMillis());
         invocationManager.invoke(groupId, op).andThen(this);
     }
 

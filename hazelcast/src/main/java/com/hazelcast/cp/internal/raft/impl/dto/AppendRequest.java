@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.dto;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.cp.internal.raft.impl.RaftDataSerializerHook;
 import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
 import com.hazelcast.nio.ObjectDataInput;
@@ -38,7 +38,7 @@ import java.util.Arrays;
  */
 public class AppendRequest implements IdentifiedDataSerializable {
 
-    private EndpointIdentifier leader;
+    private Endpoint leader;
     private int term;
     private int prevLogTerm;
     private long prevLogIndex;
@@ -48,7 +48,7 @@ public class AppendRequest implements IdentifiedDataSerializable {
     public AppendRequest() {
     }
 
-    public AppendRequest(EndpointIdentifier leader, int term, int prevLogTerm, long prevLogIndex, long leaderCommitIndex,
+    public AppendRequest(Endpoint leader, int term, int prevLogTerm, long prevLogIndex, long leaderCommitIndex,
             LogEntry[] entries) {
         this.term = term;
         this.leader = leader;
@@ -58,7 +58,7 @@ public class AppendRequest implements IdentifiedDataSerializable {
         this.entries = entries;
     }
 
-    public EndpointIdentifier leader() {
+    public Endpoint leader() {
         return leader;
     }
 

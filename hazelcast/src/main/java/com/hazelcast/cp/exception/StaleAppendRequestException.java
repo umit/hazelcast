@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.exception;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.core.IndeterminateOperationState;
 
 /**
@@ -26,7 +26,7 @@ import com.hazelcast.core.IndeterminateOperationState;
  */
 public class StaleAppendRequestException extends CPSubsystemException implements IndeterminateOperationState {
 
-    public StaleAppendRequestException(EndpointIdentifier leader) {
+    public StaleAppendRequestException(Endpoint leader) {
         super(leader);
     }
 }

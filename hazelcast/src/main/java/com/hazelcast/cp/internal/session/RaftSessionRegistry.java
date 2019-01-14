@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.hazelcast.cp.internal.session.RaftSession.toExpirationTime;
+import static com.hazelcast.cp.internal.session.CPSessionInfo.toExpirationTime;
 
 /**
  * Maintains active sessions of a Raft group
@@ -41,7 +41,7 @@ import static com.hazelcast.cp.internal.session.RaftSession.toExpirationTime;
 class RaftSessionRegistry implements IdentifiedDataSerializable {
 
     private CPGroupId groupId;
-    private final Map<Long, RaftSession> sessions = new ConcurrentHashMap<Long, RaftSession>();
+    private final Map<Long, CPSessionInfo> sessions = new ConcurrentHashMap<Long, CPSessionInfo>();
     private long nextSessionId;
 
     RaftSessionRegistry() {
@@ -55,7 +55,7 @@ class RaftSessionRegistry implements IdentifiedDataSerializable {
         return groupId;
     }
 
-    RaftSession getSession(long sessionId) {
+    CPSessionInfo getSession(long sessionId) {
         return sessions.get(sessionId);
     }
 
@@ -63,7 +63,7 @@ class RaftSessionRegistry implements IdentifiedDataSerializable {
                           long creationTime) {
         long id = ++nextSessionId;
         long expirationTime = toExpirationTime(creationTime, sessionTTLMs);
-        RaftSession session = new RaftSession(id, 0, endpoint, endpointName, endpointType, creationTime, expirationTime);
+        CPSessionInfo session = new CPSessionInfo(id, 0, endpoint, endpointName, endpointType, creationTime, expirationTime);
         sessions.put(id, session);
         return id;
     }
@@ -73,7 +73,7 @@ class RaftSessionRegistry implements IdentifiedDataSerializable {
     }
 
     boolean expireSession(long sessionId, long expectedVersion) {
-        RaftSession session = sessions.get(sessionId);
+        CPSessionInfo session = sessions.get(sessionId);
         if (session == null) {
             return false;
         }
@@ -87,12 +87,12 @@ class RaftSessionRegistry implements IdentifiedDataSerializable {
     }
 
     void heartbeat(long sessionId, long sessionTTLMs) {
-        RaftSession session = getSessionOrFail(sessionId);
+        CPSessionInfo session = getSessionOrFail(sessionId);
         sessions.put(sessionId, session.heartbeat(sessionTTLMs));
     }
 
     void shiftExpirationTimes(long durationMs) {
-        for (RaftSession session : sessions.values()) {
+        for (CPSessionInfo session : sessions.values()) {
             sessions.put(session.id(), session.shiftExpirationTime(durationMs));
         }
     }
@@ -101,7 +101,7 @@ class RaftSessionRegistry implements IdentifiedDataSerializable {
     Collection<Tuple2<Long, Long>> getSessionsToExpire() {
         List<Tuple2<Long, Long>> expired = new ArrayList<Tuple2<Long, Long>>();
         long now = Clock.currentTimeMillis();
-        for (RaftSession session : sessions.values()) {
+        for (CPSessionInfo session : sessions.values()) {
             if (session.isExpired(now)) {
                 expired.add(Tuple2.of(session.id(), session.version()));
             }
@@ -110,8 +110,8 @@ class RaftSessionRegistry implements IdentifiedDataSerializable {
         return expired;
     }
 
-    private RaftSession getSessionOrFail(long sessionId) {
-        RaftSession session = sessions.get(sessionId);
+    private CPSessionInfo getSessionOrFail(long sessionId) {
+        CPSessionInfo session = sessions.get(sessionId);
         if (session == null) {
             throw new SessionExpiredException();
         }
@@ -146,7 +146,7 @@ class RaftSessionRegistry implements IdentifiedDataSerializable {
         out.writeObject(groupId);
         out.writeLong(nextSessionId);
         out.writeInt(sessions.size());
-        for (RaftSession session : sessions.values()) {
+        for (CPSessionInfo session : sessions.values()) {
             out.writeObject(session);
         }
     }
@@ -157,7 +157,7 @@ class RaftSessionRegistry implements IdentifiedDataSerializable {
         nextSessionId = in.readLong();
         int size = in.readInt();
         for (int i = 0; i < size; i++) {
-            RaftSession session = in.readObject();
+            CPSessionInfo session = in.readObject();
             sessions.put(session.id(), session);
         }
     }

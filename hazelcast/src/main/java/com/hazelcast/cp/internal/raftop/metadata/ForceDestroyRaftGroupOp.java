@@ -42,19 +42,19 @@ import java.io.IOException;
  */
 public class ForceDestroyRaftGroupOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
-    private CPGroupId targetGroupId;
+    private String groupName;
 
     public ForceDestroyRaftGroupOp() {
     }
 
-    public ForceDestroyRaftGroupOp(CPGroupId targetGroupId) {
-        this.targetGroupId = targetGroupId;
+    public ForceDestroyRaftGroupOp(String groupName) {
+        this.groupName = groupName;
     }
 
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        service.getMetadataGroupManager().forceDestroyRaftGroup(targetGroupId);
+        service.getMetadataGroupManager().forceDestroyRaftGroup(groupName);
         return null;
     }
 
@@ -80,16 +80,16 @@ public class ForceDestroyRaftGroupOp extends RaftOp implements IndeterminateOper
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeObject(targetGroupId);
+        out.writeUTF(groupName);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
-        targetGroupId = in.readObject();
+        groupName = in.readUTF();
     }
 
     @Override
     protected void toString(StringBuilder sb) {
-        sb.append(", targetGroupId=").append(targetGroupId);
+        sb.append(", groupName=").append(groupName);
     }
 }

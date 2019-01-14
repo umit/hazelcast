@@ -251,33 +251,33 @@ public class FencedLockAdvancedTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testInactiveSessionsAreEventuallyClosed() {
+    public void testInactiveSessionsAreEventuallyClosed() throws ExecutionException, InterruptedException {
         lock.lock();
 
         final CPGroupId groupId = lock.getGroupId();
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() {
+            public void run() throws Exception {
                 for (HazelcastInstance instance : instances) {
                     RaftSessionService sessionService = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
-                    assertFalse(sessionService.getAllSessions(groupId).isEmpty());
+                    assertFalse(sessionService.getAllSessions(groupId).get().isEmpty());
                 }
             }
         });
 
         RaftSessionService sessionService = getNodeEngineImpl(lockInstance).getService(RaftSessionService.SERVICE_NAME);
-        long sessionId = sessionService.getAllSessions(groupId).iterator().next().id();
+        long sessionId = sessionService.getAllSessions(groupId).get().iterator().next().id();
 
         getRaftInvocationManager(lockInstance)
                 .invoke(groupId, new UnlockOp(objectName, sessionId, getThreadId(), newUnsecureUUID())).join();
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() {
+            public void run() throws Exception {
                 for (HazelcastInstance instance : instances) {
                     RaftSessionService service = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
-                    assertTrue(service.getAllSessions(groupId).isEmpty());
+                    assertTrue(service.getAllSessions(groupId).get().isEmpty());
                 }
 
                 ProxySessionManagerService service = getNodeEngineImpl(lockInstance).getService(ProxySessionManagerService.SERVICE_NAME);
@@ -292,20 +292,20 @@ public class FencedLockAdvancedTest extends HazelcastRaftTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() {
+            public void run() throws Exception {
                 for (HazelcastInstance instance : instances) {
                     RaftSessionService sessionService = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
-                    assertFalse(sessionService.getAllSessions(lock.getGroupId()).isEmpty());
+                    assertFalse(sessionService.getAllSessions(lock.getGroupId()).get().isEmpty());
                 }
             }
         });
 
         assertTrueAllTheTime(new AssertTask() {
             @Override
-            public void run() {
+            public void run() throws Exception {
                 for (HazelcastInstance instance : instances) {
                     RaftSessionService sessionService = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
-                    assertFalse(sessionService.getAllSessions(lock.getGroupId()).isEmpty());
+                    assertFalse(sessionService.getAllSessions(lock.getGroupId()).get().isEmpty());
                 }
             }
         }, 20);
@@ -335,20 +335,20 @@ public class FencedLockAdvancedTest extends HazelcastRaftTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() {
+            public void run() throws Exception {
                 for (HazelcastInstance instance : instances) {
                     RaftSessionService sessionService = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
-                    assertEquals(2, sessionService.getAllSessions(lock.getGroupId()).size());
+                    assertEquals(2, sessionService.getAllSessions(lock.getGroupId()).get().size());
                 }
             }
         });
 
         assertTrueAllTheTime(new AssertTask() {
             @Override
-            public void run() {
+            public void run() throws Exception {
                 for (HazelcastInstance instance : instances) {
                     RaftSessionService sessionService = getNodeEngineImpl(instance).getService(RaftSessionService.SERVICE_NAME);
-                    assertEquals(2, sessionService.getAllSessions(lock.getGroupId()).size());
+                    assertEquals(2, sessionService.getAllSessions(lock.getGroupId()).get().size());
                 }
             }
         }, 20);

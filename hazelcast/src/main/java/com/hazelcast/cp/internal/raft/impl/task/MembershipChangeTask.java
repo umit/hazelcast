@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.task;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.cp.exception.NotLeaderException;
 import com.hazelcast.cp.internal.raft.MembershipChangeType;
 import com.hazelcast.cp.internal.raft.exception.MemberAlreadyExistsException;
@@ -55,17 +55,17 @@ import static com.hazelcast.cp.internal.raft.impl.RaftRole.LEADER;
 public class MembershipChangeTask implements Runnable {
     private final RaftNodeImpl raftNode;
     private final Long groupMembersCommitIndex;
-    private final EndpointIdentifier member;
+    private final Endpoint member;
     private final MembershipChangeType changeType;
     private final SimpleCompletableFuture resultFuture;
     private final ILogger logger;
 
-    public MembershipChangeTask(RaftNodeImpl raftNode, SimpleCompletableFuture resultFuture, EndpointIdentifier member,
+    public MembershipChangeTask(RaftNodeImpl raftNode, SimpleCompletableFuture resultFuture, Endpoint member,
                                 MembershipChangeType changeType) {
         this(raftNode, resultFuture, member, changeType, null);
     }
 
-    public MembershipChangeTask(RaftNodeImpl raftNode, SimpleCompletableFuture resultFuture, EndpointIdentifier member,
+    public MembershipChangeTask(RaftNodeImpl raftNode, SimpleCompletableFuture resultFuture, Endpoint member,
                                 MembershipChangeType changeType, Long groupMembersCommitIndex) {
         if (changeType == null) {
             throw new IllegalArgumentException("Null membership change type");
@@ -94,7 +94,7 @@ public class MembershipChangeTask implements Runnable {
             return;
         }
 
-        Collection<EndpointIdentifier> members = new LinkedHashSet<EndpointIdentifier>(state.members());
+        Collection<Endpoint> members = new LinkedHashSet<Endpoint>(state.members());
         boolean memberExists = members.contains(member);
 
         switch (changeType) {

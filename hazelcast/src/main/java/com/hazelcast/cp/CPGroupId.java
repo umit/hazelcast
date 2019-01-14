@@ -18,18 +18,16 @@ package com.hazelcast.cp;
 
 /**
  * Identifier for CP groups.
- * <p>
- * Each CP group is denoted by a unique name and a commitIndex in Raft log.
  */
 public interface CPGroupId {
 
     /**
-     * Returns the name of the CP group.
+     * Returns name of the CP group.
      */
     String name();
 
     /**
-     * Returns the commit index of the log when this CP group is created.
+     * Returns unique id of the CP group.
      */
-    long commitIndex();
+    long id();
 }

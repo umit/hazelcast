@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.CPMember;
 import com.hazelcast.cp.internal.operation.integration.AppendFailureResponseOp;
@@ -130,47 +130,47 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
     }
 
     @Override
-    public boolean isReachable(EndpointIdentifier member) {
+    public boolean isReachable(Endpoint member) {
         return nodeEngine.getClusterService().getMember(((CPMember) member).getAddress()) != null;
     }
 
     @Override
-    public boolean send(PreVoteRequest request, EndpointIdentifier target) {
+    public boolean send(PreVoteRequest request, Endpoint target) {
         return send(new PreVoteRequestOp(groupId, request), target);
     }
 
     @Override
-    public boolean send(PreVoteResponse response, EndpointIdentifier target) {
+    public boolean send(PreVoteResponse response, Endpoint target) {
         return send(new PreVoteResponseOp(groupId, response), target);
     }
 
     @Override
-    public boolean send(VoteRequest request, EndpointIdentifier target) {
+    public boolean send(VoteRequest request, Endpoint target) {
         return send(new VoteRequestOp(groupId, request), target);
     }
 
     @Override
-    public boolean send(VoteResponse response, EndpointIdentifier target) {
+    public boolean send(VoteResponse response, Endpoint target) {
         return send(new VoteResponseOp(groupId, response), target);
     }
 
     @Override
-    public boolean send(AppendRequest request, EndpointIdentifier target) {
+    public boolean send(AppendRequest request, Endpoint target) {
         return send(new AppendRequestOp(groupId, request), target);
     }
 
     @Override
-    public boolean send(AppendSuccessResponse response, EndpointIdentifier target) {
+    public boolean send(AppendSuccessResponse response, Endpoint target) {
         return send(new AppendSuccessResponseOp(groupId, response), target);
     }
 
     @Override
-    public boolean send(AppendFailureResponse response, EndpointIdentifier target) {
+    public boolean send(AppendFailureResponse response, Endpoint target) {
         return send(new AppendFailureResponseOp(groupId, response), target);
     }
 
     @Override
-    public boolean send(InstallSnapshot request, EndpointIdentifier target) {
+    public boolean send(InstallSnapshot request, Endpoint target) {
         return send(new InstallSnapshotOp(groupId, request), target);
     }
 
@@ -215,7 +215,7 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
         }
     }
 
-    private boolean send(Operation operation, EndpointIdentifier target) {
+    private boolean send(Operation operation, Endpoint target) {
         return operationService.send(operation.setPartitionId(partitionId), ((CPMemberInfo) target).getAddress());
     }
 

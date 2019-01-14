@@ -20,6 +20,7 @@ import com.hazelcast.config.Config;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.Member;
+import com.hazelcast.cp.CPGroup;
 import com.hazelcast.nio.Address;
 import com.hazelcast.cp.CPGroup.CPGroupStatus;
 import com.hazelcast.cp.CPGroupId;
@@ -232,12 +233,17 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void when_raftGroupDestroyTriggered_then_raftGroupIsDestroyed() {
+    public void when_raftGroupDestroyTriggered_then_raftGroupIsDestroyed() throws ExecutionException, InterruptedException {
         int metadataGroupSize = 3;
         int cpNodeCount = 5;
         instances = newInstances(cpNodeCount, metadataGroupSize, 0);
 
         final CPGroupId groupId = createNewRaftGroup(instances[0], "id", cpNodeCount);
+
+        CPGroup group = instances[0].getCPSubsystem().getCPSubsystemManagementService().getActiveCPGroup("id").get();
+        assertNotNull(group);
+        assertEquals(groupId, group.id());
+
         destroyRaftGroup(instances[0], groupId);
 
         assertTrueEventually(new AssertTask() {
@@ -303,6 +309,10 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
 
         final CPGroupId groupId = createNewRaftGroup(instances[0], "id", 3);
 
+        CPGroup group = instances[0].getCPSubsystem().getCPSubsystemManagementService().getActiveCPGroup("id").get();
+        assertNotNull(group);
+        assertEquals(groupId, group.id());
+
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
@@ -312,10 +322,10 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
             }
         });
 
-        getRaftService(instances[0]).forceDestroyCPGroup(groupId).get();
+        getRaftService(instances[0]).forceDestroyCPGroup(groupId.name()).get();
 
-        CPGroupInfo groupInfo = getRaftInvocationManager(instances[0]).<CPGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId), LEADER_LOCAL).get();
-        assertEquals(CPGroupStatus.DESTROYED, groupInfo.status());
+        group = getRaftInvocationManager(instances[0]).<CPGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId), LEADER_LOCAL).get();
+        assertEquals(CPGroupStatus.DESTROYED, group.status());
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -338,8 +348,11 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
 
         final CPGroupId groupId = createNewRaftGroup(instances[0], "id", 3);
 
-        CPGroupInfo groupInfo = getRaftInvocationManager(instances[0]).<CPGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId), LEADER_LOCAL).get();
-        final CPMemberInfo[] groupMembers = groupInfo.membersArray();
+        CPGroup group = instances[0].getCPSubsystem().getCPSubsystemManagementService().getActiveCPGroup("id").get();
+        assertNotNull(group);
+        assertEquals(groupId, group.id());
+
+        final CPMemberInfo[] groupMembers = ((CPGroupInfo) group).membersArray();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -355,10 +368,10 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
         factory.getInstance(groupMembers[1].getAddress()).getLifecycleService().terminate();
 
         final HazelcastInstance runningInstance = factory.getInstance(groupMembers[2].getAddress());
-        getRaftService(runningInstance).forceDestroyCPGroup(groupId).get();
+        getRaftService(runningInstance).forceDestroyCPGroup(groupId.name()).get();
 
-        groupInfo = getRaftInvocationManager(runningInstance).<CPGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId), LEADER_LOCAL).get();
-        assertEquals(CPGroupStatus.DESTROYED, groupInfo.status());
+        group = getRaftInvocationManager(runningInstance).<CPGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId), LEADER_LOCAL).get();
+        assertEquals(CPGroupStatus.DESTROYED, group.status());
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -487,7 +500,6 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
                 }
             }
         });
-
     }
 
     @Test

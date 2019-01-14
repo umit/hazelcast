@@ -27,6 +27,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.net.SocketAddress;
+import java.net.UnknownHostException;
 
 /**
  * {@code CPMember} represents a member in Raft group.
@@ -54,6 +56,15 @@ public class CPMemberInfo implements CPMember, Serializable, IdentifiedDataSeria
 
     public String getUuid() {
         return uuid;
+    }
+
+    @Override
+    public SocketAddress getSocketAddress() {
+        try {
+            return address.getInetSocketAddress();
+        } catch (UnknownHostException e) {
+            return null;
+        }
     }
 
     public Address getAddress() {

@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.raft.impl.task;
 
-import com.hazelcast.core.EndpointIdentifier;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.dto.VoteRequest;
 import com.hazelcast.cp.internal.raft.impl.handler.PreVoteResponseHandlerTask;
@@ -53,7 +53,7 @@ public class LeaderElectionTask extends RaftNodeStatusAwareTask implements Runna
                 + ", last log term: " + request.lastLogTerm());
         raftNode.printMemberState();
 
-        for (EndpointIdentifier endpoint : state.remoteMembers()) {
+        for (Endpoint endpoint : state.remoteMembers()) {
             raftNode.send(request, endpoint);
         }
 

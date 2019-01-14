@@ -67,9 +67,9 @@ public interface CPSession {
         SERVER,
 
         /**
-         * Represents a Hazelcast Java client
+         * Represents a Hazelcast client
          */
-        JAVA_CLIENT
+        CLIENT
     }
 
     /**
