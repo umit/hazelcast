@@ -29,16 +29,6 @@ import com.hazelcast.nio.Address;
  * After the CP subsystem is initialized, other Hazelcast members can be
  * promoted to be a CP member via the
  * {@link CPSubsystemManagementService#promoteToCPMember()} API.
- * <p>
- * When a Hazelcast member is elected as a CP member during the cluster startup
- * process, UUID of the member is assigned as CP member UUID. If this member
- * splits from the cluster, it will get a new member UUID while merging back
- * to the cluster, but its CP member UUID, which is returned by this interface,
- * will NOT change. It is because a split-member merges to the cluster
- * as a new Hazelcast member. However, the CP subsystem does not perform any
- * special treatment to network partitions and does not perform any action
- * such as data merging, etc. Therefore, CP member UUID of a merging Hazelcast
- * member remains the same, although its member UUID changes.
  *
  * @see CPSubsystemConfig
  * @see CPSubsystemManagementService
@@ -46,11 +36,19 @@ import com.hazelcast.nio.Address;
 public interface CPMember extends Endpoint {
 
     /**
+     * Returns the UUID of this CP member. The CP member UUID does not have to
+     * be same with the uuid of the local member that is accessed via
+     * {@link Cluster#getLocalMember()}.
+     *
+     * @return the UUID of this CP Member
+     */
+    String getUuid();
+
+    /**
      * Returns the address of this CP member.
      * It is same with the address of {@link Cluster#getLocalMember()}
      *
-     * @return the address of this CP member, which is same with the address of
-     *         {@link Cluster#getLocalMember()}.
+     * @return the address of this CP member
      */
     Address getAddress();
 
