@@ -622,9 +622,15 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             }
             return;
         }
+        CPMemberInfo localMember = getLocalMember();
+        if (localMember != null) {
+            if (logger.isFineEnabled()) {
+                logger.fine(localMember + " is already part of CP members!");
+            }
+            return;
+        }
         checkNotNull(members);
         checkTrue(members.size() > 1, "active members must contain at least 2 members: " + members);
-        checkState(getLocalMember() == null, "This node is already part of CP members!");
 
         if (logger.isFineEnabled()) {
             logger.fine("Setting active CP members: " + members);
@@ -719,16 +725,11 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             return;
         }
 
-        Set<Address> addresses = new HashSet<Address>(members.size());
-        for (CPMemberInfo member : members) {
-            addresses.add(member.getAddress());
-        }
-
         Set<Member> clusterMembers = nodeEngine.getClusterService().getMembers();
         OperationService operationService = nodeEngine.getOperationService();
-        Operation op = new SendActiveCPMembersOp(getActiveMembers());
+        Operation op = new SendActiveCPMembersOp(members);
         for (Member member : clusterMembers) {
-            if (addresses.contains(member.getAddress()) || member.getAddress().equals(nodeEngine.getThisAddress())) {
+            if (member.localMember()) {
                 continue;
             }
             operationService.send(op, member.getAddress());
