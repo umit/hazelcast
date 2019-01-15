@@ -81,7 +81,7 @@ import java.util.Collection;
  * make progress anymore. Even a new CP member cannot join to this CP group,
  * because member additions also go through the Raft consensus algorithm.
  * For this reason, the only option is to force-destroy the CP group via the
- * {@link #forceDestroyCPGroup(CPGroupId)} API. When this API is used, the CP
+ * {@link #forceDestroyCPGroup(String)} API. When this API is used, the CP
  * group is terminated non-gracefully, without the Raft algorithm mechanics.
  * Then, all CP data structure proxies that talk to this CP group fail with
  * {@link RaftGroupDestroyedException}. However, if a new proxy is created
