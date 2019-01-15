@@ -20,6 +20,7 @@ import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.core.ISemaphore;
+import com.hazelcast.cp.CPMember;
 import com.hazelcast.cp.CPSubsystem;
 import com.hazelcast.cp.CPSubsystemManagementService;
 import com.hazelcast.cp.lock.FencedLock;
@@ -66,6 +67,11 @@ class CPSubsystemImpl implements CPSubsystem {
     @Override
     public ISemaphore getSemaphore(String name) {
         return client.getDistributedObject(RaftSemaphoreService.SERVICE_NAME, withoutDefaultGroupName(name));
+    }
+
+    @Override
+    public CPMember getLocalCPMember() {
+        throw new UnsupportedOperationException();
     }
 
     @Override

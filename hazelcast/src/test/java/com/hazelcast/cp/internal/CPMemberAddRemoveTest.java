@@ -571,7 +571,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         waitAllForLeaderElection(instances, METADATA_GROUP_ID);
 
         Member localMember = instances[0].getCluster().getLocalMember();
-        CPMember localCpMember = getRaftService(instances[0]).getLocalMember();
+        CPMember localCpMember = instances[0].getCPSubsystem().getLocalCPMember();
         instances[0].getLifecycleService().terminate();
 
         instances[0] = newHazelcastInstance(initOrCreateConfig(createConfig(3, 3)), randomString(),
@@ -581,7 +581,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueAllTheTime(new AssertTask() {
             @Override
             public void run() {
-                assertNull(getRaftService(instances[0]).getLocalMember());
+                assertNull(instances[0].getCPSubsystem().getLocalCPMember());
             }
         }, 5);
 
@@ -589,7 +589,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                assertNotNull(getRaftService(instances[0]).getLocalMember());
+                assertNotNull(instances[0].getCPSubsystem().getLocalCPMember());
             }
         });
         assertNotEquals(localCpMember, getRaftService(instances[0]).getLocalMember());

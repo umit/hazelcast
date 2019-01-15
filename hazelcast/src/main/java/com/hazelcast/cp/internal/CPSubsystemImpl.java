@@ -21,6 +21,7 @@ import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.core.ISemaphore;
+import com.hazelcast.cp.CPMember;
 import com.hazelcast.cp.session.CPSessionManagementService;
 import com.hazelcast.cp.CPSubsystem;
 import com.hazelcast.cp.CPSubsystemManagementService;
@@ -75,6 +76,15 @@ public class CPSubsystemImpl implements CPSubsystem {
     public ISemaphore getSemaphore(String name) {
         checkNotNull(name, "Retrieving a semaphore instance with a null name is not allowed!");
         return instance.getDistributedObject(RaftSemaphoreService.SERVICE_NAME, withoutDefaultGroupName(name));
+    }
+
+    @Override
+    public CPMember getLocalCPMember() {
+        if (instance.getConfig().getCPSubsystemConfig().getCPMemberCount() == 0) {
+            throw new HazelcastException("CP Subsystem is not enabled!");
+        }
+        RaftService service = instance.node.getNodeEngine().getService(RaftService.SERVICE_NAME);
+        return service.getLocalMember();
     }
 
     @Override

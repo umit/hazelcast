@@ -206,6 +206,14 @@ public interface CPSubsystem {
     ISemaphore getSemaphore(String name);
 
     /**
+     * Returns the local CP member if this Hazelcast member is part of CP subsystem,
+     * returns null otherwise.
+     *
+     * @return local CP member if available, null otherwise
+     */
+    CPMember getLocalCPMember();
+
+    /**
      * Returns the {@link CPSubsystemManagementService} of this Hazelcast
      * instance. {@link CPSubsystemManagementService} offers APIs for managing
      * CP members and CP groups.
