@@ -22,6 +22,7 @@ import com.hazelcast.cp.CPMember;
 import com.hazelcast.cp.internal.operation.integration.AppendFailureResponseOp;
 import com.hazelcast.cp.internal.operation.integration.AppendRequestOp;
 import com.hazelcast.cp.internal.operation.integration.AppendSuccessResponseOp;
+import com.hazelcast.cp.internal.operation.integration.AsyncRaftOp;
 import com.hazelcast.cp.internal.operation.integration.InstallSnapshotOp;
 import com.hazelcast.cp.internal.operation.integration.PreVoteRequestOp;
 import com.hazelcast.cp.internal.operation.integration.PreVoteResponseOp;
@@ -43,7 +44,6 @@ import com.hazelcast.cp.internal.raftop.NotifyTermChangeOp;
 import com.hazelcast.cp.internal.raftop.snapshot.RestoreSnapshotOp;
 import com.hazelcast.cp.internal.util.PartitionSpecificRunnableAdaptor;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.TaskScheduler;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.spi.impl.operationexecutor.impl.OperationExecutorImpl;
@@ -215,8 +215,10 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
         }
     }
 
-    private boolean send(Operation operation, Endpoint target) {
-        return operationService.send(operation.setPartitionId(partitionId), ((CPMemberInfo) target).getAddress());
+    private boolean send(AsyncRaftOp operation, Endpoint target) {
+        CPMember targetMember = (CPMember) target;
+        operation.setTargetMember(targetMember).setPartitionId(partitionId);
+        return operationService.send(operation, targetMember.getAddress());
     }
 
     @Override

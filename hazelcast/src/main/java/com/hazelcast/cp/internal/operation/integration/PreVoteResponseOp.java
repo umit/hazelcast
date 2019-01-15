@@ -16,12 +16,12 @@
 
 package com.hazelcast.cp.internal.operation.integration;
 
-import com.hazelcast.nio.ObjectDataInput;
-import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.cp.internal.raft.impl.dto.PreVoteResponse;
-import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
+import com.hazelcast.cp.internal.raft.impl.dto.PreVoteResponse;
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 
 import java.io.IOException;
 
@@ -43,7 +43,7 @@ public class PreVoteResponseOp extends AsyncRaftOp {
     @Override
     public void run() {
         RaftService service = getService();
-        service.handlePreVoteResponse(groupId, voteResponse);
+        service.handlePreVoteResponse(groupId, voteResponse, target);
     }
 
     @Override

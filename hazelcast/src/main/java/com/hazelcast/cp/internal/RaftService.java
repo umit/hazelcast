@@ -404,7 +404,10 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return invocationManager;
     }
 
-    public void handlePreVoteRequest(CPGroupId groupId, PreVoteRequest request) {
+    public void handlePreVoteRequest(CPGroupId groupId, PreVoteRequest request, CPMember target) {
+        if (!isTargetLocalMember(request, target)) {
+            return;
+        }
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             if (logger.isFineEnabled()) {
@@ -415,7 +418,10 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         node.handlePreVoteRequest(request);
     }
 
-    public void handlePreVoteResponse(CPGroupId groupId, PreVoteResponse response) {
+    public void handlePreVoteResponse(CPGroupId groupId, PreVoteResponse response, CPMember target) {
+        if (!isTargetLocalMember(response, target)) {
+            return;
+        }
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             if (logger.isFineEnabled()) {
@@ -426,7 +432,10 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         node.handlePreVoteResponse(response);
     }
 
-    public void handleVoteRequest(CPGroupId groupId, VoteRequest request) {
+    public void handleVoteRequest(CPGroupId groupId, VoteRequest request, CPMember target) {
+        if (!isTargetLocalMember(request, target)) {
+            return;
+        }
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             if (logger.isFineEnabled()) {
@@ -437,7 +446,10 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         node.handleVoteRequest(request);
     }
 
-    public void handleVoteResponse(CPGroupId groupId, VoteResponse response) {
+    public void handleVoteResponse(CPGroupId groupId, VoteResponse response, CPMember target) {
+        if (!isTargetLocalMember(response, target)) {
+            return;
+        }
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             if (logger.isFineEnabled()) {
@@ -448,7 +460,10 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         node.handleVoteResponse(response);
     }
 
-    public void handleAppendEntries(CPGroupId groupId, AppendRequest request) {
+    public void handleAppendEntries(CPGroupId groupId, AppendRequest request, CPMember target) {
+        if (!isTargetLocalMember(request, target)) {
+            return;
+        }
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             if (logger.isFineEnabled()) {
@@ -459,7 +474,10 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         node.handleAppendRequest(request);
     }
 
-    public void handleAppendResponse(CPGroupId groupId, AppendSuccessResponse response) {
+    public void handleAppendResponse(CPGroupId groupId, AppendSuccessResponse response, CPMember target) {
+        if (!isTargetLocalMember(response, target)) {
+            return;
+        }
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             if (logger.isFineEnabled()) {
@@ -470,7 +488,10 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         node.handleAppendResponse(response);
     }
 
-    public void handleAppendResponse(CPGroupId groupId, AppendFailureResponse response) {
+    public void handleAppendResponse(CPGroupId groupId, AppendFailureResponse response, CPMember target) {
+        if (!isTargetLocalMember(response, target)) {
+            return;
+        }
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             if (logger.isFineEnabled()) {
@@ -481,7 +502,10 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         node.handleAppendResponse(response);
     }
 
-    public void handleSnapshot(CPGroupId groupId, InstallSnapshot request) {
+    public void handleSnapshot(CPGroupId groupId, InstallSnapshot request, CPMember target) {
+        if (!isTargetLocalMember(request, target)) {
+            return;
+        }
         RaftNode node = getOrInitRaftNode(groupId);
         if (node == null) {
             if (logger.isFineEnabled()) {
@@ -490,6 +514,16 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             return;
         }
         node.handleInstallSnapshot(request);
+    }
+
+    private boolean isTargetLocalMember(Object request, CPMember target) {
+        if (!target.equals(metadataGroupManager.getLocalMember())) {
+            if (logger.isFineEnabled()) {
+                logger.fine("Won't handle " + request + ". We are not the expected target: " + target);
+            }
+            return false;
+        }
+        return true;
     }
 
     public Collection<RaftNode> getAllRaftNodes() {

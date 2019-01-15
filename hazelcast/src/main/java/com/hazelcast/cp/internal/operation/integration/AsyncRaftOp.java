@@ -16,13 +16,14 @@
 
 package com.hazelcast.cp.internal.operation.integration;
 
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.CPMember;
+import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
+import com.hazelcast.cp.internal.RaftSystemOperation;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.RaftSystemOperation;
-import com.hazelcast.cp.internal.RaftService;
-import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
 import com.hazelcast.spi.Operation;
 
 import java.io.IOException;
@@ -31,15 +32,21 @@ import java.io.IOException;
  * Base class for operation classes that will carry Raft RPCs between
  * Raft nodes
  */
-abstract class AsyncRaftOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation {
+public abstract class AsyncRaftOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation {
 
     protected CPGroupId groupId;
+    protected CPMember target;
 
     AsyncRaftOp() {
     }
 
     AsyncRaftOp(CPGroupId groupId) {
         this.groupId = groupId;
+    }
+
+    public final Operation setTargetMember(CPMember target) {
+        this.target = target;
+        return this;
     }
 
     @Override
@@ -67,12 +74,14 @@ abstract class AsyncRaftOp extends Operation implements IdentifiedDataSerializab
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeObject(groupId);
+        out.writeObject(target);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         groupId = in.readObject();
+        target = in.readObject();
     }
 
     @Override
