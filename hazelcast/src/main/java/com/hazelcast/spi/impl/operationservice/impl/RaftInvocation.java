@@ -17,12 +17,13 @@
 package com.hazelcast.spi.impl.operationservice.impl;
 
 import com.hazelcast.core.IndeterminateOperationState;
+import com.hazelcast.core.Member;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.CPMember;
 import com.hazelcast.cp.exception.LeaderDemotedException;
 import com.hazelcast.cp.exception.NotLeaderException;
 import com.hazelcast.cp.exception.StaleAppendRequestException;
-import com.hazelcast.cp.internal.CPMemberInfo;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.nio.Address;
 import com.hazelcast.spi.ExceptionAction;
@@ -38,12 +39,12 @@ import static com.hazelcast.spi.InvocationBuilder.DEFAULT_DESERIALIZE_RESULT;
  * A {@link Invocation} implementation that realizes an operation invocation on the leader node of the given Raft group.
  * Internally handles Raft-related exceptions.
  */
-public class RaftInvocation extends Invocation {
+public class RaftInvocation extends Invocation<CPMember> {
 
     private final RaftInvocationContext raftInvocationContext;
     private final CPGroupId groupId;
     private volatile MemberCursor memberCursor;
-    private volatile CPMemberInfo lastInvocationEndpoint;
+    private volatile CPMember lastInvocationEndpoint;
     private volatile Throwable indeterminateException;
 
     public RaftInvocation(Context context, RaftInvocationContext raftInvocationContext, CPGroupId groupId, Operation op,
@@ -57,10 +58,22 @@ public class RaftInvocation extends Invocation {
     }
 
     @Override
-    protected Address getTarget() {
-        CPMemberInfo targetEndpoint = getTargetEndpoint();
-        lastInvocationEndpoint = targetEndpoint;
-        return targetEndpoint != null ? targetEndpoint.getAddress() : null;
+    CPMember getInvocationTarget() {
+        CPMember target = getTargetEndpoint();
+        lastInvocationEndpoint = target;
+        return target;
+    }
+
+    @Override
+    Address toTargetAddress(CPMember target) {
+        return target.getAddress();
+    }
+
+    @Override
+    Member toTargetMember(CPMember target) {
+        // CPMember.uuid can be different from Member.uuid
+        // During split-brain merge, Member.uuid changes but CPMember.uuid remains the same.
+        return context.clusterService.getMember(target.getAddress());
     }
 
     @Override
@@ -104,8 +117,8 @@ public class RaftInvocation extends Invocation {
                 || cause instanceof TargetNotMemberException;
     }
 
-    private CPMemberInfo getTargetEndpoint() {
-        CPMemberInfo target = raftInvocationContext.getKnownLeader(groupId);
+    private CPMember getTargetEndpoint() {
+        CPMember target = raftInvocationContext.getKnownLeader(groupId);
         if (target != null) {
             return target;
         }

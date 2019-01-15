@@ -16,16 +16,16 @@
 
 package com.hazelcast.spi.impl.operationservice.impl;
 
-import com.hazelcast.cp.internal.CPMemberInfo;
+import com.hazelcast.cp.CPMember;
 
 /**
  * Iterates over Raft members
  */
 class MemberCursor {
-    private final CPMemberInfo[] members;
+    private final CPMember[] members;
     private int index = -1;
 
-    MemberCursor(CPMemberInfo[] members) {
+    MemberCursor(CPMember[] members) {
         this.members = members;
     }
 
@@ -33,7 +33,7 @@ class MemberCursor {
         return ++index < members.length;
     }
 
-    CPMemberInfo get() {
+    CPMember get() {
         return members[index];
     }
 }
