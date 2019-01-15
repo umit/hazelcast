@@ -20,11 +20,13 @@ import com.hazelcast.config.Config;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.Member;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.CPMember;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.command.ApplyRaftGroupMembersCmd;
 import com.hazelcast.cp.internal.raftop.metadata.GetActiveCPMembersOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetMembershipChangeContextOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupOp;
+import com.hazelcast.instance.StaticMemberNodeContext;
 import com.hazelcast.nio.Address;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -47,9 +49,12 @@ import java.util.concurrent.TimeoutException;
 import static com.hazelcast.cp.internal.MetadataRaftGroupManager.METADATA_GROUP_ID;
 import static com.hazelcast.cp.internal.raft.QueryPolicy.LEADER_LOCAL;
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getLastLogOrSnapshotEntry;
+import static com.hazelcast.instance.HazelcastInstanceFactory.newHazelcastInstance;
+import static com.hazelcast.test.TestHazelcastInstanceFactory.initOrCreateConfig;
 import static com.hazelcast.util.FutureUtil.returnWithDeadline;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -557,6 +562,37 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
                 assertEquals(3, metadataCount);
             }
         });
+    }
+
+    @Test
+    public void testCPMemberIdentityChanges_whenLocalMemberIsRecovered_duringRestart() {
+        final HazelcastInstance[] instances = newInstances(3);
+        waitUntilCPDiscoveryCompleted(instances);
+        waitAllForLeaderElection(instances, METADATA_GROUP_ID);
+
+        Member localMember = instances[0].getCluster().getLocalMember();
+        CPMember localCpMember = getRaftService(instances[0]).getLocalMember();
+        instances[0].getLifecycleService().terminate();
+
+        instances[0] = newHazelcastInstance(initOrCreateConfig(createConfig(3, 3)), randomString(),
+                new StaticMemberNodeContext(factory, localMember));
+        assertEquals(localMember, instances[0].getCluster().getLocalMember());
+
+        assertTrueAllTheTime(new AssertTask() {
+            @Override
+            public void run() {
+                assertNull(getRaftService(instances[0]).getLocalMember());
+            }
+        }, 5);
+
+        instances[0].getCPSubsystem().getCPSubsystemManagementService().promoteToCPMember();
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertNotNull(getRaftService(instances[0]).getLocalMember());
+            }
+        });
+        assertNotEquals(localCpMember, getRaftService(instances[0]).getLocalMember());
     }
 
 }

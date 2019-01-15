@@ -47,6 +47,7 @@ import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupIdsOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.RaftServicePreJoinOp;
 import com.hazelcast.cp.internal.raftop.metadata.TriggerRemoveCPMemberOp;
+import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.GracefulShutdownAwareService;
@@ -60,6 +61,7 @@ import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.PreJoinAwareService;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.util.ExceptionUtil;
+import com.hazelcast.util.UuidUtil;
 import com.hazelcast.util.executor.ManagedExecutorService;
 
 import java.util.ArrayList;
@@ -187,14 +189,19 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public ICompletableFuture<Void> promoteToCPMember() {
         checkState(metadataGroupManager.getLocalMember() == null, "We are already a CP member!");
 
-        CPMemberInfo member = new CPMemberInfo(nodeEngine.getLocalMember());
+        MemberImpl localMember = nodeEngine.getLocalMember();
+        // Local member may be recovered during restart, for instance via Hot Restart,
+        // but Raft state cannot be recovered back.
+        // That's why we generate a new UUID while promoting a member to CP.
+        // This new UUID generation can be removed when Hot Restart allows to recover Raft state.
+        final CPMemberInfo member = new CPMemberInfo(UuidUtil.newUnsecureUuidString(), localMember.getAddress());
         logger.info("Adding new CP member: " + member);
         ICompletableFuture<Void> future = invocationManager.invoke(METADATA_GROUP_ID, new AddCPMemberOp(member));
 
         future.andThen(new ExecutionCallback<Void>() {
             @Override
             public void onResponse(Void response) {
-                metadataGroupManager.initPromotedCPMember();
+                metadataGroupManager.initPromotedCPMember(member);
             }
 
             @Override

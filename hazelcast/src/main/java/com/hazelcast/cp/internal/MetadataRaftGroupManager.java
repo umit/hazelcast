@@ -31,7 +31,6 @@ import com.hazelcast.cp.internal.raftop.metadata.DestroyRaftNodesOp;
 import com.hazelcast.cp.internal.raftop.metadata.SendActiveCPMembersOp;
 import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.nio.Address;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
@@ -42,7 +41,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -112,8 +110,8 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         return cpSubsystemEnabled;
     }
 
-    void initPromotedCPMember() {
-        if (!initLocalMember()) {
+    void initPromotedCPMember(CPMemberInfo member) {
+        if (!localMember.compareAndSet(null, member)) {
             return;
         }
 
@@ -129,15 +127,20 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         membershipManager.init();
     }
 
-    boolean initLocalMember() {
-        Member localMember = nodeEngine.getLocalMember();
-        return this.localMember.compareAndSet(null, new CPMemberInfo(localMember));
+    private boolean initLocalMember() {
+        // By default, we use the same member UUID for both AP and CP members.
+        // But it's not guaranteed to be same. For example;
+        // - During a split-brain merge, AP member UUID is renewed but CP member UUID remains the same.
+        // - While promoting a member to CP when Hot Restart is enabled, CP member doesn't use the AP member's UUID
+        // but instead generates a new UUID.
+        return localMember.compareAndSet(null, new CPMemberInfo(nodeEngine.getLocalMember()));
     }
 
     void reset() {
         doSetActiveMembers(Collections.<CPMemberInfo>emptySet());
         groups.clear();
         initialCPMembers = null;
+        localMember.set(null);
 
         if (config == null) {
             return;
@@ -879,6 +882,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             List<Member> memberList = new ArrayList<Member>(members).subList(0, config.getCPMemberCount());
             List<CPMemberInfo> cpMembers = new ArrayList<CPMemberInfo>(config.getCPMemberCount());
             for (Member member : memberList) {
+                // During initial discovery, it's guaranteed that AP and CP member UUIDs will be the same.
                 cpMembers.add(new CPMemberInfo(member));
             }
 
