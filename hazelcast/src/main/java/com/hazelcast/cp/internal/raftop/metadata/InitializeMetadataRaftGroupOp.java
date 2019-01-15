@@ -37,24 +37,27 @@ import java.util.List;
  * the same list. Fails with {@link IllegalArgumentException} if a CP member
  * commits a different list.
  */
-public class CreateMetadataRaftGroupOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
+public class InitializeMetadataRaftGroupOp extends RaftOp implements IndeterminateOperationStateAware,
+                                                                     IdentifiedDataSerializable {
 
     private List<CPMemberInfo> initialMembers;
     private int metadataMembersCount;
+    private long groupIdTerm;
 
-    public CreateMetadataRaftGroupOp() {
+    public InitializeMetadataRaftGroupOp() {
     }
 
-    public CreateMetadataRaftGroupOp(List<CPMemberInfo> initialMembers, int metadataMembersCount) {
+    public InitializeMetadataRaftGroupOp(List<CPMemberInfo> initialMembers, int metadataMembersCount, long groupIdTerm) {
         this.initialMembers = initialMembers;
         this.metadataMembersCount = metadataMembersCount;
+        this.groupIdTerm = groupIdTerm;
     }
 
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftService service = getService();
         MetadataRaftGroupManager metadataManager = service.getMetadataGroupManager();
-        metadataManager.createInitialMetadataRaftGroup(initialMembers, metadataMembersCount);
+        metadataManager.initializeMetadataRaftGroup(initialMembers, metadataMembersCount, groupIdTerm);
         return null;
     }
 
@@ -75,7 +78,7 @@ public class CreateMetadataRaftGroupOp extends RaftOp implements IndeterminateOp
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.CREATE_METADATA_RAFT_GROUP_OP;
+        return RaftServiceDataSerializerHook.INITIALIZE_METADATA_RAFT_GROUP_OP;
     }
 
     @Override
@@ -85,6 +88,7 @@ public class CreateMetadataRaftGroupOp extends RaftOp implements IndeterminateOp
             out.writeObject(member);
         }
         out.writeInt(metadataMembersCount);
+        out.writeLong(groupIdTerm);
     }
 
     @Override
@@ -96,10 +100,13 @@ public class CreateMetadataRaftGroupOp extends RaftOp implements IndeterminateOp
             initialMembers.add(member);
         }
         metadataMembersCount = in.readInt();
+        groupIdTerm = in.readLong();
     }
 
     @Override
     protected void toString(StringBuilder sb) {
-        sb.append("members=").append(metadataMembersCount);
+        sb.append("members=").append(initialMembers)
+          .append(", metadataMemberCount=").append(metadataMembersCount)
+          .append(", groupIdTerm=").append(groupIdTerm);
     }
 }

@@ -25,7 +25,6 @@ import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.core.ISemaphore;
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
 import com.hazelcast.nio.Bits;
@@ -59,10 +58,10 @@ class RaftSessionlessSemaphoreProxy extends ClientProxy implements ISemaphore {
 
 
     private final ClientProxySessionManager sessionManager;
-    private final CPGroupId groupId;
+    private final RaftGroupId groupId;
     private final String objectName;
 
-    RaftSessionlessSemaphoreProxy(ClientContext context, CPGroupId groupId, String proxyName, String objectName) {
+    RaftSessionlessSemaphoreProxy(ClientContext context, RaftGroupId groupId, String proxyName, String objectName) {
         super(RaftSemaphoreService.SERVICE_NAME, proxyName, context);
         this.sessionManager = getClient().getProxySessionManager();
         this.groupId = groupId;
@@ -255,11 +254,11 @@ class RaftSessionlessSemaphoreProxy extends ClientProxy implements ISemaphore {
         invoke(msg, BOOLEAN_RESPONSE_DECODER).join();
     }
 
-    public CPGroupId getGroupId() {
+    public RaftGroupId getGroupId() {
         return groupId;
     }
 
-    private ClientMessage prepareClientMessage(CPGroupId groupId, String name, int dataSize, int messageTypeId) {
+    private ClientMessage prepareClientMessage(RaftGroupId groupId, String name, int dataSize, int messageTypeId) {
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
         msg.setMessageType(messageTypeId);
         msg.setRetryable(false);

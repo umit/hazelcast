@@ -18,14 +18,15 @@ package com.hazelcast.cp.internal.datastructures.atomicref;
 
 import com.hazelcast.core.DistributedObject;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftGroupLifecycleAwareService;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.atomicref.proxy.RaftAtomicRefProxy;
+import com.hazelcast.cp.internal.datastructures.spi.RaftManagedService;
 import com.hazelcast.cp.internal.datastructures.spi.RaftRemoteService;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
 import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 
@@ -46,7 +47,7 @@ import static java.util.Collections.newSetFromMap;
  * Contains Raft-based atomic reference instances, implements snapshotting,
  * and creates proxies
  */
-public class RaftAtomicRefService implements ManagedService, RaftRemoteService, RaftGroupLifecycleAwareService,
+public class RaftAtomicRefService implements RaftManagedService, RaftRemoteService, RaftGroupLifecycleAwareService,
                                              SnapshotAwareService<RaftAtomicRefSnapshot> {
 
     /**
@@ -72,12 +73,16 @@ public class RaftAtomicRefService implements ManagedService, RaftRemoteService, 
 
     @Override
     public void reset() {
-
     }
 
     @Override
     public void shutdown(boolean terminate) {
+    }
 
+    @Override
+    public void onCPSubsystemReset() {
+        atomicRefs.clear();
+        destroyedRefs.clear();
     }
 
     @Override
@@ -151,7 +156,7 @@ public class RaftAtomicRefService implements ManagedService, RaftRemoteService, 
     @Override
     public DistributedObject createDistributedObject(String proxyName) {
         try {
-            CPGroupId groupId = raftService.createRaftGroupForProxy(proxyName);
+            RaftGroupId groupId = raftService.createRaftGroupForProxy(proxyName);
             return new RaftAtomicRefProxy(nodeEngine, groupId, proxyName, getObjectNameForProxy(proxyName));
         } catch (Exception e) {
             throw rethrow(e);

@@ -32,6 +32,7 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
     private final Collection<CPMemberInfo> members = new ArrayList<CPMemberInfo>();
     private final Collection<CPGroupInfo> groups = new ArrayList<CPGroupInfo>();
     private MembershipChangeContext membershipChangeContext;
+    private long groupIdTerm;
 
     public void addRaftGroup(CPGroupInfo group) {
         groups.add(group);
@@ -57,6 +58,14 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
         this.membershipChangeContext = membershipChangeContext;
     }
 
+    public long getGroupIdTerm() {
+        return groupIdTerm;
+    }
+
+    public void setGroupIdTerm(long groupIdTerm) {
+        this.groupIdTerm = groupIdTerm;
+    }
+
     @Override
     public int getFactoryId() {
         return RaftServiceDataSerializerHook.F_ID;
@@ -78,6 +87,7 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
             out.writeObject(group);
         }
         out.writeObject(membershipChangeContext);
+        out.writeLong(groupIdTerm);
     }
 
     @Override
@@ -94,5 +104,6 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
             groups.add(group);
         }
         membershipChangeContext = in.readObject();
+        groupIdTerm = in.readLong();
     }
 }

@@ -19,6 +19,7 @@ package com.hazelcast.cp.internal.datastructures.spi.blocking;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftGroupLifecycleAwareService;
 import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.datastructures.spi.RaftManagedService;
 import com.hazelcast.cp.internal.datastructures.spi.RaftRemoteService;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.operation.ExpireWaitKeysOp;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
@@ -30,7 +31,6 @@ import com.hazelcast.cp.internal.session.SessionExpiredException;
 import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.ExecutionService;
-import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 import com.hazelcast.spi.impl.NodeEngineImpl;
@@ -61,7 +61,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * @param <RR> concrete ty;e lf the resource registry
  */
 public abstract class AbstractBlockingService<W extends WaitKey, R extends BlockingResource<W>, RR extends ResourceRegistry<W, R>>
-        implements ManagedService, RaftGroupLifecycleAwareService, RaftRemoteService, SessionAwareService,
+        implements RaftManagedService, RaftGroupLifecycleAwareService, RaftRemoteService, SessionAwareService,
                    SnapshotAwareService<RR> {
 
     public static final long WAIT_TIMEOUT_TASK_UPPER_BOUND_MILLIS = 1500;
@@ -97,6 +97,11 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
 
     @Override
     public void reset() {
+    }
+
+    @Override
+    public void onCPSubsystemReset() {
+        registries.clear();
     }
 
     @Override

@@ -17,7 +17,6 @@
 package com.hazelcast.cp.internal;
 
 import com.hazelcast.cp.CPGroup;
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.CPMember;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
@@ -40,7 +39,7 @@ import static com.hazelcast.util.Preconditions.checkState;
  */
 public final class CPGroupInfo implements CPGroup, IdentifiedDataSerializable {
 
-    private CPGroupId id;
+    private RaftGroupId id;
     private Set<CPMemberInfo> initialMembers;
     private Set<CPMemberInfo> members;
     private long membersCommitIndex;
@@ -53,7 +52,7 @@ public final class CPGroupInfo implements CPGroup, IdentifiedDataSerializable {
     public CPGroupInfo() {
     }
 
-    public CPGroupInfo(CPGroupId id, Collection<CPMemberInfo> members) {
+    public CPGroupInfo(RaftGroupId id, Collection<CPMemberInfo> members) {
         this.id = id;
         this.status = ACTIVE;
         this.initialMembers = Collections.unmodifiableSet(new LinkedHashSet<CPMemberInfo>(members));
@@ -62,16 +61,12 @@ public final class CPGroupInfo implements CPGroup, IdentifiedDataSerializable {
     }
 
     @Override
-    public CPGroupId id() {
+    public RaftGroupId id() {
         return id;
     }
 
     public String name() {
         return id.name();
-    }
-
-    public long groupIdCommitIndex() {
-        return id.id();
     }
 
     public int initialMemberCount() {

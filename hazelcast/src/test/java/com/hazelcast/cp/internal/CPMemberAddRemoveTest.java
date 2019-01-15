@@ -19,8 +19,14 @@ package com.hazelcast.cp.internal;
 import com.hazelcast.config.Config;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.Member;
+import com.hazelcast.cp.CPGroup;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.CPMember;
+import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongService;
+import com.hazelcast.cp.internal.datastructures.atomicref.RaftAtomicRefService;
+import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
+import com.hazelcast.cp.internal.datastructures.lock.RaftLockService;
+import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.command.ApplyRaftGroupMembersCmd;
 import com.hazelcast.cp.internal.raftop.metadata.GetActiveCPMembersOp;
@@ -28,6 +34,7 @@ import com.hazelcast.cp.internal.raftop.metadata.GetMembershipChangeContextOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupOp;
 import com.hazelcast.instance.StaticMemberNodeContext;
 import com.hazelcast.nio.Address;
+import com.hazelcast.spi.impl.proxyservice.InternalProxyService;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -256,9 +263,34 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testMetadataGroupReinitializationAfterLostMajority() {
-        HazelcastInstance[] instances = newInstances(3, 3, 1);
+    public void testMetadataGroupReinitializationAfterLostMajority() throws ExecutionException, InterruptedException {
+        final HazelcastInstance[] instances = newInstances(3, 3, 1);
         waitUntilCPDiscoveryCompleted(instances);
+
+        long groupIdTerm = getRaftService(instances[0]).getMetadataGroupManager().getGroupIdTerm();
+        RaftGroupId groupId = getRaftInvocationManager(instances[0]).createRaftGroup(CPGroup.DEFAULT_GROUP_NAME).get();
+
+        instances[0].getCPSubsystem().getAtomicLong("proxy");
+        instances[0].getCPSubsystem().getAtomicReference("proxy");
+        instances[0].getCPSubsystem().getLock("proxy");
+        instances[0].getCPSubsystem().getSemaphore("proxy");
+        instances[0].getCPSubsystem().getCountDownLatch("proxy");
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (HazelcastInstance instance : instances) {
+                    InternalProxyService proxyService = getNodeEngineImpl(instance).getProxyService();
+                    assertFalse(proxyService.getDistributedObjectNames(RaftAtomicLongService.SERVICE_NAME).isEmpty());
+                    assertFalse(proxyService.getDistributedObjectNames(RaftAtomicRefService.SERVICE_NAME).isEmpty());
+                    assertFalse(proxyService.getDistributedObjectNames(RaftLockService.SERVICE_NAME).isEmpty());
+                    assertFalse(proxyService.getDistributedObjectNames(RaftSemaphoreService.SERVICE_NAME).isEmpty());
+                    assertFalse(proxyService.getDistributedObjectNames(RaftCountDownLatchService.SERVICE_NAME).isEmpty());
+                }
+            }
+        });
+
+        sleepAtLeastMillis(10);
 
         instances[1].getLifecycleService().terminate();
         instances[2].getLifecycleService().terminate();
@@ -274,7 +306,27 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         Config config = createConfig(3, 3);
         newInstances[2] = factory.newHazelcastInstance(config);
 
-        waitAllForLeaderElection(newInstances, METADATA_GROUP_ID);
+        waitUntilCPDiscoveryCompleted(newInstances);
+
+        long newGroupIdTerm = getRaftService(newInstances[0]).getMetadataGroupManager().getGroupIdTerm();
+        RaftGroupId newGroupId = getRaftInvocationManager(instances[0]).createRaftGroup(CPGroup.DEFAULT_GROUP_NAME).get();
+
+        assertTrue(newGroupIdTerm > groupIdTerm);
+        assertTrue(newGroupId.term() > groupId.term());
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (HazelcastInstance instance : newInstances) {
+                    InternalProxyService proxyService = getNodeEngineImpl(instance).getProxyService();
+                    assertTrue(proxyService.getDistributedObjectNames(RaftAtomicLongService.SERVICE_NAME).isEmpty());
+                    assertTrue(proxyService.getDistributedObjectNames(RaftAtomicRefService.SERVICE_NAME).isEmpty());
+                    assertTrue(proxyService.getDistributedObjectNames(RaftLockService.SERVICE_NAME).isEmpty());
+                    assertTrue(proxyService.getDistributedObjectNames(RaftSemaphoreService.SERVICE_NAME).isEmpty());
+                    assertTrue(proxyService.getDistributedObjectNames(RaftCountDownLatchService.SERVICE_NAME).isEmpty());
+                }
+            }
+        });
 
         assertTrueEventually(new AssertTask() {
             @Override

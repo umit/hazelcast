@@ -20,7 +20,7 @@ import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.IFunction;
-import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongService;
@@ -50,11 +50,11 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     private final RaftInvocationManager invocationManager;
     private final ProxyService proxyService;
-    private final CPGroupId groupId;
+    private final RaftGroupId groupId;
     private final String proxyName;
     private final String objectName;
 
-    public RaftAtomicLongProxy(NodeEngine nodeEngine, CPGroupId groupId, String proxyName, String objectName) {
+    public RaftAtomicLongProxy(NodeEngine nodeEngine, RaftGroupId groupId, String proxyName, String objectName) {
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         this.proxyService = nodeEngine.getProxyService();
         this.invocationManager = service.getInvocationManager();
@@ -264,7 +264,7 @@ public class RaftAtomicLongProxy implements IAtomicLong {
         proxyService.destroyDistributedObject(getServiceName(), proxyName);
     }
 
-    public CPGroupId getGroupId() {
+    public RaftGroupId getGroupId() {
         return groupId;
     }
 

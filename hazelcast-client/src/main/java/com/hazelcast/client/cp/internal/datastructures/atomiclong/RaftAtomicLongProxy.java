@@ -25,7 +25,6 @@ import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.IFunction;
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongService;
 import com.hazelcast.nio.Bits;
@@ -48,10 +47,10 @@ class RaftAtomicLongProxy extends ClientProxy implements IAtomicLong {
     private static final ClientMessageDecoder BOOLEAN_RESPONSE_DECODER = new BooleanResponseDecoder();
 
 
-    private final CPGroupId groupId;
+    private final RaftGroupId groupId;
     private final String objectName;
 
-    RaftAtomicLongProxy(ClientContext context, CPGroupId groupId, String proxyName, String objectName) {
+    RaftAtomicLongProxy(ClientContext context, RaftGroupId groupId, String proxyName, String objectName) {
         super(RaftAtomicLongService.SERVICE_NAME, proxyName, context);
         this.groupId = groupId;
         this.objectName = objectName;
@@ -211,7 +210,7 @@ class RaftAtomicLongProxy extends ClientProxy implements IAtomicLong {
         return new ClientDelegatingFuture<T>(future, getContext().getSerializationService(), decoder);
     }
 
-    private static ClientMessage encodeRequest(CPGroupId groupId, String name, long value, int messageTypeId) {
+    private static ClientMessage encodeRequest(RaftGroupId groupId, String name, long value, int messageTypeId) {
         int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + calculateDataSize(name)
                 + Bits.LONG_SIZE_IN_BYTES;
         ClientMessage msg = prepareClientMessage(groupId, name, dataSize, messageTypeId);
@@ -220,7 +219,7 @@ class RaftAtomicLongProxy extends ClientProxy implements IAtomicLong {
         return msg;
     }
 
-    private static ClientMessage encodeRequest(CPGroupId groupId, String name, long value1, long value2, int messageTypeId) {
+    private static ClientMessage encodeRequest(RaftGroupId groupId, String name, long value1, long value2, int messageTypeId) {
         int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + calculateDataSize(name)
                 + 2 * Bits.LONG_SIZE_IN_BYTES;
         ClientMessage msg = prepareClientMessage(groupId, name, dataSize, messageTypeId);
@@ -230,7 +229,7 @@ class RaftAtomicLongProxy extends ClientProxy implements IAtomicLong {
         return msg;
     }
 
-    private static ClientMessage prepareClientMessage(CPGroupId groupId, String name, int dataSize, int messageTypeId) {
+    private static ClientMessage prepareClientMessage(RaftGroupId groupId, String name, int dataSize, int messageTypeId) {
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
         msg.setMessageType(messageTypeId);
         msg.setRetryable(false);
@@ -240,7 +239,7 @@ class RaftAtomicLongProxy extends ClientProxy implements IAtomicLong {
         return msg;
     }
 
-    public CPGroupId getGroupId() {
+    public RaftGroupId getGroupId() {
         return groupId;
     }
 

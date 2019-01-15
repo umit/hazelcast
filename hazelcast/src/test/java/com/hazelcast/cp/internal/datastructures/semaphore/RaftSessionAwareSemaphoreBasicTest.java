@@ -20,8 +20,8 @@ import com.hazelcast.config.Config;
 import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.semaphore.proxy.RaftSessionAwareSemaphoreProxy;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.cp.internal.session.ProxySessionManagerService;
@@ -479,7 +479,7 @@ public class RaftSessionAwareSemaphoreBasicTest extends HazelcastRaftTestSupport
         semaphore.init(5);
         semaphore.acquire(3);
 
-        CPGroupId groupId = getGroupId(semaphore);
+        RaftGroupId groupId = getGroupId(semaphore);
         long session = getSessionManager(semaphoreInstance).getSession(groupId);
         assertNotEquals(NO_SESSION_ID, session);
         boolean sessionClosed = getRaftInvocationManager(instances[0]).<Boolean>invoke(groupId, new CloseSessionOp(session)).get();
@@ -549,7 +549,7 @@ public class RaftSessionAwareSemaphoreBasicTest extends HazelcastRaftTestSupport
         return getNodeEngineImpl(instance).getService(ProxySessionManagerService.SERVICE_NAME);
     }
 
-    protected CPGroupId getGroupId(ISemaphore semaphore) {
+    protected RaftGroupId getGroupId(ISemaphore semaphore) {
         return ((RaftSessionAwareSemaphoreProxy) semaphore).getGroupId();
     }
 

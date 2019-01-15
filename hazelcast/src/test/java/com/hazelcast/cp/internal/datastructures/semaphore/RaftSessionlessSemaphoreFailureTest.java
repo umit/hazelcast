@@ -18,7 +18,7 @@ package com.hazelcast.cp.internal.datastructures.semaphore;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
-import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.semaphore.proxy.RaftSessionlessSemaphoreProxy;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -33,7 +33,7 @@ import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_S
 public class RaftSessionlessSemaphoreFailureTest extends RaftSemaphoreFailureTest {
 
     @Override
-    CPGroupId getGroupId(ISemaphore semaphore) {
+    RaftGroupId getGroupId(ISemaphore semaphore) {
         return ((RaftSessionlessSemaphoreProxy) semaphore).getGroupId();
     }
 
@@ -43,7 +43,7 @@ public class RaftSessionlessSemaphoreFailureTest extends RaftSemaphoreFailureTes
     }
 
     @Override
-    long getSessionId(HazelcastInstance semaphoreInstance, CPGroupId groupId) {
+    long getSessionId(HazelcastInstance semaphoreInstance, RaftGroupId groupId) {
         return NO_SESSION_ID;
     }
 

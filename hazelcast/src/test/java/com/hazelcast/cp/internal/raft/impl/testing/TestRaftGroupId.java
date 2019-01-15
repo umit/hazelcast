@@ -34,7 +34,7 @@ public class TestRaftGroupId implements CPGroupId {
 
     @Override
     public long id() {
-        return 1;
+        return 0;
     }
 
     @Override

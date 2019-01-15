@@ -26,7 +26,6 @@ import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.spi.impl.ClientProxyFactoryWithContext;
 import com.hazelcast.client.util.ClientDelegatingFuture;
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.spi.client.RaftGroupTaskFactoryProvider;
 import com.hazelcast.nio.Bits;
@@ -64,15 +63,15 @@ public class RaftSemaphoreProxyFactory extends ClientProxyFactoryWithContext imp
         String objectName = getObjectNameForProxy(proxyName);
         ClientInvocationFuture f1 = new ClientInvocation(client, msg, objectName).invoke();
 
-        InternalCompletableFuture<CPGroupId> future1 = new ClientDelegatingFuture<CPGroupId>(f1, client.getSerializationService(),
+        InternalCompletableFuture<RaftGroupId> future1 = new ClientDelegatingFuture<RaftGroupId>(f1, client.getSerializationService(),
                 new ClientMessageDecoder() {
                     @Override
-                    public CPGroupId decodeClientMessage(ClientMessage msg) {
+                    public RaftGroupId decodeClientMessage(ClientMessage msg) {
                         return RaftGroupId.readFrom(msg);
                     }
                 });
 
-        CPGroupId groupId = future1.join();
+        RaftGroupId groupId = future1.join();
 
         int dataSize2 = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(proxyName) + Bits.LONG_SIZE_IN_BYTES
                 + Bits.INT_SIZE_IN_BYTES;

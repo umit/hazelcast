@@ -16,8 +16,7 @@
 
 package com.hazelcast.cp.internal.datastructures.lock.proxy;
 
-import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.lock.FencedLock;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
@@ -28,6 +27,7 @@ import com.hazelcast.cp.internal.datastructures.lock.operation.TryLockOp;
 import com.hazelcast.cp.internal.datastructures.lock.operation.UnlockOp;
 import com.hazelcast.cp.internal.datastructures.spi.operation.DestroyRaftObjectOp;
 import com.hazelcast.cp.internal.session.ProxySessionManagerService;
+import com.hazelcast.cp.lock.FencedLock;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.ProxyService;
@@ -42,7 +42,7 @@ public class RaftFencedLockProxy extends AbstractRaftFencedLockProxy {
     private final RaftInvocationManager invocationManager;
     private final ProxyService proxyService;
 
-    public RaftFencedLockProxy(NodeEngine nodeEngine, CPGroupId groupId, String proxyName, String objectName) {
+    public RaftFencedLockProxy(NodeEngine nodeEngine, RaftGroupId groupId, String proxyName, String objectName) {
         super((ProxySessionManagerService) nodeEngine.getService(ProxySessionManagerService.SERVICE_NAME), groupId, proxyName,
                 objectName);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);

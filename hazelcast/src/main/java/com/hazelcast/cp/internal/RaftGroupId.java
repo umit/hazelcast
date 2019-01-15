@@ -32,20 +32,26 @@ import java.io.IOException;
 public final class RaftGroupId implements CPGroupId, IdentifiedDataSerializable {
 
     private String name;
+    private long term;
     private long commitIndex;
 
     public RaftGroupId() {
     }
 
-    public RaftGroupId(String name, long commitIndex) {
+    public RaftGroupId(String name, long term, long commitIndex) {
         assert name != null;
         this.name = name;
+        this.term = term;
         this.commitIndex = commitIndex;
     }
 
     @Override
     public String name() {
         return name;
+    }
+
+    public long term() {
+        return term;
     }
 
     @Override
@@ -56,12 +62,14 @@ public final class RaftGroupId implements CPGroupId, IdentifiedDataSerializable 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeUTF(name);
+        out.writeLong(term);
         out.writeLong(commitIndex);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         name = in.readUTF();
+        term = in.readLong();
         commitIndex = in.readLong();
     }
 
@@ -80,39 +88,49 @@ public final class RaftGroupId implements CPGroupId, IdentifiedDataSerializable 
         if (this == o) {
             return true;
         }
-        if (!(o instanceof RaftGroupId)) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
 
         RaftGroupId that = (RaftGroupId) o;
-        return commitIndex == that.commitIndex && name.equals(that.name);
+
+        if (term != that.term) {
+            return false;
+        }
+        if (commitIndex != that.commitIndex) {
+            return false;
+        }
+        return name.equals(that.name);
     }
 
     @Override
     public int hashCode() {
         int result = name.hashCode();
+        result = 31 * result + (int) (term ^ (term >>> 32));
         result = 31 * result + (int) (commitIndex ^ (commitIndex >>> 32));
         return result;
     }
 
     @Override
     public String toString() {
-        return "CPGroupId{" + "name='" + name + '\'' + ", commitIndex=" + commitIndex + '}';
+        return "CPGroupId{" + "name='" + name + '\'' + ", term= " + term + ", commitIndex=" + commitIndex + '}';
     }
 
     // ----- CLIENT CONVENIENCE METHODS -----
-    public static CPGroupId readFrom(ClientMessage message) {
+    public static RaftGroupId readFrom(ClientMessage message) {
         String name = message.getStringUtf8();
+        long term = message.getLong();
         long commitIndex = message.getLong();
-        return new RaftGroupId(name, commitIndex);
+        return new RaftGroupId(name, term, commitIndex);
     }
 
-    public static void writeTo(CPGroupId groupId, ClientMessage message) {
+    public static void writeTo(RaftGroupId groupId, ClientMessage message) {
         message.set(groupId.name());
+        message.set(groupId.term);
         message.set(groupId.id());
     }
 
-    public static int dataSize(CPGroupId groupId) {
-        return ParameterUtil.calculateDataSize(groupId.name()) + Bits.LONG_SIZE_IN_BYTES;
+    public static int dataSize(RaftGroupId groupId) {
+        return ParameterUtil.calculateDataSize(groupId.name()) + 2 * Bits.LONG_SIZE_IN_BYTES;
     }
 }

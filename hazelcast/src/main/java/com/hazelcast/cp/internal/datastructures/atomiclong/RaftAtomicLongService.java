@@ -18,13 +18,14 @@ package com.hazelcast.cp.internal.datastructures.atomiclong;
 
 import com.hazelcast.core.DistributedObject;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftGroupLifecycleAwareService;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.atomiclong.proxy.RaftAtomicLongProxy;
+import com.hazelcast.cp.internal.datastructures.spi.RaftManagedService;
 import com.hazelcast.cp.internal.datastructures.spi.RaftRemoteService;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
 import com.hazelcast.cp.internal.util.Tuple2;
-import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.exception.DistributedObjectDestroyedException;
 
@@ -45,7 +46,7 @@ import static java.util.Collections.newSetFromMap;
  * Contains Raft-based atomic long instances, implements snapshotting,
  * and creates proxies
  */
-public class RaftAtomicLongService implements ManagedService, RaftRemoteService, RaftGroupLifecycleAwareService,
+public class RaftAtomicLongService implements RaftManagedService, RaftRemoteService, RaftGroupLifecycleAwareService,
                                               SnapshotAwareService<RaftAtomicLongSnapshot> {
 
     /**
@@ -76,6 +77,12 @@ public class RaftAtomicLongService implements ManagedService, RaftRemoteService,
     @Override
     public void shutdown(boolean terminate) {
         atomicLongs.clear();
+    }
+
+    @Override
+    public void onCPSubsystemReset() {
+        atomicLongs.clear();
+        destroyedLongs.clear();
     }
 
     @Override
@@ -149,7 +156,7 @@ public class RaftAtomicLongService implements ManagedService, RaftRemoteService,
     @Override
     public DistributedObject createDistributedObject(String proxyName) {
         try {
-            CPGroupId groupId = raftService.createRaftGroupForProxy(proxyName);
+            RaftGroupId groupId = raftService.createRaftGroupForProxy(proxyName);
             return new RaftAtomicLongProxy(nodeEngine, groupId, proxyName, getObjectNameForProxy(proxyName));
         } catch (Exception e) {
             throw rethrow(e);

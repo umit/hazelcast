@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.datastructures.lock.proxy;
 
-import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockOwnershipState;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockService;
@@ -54,7 +54,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
     // thread id -> id of the session that has acquired the lock
     private final Map<Long, Long> lockedSessionIds = new ConcurrentHashMap<Long, Long>();
 
-    public AbstractRaftFencedLockProxy(AbstractProxySessionManager sessionManager, CPGroupId groupId, String proxyName,
+    public AbstractRaftFencedLockProxy(AbstractProxySessionManager sessionManager, RaftGroupId groupId, String proxyName,
                                        String objectName) {
         super(sessionManager, groupId);
         this.proxyName = proxyName;

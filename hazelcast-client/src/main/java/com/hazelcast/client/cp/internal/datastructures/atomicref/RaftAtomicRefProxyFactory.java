@@ -26,7 +26,6 @@ import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.spi.impl.ClientProxyFactoryWithContext;
 import com.hazelcast.client.util.ClientDelegatingFuture;
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.spi.client.RaftGroupTaskFactoryProvider;
 import com.hazelcast.spi.InternalCompletableFuture;
@@ -59,15 +58,15 @@ public class RaftAtomicRefProxyFactory extends ClientProxyFactoryWithContext imp
         String objectName = getObjectNameForProxy(proxyName);
         ClientInvocationFuture f = new ClientInvocation(client, msg, objectName).invoke();
 
-        InternalCompletableFuture<CPGroupId> future = new ClientDelegatingFuture<CPGroupId>(f, client.getSerializationService(),
+        InternalCompletableFuture<RaftGroupId> future = new ClientDelegatingFuture<RaftGroupId>(f, client.getSerializationService(),
                 new ClientMessageDecoder() {
                     @Override
-                    public CPGroupId decodeClientMessage(ClientMessage msg) {
+                    public RaftGroupId decodeClientMessage(ClientMessage msg) {
                         return RaftGroupId.readFrom(msg);
                     }
                 });
 
-        CPGroupId groupId = future.join();
+        RaftGroupId groupId = future.join();
         return new RaftAtomicRefProxy(context, groupId, proxyName, objectName);
     }
 }

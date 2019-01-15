@@ -57,7 +57,7 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
 
     private final FencedLockImpl lock;
 
-    RaftFencedLockProxy(ClientContext context, CPGroupId groupId, String proxyName, String objectName) {
+    RaftFencedLockProxy(ClientContext context, RaftGroupId groupId, String proxyName, String objectName) {
         super(RaftLockService.SERVICE_NAME, proxyName, context);
         this.lock = new FencedLockImpl(getClient().getProxySessionManager(), groupId, proxyName, objectName);
     }
@@ -152,7 +152,7 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
         return new ClientDelegatingFuture<T>(future, getContext().getSerializationService(), decoder);
     }
 
-    private static ClientMessage encodeRequest(int messageTypeId, CPGroupId groupId, String name, long sessionId, long threadId,
+    private static ClientMessage encodeRequest(int messageTypeId, RaftGroupId groupId, String name, long sessionId, long threadId,
                                                UUID invUid) {
         int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 4;
         ClientMessage msg = prepareClientMessage(groupId, name, dataSize, messageTypeId);
@@ -161,7 +161,7 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
         return msg;
     }
 
-    private static ClientMessage encodeRequest(int messageTypeId, CPGroupId groupId, String name, long sessionId,
+    private static ClientMessage encodeRequest(int messageTypeId, RaftGroupId groupId, String name, long sessionId,
                                        long threadId, UUID invUid, long val) {
         int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 5;
         ClientMessage msg = prepareClientMessage(groupId, name, dataSize, messageTypeId);
@@ -178,7 +178,7 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
         msg.set(invUid.getMostSignificantBits());
     }
 
-    private static ClientMessage encodeRequest(int messageTypeId, CPGroupId groupId, String name, long sessionId, long threadId) {
+    private static ClientMessage encodeRequest(int messageTypeId, RaftGroupId groupId, String name, long sessionId, long threadId) {
         int dataSize = ClientMessage.HEADER_SIZE + dataSize(groupId) + calculateDataSize(name) + Bits.LONG_SIZE_IN_BYTES * 2;
         ClientMessage msg = prepareClientMessage(groupId, name, dataSize, messageTypeId);
         msg.set(sessionId);
@@ -187,7 +187,7 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
         return msg;
     }
 
-    private static ClientMessage prepareClientMessage(CPGroupId groupId, String name, int dataSize, int messageTypeId) {
+    private static ClientMessage prepareClientMessage(RaftGroupId groupId, String name, int dataSize, int messageTypeId) {
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
         msg.setMessageType(messageTypeId);
         msg.setRetryable(false);
@@ -223,7 +223,7 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
     }
 
     private class FencedLockImpl extends AbstractRaftFencedLockProxy {
-        FencedLockImpl(AbstractProxySessionManager sessionManager, CPGroupId groupId, String proxyName, String objectName) {
+        FencedLockImpl(AbstractProxySessionManager sessionManager, RaftGroupId groupId, String proxyName, String objectName) {
             super(sessionManager, groupId, proxyName, objectName);
         }
 

@@ -59,14 +59,14 @@ public class RaftAtomicLongProxyFactory extends ClientProxyFactoryWithContext im
         String objectName = getObjectNameForProxy(proxyName);
         ClientInvocationFuture f = new ClientInvocation(client, msg, objectName).invoke();
 
-        InternalCompletableFuture<CPGroupId> future = new ClientDelegatingFuture<CPGroupId>(f, client.getSerializationService(),
+        InternalCompletableFuture<RaftGroupId> future = new ClientDelegatingFuture<RaftGroupId>(f, client.getSerializationService(),
                 new ClientMessageDecoder() {
                     @Override
                     public CPGroupId decodeClientMessage(ClientMessage msg) {
                         return RaftGroupId.readFrom(msg);
                     }
                 });
-        CPGroupId groupId = future.join();
+        RaftGroupId groupId = future.join();
         return new RaftAtomicLongProxy(context, groupId, proxyName, objectName);
     }
 

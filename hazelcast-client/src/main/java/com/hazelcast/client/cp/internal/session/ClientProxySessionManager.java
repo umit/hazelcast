@@ -39,6 +39,7 @@ import com.hazelcast.nio.Bits;
 import com.hazelcast.spi.InternalCompletableFuture;
 
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -94,7 +95,7 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     }
 
     @Override
-    protected long generateThreadId(CPGroupId groupId) {
+    protected long generateThreadId(RaftGroupId groupId) {
         int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
 
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
@@ -115,7 +116,7 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     }
 
     @Override
-    protected SessionResponse requestNewSession(CPGroupId groupId) {
+    protected SessionResponse requestNewSession(RaftGroupId groupId) {
         String clientName = client.getName();
         int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + ParameterUtil.calculateDataSize(clientName);
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
@@ -136,7 +137,7 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     }
 
     @Override
-    protected ICompletableFuture<Object> heartbeat(CPGroupId groupId, long sessionId) {
+    protected ICompletableFuture<Object> heartbeat(RaftGroupId groupId, long sessionId) {
         int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
         msg.setMessageType(HEARTBEAT_TYPE);
@@ -150,7 +151,7 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     }
 
     @Override
-    protected ICompletableFuture<Object> closeSession(CPGroupId groupId, Long sessionId) {
+    protected ICompletableFuture<Object> closeSession(RaftGroupId groupId, Long sessionId) {
         int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
         msg.setMessageType(CLOSE_SESSION_TYPE);
@@ -164,8 +165,8 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     }
 
     @Override
-    public Map<CPGroupId, ICompletableFuture<Object>> shutdown() {
-        Map<CPGroupId, ICompletableFuture<Object>> futures = super.shutdown();
+    public Map<RaftGroupId, ICompletableFuture<Object>> shutdown() {
+        Map<RaftGroupId, ICompletableFuture<Object>> futures = super.shutdown();
 
         ILogger logger = client.getLoggingService().getLogger(getClass());
 
@@ -174,7 +175,7 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
         while (remainingTimeNanos > 0) {
             int closed = 0;
 
-            for (Map.Entry<CPGroupId, ICompletableFuture<Object>> entry : futures.entrySet()) {
+            for (Entry<RaftGroupId, ICompletableFuture<Object>> entry : futures.entrySet()) {
                 CPGroupId groupId = entry.getKey();
                 ICompletableFuture<Object> f = entry.getValue();
                 if (f.isDone()) {

@@ -24,6 +24,8 @@ import com.hazelcast.cp.CPGroup;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.CPMember;
 import com.hazelcast.cp.CPSubsystemManagementService;
+import com.hazelcast.cp.internal.datastructures.spi.RaftManagedService;
+import com.hazelcast.cp.internal.datastructures.spi.RaftRemoteService;
 import com.hazelcast.cp.internal.exception.CannotRemoveCPMemberException;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
 import com.hazelcast.cp.internal.raft.impl.RaftIntegration;
@@ -60,6 +62,8 @@ import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.PreJoinAwareService;
 import com.hazelcast.spi.impl.NodeEngineImpl;
+import com.hazelcast.spi.impl.proxyservice.InternalProxyService;
+import com.hazelcast.spi.impl.servicemanager.ServiceInfo;
 import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.UuidUtil;
 import com.hazelcast.util.executor.ManagedExecutorService;
@@ -174,6 +178,17 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
      */
     @Override
     public void resetAndInit() {
+        for (ServiceInfo serviceInfo : nodeEngine.getServiceInfos(RaftRemoteService.class)) {
+            InternalProxyService proxyService = nodeEngine.getProxyService();
+            for (String objectName : proxyService.getDistributedObjectNames(serviceInfo.getName())) {
+                proxyService.destroyDistributedObject(serviceInfo.getName(), objectName);
+            }
+
+            if (serviceInfo.getService() instanceof RaftManagedService) {
+                ((RaftManagedService) serviceInfo.getService()).onCPSubsystemReset();
+            }
+        }
+
         // we should clear the current raft state before resetting the metadata manager
         for (RaftNode node : nodes.values()) {
             node.forceSetTerminatedStatus();
@@ -182,7 +197,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         destroyedGroupIds.clear();
 
         invocationManager.reset();
-        metadataGroupManager.reset();
+        metadataGroupManager.resetAndInit();
     }
 
     @Override
@@ -599,11 +614,11 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
     }
 
-    public CPGroupId createRaftGroupForProxy(String name) {
+    public RaftGroupId createRaftGroupForProxy(String name) {
         String groupName = getGroupNameForProxy(name);
 
         try {
-            CPGroupId groupId = getGroupIdForProxy(name);
+            RaftGroupId groupId = getGroupIdForProxy(name);
             if (groupId != null) {
                 return groupId;
             }
@@ -617,10 +632,10 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
     }
 
-    public CPGroupId getGroupIdForProxy(String name) {
+    public RaftGroupId getGroupIdForProxy(String name) {
         String groupName = getGroupNameForProxy(name);
         RaftOp op = new GetActiveRaftGroupByNameOp(groupName);
-        CPGroup group = invocationManager.<CPGroup>invoke(METADATA_GROUP_ID, op).join();
+        CPGroupInfo group = invocationManager.<CPGroupInfo>invoke(METADATA_GROUP_ID, op).join();
         return group != null ? group.id() : null;
     }
 

@@ -54,10 +54,10 @@ class RaftCountDownLatchProxy extends ClientProxy implements ICountDownLatch {
     private static final ClientMessageDecoder INT_RESPONSE_DECODER = new IntResponseDecoder();
     private static final ClientMessageDecoder BOOLEAN_RESPONSE_DECODER = new BooleanResponseDecoder();
 
-    private final CPGroupId groupId;
+    private final RaftGroupId groupId;
     private final String objectName;
 
-    RaftCountDownLatchProxy(ClientContext context, CPGroupId groupId, String proxyName, String objectName) {
+    RaftCountDownLatchProxy(ClientContext context, RaftGroupId groupId, String proxyName, String objectName) {
         super(RaftCountDownLatchService.SERVICE_NAME, proxyName, context);
         this.groupId = groupId;
         this.objectName = objectName;
@@ -157,7 +157,7 @@ class RaftCountDownLatchProxy extends ClientProxy implements ICountDownLatch {
         return new ClientDelegatingFuture<T>(future, getContext().getSerializationService(), decoder);
     }
 
-    private ClientMessage prepareClientMessage(CPGroupId groupId, String name, int dataSize, int messageTypeId) {
+    private ClientMessage prepareClientMessage(RaftGroupId groupId, String name, int dataSize, int messageTypeId) {
         ClientMessage msg = ClientMessage.createForEncode(dataSize);
         msg.setMessageType(messageTypeId);
         msg.setRetryable(false);
