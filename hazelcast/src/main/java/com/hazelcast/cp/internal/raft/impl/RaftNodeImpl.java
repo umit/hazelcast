@@ -274,11 +274,15 @@ public class RaftNodeImpl implements RaftNode {
         }
 
         this.status = status;
-        if (status == ACTIVE) {
-            logger.info("Status is set to: " + status);
-        } else {
-            logger.warning("Status is set to: " + status);
+
+        if (logger.isFineEnabled()) {
+            if (status == ACTIVE) {
+                logger.fine("Status is set to: " + status);
+            } else {
+                logger.warning("Status is set to: " + status);
+            }
         }
+
         raftIntegration.onNodeStatusChange(status);
     }
 
@@ -711,7 +715,11 @@ public class RaftNodeImpl implements RaftNode {
                 state.membersLogIndex(), state.members());
         log.setSnapshot(snapshotEntry);
 
-        logger.info("Snapshot: "  + snapshotEntry + " is taken.");
+        if (logger.isFineEnabled()) {
+            logger.fine("Snapshot: "  + snapshotEntry + " is taken.");
+        } else {
+            logger.info("Snapshot is taken at commit index: " + commitIndex);
+        }
     }
 
     /**
@@ -748,7 +756,11 @@ public class RaftNodeImpl implements RaftNode {
 
         invalidateFuturesUntil(snapshot.index());
 
-        logger.info("Snapshot: " + snapshot + " is installed.");
+        if (logger.isFineEnabled()) {
+            logger.fine("Snapshot: " + snapshot + " is installed.");
+        } else {
+            logger.info("Snapshot is installed at commit index: " + commitIndex);
+        }
 
         return true;
     }

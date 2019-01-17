@@ -106,8 +106,10 @@ public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTas
             leaderState.setMatchIndex(follower, followerLastLogIndex);
             leaderState.setNextIndex(follower, newNextIndex);
         } else if (followerLastLogIndex < matchIndex) {
-            logger.info("Will not update match index for follower: " + follower + ". follower last log index: "
-                    + followerLastLogIndex + ", match index: " + matchIndex);
+            if (logger.isFineEnabled()) {
+                logger.fine("Will not update match index for follower: " + follower + ". follower last log index: "
+                        + followerLastLogIndex + ", match index: " + matchIndex);
+            }
         }
     }
 

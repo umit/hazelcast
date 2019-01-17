@@ -57,7 +57,9 @@ public class PreVoteResponseHandlerTask extends AbstractResponseHandlerTask {
 
         CandidateState preCandidateState = state.preCandidateState();
         if (preCandidateState == null) {
-            logger.fine("Ignoring " + resp + ". We are not interested in pre-votes anymore.");
+            if (logger.isFineEnabled()) {
+                logger.fine("Ignoring " + resp + ". We are not interested in pre-votes anymore.");
+            }
             return;
         }
 

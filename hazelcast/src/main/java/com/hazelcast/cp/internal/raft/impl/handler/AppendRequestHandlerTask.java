@@ -68,7 +68,10 @@ public class AppendRequestHandlerTask extends RaftNodeStatusAwareTask implements
 
         // Reply false if term < currentTerm (§5.1)
         if (req.term() < state.term()) {
-            logger.warning("Stale " + req + " received in current term: " + state.term());
+            if (logger.isFineEnabled()) {
+                logger.warning("Stale " + req + " received in current term: " + state.term());
+            }
+
             raftNode.send(createFailureResponse(state.term()), req.leader());
             return;
         }
@@ -102,7 +105,10 @@ public class AppendRequestHandlerTask extends RaftNodeStatusAwareTask implements
                 // Reply false if log does not contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
                 LogEntry prevLog = raftLog.getLogEntry(req.prevLogIndex());
                 if (prevLog == null) {
-                    logger.warning("Failed to get previous log index for " + req + ", last log index: " + lastLogIndex);
+                    if (logger.isFineEnabled()) {
+                        logger.warning("Failed to get previous log index for " + req + ", last log index: " + lastLogIndex);
+                    }
+
                     raftNode.send(createFailureResponse(req.term()), req.leader());
                     return;
                 }
@@ -110,7 +116,10 @@ public class AppendRequestHandlerTask extends RaftNodeStatusAwareTask implements
             }
 
             if (req.prevLogTerm() != prevLogTerm) {
-                logger.warning("Previous log term of " + req + " is different than ours: " + prevLogTerm);
+                if (logger.isFineEnabled()) {
+                    logger.warning("Previous log term of " + req + " is different than ours: " + prevLogTerm);
+                }
+
                 raftNode.send(createFailureResponse(req.term()), req.leader());
                 return;
             }

@@ -60,7 +60,10 @@ public class InstallSnapshotHandlerTask extends RaftNodeStatusAwareTask implemen
 
         // Reply false if term < currentTerm (§5.1)
         if (req.term() < state.term()) {
-            logger.warning("Stale snapshot: " + req + " received in current term: " + state.term());
+            if (logger.isFineEnabled()) {
+                logger.warning("Stale snapshot: " + req + " received in current term: " + state.term());
+            }
+
             AppendFailureResponse resp = new AppendFailureResponse(raftNode.getLocalMember(), state.term(), snapshot.index() + 1);
             raftNode.send(resp, req.leader());
             return;
@@ -69,8 +72,10 @@ public class InstallSnapshotHandlerTask extends RaftNodeStatusAwareTask implemen
         // Transform into follower if a newer term is seen or another node wins the election of the current term
         if (req.term() > state.term() || state.role() != FOLLOWER) {
             // If RPC request or response contains term T > currentTerm: set currentTerm = T, convert to follower (§5.1)
+
             logger.info("Demoting to FOLLOWER from current role: " + state.role() + ", term: " + state.term()
                     + " to new term: " + req.term() + " and leader: " + req.leader());
+
             state.toFollower(req.term());
             raftNode.printMemberState();
         }
