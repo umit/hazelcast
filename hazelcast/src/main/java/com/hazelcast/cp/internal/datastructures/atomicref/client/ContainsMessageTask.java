@@ -17,34 +17,81 @@
 package com.hazelcast.cp.internal.datastructures.atomicref.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.impl.protocol.codec.CPAtomicRefContainsCodec;
+import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
+import com.hazelcast.core.ExecutionCallback;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.datastructures.atomicref.RaftAtomicRefService;
+import com.hazelcast.cp.internal.datastructures.atomicref.operation.ContainsOp;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.cp.internal.RaftInvocationManager;
-import com.hazelcast.cp.internal.datastructures.atomicref.operation.ContainsOp;
+
+import java.security.Permission;
 
 /**
  * Client message task for {@link ContainsOp}
  */
-public class ContainsMessageTask extends AbstractAtomicRefMessageTask {
+public class ContainsMessageTask extends AbstractMessageTask<CPAtomicRefContainsCodec.RequestParameters>
+        implements ExecutionCallback<Boolean> {
 
-    private Data value;
-
-    ContainsMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public ContainsMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
-        RaftInvocationManager invocationManager = getRaftInvocationManager();
-        invocationManager.invoke(groupId, new ContainsOp(name, value)).andThen(this);
+        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
+        RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+        service.getInvocationManager()
+               .<Boolean>invoke(groupId, new ContainsOp(parameters.name, parameters.value))
+               .andThen(this);
     }
 
     @Override
-    protected Object decodeClientMessage(ClientMessage clientMessage) {
-        super.decodeClientMessage(clientMessage);
-        value = decodeNullableData(clientMessage);
+    protected CPAtomicRefContainsCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPAtomicRefContainsCodec.decodeRequest(clientMessage);
+    }
 
+    @Override
+    protected ClientMessage encodeResponse(Object response) {
+        return CPAtomicRefContainsCodec.encodeResponse((Boolean) response);
+    }
+
+
+    @Override
+    public String getServiceName() {
+        return RaftAtomicRefService.SERVICE_NAME;
+    }
+
+    @Override
+    public Permission getRequiredPermission() {
         return null;
+    }
+
+    @Override
+    public String getDistributedObjectName() {
+        return parameters.name;
+    }
+
+    @Override
+    public String getMethodName() {
+        return "contains";
+    }
+
+    @Override
+    public Object[] getParameters() {
+        return new Object[0];
+    }
+
+
+    @Override
+    public void onResponse(Boolean response) {
+        sendResponse(response);
+    }
+
+    @Override
+    public void onFailure(Throwable t) {
+        handleProcessingFailure(t);
     }
 }

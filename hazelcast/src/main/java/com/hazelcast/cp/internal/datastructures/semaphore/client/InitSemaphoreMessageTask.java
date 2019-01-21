@@ -17,32 +17,79 @@
 package com.hazelcast.cp.internal.datastructures.semaphore.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.impl.protocol.codec.CPSemaphoreInitCodec;
+import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
+import com.hazelcast.core.ExecutionCallback;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
+import com.hazelcast.cp.internal.datastructures.semaphore.operation.InitSemaphoreOp;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.cp.internal.RaftInvocationManager;
-import com.hazelcast.cp.internal.datastructures.semaphore.operation.InitSemaphoreOp;
+
+import java.security.Permission;
 
 /**
  * Client message task for {@link InitSemaphoreOp}
  */
-public class InitSemaphoreMessageTask extends AbstractSemaphoreMessageTask {
+public class InitSemaphoreMessageTask extends AbstractMessageTask<CPSemaphoreInitCodec.RequestParameters>
+        implements ExecutionCallback<Boolean> {
 
-    private int permits;
-
-    InitSemaphoreMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public InitSemaphoreMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
-        RaftInvocationManager invocationManager = getRaftInvocationManager();
-        invocationManager.invoke(groupId, new InitSemaphoreOp(name, permits)).andThen(this);
+        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
+        RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+        service.getInvocationManager()
+               .<Boolean>invoke(groupId, new InitSemaphoreOp(parameters.name, parameters.permits))
+               .andThen(this);
     }
 
     @Override
-    protected Object decodeClientMessage(ClientMessage clientMessage) {
-        super.decodeClientMessage(clientMessage);
-        permits = clientMessage.getInt();
+    protected CPSemaphoreInitCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPSemaphoreInitCodec.decodeRequest(clientMessage);
+    }
+
+    @Override
+    protected ClientMessage encodeResponse(Object response) {
+        return CPSemaphoreInitCodec.encodeResponse((Boolean) response);
+    }
+
+    @Override
+    public String getServiceName() {
+        return RaftSemaphoreService.SERVICE_NAME;
+    }
+
+    @Override
+    public Permission getRequiredPermission() {
         return null;
+    }
+
+    @Override
+    public String getDistributedObjectName() {
+        return parameters.name;
+    }
+
+    @Override
+    public String getMethodName() {
+        return "init";
+    }
+
+    @Override
+    public Object[] getParameters() {
+        return new Object[0];
+    }
+
+    @Override
+    public void onResponse(Boolean response) {
+        sendResponse(response);
+    }
+
+    @Override
+    public void onFailure(Throwable t) {
+        handleProcessingFailure(t);
     }
 }

@@ -17,33 +17,79 @@
 package com.hazelcast.cp.internal.datastructures.countdownlatch.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.impl.protocol.codec.CPCountDownLatchTrySetCountCodec;
+import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
+import com.hazelcast.core.ExecutionCallback;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
+import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.TrySetCountOp;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.cp.internal.RaftInvocationManager;
-import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.TrySetCountOp;
+
+import java.security.Permission;
 
 /**
  * Client message task for {@link TrySetCountOp}
  */
-public class TrySetCountMessageTask extends AbstractCountDownLatchMessageTask {
+public class TrySetCountMessageTask extends AbstractMessageTask<CPCountDownLatchTrySetCountCodec.RequestParameters>
+        implements ExecutionCallback<Boolean> {
 
-    private int count;
-
-    TrySetCountMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public TrySetCountMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
-        RaftInvocationManager invocationManager = getRaftInvocationManager();
-        invocationManager.invoke(groupId, new TrySetCountOp(name, count)).andThen(this);
+        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
+        RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+        service.getInvocationManager()
+                .<Boolean>invoke(groupId, new TrySetCountOp(parameters.name, parameters.count))
+                .andThen(this);
     }
 
     @Override
-    protected Object decodeClientMessage(ClientMessage clientMessage) {
-        super.decodeClientMessage(clientMessage);
-        count = clientMessage.getInt();
+    protected CPCountDownLatchTrySetCountCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPCountDownLatchTrySetCountCodec.decodeRequest(clientMessage);
+    }
+
+    @Override
+    protected ClientMessage encodeResponse(Object response) {
+        return CPCountDownLatchTrySetCountCodec.encodeResponse((Boolean) response);
+    }
+
+    @Override
+    public String getServiceName() {
+        return RaftCountDownLatchService.SERVICE_NAME;
+    }
+
+    @Override
+    public Permission getRequiredPermission() {
         return null;
     }
 
+    @Override
+    public String getDistributedObjectName() {
+        return parameters.name;
+    }
+
+    @Override
+    public String getMethodName() {
+        return "trySetCount";
+    }
+
+    @Override
+    public Object[] getParameters() {
+        return new Object[0];
+    }
+
+    @Override
+    public void onResponse(Boolean response) {
+        sendResponse(response);
+    }
+
+    @Override
+    public void onFailure(Throwable t) {
+        handleProcessingFailure(t);
+    }
 }

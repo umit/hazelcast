@@ -14,27 +14,28 @@
  * limitations under the License.
  */
 
-package com.hazelcast.cp.internal.session.client;
+package com.hazelcast.cp.internal.datastructures.spi.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.client.impl.protocol.codec.CPSessionCloseSessionCodec;
+import com.hazelcast.client.impl.protocol.codec.CPGroupDestroyCPObjectCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
-import com.hazelcast.cp.internal.session.operation.CloseSessionOp;
+import com.hazelcast.cp.internal.datastructures.spi.operation.DestroyRaftObjectOp;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
 
 import java.security.Permission;
 
+
 /**
- * Client message task for {@link CloseSessionOp}
+ * Client message task for destroying Raft objects
  */
-public class CloseSessionMessageTask extends AbstractMessageTask<CPSessionCloseSessionCodec.RequestParameters>
+public class DestroyRaftObjectMessageTask extends AbstractMessageTask<CPGroupDestroyCPObjectCodec.RequestParameters>
         implements ExecutionCallback<Object> {
 
-    public CloseSessionMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public DestroyRaftObjectMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
@@ -43,28 +44,28 @@ public class CloseSessionMessageTask extends AbstractMessageTask<CPSessionCloseS
         CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         service.getInvocationManager()
-               .invoke(groupId, new CloseSessionOp(parameters.sessionId))
+               .invoke(groupId, new DestroyRaftObjectOp(parameters.serviceName, parameters.objectName))
                .andThen(this);
     }
 
     @Override
-    protected CPSessionCloseSessionCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
-        return CPSessionCloseSessionCodec.decodeRequest(clientMessage);
+    protected CPGroupDestroyCPObjectCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPGroupDestroyCPObjectCodec.decodeRequest(clientMessage);
     }
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        return CPSessionCloseSessionCodec.encodeResponse((Boolean) response);
+        return CPGroupDestroyCPObjectCodec.encodeResponse();
     }
 
     @Override
     public String getServiceName() {
-        return RaftService.SERVICE_NAME;
+        return parameters.serviceName;
     }
 
     @Override
     public String getDistributedObjectName() {
-        return null;
+        return parameters.objectName;
     }
 
     @Override
@@ -74,12 +75,12 @@ public class CloseSessionMessageTask extends AbstractMessageTask<CPSessionCloseS
 
     @Override
     public String getMethodName() {
-        return null;
+        return "destroyRaftObject";
     }
 
     @Override
     public Object[] getParameters() {
-        return new Object[0];
+        return new Object[] {parameters.serviceName, parameters.objectName};
     }
 
     @Override
@@ -91,4 +92,6 @@ public class CloseSessionMessageTask extends AbstractMessageTask<CPSessionCloseS
     public void onFailure(Throwable t) {
         handleProcessingFailure(t);
     }
+
 }
+

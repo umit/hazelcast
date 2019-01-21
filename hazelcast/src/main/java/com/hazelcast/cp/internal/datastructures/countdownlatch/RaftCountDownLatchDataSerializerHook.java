@@ -22,7 +22,7 @@ import com.hazelcast.nio.serialization.DataSerializableFactory;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.AwaitOp;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.CountDownOp;
-import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.GetRemainingCountOp;
+import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.GetCountOp;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.GetRoundOp;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.TrySetCountOp;
 
@@ -39,7 +39,7 @@ public class RaftCountDownLatchDataSerializerHook implements DataSerializerHook 
     public static final int AWAIT_INVOCATION_KEY = 3;
     public static final int AWAIT_OP = 4;
     public static final int COUNT_DOWN_OP = 5;
-    public static final int GET_REMAINING_COUNT_OP = 6;
+    public static final int GET_COUNT_OP = 6;
     public static final int GET_ROUND_OP = 7;
     public static final int TRY_SET_COUNT_OP = 8;
 
@@ -65,8 +65,8 @@ public class RaftCountDownLatchDataSerializerHook implements DataSerializerHook 
                         return new AwaitOp();
                     case COUNT_DOWN_OP:
                         return new CountDownOp();
-                    case GET_REMAINING_COUNT_OP:
-                        return new GetRemainingCountOp();
+                    case GET_COUNT_OP:
+                        return new GetCountOp();
                     case GET_ROUND_OP:
                         return new GetRoundOp();
                     case TRY_SET_COUNT_OP:

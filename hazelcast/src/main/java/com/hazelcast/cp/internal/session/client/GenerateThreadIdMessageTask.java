@@ -14,19 +14,17 @@
  * limitations under the License.
  */
 
-package com.hazelcast.cp.internal.datastructures.semaphore.client;
+package com.hazelcast.cp.internal.session.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.impl.protocol.codec.CPSessionGenerateThreadIdCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.RaftGroupId;
-import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.GenerateThreadIdOp;
 import com.hazelcast.instance.Node;
-import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
 
 import java.security.Permission;
@@ -34,47 +32,34 @@ import java.security.Permission;
 /**
  * Client message task for {@link GenerateThreadIdOp}
  */
-public class GenerateThreadIdMessageTask extends AbstractMessageTask implements ExecutionCallback {
+public class GenerateThreadIdMessageTask extends AbstractMessageTask<CPSessionGenerateThreadIdCodec.RequestParameters>
+        implements ExecutionCallback<Long> {
 
-    protected CPGroupId groupId;
-    protected long initialValue;
-
-    GenerateThreadIdMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public GenerateThreadIdMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
-    protected Object decodeClientMessage(ClientMessage clientMessage) {
-        groupId = RaftGroupId.readFrom(clientMessage);
-        initialValue = clientMessage.getLong();
-        return null;
+    protected void processMessage() {
+        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
+        RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
+        raftService.getInvocationManager()
+                   .<Long>invoke(groupId, new GenerateThreadIdOp(parameters.initialValue))
+                   .andThen(this);
     }
 
     @Override
-    protected void processMessage() {
-        RaftInvocationManager invocationManager = getRaftInvocationManager();
-        invocationManager.invoke(groupId, new GenerateThreadIdOp(initialValue)).andThen(this);
-    }
-
-    private RaftInvocationManager getRaftInvocationManager() {
-        RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
-        return raftService.getInvocationManager();
+    protected CPSessionGenerateThreadIdCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPSessionGenerateThreadIdCodec.decodeRequest(clientMessage);
     }
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        if (response instanceof Long) {
-            int dataSize = ClientMessage.HEADER_SIZE + Bits.LONG_SIZE_IN_BYTES;
-            ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
-            clientMessage.set((Long) response);
-            clientMessage.updateFrameLength();
-            return clientMessage;
-        }
-        throw new IllegalArgumentException("Unknown response: " + response);
+        return CPSessionGenerateThreadIdCodec.encodeResponse((Long) response);
     }
 
     @Override
-    public void onResponse(Object response) {
+    public void onResponse(Long response) {
         sendResponse(response);
     }
 

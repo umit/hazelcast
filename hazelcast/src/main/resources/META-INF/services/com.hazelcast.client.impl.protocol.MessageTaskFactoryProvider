@@ -1,7 +1,0 @@
-com.hazelcast.cp.internal.datastructures.atomiclong.client.AtomicLongMessageTaskFactoryProvider
-com.hazelcast.cp.internal.datastructures.atomicref.client.AtomicRefMessageTaskFactoryProvider
-com.hazelcast.cp.internal.datastructures.lock.client.LockMessageTaskFactoryProvider
-com.hazelcast.cp.internal.session.client.SessionMessageTaskFactoryProvider
-com.hazelcast.cp.internal.datastructures.countdownlatch.client.CountDownLatchMessageTaskFactoryProvider
-com.hazelcast.cp.internal.datastructures.semaphore.client.SemaphoreMessageTaskFactoryProvider
-com.hazelcast.cp.internal.datastructures.spi.client.RaftGroupTaskFactoryProvider

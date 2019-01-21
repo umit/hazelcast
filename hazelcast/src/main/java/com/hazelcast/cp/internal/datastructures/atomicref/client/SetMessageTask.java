@@ -17,36 +17,79 @@
 package com.hazelcast.cp.internal.datastructures.atomicref.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.impl.protocol.codec.CPAtomicRefSetCodec;
+import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
+import com.hazelcast.core.ExecutionCallback;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.datastructures.atomicref.RaftAtomicRefService;
+import com.hazelcast.cp.internal.datastructures.atomicref.operation.SetOp;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.cp.internal.RaftInvocationManager;
-import com.hazelcast.cp.internal.datastructures.atomicref.operation.SetOp;
+
+import java.security.Permission;
 
 /**
  * Client message task for {@link SetOp}
  */
-public class SetMessageTask extends AbstractAtomicRefMessageTask {
+public class SetMessageTask extends AbstractMessageTask<CPAtomicRefSetCodec.RequestParameters>
+        implements ExecutionCallback<Object> {
 
-    private Data newValue;
-    private boolean returnOldValue;
-
-    SetMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public SetMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
-        RaftInvocationManager invocationManager = getRaftInvocationManager();
-        invocationManager.invoke(groupId, new SetOp(name, newValue, returnOldValue)).andThen(this);
+        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
+        RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+        service.getInvocationManager()
+               .invoke(groupId, new SetOp(parameters.name, parameters.newValue, parameters.returnOldValue))
+               .andThen(this);
     }
 
     @Override
-    protected Object decodeClientMessage(ClientMessage clientMessage) {
-        super.decodeClientMessage(clientMessage);
-        newValue = decodeNullableData(clientMessage);
-        returnOldValue = clientMessage.getBoolean();
+    protected CPAtomicRefSetCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPAtomicRefSetCodec.decodeRequest(clientMessage);
+    }
 
+    @Override
+    protected ClientMessage encodeResponse(Object response) {
+        return CPAtomicRefSetCodec.encodeResponse(serializationService.toData(response));
+    }
+
+    @Override
+    public String getServiceName() {
+        return RaftAtomicRefService.SERVICE_NAME;
+    }
+
+    @Override
+    public Permission getRequiredPermission() {
         return null;
+    }
+
+    @Override
+    public String getDistributedObjectName() {
+        return parameters.name;
+    }
+
+    @Override
+    public String getMethodName() {
+        return "set";
+    }
+
+    @Override
+    public Object[] getParameters() {
+        return new Object[0];
+    }
+
+    @Override
+    public void onResponse(Object response) {
+        sendResponse(response);
+    }
+
+    @Override
+    public void onFailure(Throwable t) {
+        handleProcessingFailure(t);
     }
 }

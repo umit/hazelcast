@@ -17,39 +17,81 @@
 package com.hazelcast.cp.internal.datastructures.countdownlatch.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.cp.internal.RaftInvocationManager;
+import com.hazelcast.client.impl.protocol.codec.CPCountDownLatchAwaitCodec;
+import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
+import com.hazelcast.core.ExecutionCallback;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.AwaitOp;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
 
+import java.security.Permission;
 import java.util.UUID;
-
-import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
 
 /**
  * Client message task for {@link AwaitOp}
  */
-public class AwaitMessageTask extends AbstractCountDownLatchMessageTask {
+public class AwaitMessageTask extends AbstractMessageTask<CPCountDownLatchAwaitCodec.RequestParameters>
+        implements ExecutionCallback<Boolean> {
 
-    private UUID invocationUid;
-    private long timeoutMillis;
-
-    AwaitMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public AwaitMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
-        RaftInvocationManager invocationManager = getRaftInvocationManager();
-        invocationManager.invoke(groupId, new AwaitOp(name, invocationUid, timeoutMillis)).andThen(this);
+        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
+        UUID invocationUid = nodeEngine.toObject(parameters.invocationUid);
+        RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+        service.getInvocationManager()
+               .<Boolean>invoke(groupId, new AwaitOp(parameters.name, invocationUid, parameters.timeout))
+               .andThen(this);
     }
 
     @Override
-    protected Object decodeClientMessage(ClientMessage clientMessage) {
-        super.decodeClientMessage(clientMessage);
-        invocationUid = readUUID(clientMessage);
-        timeoutMillis = clientMessage.getLong();
+    protected CPCountDownLatchAwaitCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPCountDownLatchAwaitCodec.decodeRequest(clientMessage);
+    }
+
+    @Override
+    protected ClientMessage encodeResponse(Object response) {
+        return CPCountDownLatchAwaitCodec.encodeResponse((Boolean) response);
+    }
+
+    @Override
+    public String getServiceName() {
+        return RaftCountDownLatchService.SERVICE_NAME;
+    }
+
+    @Override
+    public Permission getRequiredPermission() {
         return null;
     }
 
+    @Override
+    public String getDistributedObjectName() {
+        return parameters.name;
+    }
+
+    @Override
+    public String getMethodName() {
+        return "await";
+    }
+
+    @Override
+    public Object[] getParameters() {
+        return new Object[0];
+    }
+
+    @Override
+    public void onResponse(Boolean response) {
+        sendResponse(response);
+    }
+
+    @Override
+    public void onFailure(Throwable t) {
+        handleProcessingFailure(t);
+    }
 }

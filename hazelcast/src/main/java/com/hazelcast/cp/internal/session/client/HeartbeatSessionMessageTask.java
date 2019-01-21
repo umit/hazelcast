@@ -17,62 +17,44 @@
 package com.hazelcast.cp.internal.session.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.impl.protocol.codec.CPSessionHeartbeatSessionCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.instance.Node;
-import com.hazelcast.nio.Bits;
-import com.hazelcast.nio.Connection;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.RaftGroupId;
-import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.session.operation.HeartbeatSessionOp;
+import com.hazelcast.instance.Node;
+import com.hazelcast.nio.Connection;
 
 import java.security.Permission;
 
 /**
  * Client message task for {@link HeartbeatSessionOp}
  */
-public class HeartbeatSessionMessageTask extends AbstractMessageTask implements ExecutionCallback {
+public class HeartbeatSessionMessageTask extends AbstractMessageTask<CPSessionHeartbeatSessionCodec.RequestParameters>
+        implements ExecutionCallback<Object> {
 
-    private CPGroupId groupId;
-    private long sessionId;
-
-    HeartbeatSessionMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public HeartbeatSessionMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
+        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
-        RaftInvocationManager invocationManager = service.getInvocationManager();
-        invocationManager.invoke(groupId, new HeartbeatSessionOp(sessionId)).andThen(this);
+        service.getInvocationManager()
+               .invoke(groupId, new HeartbeatSessionOp(parameters.sessionId))
+               .andThen(this);
     }
 
     @Override
-    protected Object decodeClientMessage(ClientMessage clientMessage) {
-        groupId = RaftGroupId.readFrom(clientMessage);
-        sessionId = clientMessage.getLong();
-        return null;
+    protected CPSessionHeartbeatSessionCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPSessionHeartbeatSessionCodec.decodeRequest(clientMessage);
     }
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        int dataSize = ClientMessage.HEADER_SIZE + Bits.BOOLEAN_SIZE_IN_BYTES;
-        ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
-        clientMessage.set(true);
-        clientMessage.updateFrameLength();
-        return clientMessage;
-    }
-
-    @Override
-    public void onResponse(Object response) {
-        sendResponse(response);
-    }
-
-    @Override
-    public void onFailure(Throwable t) {
-        handleProcessingFailure(t);
+        return CPSessionHeartbeatSessionCodec.encodeResponse();
     }
 
     @Override
@@ -98,5 +80,15 @@ public class HeartbeatSessionMessageTask extends AbstractMessageTask implements 
     @Override
     public Object[] getParameters() {
         return new Object[0];
+    }
+
+    @Override
+    public void onResponse(Object response) {
+        sendResponse(response);
+    }
+
+    @Override
+    public void onFailure(Throwable t) {
+        handleProcessingFailure(t);
     }
 }

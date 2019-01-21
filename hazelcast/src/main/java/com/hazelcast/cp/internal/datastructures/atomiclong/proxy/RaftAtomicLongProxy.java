@@ -156,17 +156,17 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public void alter(final IFunction<Long, Long> function) {
-        doAlter(function, AlterResultType.AFTER_VALUE);
+        doAlter(function, AlterResultType.NEW_VALUE);
     }
 
     @Override
     public long alterAndGet(IFunction<Long, Long> function) {
-        return doAlter(function, AlterResultType.AFTER_VALUE);
+        return doAlter(function, AlterResultType.NEW_VALUE);
     }
 
     @Override
     public long getAndAlter(IFunction<Long, Long> function) {
-        return doAlter(function, AlterResultType.BEFORE_VALUE);
+        return doAlter(function, AlterResultType.OLD_VALUE);
     }
 
     private long doAlter(IFunction<Long, Long> function, AlterResultType alterResultType) {
@@ -184,18 +184,18 @@ public class RaftAtomicLongProxy implements IAtomicLong {
 
     @Override
     public InternalCompletableFuture<Void> alterAsync(IFunction<Long, Long> function) {
-        InternalCompletableFuture future = doAlterAsync(function, AlterResultType.AFTER_VALUE);
+        InternalCompletableFuture future = doAlterAsync(function, AlterResultType.NEW_VALUE);
         return future;
     }
 
     @Override
     public InternalCompletableFuture<Long> alterAndGetAsync(IFunction<Long, Long> function) {
-        return doAlterAsync(function, AlterResultType.AFTER_VALUE);
+        return doAlterAsync(function, AlterResultType.NEW_VALUE);
     }
 
     @Override
     public InternalCompletableFuture<Long> getAndAlterAsync(IFunction<Long, Long> function) {
-        return doAlterAsync(function, AlterResultType.BEFORE_VALUE);
+        return doAlterAsync(function, AlterResultType.OLD_VALUE);
     }
 
     @Override

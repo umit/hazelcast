@@ -17,44 +17,82 @@
 package com.hazelcast.cp.internal.datastructures.semaphore.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.cp.internal.RaftInvocationManager;
+import com.hazelcast.client.impl.protocol.codec.CPSemaphoreAcquireCodec;
+import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
+import com.hazelcast.core.ExecutionCallback;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftOp;
+import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.AcquirePermitsOp;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
 
+import java.security.Permission;
 import java.util.UUID;
-
-import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
 
 /**
  * Client message task for {@link AcquirePermitsOp}
  */
-public class AcquirePermitsMessageTask extends AbstractSemaphoreMessageTask {
+public class AcquirePermitsMessageTask extends AbstractMessageTask<CPSemaphoreAcquireCodec.RequestParameters>
+        implements ExecutionCallback<Boolean> {
 
-    private long threadId;
-    private UUID invocationUid;
-    private int permits;
-    private long timeoutMs;
-
-    AcquirePermitsMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public AcquirePermitsMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
-        RaftInvocationManager invocationManager = getRaftInvocationManager();
-        RaftOp op = new AcquirePermitsOp(name, sessionId, threadId, invocationUid, permits, timeoutMs);
-        invocationManager.invoke(groupId, op).andThen(this);
+        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
+        UUID invocationUid = nodeEngine.toObject(parameters.invocationUid);
+        RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+        RaftOp op = new AcquirePermitsOp(parameters.name, parameters.sessionId, parameters.threadId, invocationUid,
+                parameters.permits, parameters.timeoutMs);
+        service.getInvocationManager().<Boolean>invoke(groupId, op).andThen(this);
     }
 
     @Override
-    protected Object decodeClientMessage(ClientMessage clientMessage) {
-        super.decodeClientMessage(clientMessage);
-        threadId = clientMessage.getLong();
-        invocationUid = readUUID(clientMessage);
-        permits = clientMessage.getInt();
-        timeoutMs = clientMessage.getLong();
+    protected CPSemaphoreAcquireCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPSemaphoreAcquireCodec.decodeRequest(clientMessage);
+    }
+
+    @Override
+    protected ClientMessage encodeResponse(Object response) {
+        return CPSemaphoreAcquireCodec.encodeResponse((Boolean) response);
+    }
+
+    @Override
+    public String getServiceName() {
+        return RaftSemaphoreService.SERVICE_NAME;
+    }
+
+    @Override
+    public Permission getRequiredPermission() {
         return null;
+    }
+
+    @Override
+    public String getDistributedObjectName() {
+        return parameters.name;
+    }
+
+    @Override
+    public String getMethodName() {
+        return "acquire";
+    }
+
+    @Override
+    public Object[] getParameters() {
+        return new Object[0];
+    }
+
+    @Override
+    public void onResponse(Boolean response) {
+        sendResponse(response);
+    }
+
+    @Override
+    public void onFailure(Throwable t) {
+        handleProcessingFailure(t);
     }
 }

@@ -67,46 +67,6 @@ public class RaftAtomicLongClientBasicTest extends RaftAtomicLongBasicTest {
 
     @Test
     @Ignore
-    public void testAlter() {
-    }
-
-    @Test
-    @Ignore
-    public void testAlterAndGet() {
-    }
-
-    @Test
-    @Ignore
-    public void testGetAndAlter() {
-    }
-
-    @Test
-    @Ignore
-    public void testAlterAsync() {
-    }
-
-    @Test
-    @Ignore
-    public void testAlterAndGetAsync() {
-    }
-
-    @Test
-    @Ignore
-    public void testGetAndAlterAsync() {
-    }
-
-    @Test
-    @Ignore
-    public void testApply() {
-    }
-
-    @Test
-    @Ignore
-    public void testApplyAsync() {
-    }
-
-    @Test
-    @Ignore
     public void testLocalGet_withLeaderLocalPolicy() {
     }
 

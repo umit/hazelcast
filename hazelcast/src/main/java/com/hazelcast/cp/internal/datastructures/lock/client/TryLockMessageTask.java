@@ -17,32 +17,82 @@
 package com.hazelcast.cp.internal.datastructures.lock.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.impl.protocol.codec.CPFencedLockTryLockCodec;
+import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
+import com.hazelcast.core.ExecutionCallback;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftOp;
+import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.datastructures.lock.RaftLockService;
 import com.hazelcast.cp.internal.datastructures.lock.operation.TryLockOp;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.cp.internal.RaftInvocationManager;
+
+import java.security.Permission;
+import java.util.UUID;
 
 /**
  * Client message task for {@link TryLockOp}
  */
-public class TryLockMessageTask extends LockMessageTask {
+public class TryLockMessageTask extends AbstractMessageTask<CPFencedLockTryLockCodec.RequestParameters>
+        implements ExecutionCallback<Long> {
 
-    private long timeoutMs;
-
-    TryLockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public TryLockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
-        RaftInvocationManager invocationManager = getRaftInvocationManager();
-        invocationManager.invoke(groupId, new TryLockOp(name, sessionId, threadId, invocationUid, timeoutMs)).andThen(this);
+        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
+        UUID invocationUid = nodeEngine.toObject(parameters.invocationUid);
+        RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+        RaftOp op = new TryLockOp(parameters.name, parameters.sessionId, parameters.threadId, invocationUid,
+                parameters.timeoutMs);
+        service.getInvocationManager().<Long>invoke(groupId, op).andThen(this);
     }
 
     @Override
-    protected Object decodeClientMessage(ClientMessage clientMessage) {
-        super.decodeClientMessage(clientMessage);
-        timeoutMs = clientMessage.getLong();
+    protected CPFencedLockTryLockCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPFencedLockTryLockCodec.decodeRequest(clientMessage);
+    }
+
+    @Override
+    protected ClientMessage encodeResponse(Object response) {
+        return CPFencedLockTryLockCodec.encodeResponse((Long) response);
+    }
+
+    @Override
+    public String getServiceName() {
+        return RaftLockService.SERVICE_NAME;
+    }
+
+    @Override
+    public Permission getRequiredPermission() {
         return null;
+    }
+
+    @Override
+    public String getDistributedObjectName() {
+        return parameters.name;
+    }
+
+    @Override
+    public String getMethodName() {
+        return "tryLock";
+    }
+
+    @Override
+    public Object[] getParameters() {
+        return new Object[0];
+    }
+
+    @Override
+    public void onResponse(Long response) {
+        sendResponse(response);
+    }
+
+    @Override
+    public void onFailure(Throwable t) {
+        handleProcessingFailure(t);
     }
 }

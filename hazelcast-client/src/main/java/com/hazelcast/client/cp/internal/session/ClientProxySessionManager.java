@@ -21,7 +21,10 @@ import com.hazelcast.client.impl.clientside.ClientExceptionFactory.ExceptionFact
 import com.hazelcast.client.impl.clientside.ClientMessageDecoder;
 import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.client.impl.protocol.util.ParameterUtil;
+import com.hazelcast.client.impl.protocol.codec.CPSessionCloseSessionCodec;
+import com.hazelcast.client.impl.protocol.codec.CPSessionCreateSessionCodec;
+import com.hazelcast.client.impl.protocol.codec.CPSessionGenerateThreadIdCodec;
+import com.hazelcast.client.impl.protocol.codec.CPSessionHeartbeatSessionCodec;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
@@ -35,8 +38,7 @@ import com.hazelcast.cp.internal.session.SessionResponse;
 import com.hazelcast.cp.lock.exception.LockAcquireLimitExceededException;
 import com.hazelcast.cp.lock.exception.LockOwnershipLostException;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.nio.Bits;
-import com.hazelcast.spi.InternalCompletableFuture;
+import com.hazelcast.nio.serialization.Data;
 
 import java.util.Map;
 import java.util.Map.Entry;
@@ -47,10 +49,6 @@ import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.LOCK_A
 import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.LOCK_OWNERSHIP_LOST_EXCEPTION;
 import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.SESSION_EXPIRED_EXCEPTION;
 import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.WAIT_KEY_CANCELLED_EXCEPTION;
-import static com.hazelcast.cp.internal.datastructures.semaphore.client.SemaphoreMessageTaskFactoryProvider.GENERATE_THREAD_ID_TYPE;
-import static com.hazelcast.cp.internal.session.client.SessionMessageTaskFactoryProvider.CLOSE_SESSION_TYPE;
-import static com.hazelcast.cp.internal.session.client.SessionMessageTaskFactoryProvider.CREATE_TYPE;
-import static com.hazelcast.cp.internal.session.client.SessionMessageTaskFactoryProvider.HEARTBEAT_TYPE;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
@@ -60,8 +58,21 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
 
     private static final long SHUTDOWN_TIMEOUT_SECONDS = 60;
     private static final long SHUTDOWN_WAIT_SLEEP_MILLIS = 10;
-    private static final ClientMessageDecoder SESSION_RESPONSE_DECODER = new SessionResponseDecoder();
-    private static final ClientMessageDecoder BOOLEAN_RESPONSE_DECODER = new BooleanResponseDecoder();
+
+    private static final ClientMessageDecoder HEARTBEAT_RESPONSE_DECODER = new ClientMessageDecoder() {
+        @Override
+        public Object decodeClientMessage(ClientMessage clientMessage) {
+            return null;
+        }
+    };
+
+    private static final ClientMessageDecoder CLOSE_SESSION_RESPONSE_DECODER = new ClientMessageDecoder() {
+        @Override
+        public Boolean decodeClientMessage(ClientMessage clientMessage) {
+            return CPSessionCloseSessionCodec.decodeResponse(clientMessage).response;
+        }
+    };
+
 
     private final HazelcastClientInstanceImpl client;
 
@@ -96,39 +107,19 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
 
     @Override
     protected long generateThreadId(RaftGroupId groupId) {
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
+        Data groupIdData = client.getSerializationService().toData(groupId);
+        ClientMessage request = CPSessionGenerateThreadIdCodec.encodeRequest(groupIdData, System.currentTimeMillis());
+        ClientMessage response = new ClientInvocation(client, request, "sessionManager").invoke().join();
 
-        ClientMessage msg = ClientMessage.createForEncode(dataSize);
-        msg.setMessageType(GENERATE_THREAD_ID_TYPE);
-        msg.setRetryable(false);
-        msg.setOperationName("");
-        RaftGroupId.writeTo(groupId, msg);
-        msg.set(System.currentTimeMillis());
-        msg.updateFrameLength();
-
-        ClientInvocationFuture future = new ClientInvocation(client, msg, null).invoke();
-        return new ClientDelegatingFuture<Long>(future, client.getSerializationService(), new ClientMessageDecoder() {
-            @Override
-            public Long decodeClientMessage(ClientMessage msg) {
-                return msg.getLong();
-            }
-        }).join();
+        return CPSessionGenerateThreadIdCodec.decodeResponse(response).response;
     }
 
     @Override
     protected SessionResponse requestNewSession(RaftGroupId groupId) {
-        String clientName = client.getName();
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + ParameterUtil.calculateDataSize(clientName);
-        ClientMessage msg = ClientMessage.createForEncode(dataSize);
-        msg.setMessageType(CREATE_TYPE);
-        msg.setRetryable(false);
-        msg.setOperationName("");
-        RaftGroupId.writeTo(groupId, msg);
-        msg.set(clientName);
-        msg.updateFrameLength();
-
-        InternalCompletableFuture<SessionResponse> future = invoke(msg, SESSION_RESPONSE_DECODER);
-        return future.join();
+        Data groupIdData = client.getSerializationService().toData(groupId);
+        ClientMessage request = CPSessionCreateSessionCodec.encodeRequest(groupIdData, client.getName());
+        ClientMessage response = new ClientInvocation(client, request, "sessionManager").invoke().join();
+        return client.getSerializationService().toObject(CPSessionCreateSessionCodec.decodeResponse(response).response);
     }
 
     @Override
@@ -138,30 +129,18 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
 
     @Override
     protected ICompletableFuture<Object> heartbeat(RaftGroupId groupId, long sessionId) {
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
-        ClientMessage msg = ClientMessage.createForEncode(dataSize);
-        msg.setMessageType(HEARTBEAT_TYPE);
-        msg.setRetryable(false);
-        msg.setOperationName("");
-        RaftGroupId.writeTo(groupId, msg);
-        msg.set(sessionId);
-        msg.updateFrameLength();
-
-        return invoke(msg, BOOLEAN_RESPONSE_DECODER);
+        Data groupIdData = client.getSerializationService().toData(groupId);
+        ClientMessage request = CPSessionHeartbeatSessionCodec.encodeRequest(groupIdData, sessionId);
+        ClientInvocationFuture future = new ClientInvocation(client, request, "sessionManager").invoke();
+        return new ClientDelegatingFuture<Object>(future, client.getSerializationService(), HEARTBEAT_RESPONSE_DECODER);
     }
 
     @Override
     protected ICompletableFuture<Object> closeSession(RaftGroupId groupId, Long sessionId) {
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
-        ClientMessage msg = ClientMessage.createForEncode(dataSize);
-        msg.setMessageType(CLOSE_SESSION_TYPE);
-        msg.setRetryable(false);
-        msg.setOperationName("");
-        RaftGroupId.writeTo(groupId, msg);
-        msg.set(sessionId);
-        msg.updateFrameLength();
-
-        return invoke(msg, BOOLEAN_RESPONSE_DECODER);
+        Data groupIdData = client.getSerializationService().toData(groupId);
+        ClientMessage request = CPSessionCloseSessionCodec.encodeRequest(groupIdData, sessionId);
+        ClientInvocationFuture future = new ClientInvocation(client, request, "sessionManager").invoke();
+        return new ClientDelegatingFuture<Object>(future, client.getSerializationService(), CLOSE_SESSION_RESPONSE_DECODER);
     }
 
     @Override
@@ -207,25 +186,4 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
         return futures;
     }
 
-    private <T> InternalCompletableFuture<T> invoke(ClientMessage msg, ClientMessageDecoder decoder) {
-        ClientInvocationFuture future = new ClientInvocation(client, msg, "session").invoke();
-        return new ClientDelegatingFuture<T>(future, client.getSerializationService(), decoder);
-    }
-
-    private static class BooleanResponseDecoder implements ClientMessageDecoder {
-        @Override
-        public Boolean decodeClientMessage(ClientMessage msg) {
-            return msg.getBoolean();
-        }
-    }
-
-    private static class SessionResponseDecoder implements ClientMessageDecoder {
-        @Override
-        public SessionResponse decodeClientMessage(ClientMessage msg) {
-            long sessionId = msg.getLong();
-            long sessionTTL = msg.getLong();
-            long heartbeatInterval = msg.getLong();
-            return new SessionResponse(sessionId, sessionTTL, heartbeatInterval);
-        }
-    }
 }

@@ -14,57 +14,57 @@
  * limitations under the License.
  */
 
-package com.hazelcast.cp.internal.session.client;
+package com.hazelcast.cp.internal.datastructures.atomiclong.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.client.impl.protocol.codec.CPSessionCloseSessionCodec;
+import com.hazelcast.client.impl.protocol.codec.CPAtomicLongAlterCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
+import com.hazelcast.core.IFunction;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
-import com.hazelcast.cp.internal.session.operation.CloseSessionOp;
+import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongService;
+import com.hazelcast.cp.internal.datastructures.atomiclong.operation.AlterOp;
+import com.hazelcast.cp.internal.datastructures.atomiclong.operation.AlterOp.AlterResultType;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
 
 import java.security.Permission;
 
 /**
- * Client message task for {@link CloseSessionOp}
+ * Client message task for {@link AlterOp}
  */
-public class CloseSessionMessageTask extends AbstractMessageTask<CPSessionCloseSessionCodec.RequestParameters>
-        implements ExecutionCallback<Object> {
+public class AlterMessageTask extends AbstractMessageTask<CPAtomicLongAlterCodec.RequestParameters>
+        implements ExecutionCallback<Long> {
 
-    public CloseSessionMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public AlterMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
+        IFunction<Long, Long> function = serializationService.toObject(parameters.function);
+        AlterResultType resultType = AlterResultType.fromValue(parameters.returnValueType);
         CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         service.getInvocationManager()
-               .invoke(groupId, new CloseSessionOp(parameters.sessionId))
+               .<Long>invoke(groupId, new AlterOp(parameters.name, function, resultType))
                .andThen(this);
     }
 
     @Override
-    protected CPSessionCloseSessionCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
-        return CPSessionCloseSessionCodec.decodeRequest(clientMessage);
+    protected CPAtomicLongAlterCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPAtomicLongAlterCodec.decodeRequest(clientMessage);
     }
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        return CPSessionCloseSessionCodec.encodeResponse((Boolean) response);
+        return CPAtomicLongAlterCodec.encodeResponse((Long) response);
     }
 
     @Override
     public String getServiceName() {
-        return RaftService.SERVICE_NAME;
-    }
-
-    @Override
-    public String getDistributedObjectName() {
-        return null;
+        return RaftAtomicLongService.SERVICE_NAME;
     }
 
     @Override
@@ -73,8 +73,13 @@ public class CloseSessionMessageTask extends AbstractMessageTask<CPSessionCloseS
     }
 
     @Override
+    public String getDistributedObjectName() {
+        return parameters.name;
+    }
+
+    @Override
     public String getMethodName() {
-        return null;
+        return "alter";
     }
 
     @Override
@@ -83,7 +88,7 @@ public class CloseSessionMessageTask extends AbstractMessageTask<CPSessionCloseS
     }
 
     @Override
-    public void onResponse(Object response) {
+    public void onResponse(Long response) {
         sendResponse(response);
     }
 

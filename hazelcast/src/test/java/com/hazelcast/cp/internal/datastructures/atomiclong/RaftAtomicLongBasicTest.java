@@ -106,6 +106,7 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
     @Test
     public void testAddAndGet() {
         assertEquals(271, atomicLong.addAndGet(271));
+        assertEquals(271, atomicLong.get());
     }
 
     @Test

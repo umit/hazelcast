@@ -17,11 +17,11 @@
 package com.hazelcast.cp.internal.datastructures.spi.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.impl.protocol.codec.CPGroupCreateCPGroupCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.instance.Node;
-import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
 
 import java.security.Permission;
@@ -29,38 +29,27 @@ import java.security.Permission;
 /**
  * Client message task for Raft group creation
  */
-public class CreateRaftGroupMessageTask extends AbstractMessageTask {
+public class CreateRaftGroupMessageTask extends AbstractMessageTask<CPGroupCreateCPGroupCodec.RequestParameters> {
 
-    private String name;
-
-    CreateRaftGroupMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public CreateRaftGroupMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
-        RaftGroupId groupId = service.createRaftGroupForProxy(name);
+        RaftGroupId groupId = service.createRaftGroupForProxy(parameters.proxyName);
         sendResponse(groupId);
     }
 
     @Override
-    protected Object decodeClientMessage(ClientMessage clientMessage) {
-        name = clientMessage.getStringUtf8();
-        return null;
+    protected CPGroupCreateCPGroupCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPGroupCreateCPGroupCodec.decodeRequest(clientMessage);
     }
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        if (response instanceof RaftGroupId) {
-            RaftGroupId groupId = (RaftGroupId) response;
-            int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + Bits.LONG_SIZE_IN_BYTES;
-            ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
-            RaftGroupId.writeTo(groupId, clientMessage);
-            clientMessage.updateFrameLength();
-            return clientMessage;
-        }
-        throw new IllegalArgumentException("Unknown response: " + response);
+        return CPGroupCreateCPGroupCodec.encodeResponse(serializationService.toData(response));
     }
 
     @Override
@@ -70,7 +59,7 @@ public class CreateRaftGroupMessageTask extends AbstractMessageTask {
 
     @Override
     public String getDistributedObjectName() {
-        return name;
+        return parameters.proxyName;
     }
 
     @Override
@@ -80,11 +69,11 @@ public class CreateRaftGroupMessageTask extends AbstractMessageTask {
 
     @Override
     public String getMethodName() {
-        return null;
+        return "createRaftGroup";
     }
 
     @Override
     public Object[] getParameters() {
-        return new Object[0];
+        return new Object[] {parameters.proxyName};
     }
 }

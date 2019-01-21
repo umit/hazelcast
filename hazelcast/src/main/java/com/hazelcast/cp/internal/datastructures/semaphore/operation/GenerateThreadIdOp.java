@@ -49,7 +49,7 @@ public class GenerateThreadIdOp extends RaftOp implements IndeterminateOperation
 
     @Override
     public boolean isRetryableOnIndeterminateOperationState() {
-        return false;
+        return true;
     }
 
     @Override

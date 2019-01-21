@@ -57,7 +57,8 @@ public class AppendRequestHandlerTask extends RaftNodeStatusAwareTask implements
     }
 
     @Override
-    @SuppressWarnings({"checkstyle:npathcomplexity", "checkstyle:cyclomaticcomplexity", "checkstyle:methodlength"})
+    @SuppressWarnings({"checkstyle:npathcomplexity", "checkstyle:cyclomaticcomplexity", "checkstyle:methodlength",
+                       "checkstyle:nestedifdepth"})
     // Justification: It is easier to follow the AppendEntriesRPC logic in a single method
     protected void innerRun() {
         if (logger.isFineEnabled()) {

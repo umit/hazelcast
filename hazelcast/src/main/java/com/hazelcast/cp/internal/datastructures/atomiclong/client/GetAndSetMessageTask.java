@@ -17,32 +17,79 @@
 package com.hazelcast.cp.internal.datastructures.atomiclong.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.impl.protocol.codec.CPAtomicLongGetAndSetCodec;
+import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
+import com.hazelcast.core.ExecutionCallback;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongService;
 import com.hazelcast.cp.internal.datastructures.atomiclong.operation.GetAndSetOp;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.cp.internal.RaftInvocationManager;
+
+import java.security.Permission;
 
 /**
  * Client message task for {@link GetAndSetOp}
  */
-public class GetAndSetMessageTask extends AbstractAtomicLongMessageTask {
+public class GetAndSetMessageTask extends AbstractMessageTask<CPAtomicLongGetAndSetCodec.RequestParameters>
+        implements ExecutionCallback<Long> {
 
-    private long value;
-
-    GetAndSetMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public GetAndSetMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
-        RaftInvocationManager invocationManager = getRaftInvocationManager();
-        invocationManager.invoke(groupId, new GetAndSetOp(name, value)).andThen(this);
+        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
+        RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+        service.getInvocationManager()
+               .<Long>invoke(groupId, new GetAndSetOp(parameters.name, parameters.newValue))
+               .andThen(this);
     }
 
     @Override
-    protected Object decodeClientMessage(ClientMessage clientMessage) {
-        super.decodeClientMessage(clientMessage);
-        value = clientMessage.getLong();
+    protected CPAtomicLongGetAndSetCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPAtomicLongGetAndSetCodec.decodeRequest(clientMessage);
+    }
+
+    @Override
+    protected ClientMessage encodeResponse(Object response) {
+        return CPAtomicLongGetAndSetCodec.encodeResponse((Long) response);
+    }
+
+    @Override
+    public String getServiceName() {
+        return RaftAtomicLongService.SERVICE_NAME;
+    }
+
+    @Override
+    public Permission getRequiredPermission() {
         return null;
+    }
+
+    @Override
+    public String getDistributedObjectName() {
+        return parameters.name;
+    }
+
+    @Override
+    public String getMethodName() {
+        return "getAndSet";
+    }
+
+    @Override
+    public Object[] getParameters() {
+        return new Object[0];
+    }
+
+    @Override
+    public void onResponse(Long response) {
+        sendResponse(response);
+    }
+
+    @Override
+    public void onFailure(Throwable t) {
+        handleProcessingFailure(t);
     }
 }

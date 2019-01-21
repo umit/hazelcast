@@ -17,32 +17,64 @@
 package com.hazelcast.cp.internal.datastructures.semaphore.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.impl.protocol.codec.CPSemaphoreGetSemaphoreTypeCodec;
+import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.config.cp.CPSemaphoreConfig;
+import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
+
+import java.security.Permission;
 
 /**
  * Client message task for querying semaphore JDK compatibility
  */
-public class GetSemaphoreTypeMessageTask extends AbstractSemaphoreMessageTask {
+public class GetSemaphoreTypeMessageTask extends AbstractMessageTask<CPSemaphoreGetSemaphoreTypeCodec.RequestParameters> {
 
-    private String proxyName;
-
-    GetSemaphoreTypeMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public GetSemaphoreTypeMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
-        CPSemaphoreConfig config = nodeEngine.getConfig().getCPSubsystemConfig().findSemaphoreConfig(proxyName);
+        CPSemaphoreConfig config = nodeEngine.getConfig().getCPSubsystemConfig().findSemaphoreConfig(parameters.proxyName);
         boolean jdkCompatible = (config != null && config.isJDKCompatible());
         sendResponse(jdkCompatible);
     }
 
     @Override
-    protected Object decodeClientMessage(ClientMessage clientMessage) {
-        super.decodeClientMessage(clientMessage);
-        proxyName = clientMessage.getStringUtf8();
+    protected CPSemaphoreGetSemaphoreTypeCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPSemaphoreGetSemaphoreTypeCodec.decodeRequest(clientMessage);
+    }
+
+    @Override
+    protected ClientMessage encodeResponse(Object response) {
+        return CPSemaphoreGetSemaphoreTypeCodec.encodeResponse((Boolean) response);
+    }
+
+    @Override
+    public String getServiceName() {
+        return RaftSemaphoreService.SERVICE_NAME;
+    }
+
+    @Override
+    public Permission getRequiredPermission() {
         return null;
     }
+
+    @Override
+    public String getDistributedObjectName() {
+        return parameters.proxyName;
+    }
+
+    @Override
+    public String getMethodName() {
+        return null;
+    }
+
+    @Override
+    public Object[] getParameters() {
+        return new Object[0];
+    }
+
 }

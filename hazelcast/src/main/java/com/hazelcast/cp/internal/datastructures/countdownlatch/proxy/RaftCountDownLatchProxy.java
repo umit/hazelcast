@@ -23,7 +23,7 @@ import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.AwaitOp;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.CountDownOp;
-import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.GetRemainingCountOp;
+import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.GetCountOp;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.GetRoundOp;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.TrySetCountOp;
 import com.hazelcast.cp.internal.datastructures.spi.operation.DestroyRaftObjectOp;
@@ -71,7 +71,7 @@ public class RaftCountDownLatchProxy implements ICountDownLatch {
 
     @Override
     public int getCount() {
-        return invocationManager.<Integer>invoke(groupId, new GetRemainingCountOp(objectName)).join();
+        return invocationManager.<Integer>invoke(groupId, new GetCountOp(objectName)).join();
     }
 
     @Override

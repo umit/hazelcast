@@ -26,7 +26,7 @@ import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLong;
 
 import java.io.IOException;
 
-import static com.hazelcast.cp.internal.datastructures.atomiclong.operation.AlterOp.AlterResultType.BEFORE_VALUE;
+import static com.hazelcast.cp.internal.datastructures.atomiclong.operation.AlterOp.AlterResultType.OLD_VALUE;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 
 /**
@@ -41,11 +41,32 @@ public class AlterOp extends AbstractAtomicLongOp {
         /**
          * The value before the function is applied
          */
-        BEFORE_VALUE,
+        OLD_VALUE(0),
         /**
          * The value after the function is applied
          */
-        AFTER_VALUE
+        NEW_VALUE(1);
+
+        private final int value;
+
+        AlterResultType(int value) {
+            this.value = value;
+        }
+
+        public static AlterResultType fromValue(int value) {
+            switch (value) {
+                case 0:
+                    return OLD_VALUE;
+                case 1:
+                    return NEW_VALUE;
+                default:
+                    throw new IllegalArgumentException("No " + AlterResultType.class + " for value: " + value);
+            }
+        }
+
+        public int value() {
+            return value;
+        }
     }
 
     private IFunction<Long, Long> function;
@@ -72,7 +93,7 @@ public class AlterOp extends AbstractAtomicLongOp {
         long before = atomic.getAndAdd(0);
         long after = function.apply(before);
         atomic.getAndSet(after);
-        return alterResultType == BEFORE_VALUE ? before : after;
+        return alterResultType == OLD_VALUE ? before : after;
     }
 
     @Override

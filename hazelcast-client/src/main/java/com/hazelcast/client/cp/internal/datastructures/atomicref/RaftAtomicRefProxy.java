@@ -18,6 +18,12 @@ package com.hazelcast.client.cp.internal.datastructures.atomicref;
 
 import com.hazelcast.client.impl.clientside.ClientMessageDecoder;
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.impl.protocol.codec.CPAtomicRefApplyCodec;
+import com.hazelcast.client.impl.protocol.codec.CPAtomicRefCompareAndSetCodec;
+import com.hazelcast.client.impl.protocol.codec.CPAtomicRefContainsCodec;
+import com.hazelcast.client.impl.protocol.codec.CPAtomicRefGetCodec;
+import com.hazelcast.client.impl.protocol.codec.CPAtomicRefSetCodec;
+import com.hazelcast.client.impl.protocol.codec.CPGroupDestroyCPObjectCodec;
 import com.hazelcast.client.spi.ClientContext;
 import com.hazelcast.client.spi.ClientProxy;
 import com.hazelcast.client.spi.impl.ClientInvocation;
@@ -28,17 +34,9 @@ import com.hazelcast.core.IFunction;
 import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.atomicref.RaftAtomicRefService;
 import com.hazelcast.cp.internal.datastructures.atomicref.operation.ApplyOp.ReturnValueType;
-import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.InternalCompletableFuture;
 
-import static com.hazelcast.client.impl.protocol.util.ParameterUtil.calculateDataSize;
-import static com.hazelcast.cp.internal.datastructures.atomicref.client.AtomicRefMessageTaskFactoryProvider.APPLY_TYPE;
-import static com.hazelcast.cp.internal.datastructures.atomicref.client.AtomicRefMessageTaskFactoryProvider.COMPARE_AND_SET_TYPE;
-import static com.hazelcast.cp.internal.datastructures.atomicref.client.AtomicRefMessageTaskFactoryProvider.CONTAINS_TYPE;
-import static com.hazelcast.cp.internal.datastructures.atomicref.client.AtomicRefMessageTaskFactoryProvider.DESTROY_TYPE;
-import static com.hazelcast.cp.internal.datastructures.atomicref.client.AtomicRefMessageTaskFactoryProvider.GET_TYPE;
-import static com.hazelcast.cp.internal.datastructures.atomicref.client.AtomicRefMessageTaskFactoryProvider.SET_TYPE;
 import static com.hazelcast.cp.internal.datastructures.atomicref.operation.ApplyOp.ReturnValueType.NO_RETURN_VALUE;
 import static com.hazelcast.cp.internal.datastructures.atomicref.operation.ApplyOp.ReturnValueType.RETURN_NEW_VALUE;
 import static com.hazelcast.cp.internal.datastructures.atomicref.operation.ApplyOp.ReturnValueType.RETURN_OLD_VALUE;
@@ -50,8 +48,40 @@ import static com.hazelcast.util.Preconditions.checkTrue;
 @SuppressWarnings("checkstyle:methodcount")
 class RaftAtomicRefProxy<T> extends ClientProxy implements IAtomicReference<T> {
 
-    private static final ClientMessageDecoder DATA_RESPONSE_DECODER = new DataResponseDecoder();
-    private static final ClientMessageDecoder BOOLEAN_RESPONSE_DECODER = new BooleanResponseDecoder();
+    private static final ClientMessageDecoder COMPARE_AND_SET_DECODER = new ClientMessageDecoder() {
+        @Override
+        public Boolean decodeClientMessage(ClientMessage clientMessage) {
+            return CPAtomicRefCompareAndSetCodec.decodeResponse(clientMessage).response;
+        }
+    };
+
+    private static final ClientMessageDecoder GET_DECODER = new ClientMessageDecoder() {
+        @Override
+        public Data decodeClientMessage(ClientMessage clientMessage) {
+            return CPAtomicRefGetCodec.decodeResponse(clientMessage).response;
+        }
+    };
+
+    private static final ClientMessageDecoder CONTAINS_DECODER = new ClientMessageDecoder() {
+        @Override
+        public Boolean decodeClientMessage(ClientMessage clientMessage) {
+            return CPAtomicRefContainsCodec.decodeResponse(clientMessage).response;
+        }
+    };
+
+    private static final ClientMessageDecoder SET_DECODER = new ClientMessageDecoder() {
+        @Override
+        public Data decodeClientMessage(ClientMessage clientMessage) {
+            return CPAtomicRefGetCodec.decodeResponse(clientMessage).response;
+        }
+    };
+
+    private static final ClientMessageDecoder APPLY_DECODER = new ClientMessageDecoder() {
+        @Override
+        public Data decodeClientMessage(ClientMessage clientMessage) {
+            return CPAtomicRefApplyCodec.decodeResponse(clientMessage).response;
+        }
+    };
 
 
     private final RaftGroupId groupId;
@@ -128,49 +158,36 @@ class RaftAtomicRefProxy<T> extends ClientProxy implements IAtomicReference<T> {
     public InternalCompletableFuture<Boolean> compareAndSetAsync(T expect, T update) {
         Data expectedData = getContext().getSerializationService().toData(expect);
         Data newData = getContext().getSerializationService().toData(update);
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + calculateDataSize(objectName)
-                + nullableSize(expectedData) + nullableSize(newData);
-        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, COMPARE_AND_SET_TYPE);
-        writeNullableData(msg, expectedData);
-        writeNullableData(msg, newData);
-        msg.updateFrameLength();
-
-        return invoke(msg, BOOLEAN_RESPONSE_DECODER);
+        Data groupId = getSerializationService().toData(this.groupId);
+        ClientMessage request = CPAtomicRefCompareAndSetCodec.encodeRequest(groupId, objectName, expectedData, newData);
+        ClientInvocationFuture future = new ClientInvocation(getClient(), request, name).invoke();
+        return new ClientDelegatingFuture<Boolean>(future, getSerializationService(), COMPARE_AND_SET_DECODER);
     }
 
     @Override
     public InternalCompletableFuture<T> getAsync() {
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + calculateDataSize(objectName);
-        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, GET_TYPE);
-        msg.updateFrameLength();
-
-        return invoke(msg, DATA_RESPONSE_DECODER);
+        Data groupId = getSerializationService().toData(this.groupId);
+        ClientMessage request = CPAtomicRefGetCodec.encodeRequest(groupId, objectName);
+        ClientInvocationFuture future = new ClientInvocation(getClient(), request, name).invoke();
+        return new ClientDelegatingFuture<T>(future, getSerializationService(), GET_DECODER);
     }
 
     @Override
     public InternalCompletableFuture<Void> setAsync(T newValue) {
+        Data groupId = getSerializationService().toData(this.groupId);
         Data data = getContext().getSerializationService().toData(newValue);
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + calculateDataSize(objectName)
-                + nullableSize(data) + Bits.BOOLEAN_SIZE_IN_BYTES;
-        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, SET_TYPE);
-        writeNullableData(msg, data);
-        msg.set(false);
-        msg.updateFrameLength();
-
-        return invoke(msg, DATA_RESPONSE_DECODER);
+        ClientMessage request = CPAtomicRefSetCodec.encodeRequest(groupId, objectName, data, false);
+        ClientInvocationFuture future = new ClientInvocation(getClient(), request, name).invoke();
+        return new ClientDelegatingFuture<Void>(future, getSerializationService(), SET_DECODER);
     }
 
     @Override
     public InternalCompletableFuture<T> getAndSetAsync(T newValue) {
+        Data groupId = getSerializationService().toData(this.groupId);
         Data data = getContext().getSerializationService().toData(newValue);
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + calculateDataSize(objectName)
-                + nullableSize(data) + Bits.BOOLEAN_SIZE_IN_BYTES;
-        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, SET_TYPE);
-        writeNullableData(msg, data);
-        msg.set(true);
-        msg.updateFrameLength();
-
-        return invoke(msg, DATA_RESPONSE_DECODER);
+        ClientMessage request = CPAtomicRefSetCodec.encodeRequest(groupId, objectName, data, true);
+        ClientInvocationFuture future = new ClientInvocation(getClient(), request, name).invoke();
+        return new ClientDelegatingFuture<T>(future, getSerializationService(), SET_DECODER);
     }
 
     @Override
@@ -185,15 +202,11 @@ class RaftAtomicRefProxy<T> extends ClientProxy implements IAtomicReference<T> {
 
     @Override
     public InternalCompletableFuture<Boolean> containsAsync(T expected) {
+        Data groupId = getSerializationService().toData(this.groupId);
         Data data = getContext().getSerializationService().toData(expected);
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + calculateDataSize(objectName)
-                + nullableSize(data) + Bits.BOOLEAN_SIZE_IN_BYTES;
-        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, CONTAINS_TYPE);
-        writeNullableData(msg, data);
-        msg.set(false);
-        msg.updateFrameLength();
-
-        return invoke(msg, BOOLEAN_RESPONSE_DECODER);
+        ClientMessage request = CPAtomicRefContainsCodec.encodeRequest(groupId, objectName, data);
+        ClientInvocationFuture future = new ClientInvocation(getClient(), request, name).invoke();
+        return new ClientDelegatingFuture<Boolean>(future, getSerializationService(), CONTAINS_DECODER);
     }
 
     @Override
@@ -217,78 +230,29 @@ class RaftAtomicRefProxy<T> extends ClientProxy implements IAtomicReference<T> {
     }
 
     @Override
-    public String getPartitionKey() {
-        throw new UnsupportedOperationException();
+    public void onDestroy() {
+        Data groupId = getSerializationService().toData(this.groupId);
+        ClientMessage request = CPGroupDestroyCPObjectCodec.encodeRequest(groupId, getServiceName(), objectName);
+        new ClientInvocation(getClient(), request, name).invoke().join();
     }
 
     @Override
-    public void onDestroy() {
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + calculateDataSize(objectName);
-        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, DESTROY_TYPE);
-        msg.updateFrameLength();
-
-        invoke(msg, BOOLEAN_RESPONSE_DECODER).join();
+    public String getPartitionKey() {
+        throw new UnsupportedOperationException();
     }
 
     public RaftGroupId getGroupId() {
         return groupId;
     }
 
-    private int nullableSize(Data data) {
-        return Bits.BOOLEAN_SIZE_IN_BYTES + (data != null ? (Bits.INT_SIZE_IN_BYTES + data.totalSize()) : 0);
-    }
-
-    private void writeNullableData(ClientMessage msg, Data data) {
-        boolean exists = (data != null);
-        msg.set(exists);
-        if (exists) {
-            msg.set(data);
-        }
-    }
-
     private <T2, T3> InternalCompletableFuture<T3> invokeApply(IFunction<T, T2> function, ReturnValueType returnValueType,
                                                                boolean alter) {
         checkTrue(function != null, "Function cannot be null");
+        Data groupId = getSerializationService().toData(this.groupId);
         Data data = getContext().getSerializationService().toData(function);
-        int dataSize = ClientMessage.HEADER_SIZE + RaftGroupId.dataSize(groupId) + calculateDataSize(objectName)
-                + nullableSize(data) + calculateDataSize(returnValueType.name()) + Bits.BOOLEAN_SIZE_IN_BYTES;
-        ClientMessage msg = prepareClientMessage(groupId, objectName, dataSize, APPLY_TYPE);
-        writeNullableData(msg, data);
-        msg.set(returnValueType.name());
-        msg.set(alter);
-        msg.updateFrameLength();
-
-        return invoke(msg, DATA_RESPONSE_DECODER);
-    }
-
-    private <T> InternalCompletableFuture<T> invoke(ClientMessage clientMessage, ClientMessageDecoder decoder) {
-        ClientInvocationFuture future = new ClientInvocation(getClient(), clientMessage, name).invoke();
-        return new ClientDelegatingFuture<T>(future, getContext().getSerializationService(), decoder);
-    }
-
-    private static ClientMessage prepareClientMessage(RaftGroupId groupId, String name, int dataSize, int messageTypeId) {
-        ClientMessage msg = ClientMessage.createForEncode(dataSize);
-        msg.setMessageType(messageTypeId);
-        msg.setRetryable(false);
-        msg.setOperationName("");
-        RaftGroupId.writeTo(groupId, msg);
-        msg.set(name);
-        return msg;
-    }
-
-    private static class DataResponseDecoder implements ClientMessageDecoder {
-        @Override
-        public Data decodeClientMessage(ClientMessage msg) {
-            boolean exists = msg.getBoolean();
-            return exists ? msg.getData() : null;
-        }
-    }
-
-    private static class BooleanResponseDecoder implements ClientMessageDecoder {
-        @Override
-        public Boolean decodeClientMessage(ClientMessage msg) {
-            return msg.getBoolean();
-        }
+        ClientMessage request = CPAtomicRefApplyCodec.encodeRequest(groupId, objectName, data, returnValueType.value(), alter);
+        ClientInvocationFuture future = new ClientInvocation(getClient(), request, name).invoke();
+        return new ClientDelegatingFuture<T3>(future, getSerializationService(), APPLY_DECODER);
     }
 
 }

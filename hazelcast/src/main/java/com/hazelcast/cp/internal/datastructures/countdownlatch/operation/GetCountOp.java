@@ -25,12 +25,12 @@ import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatc
 /**
  * Operation for {@link ICountDownLatch#getCount()}
  */
-public class GetRemainingCountOp extends AbstractCountDownLatchOp implements IndeterminateOperationStateAware {
+public class GetCountOp extends AbstractCountDownLatchOp implements IndeterminateOperationStateAware {
 
-    public GetRemainingCountOp() {
+    public GetCountOp() {
     }
 
-    public GetRemainingCountOp(String name) {
+    public GetCountOp(String name) {
         super(name);
     }
 
@@ -47,6 +47,6 @@ public class GetRemainingCountOp extends AbstractCountDownLatchOp implements Ind
 
     @Override
     public int getId() {
-        return RaftCountDownLatchDataSerializerHook.GET_REMAINING_COUNT_OP;
+        return RaftCountDownLatchDataSerializerHook.GET_COUNT_OP;
     }
 }

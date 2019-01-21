@@ -14,27 +14,28 @@
  * limitations under the License.
  */
 
-package com.hazelcast.cp.internal.session.client;
+package com.hazelcast.cp.internal.datastructures.countdownlatch.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.client.impl.protocol.codec.CPSessionCloseSessionCodec;
+import com.hazelcast.client.impl.protocol.codec.CPCountDownLatchGetRoundCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
-import com.hazelcast.cp.internal.session.operation.CloseSessionOp;
+import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
+import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.GetCountOp;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
 
 import java.security.Permission;
 
 /**
- * Client message task for {@link CloseSessionOp}
+ * Client message task for {@link GetCountOp}
  */
-public class CloseSessionMessageTask extends AbstractMessageTask<CPSessionCloseSessionCodec.RequestParameters>
-        implements ExecutionCallback<Object> {
+public class GetCountMessageTask extends AbstractMessageTask<CPCountDownLatchGetRoundCodec.RequestParameters>
+        implements ExecutionCallback<Integer> {
 
-    public CloseSessionMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public GetCountMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
@@ -43,28 +44,23 @@ public class CloseSessionMessageTask extends AbstractMessageTask<CPSessionCloseS
         CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         service.getInvocationManager()
-               .invoke(groupId, new CloseSessionOp(parameters.sessionId))
+               .<Integer>invoke(groupId, new GetCountOp(parameters.name))
                .andThen(this);
     }
 
     @Override
-    protected CPSessionCloseSessionCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
-        return CPSessionCloseSessionCodec.decodeRequest(clientMessage);
+    protected CPCountDownLatchGetRoundCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPCountDownLatchGetRoundCodec.decodeRequest(clientMessage);
     }
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        return CPSessionCloseSessionCodec.encodeResponse((Boolean) response);
+        return CPCountDownLatchGetRoundCodec.encodeResponse((Integer) response);
     }
 
     @Override
     public String getServiceName() {
-        return RaftService.SERVICE_NAME;
-    }
-
-    @Override
-    public String getDistributedObjectName() {
-        return null;
+        return RaftCountDownLatchService.SERVICE_NAME;
     }
 
     @Override
@@ -73,8 +69,13 @@ public class CloseSessionMessageTask extends AbstractMessageTask<CPSessionCloseS
     }
 
     @Override
+    public String getDistributedObjectName() {
+        return parameters.name;
+    }
+
+    @Override
     public String getMethodName() {
-        return null;
+        return "getCount";
     }
 
     @Override
@@ -83,7 +84,7 @@ public class CloseSessionMessageTask extends AbstractMessageTask<CPSessionCloseS
     }
 
     @Override
-    public void onResponse(Object response) {
+    public void onResponse(Integer response) {
         sendResponse(response);
     }
 

@@ -17,40 +17,82 @@
 package com.hazelcast.cp.internal.datastructures.semaphore.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.impl.protocol.codec.CPSemaphoreChangeCodec;
+import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
+import com.hazelcast.core.ExecutionCallback;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftOp;
+import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
+import com.hazelcast.cp.internal.datastructures.semaphore.operation.ChangePermitsOp;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.cp.internal.RaftInvocationManager;
-import com.hazelcast.cp.internal.datastructures.semaphore.operation.ChangePermitsOp;
 
+import java.security.Permission;
 import java.util.UUID;
-
-import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
 
 /**
  * Client message task for {@link ChangePermitsOp}
  */
-public class ChangePermitsMessageTask extends AbstractSemaphoreMessageTask {
+public class ChangePermitsMessageTask extends AbstractMessageTask<CPSemaphoreChangeCodec.RequestParameters>
+        implements ExecutionCallback<Boolean> {
 
-    private long threadId;
-    private UUID invocationUid;
-    private int permits;
-
-    ChangePermitsMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public ChangePermitsMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
-        RaftInvocationManager invocationManager = getRaftInvocationManager();
-        invocationManager.invoke(groupId, new ChangePermitsOp(name, sessionId, threadId, invocationUid, permits)).andThen(this);
+        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
+        UUID invocationUid = nodeEngine.toObject(parameters.invocationUid);
+        RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+        RaftOp op = new ChangePermitsOp(parameters.name, parameters.sessionId, parameters.threadId, invocationUid,
+                parameters.permits);
+        service.getInvocationManager().<Boolean>invoke(groupId, op).andThen(this);
     }
 
     @Override
-    protected Object decodeClientMessage(ClientMessage clientMessage) {
-        super.decodeClientMessage(clientMessage);
-        threadId = clientMessage.getLong();
-        invocationUid = readUUID(clientMessage);
-        permits = clientMessage.getInt();
+    protected CPSemaphoreChangeCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPSemaphoreChangeCodec.decodeRequest(clientMessage);
+    }
+
+    @Override
+    protected ClientMessage encodeResponse(Object response) {
+        return CPSemaphoreChangeCodec.encodeResponse((Boolean) response);
+    }
+
+    @Override
+    public String getServiceName() {
+        return RaftSemaphoreService.SERVICE_NAME;
+    }
+
+    @Override
+    public Permission getRequiredPermission() {
         return null;
+    }
+
+    @Override
+    public String getDistributedObjectName() {
+        return parameters.name;
+    }
+
+    @Override
+    public String getMethodName() {
+        return "changePermits";
+    }
+
+    @Override
+    public Object[] getParameters() {
+        return new Object[0];
+    }
+
+    @Override
+    public void onResponse(Boolean response) {
+        sendResponse(response);
+    }
+
+    @Override
+    public void onFailure(Throwable t) {
+        handleProcessingFailure(t);
     }
 }

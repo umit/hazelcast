@@ -14,57 +14,55 @@
  * limitations under the License.
  */
 
-package com.hazelcast.cp.internal.session.client;
+package com.hazelcast.cp.internal.datastructures.atomiclong.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.client.impl.protocol.codec.CPSessionCloseSessionCodec;
+import com.hazelcast.client.impl.protocol.codec.CPAtomicLongApplyCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
+import com.hazelcast.core.IFunction;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
-import com.hazelcast.cp.internal.session.operation.CloseSessionOp;
+import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongService;
+import com.hazelcast.cp.internal.datastructures.atomiclong.operation.ApplyOp;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
 
 import java.security.Permission;
 
 /**
- * Client message task for {@link CloseSessionOp}
+ * Client message task for {@link ApplyOp}
  */
-public class CloseSessionMessageTask extends AbstractMessageTask<CPSessionCloseSessionCodec.RequestParameters>
+public class ApplyMessageTask extends AbstractMessageTask<CPAtomicLongApplyCodec.RequestParameters>
         implements ExecutionCallback<Object> {
 
-    public CloseSessionMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public ApplyMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
+        IFunction<Long, Object> function = serializationService.toObject(parameters.function);
         CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         service.getInvocationManager()
-               .invoke(groupId, new CloseSessionOp(parameters.sessionId))
+               .invoke(groupId, new ApplyOp<Object>(parameters.name, function))
                .andThen(this);
     }
 
     @Override
-    protected CPSessionCloseSessionCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
-        return CPSessionCloseSessionCodec.decodeRequest(clientMessage);
+    protected CPAtomicLongApplyCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPAtomicLongApplyCodec.decodeRequest(clientMessage);
     }
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        return CPSessionCloseSessionCodec.encodeResponse((Boolean) response);
+        return CPAtomicLongApplyCodec.encodeResponse(nodeEngine.toData(response));
     }
 
     @Override
     public String getServiceName() {
-        return RaftService.SERVICE_NAME;
-    }
-
-    @Override
-    public String getDistributedObjectName() {
-        return null;
+        return RaftAtomicLongService.SERVICE_NAME;
     }
 
     @Override
@@ -73,8 +71,13 @@ public class CloseSessionMessageTask extends AbstractMessageTask<CPSessionCloseS
     }
 
     @Override
+    public String getDistributedObjectName() {
+        return parameters.name;
+    }
+
+    @Override
     public String getMethodName() {
-        return null;
+        return "apply";
     }
 
     @Override

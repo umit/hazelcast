@@ -17,43 +17,81 @@
 package com.hazelcast.cp.internal.datastructures.lock.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.cp.internal.RaftInvocationManager;
+import com.hazelcast.client.impl.protocol.codec.CPFencedLockUnlockCodec;
+import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
+import com.hazelcast.core.ExecutionCallback;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.datastructures.lock.RaftLockService;
 import com.hazelcast.cp.internal.datastructures.lock.operation.UnlockOp;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
 
+import java.security.Permission;
 import java.util.UUID;
-
-import static com.hazelcast.cp.internal.util.UUIDSerializationUtil.readUUID;
 
 /**
  * Client message task for {@link UnlockOp}
  */
-public class UnlockMessageTask extends AbstractLockMessageTask {
+public class UnlockMessageTask extends AbstractMessageTask<CPFencedLockUnlockCodec.RequestParameters>
+        implements ExecutionCallback<Boolean> {
 
-    private long threadId;
-    private UUID invocationUid;
-
-    UnlockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public UnlockMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
-        RaftInvocationManager invocationManager = getRaftInvocationManager();
-        invocationManager.invoke(groupId, new UnlockOp(name, sessionId, threadId, invocationUid)).andThen(this);
+        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
+        UUID invocationUid = nodeEngine.toObject(parameters.invocationUid);
+        RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+        service.getInvocationManager()
+               .<Boolean>invoke(groupId, new UnlockOp(parameters.name, parameters.sessionId, parameters.threadId, invocationUid))
+               .andThen(this);
+    }
+
+    @Override
+    protected CPFencedLockUnlockCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPFencedLockUnlockCodec.decodeRequest(clientMessage);
     }
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        return super.encodeResponse(response);
+        return CPFencedLockUnlockCodec.encodeResponse((Boolean) response);
     }
 
     @Override
-    protected Object decodeClientMessage(ClientMessage clientMessage) {
-        super.decodeClientMessage(clientMessage);
-        threadId = clientMessage.getLong();
-        invocationUid = readUUID(clientMessage);
+    public String getServiceName() {
+        return RaftLockService.SERVICE_NAME;
+    }
+
+    @Override
+    public Permission getRequiredPermission() {
         return null;
+    }
+
+    @Override
+    public String getDistributedObjectName() {
+        return parameters.name;
+    }
+
+    @Override
+    public String getMethodName() {
+        return "unlock";
+    }
+
+    @Override
+    public Object[] getParameters() {
+        return new Object[0];
+    }
+
+    @Override
+    public void onResponse(Boolean response) {
+        sendResponse(response);
+    }
+
+    @Override
+    public void onFailure(Throwable t) {
+        handleProcessingFailure(t);
     }
 }

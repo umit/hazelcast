@@ -17,17 +17,15 @@
 package com.hazelcast.cp.internal.session.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.impl.protocol.codec.CPSessionCreateSessionCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.RaftGroupId;
-import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.session.SessionResponse;
 import com.hazelcast.cp.internal.session.operation.CreateSessionOp;
 import com.hazelcast.instance.Node;
-import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.Connection;
 
 import java.security.Permission;
@@ -37,54 +35,31 @@ import static com.hazelcast.cp.session.CPSession.CPSessionOwnerType.CLIENT;
 /**
  * Client message task for {@link CreateSessionOp}
  */
-public class CreateSessionMessageTask extends AbstractMessageTask implements ExecutionCallback {
+public class CreateSessionMessageTask extends AbstractMessageTask<CPSessionCreateSessionCodec.RequestParameters>
+        implements ExecutionCallback<SessionResponse> {
 
-    private CPGroupId groupId;
-
-    private String endpointName;
-
-    CreateSessionMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public CreateSessionMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
+        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
-        RaftInvocationManager invocationManager = service.getInvocationManager();
-        RaftOp op = new CreateSessionOp(connection.getEndPoint(), endpointName, CLIENT, System.currentTimeMillis());
-        invocationManager.invoke(groupId, op).andThen(this);
+        RaftOp op = new CreateSessionOp(connection.getEndPoint(), parameters.endpointName, CLIENT, System.currentTimeMillis());
+        service.getInvocationManager()
+                .<SessionResponse>invoke(groupId, op)
+                .andThen(this);
     }
 
     @Override
-    protected Object decodeClientMessage(ClientMessage clientMessage) {
-        groupId = RaftGroupId.readFrom(clientMessage);
-        endpointName = clientMessage.getStringUtf8();
-        return null;
+    protected CPSessionCreateSessionCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPSessionCreateSessionCodec.decodeRequest(clientMessage);
     }
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        if (response instanceof SessionResponse) {
-            SessionResponse session = (SessionResponse) response;
-            int dataSize = ClientMessage.HEADER_SIZE + Bits.LONG_SIZE_IN_BYTES * 3;
-            ClientMessage clientMessage = ClientMessage.createForEncode(dataSize);
-            clientMessage.set(session.getSessionId());
-            clientMessage.set(session.getTtlMillis());
-            clientMessage.set(session.getHeartbeatMillis());
-            clientMessage.updateFrameLength();
-            return clientMessage;
-        }
-        throw new IllegalArgumentException("Unknown response: " + response);
-    }
-
-    @Override
-    public void onResponse(Object response) {
-        sendResponse(response);
-    }
-
-    @Override
-    public void onFailure(Throwable t) {
-        handleProcessingFailure(t);
+        return CPSessionCreateSessionCodec.encodeResponse(serializationService.toData(response));
     }
 
     @Override
@@ -104,11 +79,21 @@ public class CreateSessionMessageTask extends AbstractMessageTask implements Exe
 
     @Override
     public String getMethodName() {
-        return null;
+        return "create";
     }
 
     @Override
     public Object[] getParameters() {
         return new Object[0];
+    }
+
+    @Override
+    public void onResponse(SessionResponse response) {
+        sendResponse(response);
+    }
+
+    @Override
+    public void onFailure(Throwable t) {
+        handleProcessingFailure(t);
     }
 }

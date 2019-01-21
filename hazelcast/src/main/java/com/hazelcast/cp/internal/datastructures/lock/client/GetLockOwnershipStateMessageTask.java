@@ -17,32 +17,80 @@
 package com.hazelcast.cp.internal.datastructures.lock.client;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.impl.protocol.codec.CPFencedLockGetLockOwnershipCodec;
+import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
+import com.hazelcast.core.ExecutionCallback;
+import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.datastructures.lock.RaftLockOwnershipState;
+import com.hazelcast.cp.internal.datastructures.lock.RaftLockService;
 import com.hazelcast.cp.internal.datastructures.lock.operation.GetLockOwnershipStateOp;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.cp.internal.RaftInvocationManager;
+
+import java.security.Permission;
 
 /**
  * Client message task for {@link GetLockOwnershipStateOp}
  */
-public class GetLockOwnershipStateMessageTask extends AbstractLockMessageTask {
+public class GetLockOwnershipStateMessageTask extends AbstractMessageTask<CPFencedLockGetLockOwnershipCodec.RequestParameters>
+        implements ExecutionCallback<RaftLockOwnershipState> {
 
-    private long threadId;
-
-    GetLockOwnershipStateMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public GetLockOwnershipStateMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
     protected void processMessage() {
-        RaftInvocationManager invocationManager = getRaftInvocationManager();
-        invocationManager.invoke(groupId, new GetLockOwnershipStateOp(name)).andThen(this);
+        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
+        RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+        service.getInvocationManager()
+               .<RaftLockOwnershipState>invoke(groupId, new GetLockOwnershipStateOp(parameters.name))
+               .andThen(this);
     }
 
     @Override
-    protected Object decodeClientMessage(ClientMessage clientMessage) {
-        super.decodeClientMessage(clientMessage);
-        threadId = clientMessage.getLong();
+    protected CPFencedLockGetLockOwnershipCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return CPFencedLockGetLockOwnershipCodec.decodeRequest(clientMessage);
+    }
+
+    @Override
+    protected ClientMessage encodeResponse(Object response) {
+        return CPFencedLockGetLockOwnershipCodec.encodeResponse(serializationService.toData(response));
+    }
+
+    @Override
+    public String getServiceName() {
+        return RaftLockService.SERVICE_NAME;
+    }
+
+    @Override
+    public Permission getRequiredPermission() {
         return null;
+    }
+
+    @Override
+    public String getDistributedObjectName() {
+        return parameters.name;
+    }
+
+    @Override
+    public String getMethodName() {
+        return "getLockOwnershipState";
+    }
+
+    @Override
+    public Object[] getParameters() {
+        return new Object[0];
+    }
+
+    @Override
+    public void onResponse(RaftLockOwnershipState response) {
+        sendResponse(response);
+    }
+
+    @Override
+    public void onFailure(Throwable t) {
+        handleProcessingFailure(t);
     }
 }
