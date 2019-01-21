@@ -614,11 +614,11 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
     }
 
-    public RaftGroupId createRaftGroupForProxy(String name) {
+    public CPGroupId createRaftGroupForProxy(String name) {
         String groupName = getGroupNameForProxy(name);
 
         try {
-            RaftGroupId groupId = getGroupIdForProxy(name);
+            CPGroupId groupId = getGroupIdForProxy(name);
             if (groupId != null) {
                 return groupId;
             }
@@ -632,7 +632,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
     }
 
-    public RaftGroupId getGroupIdForProxy(String name) {
+    public CPGroupId getGroupIdForProxy(String name) {
         String groupName = getGroupNameForProxy(name);
         RaftOp op = new GetActiveRaftGroupByNameOp(groupName);
         CPGroupInfo group = invocationManager.<CPGroupInfo>invoke(METADATA_GROUP_ID, op).join();

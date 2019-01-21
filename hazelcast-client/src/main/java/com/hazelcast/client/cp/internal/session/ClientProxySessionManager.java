@@ -30,7 +30,6 @@ import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.cp.internal.session.SessionExpiredException;
@@ -106,7 +105,7 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     }
 
     @Override
-    protected long generateThreadId(RaftGroupId groupId) {
+    protected long generateThreadId(CPGroupId groupId) {
         Data groupIdData = client.getSerializationService().toData(groupId);
         ClientMessage request = CPSessionGenerateThreadIdCodec.encodeRequest(groupIdData, System.currentTimeMillis());
         ClientMessage response = new ClientInvocation(client, request, "sessionManager").invoke().join();
@@ -115,7 +114,7 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     }
 
     @Override
-    protected SessionResponse requestNewSession(RaftGroupId groupId) {
+    protected SessionResponse requestNewSession(CPGroupId groupId) {
         Data groupIdData = client.getSerializationService().toData(groupId);
         ClientMessage request = CPSessionCreateSessionCodec.encodeRequest(groupIdData, client.getName());
         ClientMessage response = new ClientInvocation(client, request, "sessionManager").invoke().join();
@@ -128,7 +127,7 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     }
 
     @Override
-    protected ICompletableFuture<Object> heartbeat(RaftGroupId groupId, long sessionId) {
+    protected ICompletableFuture<Object> heartbeat(CPGroupId groupId, long sessionId) {
         Data groupIdData = client.getSerializationService().toData(groupId);
         ClientMessage request = CPSessionHeartbeatSessionCodec.encodeRequest(groupIdData, sessionId);
         ClientInvocationFuture future = new ClientInvocation(client, request, "sessionManager").invoke();
@@ -136,7 +135,7 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     }
 
     @Override
-    protected ICompletableFuture<Object> closeSession(RaftGroupId groupId, Long sessionId) {
+    protected ICompletableFuture<Object> closeSession(CPGroupId groupId, Long sessionId) {
         Data groupIdData = client.getSerializationService().toData(groupId);
         ClientMessage request = CPSessionCloseSessionCodec.encodeRequest(groupIdData, sessionId);
         ClientInvocationFuture future = new ClientInvocation(client, request, "sessionManager").invoke();
@@ -144,8 +143,8 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     }
 
     @Override
-    public Map<RaftGroupId, ICompletableFuture<Object>> shutdown() {
-        Map<RaftGroupId, ICompletableFuture<Object>> futures = super.shutdown();
+    public Map<CPGroupId, ICompletableFuture<Object>> shutdown() {
+        Map<CPGroupId, ICompletableFuture<Object>> futures = super.shutdown();
 
         ILogger logger = client.getLoggingService().getLogger(getClass());
 
@@ -154,7 +153,7 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
         while (remainingTimeNanos > 0) {
             int closed = 0;
 
-            for (Entry<RaftGroupId, ICompletableFuture<Object>> entry : futures.entrySet()) {
+            for (Entry<CPGroupId, ICompletableFuture<Object>> entry : futures.entrySet()) {
                 CPGroupId groupId = entry.getKey();
                 ICompletableFuture<Object> f = entry.getValue();
                 if (f.isDone()) {

@@ -18,7 +18,6 @@ package com.hazelcast.cp.internal.datastructures.countdownlatch;
 
 import com.hazelcast.core.DistributedObject;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.proxy.RaftCountDownLatchProxy;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.AbstractBlockingService;
@@ -94,7 +93,7 @@ public class RaftCountDownLatchService
     public DistributedObject createDistributedObject(String proxyName) {
         try {
             RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
-            RaftGroupId groupId = service.createRaftGroupForProxy(proxyName);
+            CPGroupId groupId = service.createRaftGroupForProxy(proxyName);
             return new RaftCountDownLatchProxy(nodeEngine, groupId, proxyName, getObjectNameForProxy(proxyName));
         } catch (Exception e) {
             throw rethrow(e);

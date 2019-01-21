@@ -20,8 +20,8 @@ import com.hazelcast.config.Config;
 import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
-import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.AcquirePermitsOp;
@@ -71,11 +71,11 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
 
     abstract boolean isJDKCompatible();
 
-    abstract RaftGroupId getGroupId(ISemaphore semaphore);
+    abstract CPGroupId getGroupId(ISemaphore semaphore);
 
-    abstract long getSessionId(HazelcastInstance semaphoreInstance, RaftGroupId groupId);
+    abstract long getSessionId(HazelcastInstance semaphoreInstance, CPGroupId groupId);
 
-    long getThreadId(RaftGroupId groupId) {
+    long getThreadId(CPGroupId groupId) {
         return sessionManagerService.getOrCreateUniqueThreadId(groupId);
     }
 
@@ -84,7 +84,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
         semaphore.init(1);
         semaphore.acquire();
 
-        final RaftGroupId groupId = getGroupId(semaphore);
+        final CPGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
         long threadId = getThreadId(groupId);
         UUID invUid = newUnsecureUUID();
@@ -119,7 +119,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
         semaphore.init(1);
         semaphore.acquire();
 
-        final RaftGroupId groupId = getGroupId(semaphore);
+        final CPGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
         long threadId = getThreadId(groupId);
         UUID invUid1 = newUnsecureUUID();
@@ -155,7 +155,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
         semaphore.release();
         // if the session-aware semaphore is used, we guarantee that there is a session id now...
 
-        final RaftGroupId groupId = getGroupId(semaphore);
+        final CPGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
         long threadId = getThreadId(groupId);
         UUID invUid1 = newUnsecureUUID();
@@ -189,7 +189,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
         semaphore.init(1);
         semaphore.acquire();
 
-        final RaftGroupId groupId = getGroupId(semaphore);
+        final CPGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
         long threadId = getThreadId(groupId);
         UUID invUid1 = newUnsecureUUID();
@@ -225,7 +225,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
         semaphore.release();
         // if the session-aware semaphore is used, we guarantee that there is a session id now...
 
-        final RaftGroupId groupId = getGroupId(semaphore);
+        final CPGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
         long threadId = getThreadId(groupId);
         UUID invUid1 = newUnsecureUUID();
@@ -259,7 +259,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
         semaphore.init(1);
         semaphore.acquire();
 
-        final RaftGroupId groupId = getGroupId(semaphore);
+        final CPGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
         long threadId = getThreadId(groupId);
         UUID invUid1 = newUnsecureUUID();
@@ -295,7 +295,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
         semaphore.release();
         // if the session-aware semaphore is used, we guarantee that there is a session id now...
 
-        final RaftGroupId groupId = getGroupId(semaphore);
+        final CPGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
         long threadId = getThreadId(groupId);
         UUID invUid1 = newUnsecureUUID();
@@ -329,7 +329,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
         semaphore.init(1);
         semaphore.acquire();
 
-        final RaftGroupId groupId = getGroupId(semaphore);
+        final CPGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
         long threadId = getThreadId(groupId);
         UUID invUid = newUnsecureUUID();
@@ -367,7 +367,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
         semaphore.release();
         // if the session-aware semaphore is used, we guarantee that there is a session id now...
 
-        final RaftGroupId groupId = getGroupId(semaphore);
+        final CPGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
         long threadId = getThreadId(groupId);
         UUID invUid = newUnsecureUUID();
@@ -405,7 +405,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
         semaphore.release();
         // if the session-aware semaphore is used, we guarantee that there is a session id now...
 
-        final RaftGroupId groupId = getGroupId(semaphore);
+        final CPGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
         long threadId = getThreadId(groupId);
         UUID invUid = newUnsecureUUID();
@@ -440,7 +440,7 @@ public abstract class RaftSemaphoreFailureTest extends HazelcastRaftTestSupport 
         semaphore.release();
         // if the session-aware semaphore is used, we guarantee that there is a session id now...
 
-        final RaftGroupId groupId = getGroupId(semaphore);
+        final CPGroupId groupId = getGroupId(semaphore);
         long sessionId = getSessionId(semaphoreInstance, groupId);
         long threadId = getThreadId(groupId);
         UUID invUid1 = newUnsecureUUID();

@@ -33,7 +33,7 @@ import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.IFunction;
-import com.hazelcast.cp.internal.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongService;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.InternalCompletableFuture;
@@ -97,10 +97,10 @@ class RaftAtomicLongProxy extends ClientProxy implements IAtomicLong {
     };
 
 
-    private final RaftGroupId groupId;
+    private final CPGroupId groupId;
     private final String objectName;
 
-    RaftAtomicLongProxy(ClientContext context, RaftGroupId groupId, String proxyName, String objectName) {
+    RaftAtomicLongProxy(ClientContext context, CPGroupId groupId, String proxyName, String objectName) {
         super(RaftAtomicLongService.SERVICE_NAME, proxyName, context);
         this.groupId = groupId;
         this.objectName = objectName;
@@ -277,7 +277,7 @@ class RaftAtomicLongProxy extends ClientProxy implements IAtomicLong {
         new ClientInvocation(getClient(), request, name).invoke().join();
     }
 
-    public RaftGroupId getGroupId() {
+    public CPGroupId getGroupId() {
         return groupId;
     }
 

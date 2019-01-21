@@ -31,7 +31,7 @@ import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.core.IFunction;
-import com.hazelcast.cp.internal.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.datastructures.atomicref.RaftAtomicRefService;
 import com.hazelcast.cp.internal.datastructures.atomicref.operation.ApplyOp.ReturnValueType;
 import com.hazelcast.nio.serialization.Data;
@@ -84,10 +84,10 @@ class RaftAtomicRefProxy<T> extends ClientProxy implements IAtomicReference<T> {
     };
 
 
-    private final RaftGroupId groupId;
+    private final CPGroupId groupId;
     private final String objectName;
 
-    RaftAtomicRefProxy(ClientContext context, RaftGroupId groupId, String proxyName, String objectName) {
+    RaftAtomicRefProxy(ClientContext context, CPGroupId groupId, String proxyName, String objectName) {
         super(RaftAtomicRefService.SERVICE_NAME, proxyName, context);
         this.groupId = groupId;
         this.objectName = objectName;
@@ -241,7 +241,7 @@ class RaftAtomicRefProxy<T> extends ClientProxy implements IAtomicReference<T> {
         throw new UnsupportedOperationException();
     }
 
-    public RaftGroupId getGroupId() {
+    public CPGroupId getGroupId() {
         return groupId;
     }
 

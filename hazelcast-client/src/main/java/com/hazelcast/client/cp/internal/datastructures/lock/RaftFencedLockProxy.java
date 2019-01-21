@@ -29,7 +29,6 @@ import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockOwnershipState;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockService;
 import com.hazelcast.cp.internal.datastructures.lock.proxy.AbstractRaftFencedLockProxy;
@@ -77,7 +76,7 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
 
     private final FencedLockImpl lock;
 
-    RaftFencedLockProxy(ClientContext context, RaftGroupId groupId, String proxyName, String objectName) {
+    RaftFencedLockProxy(ClientContext context, CPGroupId groupId, String proxyName, String objectName) {
         super(RaftLockService.SERVICE_NAME, proxyName, context);
         this.lock = new FencedLockImpl(getClient().getProxySessionManager(), groupId, proxyName, objectName);
     }
@@ -167,7 +166,7 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
 
 
     private class FencedLockImpl extends AbstractRaftFencedLockProxy {
-        FencedLockImpl(AbstractProxySessionManager sessionManager, RaftGroupId groupId, String proxyName, String objectName) {
+        FencedLockImpl(AbstractProxySessionManager sessionManager, CPGroupId groupId, String proxyName, String objectName) {
             super(sessionManager, groupId, proxyName, objectName);
         }
 

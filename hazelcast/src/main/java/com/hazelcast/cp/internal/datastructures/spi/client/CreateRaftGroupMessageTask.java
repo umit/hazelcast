@@ -19,7 +19,7 @@ package com.hazelcast.cp.internal.datastructures.spi.client;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.CPGroupCreateCPGroupCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
-import com.hazelcast.cp.internal.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
@@ -38,7 +38,7 @@ public class CreateRaftGroupMessageTask extends AbstractMessageTask<CPGroupCreat
     @Override
     protected void processMessage() {
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
-        RaftGroupId groupId = service.createRaftGroupForProxy(parameters.proxyName);
+        CPGroupId groupId = service.createRaftGroupForProxy(parameters.proxyName);
         sendResponse(groupId);
     }
 

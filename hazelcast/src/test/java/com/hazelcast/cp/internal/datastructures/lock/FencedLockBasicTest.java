@@ -19,7 +19,6 @@ package com.hazelcast.cp.internal.datastructures.lock;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
-import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.lock.proxy.AbstractRaftFencedLockProxy;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.cp.internal.session.ProxySessionManagerService;
@@ -353,7 +352,7 @@ public class FencedLockBasicTest extends HazelcastRaftTestSupport {
         assertValidFence(fence);
 
         final AbstractProxySessionManager sessionManager = getSessionManager(lockInstance);
-        final RaftGroupId groupId = (RaftGroupId) lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
         final long sessionId = sessionManager.getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 
@@ -378,7 +377,7 @@ public class FencedLockBasicTest extends HazelcastRaftTestSupport {
         assertValidFence(fence);
 
         final AbstractProxySessionManager sessionManager = getSessionManager(lockInstance);
-        final RaftGroupId groupId = (RaftGroupId) lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
         final long sessionId = sessionManager.getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 
@@ -403,7 +402,7 @@ public class FencedLockBasicTest extends HazelcastRaftTestSupport {
         assertValidFence(fence);
 
         final AbstractProxySessionManager sessionManager = getSessionManager(lockInstance);
-        final RaftGroupId groupId = (RaftGroupId) lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
         final long sessionId = sessionManager.getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 
@@ -428,7 +427,7 @@ public class FencedLockBasicTest extends HazelcastRaftTestSupport {
         assertValidFence(fence);
 
         final AbstractProxySessionManager sessionManager = getSessionManager(lockInstance);
-        final RaftGroupId groupId = (RaftGroupId) lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
         final long sessionId = sessionManager.getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 
@@ -457,7 +456,7 @@ public class FencedLockBasicTest extends HazelcastRaftTestSupport {
         assertValidFence(fence);
 
         final AbstractProxySessionManager sessionManager = getSessionManager(lockInstance);
-        final RaftGroupId groupId = (RaftGroupId) lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
         final long sessionId = sessionManager.getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 
@@ -488,7 +487,7 @@ public class FencedLockBasicTest extends HazelcastRaftTestSupport {
         assertValidFence(fence);
 
         final AbstractProxySessionManager sessionManager = getSessionManager(lockInstance);
-        final RaftGroupId groupId = (RaftGroupId) lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
         final long sessionId = sessionManager.getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
 
@@ -518,7 +517,7 @@ public class FencedLockBasicTest extends HazelcastRaftTestSupport {
         lockByOtherThread(lock);
 
         final AbstractProxySessionManager sessionManager = getSessionManager(lockInstance);
-        final RaftGroupId groupId = (RaftGroupId) lock.getGroupId();
+        final CPGroupId groupId = lock.getGroupId();
         final long sessionId = sessionManager.getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
         assertEquals(1, sessionManager.getSessionAcquireCount(groupId, sessionId));

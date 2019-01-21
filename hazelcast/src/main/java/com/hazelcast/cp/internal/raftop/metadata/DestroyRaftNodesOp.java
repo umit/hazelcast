@@ -17,7 +17,6 @@
 package com.hazelcast.cp.internal.raftop.metadata;
 
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
@@ -94,7 +93,7 @@ public class DestroyRaftNodesOp extends Operation implements IdentifiedDataSeria
         int count = in.readInt();
         groupIds = new ArrayList<CPGroupId>();
         for (int i = 0; i < count; i++) {
-            RaftGroupId groupId = in.readObject();
+            CPGroupId groupId = in.readObject();
             groupIds.add(groupId);
         }
     }

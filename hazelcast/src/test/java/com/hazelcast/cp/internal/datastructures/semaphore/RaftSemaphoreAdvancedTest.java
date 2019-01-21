@@ -23,7 +23,6 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
-import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.AcquirePermitsOp;
@@ -274,7 +273,7 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
         semaphore.init(1);
         semaphore.acquire();
 
-        final RaftGroupId groupId = semaphore.getGroupId();
+        final CPGroupId groupId = semaphore.getGroupId();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -369,7 +368,7 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
         semaphore.init(1);
         semaphore.acquire();
 
-        final RaftGroupId groupId = semaphore.getGroupId();
+        final CPGroupId groupId = semaphore.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         UUID invUid = newUnsecureUUID();
         RaftInvocationManager invocationManager = getRaftInvocationManager(semaphoreInstance);
@@ -393,7 +392,7 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
         semaphore.release();
         // we guarantee that there is a session id now...
 
-        final RaftGroupId groupId = semaphore.getGroupId();
+        final CPGroupId groupId = semaphore.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
         UUID invUid = newUnsecureUUID();
@@ -412,7 +411,7 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
         semaphore.release();
         // we guarantee that there is a session id now...
 
-        final RaftGroupId groupId = semaphore.getGroupId();
+        final CPGroupId groupId = semaphore.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
         UUID invUid = newUnsecureUUID();
@@ -428,7 +427,7 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
     public void testRetriedDrainPermitsAppliedOnlyOnce() throws ExecutionException, InterruptedException {
         semaphore.increasePermits(3);
 
-        final RaftGroupId groupId = semaphore.getGroupId();
+        final CPGroupId groupId = semaphore.getGroupId();
         long sessionId = getSessionManager().getSession(groupId);
         assertNotEquals(NO_SESSION_ID, sessionId);
         UUID invUid = newUnsecureUUID();
@@ -475,7 +474,7 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
 
         // there is a session id now
 
-        final RaftGroupId groupId = semaphore.getGroupId();
+        final CPGroupId groupId = semaphore.getGroupId();
         final NodeEngineImpl nodeEngine = getNodeEngineImpl(semaphoreInstance);
         final RaftSemaphoreService service = nodeEngine.getService(RaftSemaphoreService.SERVICE_NAME);
 

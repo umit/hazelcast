@@ -29,7 +29,6 @@ import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.core.OperationTimeoutException;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.util.EmptyStatement;
@@ -45,10 +44,10 @@ import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
  */
 class RaftCountDownLatchProxy extends ClientProxy implements ICountDownLatch {
 
-    private final RaftGroupId groupId;
+    private final CPGroupId groupId;
     private final String objectName;
 
-    RaftCountDownLatchProxy(ClientContext context, RaftGroupId groupId, String proxyName, String objectName) {
+    RaftCountDownLatchProxy(ClientContext context, CPGroupId groupId, String proxyName, String objectName) {
         super(RaftCountDownLatchService.SERVICE_NAME, proxyName, context);
         this.groupId = groupId;
         this.objectName = objectName;

@@ -268,7 +268,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         waitUntilCPDiscoveryCompleted(instances);
 
         long groupIdTerm = getRaftService(instances[0]).getMetadataGroupManager().getGroupIdTerm();
-        RaftGroupId groupId = getRaftInvocationManager(instances[0]).createRaftGroup(CPGroup.DEFAULT_GROUP_NAME).get();
+        RaftGroupId groupId = (RaftGroupId) getRaftInvocationManager(instances[0]).createRaftGroup(CPGroup.DEFAULT_GROUP_NAME).get();
 
         instances[0].getCPSubsystem().getAtomicLong("proxy");
         instances[0].getCPSubsystem().getAtomicReference("proxy");
@@ -309,7 +309,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         waitUntilCPDiscoveryCompleted(newInstances);
 
         long newGroupIdTerm = getRaftService(newInstances[0]).getMetadataGroupManager().getGroupIdTerm();
-        RaftGroupId newGroupId = getRaftInvocationManager(instances[0]).createRaftGroup(CPGroup.DEFAULT_GROUP_NAME).get();
+        RaftGroupId newGroupId = (RaftGroupId) getRaftInvocationManager(instances[0]).createRaftGroup(CPGroup.DEFAULT_GROUP_NAME).get();
 
         assertTrue(newGroupIdTerm > groupIdTerm);
         assertTrue(newGroupId.term() > groupId.term());

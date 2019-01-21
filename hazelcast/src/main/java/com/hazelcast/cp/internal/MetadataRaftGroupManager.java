@@ -318,7 +318,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     }
 
     @SuppressWarnings("unchecked")
-    private RaftGroupId createRaftGroup(CPGroupInfo group) {
+    private CPGroupId createRaftGroup(CPGroupInfo group) {
         addRaftGroup(group);
 
         logger.info("New " + group.id() + " is created with " + group.members());

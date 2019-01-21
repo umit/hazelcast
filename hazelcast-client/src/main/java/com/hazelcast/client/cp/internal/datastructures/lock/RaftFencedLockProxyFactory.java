@@ -24,7 +24,7 @@ import com.hazelcast.client.spi.ClientProxy;
 import com.hazelcast.client.spi.ClientProxyFactory;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientProxyFactoryWithContext;
-import com.hazelcast.cp.internal.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.lock.FencedLock;
 
 import static com.hazelcast.cp.internal.RaftService.getObjectNameForProxy;
@@ -46,8 +46,8 @@ public class RaftFencedLockProxyFactory extends ClientProxyFactoryWithContext im
         String objectName = getObjectNameForProxy(proxyName);
         ClientMessage request = CPGroupCreateCPGroupCodec.encodeRequest(proxyName);
         ClientMessage response = new ClientInvocation(client, request, objectName).invoke().join();
-        RaftGroupId groupId = client.getSerializationService()
-                                    .toObject(CPGroupCreateCPGroupCodec.decodeResponse(response).response);
+        CPGroupId groupId = client.getSerializationService()
+                                  .toObject(CPGroupCreateCPGroupCodec.decodeResponse(response).response);
 
         return new RaftFencedLockProxy(context, groupId, proxyName, objectName);
     }

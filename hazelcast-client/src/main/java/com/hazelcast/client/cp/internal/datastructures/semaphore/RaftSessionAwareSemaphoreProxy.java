@@ -30,7 +30,7 @@ import com.hazelcast.client.spi.ClientContext;
 import com.hazelcast.client.spi.ClientProxy;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.core.ISemaphore;
-import com.hazelcast.cp.internal.RaftGroupId;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
 import com.hazelcast.cp.internal.session.SessionExpiredException;
 import com.hazelcast.nio.serialization.Data;
@@ -52,10 +52,10 @@ import static java.lang.Math.max;
 class RaftSessionAwareSemaphoreProxy extends ClientProxy implements ISemaphore {
 
     private final ClientProxySessionManager sessionManager;
-    private final RaftGroupId groupId;
+    private final CPGroupId groupId;
     private final String objectName;
 
-    RaftSessionAwareSemaphoreProxy(ClientContext context, RaftGroupId groupId, String proxyName, String objectName) {
+    RaftSessionAwareSemaphoreProxy(ClientContext context, CPGroupId groupId, String proxyName, String objectName) {
         super(RaftSemaphoreService.SERVICE_NAME, proxyName, context);
         this.sessionManager = getClient().getProxySessionManager();
         this.groupId = groupId;
@@ -271,7 +271,7 @@ class RaftSessionAwareSemaphoreProxy extends ClientProxy implements ISemaphore {
         new ClientInvocation(getClient(), request, name).invoke().join();
     }
 
-    public RaftGroupId getGroupId() {
+    public CPGroupId getGroupId() {
         return groupId;
     }
 

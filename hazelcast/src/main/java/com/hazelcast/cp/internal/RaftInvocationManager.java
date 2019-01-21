@@ -84,16 +84,16 @@ public class RaftInvocationManager {
         raftInvocationContext.reset();
     }
 
-    public ICompletableFuture<RaftGroupId> createRaftGroup(String groupName) {
+    public ICompletableFuture<CPGroupId> createRaftGroup(String groupName) {
         return createRaftGroup(groupName, raftService.getConfig().getGroupSize());
     }
 
-    public ICompletableFuture<RaftGroupId> createRaftGroup(String groupName, int groupSize) {
+    public ICompletableFuture<CPGroupId> createRaftGroup(String groupName, int groupSize) {
         checkCPSubsystemEnabled();
 
         Executor executor = nodeEngine.getExecutionService().getExecutor(ASYNC_EXECUTOR);
         ILogger logger = nodeEngine.getLogger(getClass());
-        SimpleCompletableFuture<RaftGroupId> resultFuture = new SimpleCompletableFuture<RaftGroupId>(executor, logger);
+        SimpleCompletableFuture<CPGroupId> resultFuture = new SimpleCompletableFuture<CPGroupId>(executor, logger);
         invokeGetMembersToCreateRaftGroup(groupName, groupSize, resultFuture);
         return resultFuture;
     }
@@ -105,7 +105,7 @@ public class RaftInvocationManager {
     }
 
     private void invokeGetMembersToCreateRaftGroup(final String groupName, final int groupSize,
-                                                   final SimpleCompletableFuture<RaftGroupId> resultFuture) {
+                                                   final SimpleCompletableFuture<CPGroupId> resultFuture) {
         ICompletableFuture<List<CPMemberInfo>> f = query(METADATA_GROUP_ID, new GetActiveCPMembersOp(), LEADER_LOCAL);
 
         f.andThen(new ExecutionCallback<List<CPMemberInfo>>() {
@@ -135,12 +135,12 @@ public class RaftInvocationManager {
 
     private void invokeCreateRaftGroup(final String groupName, final int groupSize,
                                        final List<CPMemberInfo> members,
-                                       final SimpleCompletableFuture<RaftGroupId> resultFuture) {
-        ICompletableFuture<RaftGroupId> f = invoke(METADATA_GROUP_ID, new CreateRaftGroupOp(groupName, members));
+                                       final SimpleCompletableFuture<CPGroupId> resultFuture) {
+        ICompletableFuture<CPGroupId> f = invoke(METADATA_GROUP_ID, new CreateRaftGroupOp(groupName, members));
 
-        f.andThen(new ExecutionCallback<RaftGroupId>() {
+        f.andThen(new ExecutionCallback<CPGroupId>() {
             @Override
-            public void onResponse(RaftGroupId groupId) {
+            public void onResponse(CPGroupId groupId) {
                 resultFuture.setResult(groupId);
             }
 

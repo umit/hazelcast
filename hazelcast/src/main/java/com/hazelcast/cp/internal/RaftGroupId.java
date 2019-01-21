@@ -16,13 +16,10 @@
 
 package com.hazelcast.cp.internal;
 
-import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.client.impl.protocol.util.ParameterUtil;
-import com.hazelcast.nio.Bits;
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.CPGroupId;
 
 import java.io.IOException;
 
@@ -114,23 +111,5 @@ public final class RaftGroupId implements CPGroupId, IdentifiedDataSerializable 
     @Override
     public String toString() {
         return "CPGroupId{" + "name='" + name + '\'' + ", term= " + term + ", commitIndex=" + commitIndex + '}';
-    }
-
-    // ----- CLIENT CONVENIENCE METHODS -----
-    public static RaftGroupId readFrom(ClientMessage message) {
-        String name = message.getStringUtf8();
-        long term = message.getLong();
-        long commitIndex = message.getLong();
-        return new RaftGroupId(name, term, commitIndex);
-    }
-
-    public static void writeTo(RaftGroupId groupId, ClientMessage message) {
-        message.set(groupId.name());
-        message.set(groupId.term);
-        message.set(groupId.id());
-    }
-
-    public static int dataSize(RaftGroupId groupId) {
-        return ParameterUtil.calculateDataSize(groupId.name()) + 2 * Bits.LONG_SIZE_IN_BYTES;
     }
 }
