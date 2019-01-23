@@ -16,17 +16,16 @@
 
 package com.hazelcast.cp.internal.datastructures.semaphore;
 
-import com.hazelcast.cp.internal.datastructures.semaphore.operation.GenerateThreadIdOp;
-import com.hazelcast.internal.serialization.DataSerializerHook;
-import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
-import com.hazelcast.nio.serialization.DataSerializableFactory;
-import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.AcquirePermitsOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.AvailablePermitsOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.ChangePermitsOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.DrainPermitsOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.InitSemaphoreOp;
-import com.hazelcast.cp.internal.datastructures.semaphore.operation.ReleasePermitsOp;
+import com.hazelcast.cp.internal.session.operation.GenerateThreadIdOp;
+import com.hazelcast.internal.serialization.DataSerializerHook;
+import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
+import com.hazelcast.nio.serialization.DataSerializableFactory;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
 @SuppressWarnings("checkstyle:declarationorder")
 public class RaftSemaphoreDataSerializerHook implements DataSerializerHook {
@@ -45,7 +44,6 @@ public class RaftSemaphoreDataSerializerHook implements DataSerializerHook {
     public static final int DRAIN_PERMITS_OP = 8;
     public static final int INIT_SEMAPHORE_OP = 9;
     public static final int RELEASE_PERMITS_OP = 10;
-    public static final int GENERATE_THREAD_ID_OP = 11;
 
     @Override
     public int getFactoryId() {
@@ -77,8 +75,6 @@ public class RaftSemaphoreDataSerializerHook implements DataSerializerHook {
                     case INIT_SEMAPHORE_OP:
                         return new InitSemaphoreOp();
                     case RELEASE_PERMITS_OP:
-                        return new ReleasePermitsOp();
-                    case GENERATE_THREAD_ID_OP:
                         return new GenerateThreadIdOp();
                     default:
                         throw new IllegalArgumentException("Undefined type: " + typeId);

@@ -16,6 +16,7 @@
 
 package com.hazelcast.cp.internal.session;
 
+import com.hazelcast.cp.internal.session.operation.GenerateThreadIdOp;
 import com.hazelcast.internal.serialization.DataSerializerHook;
 import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
@@ -43,6 +44,7 @@ public class RaftSessionServiceDataSerializerHook implements DataSerializerHook 
     public static final int EXPIRE_SESSIONS_OP = 7;
     public static final int CLOSE_INACTIVE_SESSIONS_OP = 8;
     public static final int GET_SESSIONS_OP = 9;
+    public static final int GENERATE_THREAD_ID_OP = 10;
 
     @Override
     public int getFactoryId() {
@@ -73,6 +75,8 @@ public class RaftSessionServiceDataSerializerHook implements DataSerializerHook 
                         return new CloseInactiveSessionsOp();
                     case GET_SESSIONS_OP:
                         return new GetSessionsOp();
+                    case GENERATE_THREAD_ID_OP:
+                        return new GenerateThreadIdOp();
                     default:
                         throw new IllegalArgumentException("Undefined type: " + typeId);
                 }

@@ -23,7 +23,7 @@ import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
-import com.hazelcast.cp.internal.datastructures.semaphore.operation.GenerateThreadIdOp;
+import com.hazelcast.cp.internal.session.operation.GenerateThreadIdOp;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
 
@@ -44,7 +44,7 @@ public class GenerateThreadIdMessageTask extends AbstractMessageTask<CPSessionGe
         CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
         RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
         raftService.getInvocationManager()
-                   .<Long>invoke(groupId, new GenerateThreadIdOp(parameters.initialValue))
+                   .<Long>invoke(groupId, new GenerateThreadIdOp())
                    .andThen(this);
     }
 

@@ -21,13 +21,12 @@ import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
-import com.hazelcast.cp.internal.datastructures.semaphore.operation.GenerateThreadIdOp;
 import com.hazelcast.cp.internal.session.operation.CloseSessionOp;
 import com.hazelcast.cp.internal.session.operation.CreateSessionOp;
+import com.hazelcast.cp.internal.session.operation.GenerateThreadIdOp;
 import com.hazelcast.cp.internal.session.operation.HeartbeatSessionOp;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.GracefulShutdownAwareService;
-import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.util.ExceptionUtil;
 
@@ -62,9 +61,7 @@ public class ProxySessionManagerService extends AbstractProxySessionManager impl
 
     @Override
     protected long generateThreadId(CPGroupId groupId) {
-        InternalCompletableFuture<Long> f = getInvocationManager()
-                .invoke(groupId, new GenerateThreadIdOp(System.currentTimeMillis()));
-        return f.join();
+        return getInvocationManager().<Long>invoke(groupId, new GenerateThreadIdOp()).join();
     }
 
     @Override

@@ -43,6 +43,7 @@ class RaftSessionRegistry implements IdentifiedDataSerializable {
     private CPGroupId groupId;
     private final Map<Long, CPSessionInfo> sessions = new ConcurrentHashMap<Long, CPSessionInfo>();
     private long nextSessionId;
+    private long generatedThreadId;
 
     RaftSessionRegistry() {
     }
@@ -127,8 +128,13 @@ class RaftSessionRegistry implements IdentifiedDataSerializable {
         clone.groupId = this.groupId;
         clone.sessions.putAll(this.sessions);
         clone.nextSessionId = this.nextSessionId;
+        clone.generatedThreadId = this.generatedThreadId;
 
         return clone;
+    }
+
+    long generateThreadId() {
+        return ++generatedThreadId;
     }
 
     @Override
@@ -149,6 +155,7 @@ class RaftSessionRegistry implements IdentifiedDataSerializable {
         for (CPSessionInfo session : sessions.values()) {
             out.writeObject(session);
         }
+        out.writeLong(generatedThreadId);
     }
 
     @Override
@@ -160,6 +167,7 @@ class RaftSessionRegistry implements IdentifiedDataSerializable {
             CPSessionInfo session = in.readObject();
             sessions.put(session.id(), session);
         }
+        generatedThreadId = in.readLong();
     }
 
 }

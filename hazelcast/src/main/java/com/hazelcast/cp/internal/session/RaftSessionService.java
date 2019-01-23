@@ -231,6 +231,15 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
 
     public SessionResponse createNewSession(CPGroupId groupId, Address endpoint, String endpointName,
                                             CPSessionOwnerType endpointType, long creationTime) {
+        RaftSessionRegistry registry = getOrInitRegistry(groupId);
+
+        long sessionTTLMillis = getSessionTTLMillis();
+        long sessionId = registry.createNewSession(sessionTTLMillis, endpoint, endpointName, endpointType, creationTime);
+        logger.info("Created new session: " + sessionId + " in " + groupId + " for " + endpointType + " -> " + endpoint);
+        return new SessionResponse(sessionId, sessionTTLMillis, getHeartbeatIntervalMillis());
+    }
+
+    private RaftSessionRegistry getOrInitRegistry(CPGroupId groupId) {
         RaftSessionRegistry registry = registries.get(groupId);
         if (registry == null) {
             registry = new RaftSessionRegistry(groupId);
@@ -239,11 +248,7 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
                 logger.fine("Created new session registry for " + groupId);
             }
         }
-
-        long sessionTTLMillis = getSessionTTLMillis();
-        long sessionId = registry.createNewSession(sessionTTLMillis, endpoint, endpointName, endpointType, creationTime);
-        logger.info("Created new session: " + sessionId + " in " + groupId + " for " + endpointType + " -> " + endpoint);
-        return new SessionResponse(sessionId, sessionTTLMillis, getHeartbeatIntervalMillis());
+        return registry;
     }
 
     public void heartbeat(CPGroupId groupId, long sessionId) {
@@ -320,6 +325,10 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
             }
             notifyServices(groupId, closed);
         }
+    }
+
+    public long generateThreadId(CPGroupId groupId) {
+        return getOrInitRegistry(groupId).generateThreadId();
     }
 
     public Collection<CPSession> getSessionsLocally(CPGroupId groupId) {

@@ -20,11 +20,8 @@ import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphore.AcquireResult;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphore.ReleaseResult;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
-import com.hazelcast.nio.ObjectDataInput;
-import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
-import java.io.IOException;
 import java.util.Collection;
 import java.util.Map.Entry;
 import java.util.UUID;
@@ -35,8 +32,6 @@ import java.util.UUID;
  */
 public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey, RaftSemaphore>
         implements IdentifiedDataSerializable {
-
-    private Long generatedThreadId;
 
     RaftSemaphoreRegistry() {
     }
@@ -59,7 +54,6 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
         }
         clone.destroyedNames.addAll(this.destroyedNames);
         clone.waitTimeouts.putAll(this.waitTimeouts);
-        clone.generatedThreadId = this.generatedThreadId;
 
         return clone;
     }
@@ -128,14 +122,6 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
         return result;
     }
 
-    long generateThreadId(long initialValue) {
-        if (generatedThreadId == null) {
-            generatedThreadId = initialValue;
-        }
-
-        return ++generatedThreadId;
-    }
-
     @Override
     public int getFactoryId() {
         return RaftSemaphoreDataSerializerHook.F_ID;
@@ -144,24 +130,5 @@ public class RaftSemaphoreRegistry extends ResourceRegistry<AcquireInvocationKey
     @Override
     public int getId() {
         return RaftSemaphoreDataSerializerHook.RAFT_SEMAPHORE_REGISTRY;
-    }
-
-    @Override
-    public void writeData(ObjectDataOutput out) throws IOException {
-        super.writeData(out);
-        boolean generatedThreadIdExists = (generatedThreadId != null);
-        out.writeBoolean(generatedThreadIdExists);
-        if (generatedThreadIdExists) {
-            out.writeLong(generatedThreadId);
-        }
-    }
-
-    @Override
-    public void readData(ObjectDataInput in) throws IOException {
-        super.readData(in);
-        boolean generatedThreadIdExists = in.readBoolean();
-        if (generatedThreadIdExists) {
-            generatedThreadId = in.readLong();
-        }
     }
 }

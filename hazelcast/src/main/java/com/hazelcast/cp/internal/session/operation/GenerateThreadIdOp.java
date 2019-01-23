@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package com.hazelcast.cp.internal.datastructures.semaphore.operation;
+package com.hazelcast.cp.internal.session.operation;
 
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.RaftOp;
-import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreDataSerializerHook;
-import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
+import com.hazelcast.cp.internal.session.RaftSessionService;
+import com.hazelcast.cp.internal.session.RaftSessionServiceDataSerializerHook;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
@@ -32,19 +32,13 @@ import java.io.IOException;
  */
 public class GenerateThreadIdOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
-    private long initialValue;
-
     public GenerateThreadIdOp() {
-    }
-
-    public GenerateThreadIdOp(long initialValue) {
-        this.initialValue = initialValue;
     }
 
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
-        RaftSemaphoreService service = getService();
-        return service.generateThreadId(groupId, initialValue);
+        RaftSessionService service = getService();
+        return service.generateThreadId(groupId);
     }
 
     @Override
@@ -54,33 +48,25 @@ public class GenerateThreadIdOp extends RaftOp implements IndeterminateOperation
 
     @Override
     protected String getServiceName() {
-        return RaftSemaphoreService.SERVICE_NAME;
+        return RaftSessionService.SERVICE_NAME;
     }
 
     @Override
     public int getFactoryId() {
-        return RaftSemaphoreDataSerializerHook.F_ID;
+        return RaftSessionServiceDataSerializerHook.F_ID;
     }
 
     @Override
     public int getId() {
-        return RaftSemaphoreDataSerializerHook.GENERATE_THREAD_ID_OP;
+        return RaftSessionServiceDataSerializerHook.GENERATE_THREAD_ID_OP;
     }
 
     @Override
-    public void writeData(ObjectDataOutput out)
-            throws IOException {
-        out.writeLong(initialValue);
+    public void writeData(ObjectDataOutput out) throws IOException {
     }
 
     @Override
-    public void readData(ObjectDataInput in)
-            throws IOException {
-        initialValue = in.readLong();
+    public void readData(ObjectDataInput in) throws IOException {
     }
 
-    @Override
-    protected void toString(StringBuilder sb) {
-        sb.append(", initialValue=").append(initialValue);
-    }
 }

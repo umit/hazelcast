@@ -146,10 +146,6 @@ public class RaftSemaphoreService extends AbstractBlockingService<AcquireInvocat
         return result.success;
     }
 
-    public long generateThreadId(CPGroupId groupId, long initialValue) {
-        return getOrInitRegistry(groupId).generateThreadId(initialValue);
-    }
-
     private void notifyCancelledWaitKeys(CPGroupId groupId, String name, Collection<AcquireInvocationKey> waitKeys) {
         if (waitKeys.isEmpty()) {
             return;
