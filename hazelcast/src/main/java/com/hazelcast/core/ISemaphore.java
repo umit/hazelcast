@@ -19,6 +19,7 @@ package com.hazelcast.core;
 import com.hazelcast.config.QuorumConfig;
 import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.cp.lock.FencedLock;
 import com.hazelcast.cp.session.CPSession;
 import com.hazelcast.cp.CPSubsystem;
 
@@ -114,6 +115,18 @@ import java.util.concurrent.TimeUnit;
  * {@link CPSemaphoreConfig#setJDKCompatible(boolean)}.
  * </li>
  * </ul>
+ * <p>
+ * There is a subtle difference between the lock and semaphore abstractions.
+ * A lock can be assigned to at most one endpoint at a time, so we have a total
+ * order among its holders. However, permits of a semaphore can be assigned to
+ * multiple endpoints at a time, which implies that we may not have a total
+ * order among permit holders. In fact, permit holders are partially ordered.
+ * For this reason, the fencing token approach, which is explained in
+ * {@link FencedLock}, does not work for the semaphore abstraction. Moreover,
+ * each permit is an independent entity. Multiple permit acquires and reentrant
+ * lock acquires of a single endpoint are not equivalent. The only case where
+ * a semaphore behaves like a lock is the binary case, where the semaphore has
+ * only 1 permit. In this case, the semaphore works like a non-reentrant lock.
  * <p>
  * All of the API methods in the new CP {@link ISemaphore} impl offer
  * the exactly-once execution semantics for the session-aware version.
