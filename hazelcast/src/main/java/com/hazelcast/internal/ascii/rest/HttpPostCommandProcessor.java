@@ -19,6 +19,9 @@ package com.hazelcast.internal.ascii.rest;
 import com.hazelcast.cluster.ClusterState;
 import com.hazelcast.config.GroupConfig;
 import com.hazelcast.config.WanReplicationConfig;
+import com.hazelcast.core.ExecutionCallback;
+import com.hazelcast.cp.CPSubsystem;
+import com.hazelcast.cp.CPSubsystemManagementService;
 import com.hazelcast.instance.Node;
 import com.hazelcast.internal.ascii.TextCommandService;
 import com.hazelcast.internal.cluster.ClusterService;
@@ -47,6 +50,7 @@ import static com.hazelcast.util.StringUtil.lowerCaseInternal;
 import static com.hazelcast.util.StringUtil.stringToBytes;
 import static com.hazelcast.util.StringUtil.upperCaseInternal;
 
+@SuppressWarnings({"checkstyle:cyclomaticcomplexity", "checkstyle:methodcount", "checkstyle:methodlength"})
 public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostCommand> {
     private static final byte[] QUEUE_SIMPLE_VALUE_CONTENT_TYPE = stringToBytes("text/plain");
     private final ILogger logger;
@@ -58,8 +62,8 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
     }
 
     @Override
-    @SuppressWarnings({"checkstyle:cyclomaticcomplexity"})
     public void handle(HttpPostCommand command) {
+        boolean sendResponse = true;
         try {
             String uri = command.getURI();
             if (uri.startsWith(URI_MAPS)) {
@@ -107,6 +111,9 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
                 handleWanConsistencyCheck(command);
             } else if (uri.startsWith(URI_UPDATE_PERMISSIONS)) {
                 handleUpdatePermissions(command);
+            } else if (uri.startsWith(URI_CP_MEMBERS_URL)) {
+                handlePromoteToCPMember(command);
+                sendResponse = false;
             } else {
                 command.send404();
             }
@@ -115,7 +122,9 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         } catch (Exception e) {
             command.send500();
         }
-        textCommandService.sendResponse(command);
+        if (sendResponse) {
+            textCommandService.sendResponse(command);
+        }
     }
 
     private void handleChangeClusterState(HttpPostCommand command) throws UnsupportedEncodingException {
@@ -592,6 +601,37 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         String res = response(ResponseType.FORBIDDEN);
         command.setResponse(HttpCommand.CONTENT_TYPE_JSON, stringToBytes(res));
         return;
+    }
+
+    private void handlePromoteToCPMember(final HttpPostCommand command) {
+        if (getCpSubsystem().getLocalCPMember() != null) {
+            command.send400();
+            textCommandService.sendResponse(command);
+            return;
+        }
+
+        getCpSubsystemManagementService().promoteToCPMember()
+                                         .andThen(new ExecutionCallback<Void>() {
+                                             @Override
+                                             public void onResponse(Void response) {
+                                                 command.send200();
+                                                 textCommandService.sendResponse(command);
+                                             }
+
+                                             @Override
+                                             public void onFailure(Throwable t) {
+                                                 command.send500();
+                                                 textCommandService.sendResponse(command);
+                                             }
+                                         });
+    }
+
+    private CPSubsystemManagementService getCpSubsystemManagementService() {
+        return getCpSubsystem().getCPSubsystemManagementService();
+    }
+
+    private CPSubsystem getCpSubsystem() {
+        return textCommandService.getNode().getNodeEngine().getHazelcastInstance().getCPSubsystem();
     }
 
     private static String exceptionResponse(Throwable throwable) {

@@ -22,7 +22,7 @@ import com.hazelcast.cp.internal.raft.MembershipChangeType;
 import com.hazelcast.cp.internal.raft.exception.MemberAlreadyExistsException;
 import com.hazelcast.cp.internal.raft.exception.MemberDoesNotExistException;
 import com.hazelcast.cp.internal.raft.exception.MismatchingGroupMembersCommitIndexException;
-import com.hazelcast.cp.internal.raft.exception.RaftGroupDestroyedException;
+import com.hazelcast.cp.exception.CPGroupDestroyedException;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeStatus;
 import com.hazelcast.cp.internal.raft.impl.command.ApplyRaftGroupMembersCmd;
@@ -125,7 +125,7 @@ public class MembershipChangeTask implements Runnable {
 
     private boolean verifyRaftNodeStatus() {
         if (raftNode.getStatus() == RaftNodeStatus.TERMINATED) {
-            resultFuture.setResult(new RaftGroupDestroyedException());
+            resultFuture.setResult(new CPGroupDestroyedException());
             logger.severe("Cannot " + changeType + " " + member + " with expected members commit index: "
                     + groupMembersCommitIndex + " since raft node is terminated.");
             return false;

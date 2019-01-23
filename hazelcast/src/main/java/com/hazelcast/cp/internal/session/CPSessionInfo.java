@@ -186,7 +186,11 @@ public class CPSessionInfo implements CPSession, IdentifiedDataSerializable {
         out.writeLong(expirationTime);
         out.writeLong(version);
         out.writeObject(endpoint);
-        out.writeUTF(endpointName);
+        boolean containsEndpointName = (endpointName != null);
+        out.writeBoolean(containsEndpointName);
+        if (containsEndpointName) {
+            out.writeUTF(endpointName);
+        }
         out.writeUTF(endpointType.name());
     }
 
@@ -197,7 +201,10 @@ public class CPSessionInfo implements CPSession, IdentifiedDataSerializable {
         expirationTime = in.readLong();
         version = in.readLong();
         endpoint = in.readObject();
-        endpointName = in.readUTF();
+        boolean containsEndpointName = in.readBoolean();
+        if (containsEndpointName) {
+            endpointName = in.readUTF();
+        }
         endpointType = CPSessionOwnerType.valueOf(in.readUTF());
     }
 }

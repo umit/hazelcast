@@ -18,7 +18,7 @@ package com.hazelcast.cp.internal;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.internal.raft.exception.RaftGroupDestroyedException;
+import com.hazelcast.cp.exception.CPGroupDestroyedException;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -82,7 +82,7 @@ public class RaftInvocationManagerTest extends HazelcastRaftTestSupport {
                     invocationService.invoke(groupId, new RaftTestApplyOp("val")).get();
                     fail();
                 } catch (ExecutionException e) {
-                    assertInstanceOf(RaftGroupDestroyedException.class, e.getCause());
+                    assertInstanceOf(CPGroupDestroyedException.class, e.getCause());
                 }
             }
         });

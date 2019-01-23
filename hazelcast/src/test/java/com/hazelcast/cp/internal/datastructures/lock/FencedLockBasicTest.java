@@ -591,7 +591,7 @@ public class FencedLockBasicTest extends HazelcastRaftTestSupport {
     }
 
     private void closeSession(HazelcastInstance instance, CPGroupId groupId, long sessionId) throws ExecutionException, InterruptedException {
-        instance.getCPSubsystem().getCPSessionManagementService().forceCloseSession(groupId, sessionId).get();
+        instance.getCPSubsystem().getCPSessionManagementService().forceCloseSession(groupId.name(), sessionId).get();
     }
 
     static void lockByOtherThread(final FencedLock lock) {

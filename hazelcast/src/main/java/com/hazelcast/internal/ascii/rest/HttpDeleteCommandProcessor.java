@@ -16,8 +16,13 @@
 
 package com.hazelcast.internal.ascii.rest;
 
+import com.hazelcast.core.ExecutionCallback;
+import com.hazelcast.cp.CPSubsystem;
 import com.hazelcast.internal.ascii.TextCommandService;
+
+import static com.hazelcast.cp.CPGroup.METADATA_CP_GROUP_NAME;
 import static com.hazelcast.internal.ascii.rest.HttpCommand.CONTENT_TYPE_PLAIN_TEXT;
+import static com.hazelcast.util.ExceptionUtil.peel;
 import static com.hazelcast.util.StringUtil.stringToBytes;
 
 public class HttpDeleteCommandProcessor extends HttpCommandProcessor<HttpDeleteCommand> {
@@ -28,12 +33,21 @@ public class HttpDeleteCommandProcessor extends HttpCommandProcessor<HttpDeleteC
 
     @Override
     public void handle(HttpDeleteCommand command) {
+        boolean sendResponse = true;
         try {
             String uri = command.getURI();
             if (uri.startsWith(URI_MAPS)) {
                 handleMap(command, uri);
             } else if (uri.startsWith(URI_QUEUES)) {
                 handleQueue(command, uri);
+            } else if (uri.startsWith(URI_CP_GROUP_URL)) {
+                handleCPGroup(command);
+                sendResponse = false;
+            } else if (uri.startsWith(URI_CP_MEMBERS_URL)) {
+                handleRemoveCPMember(command);
+                sendResponse = false;
+            } else if (uri.startsWith(URI_RESET_AND_INIT_CP_SUBSYSTEM_URL)) {
+                handleResetAndInitCPSubsystem(command);
             } else {
                 command.send404();
             }
@@ -42,16 +56,18 @@ public class HttpDeleteCommandProcessor extends HttpCommandProcessor<HttpDeleteC
         } catch (Exception e) {
             command.send500();
         }
-        textCommandService.sendResponse(command);
+
+        if (sendResponse) {
+            textCommandService.sendResponse(command);
+        }
     }
 
     private void handleMap(HttpDeleteCommand command, String uri) {
         int indexEnd = uri.indexOf('/', URI_MAPS.length());
         if (indexEnd == -1) {
-            String mapName = uri.substring(URI_MAPS.length(), uri.length());
+            String mapName = uri.substring(URI_MAPS.length());
             textCommandService.deleteAll(mapName);
             command.send200();
-
         } else {
             String mapName = uri.substring(URI_MAPS.length(), indexEnd);
             String key = uri.substring(indexEnd + 1);
@@ -82,6 +98,109 @@ public class HttpDeleteCommandProcessor extends HttpCommandProcessor<HttpDeleteC
                 command.setResponse(null, textCommandService.toByteArray(value));
             }
         }
+    }
+
+    private void handleCPGroup(HttpDeleteCommand command) {
+        if (command.getURI().contains(URI_CP_SESSIONS_SUFFIX)) {
+            handleForceCloseCPSession(command);
+        } else {
+            handleForceDestroyCPGroup(command);
+        }
+    }
+
+    private void handleForceCloseCPSession(final HttpDeleteCommand command) {
+        String uri = command.getURI();
+        String suffix = URI_CP_SESSIONS_SUFFIX + "/";
+        int i = uri.indexOf(suffix);
+        String groupName = uri.substring(URI_CP_GROUP_URL.length(), i).trim();
+        long sessionId = Long.valueOf(uri.substring(i + suffix.length()));
+
+        getCpSubsystem().getCPSessionManagementService()
+                        .forceCloseSession(groupName, sessionId)
+                        .andThen(new ExecutionCallback<Boolean>() {
+                            @Override
+                            public void onResponse(Boolean response) {
+                                if (response) {
+                                    command.send200();
+                                } else {
+                                    command.send400();
+                                }
+                                textCommandService.sendResponse(command);
+                            }
+
+                            @Override
+                            public void onFailure(Throwable t) {
+                                command.send500();
+                                textCommandService.sendResponse(command);
+                            }
+                        });
+    }
+
+    private void handleForceDestroyCPGroup(final HttpDeleteCommand command) {
+        String groupName = command.getURI().substring(URI_CP_GROUP_URL.length()).trim();
+        if (METADATA_CP_GROUP_NAME.equals(groupName)) {
+            command.send400();
+            textCommandService.sendResponse(command);
+            return;
+        }
+
+        getCpSubsystem().getCPSubsystemManagementService()
+                        .forceDestroyCPGroup(groupName)
+                        .andThen(new ExecutionCallback<Void>() {
+                            @Override
+                            public void onResponse(Void response) {
+                                command.send200();
+                                textCommandService.sendResponse(command);
+                            }
+
+                            @Override
+                            public void onFailure(Throwable t) {
+                                if (peel(t) instanceof IllegalArgumentException) {
+                                    command.send400();
+                                } else {
+                                    command.send500();
+                                }
+
+                                textCommandService.sendResponse(command);
+                            }
+                        });
+    }
+
+    private void handleRemoveCPMember(final HttpDeleteCommand command) {
+        String prefix = URI_CP_MEMBERS_URL + "/";
+        String cpMemberUid = command.getURI().substring(prefix.length()).trim();
+        getCpSubsystem().getCPSubsystemManagementService()
+                        .removeCPMember(cpMemberUid)
+                        .andThen(new ExecutionCallback<Void>() {
+                             @Override
+                             public void onResponse(Void response) {
+                                command.send200();
+                                textCommandService.sendResponse(command);
+                             }
+
+                             @Override
+                             public void onFailure(Throwable t) {
+                                 if (peel(t) instanceof IllegalArgumentException) {
+                                     command.send400();
+                                 } else {
+                                     command.send500();
+                                 }
+
+                                 textCommandService.sendResponse(command);
+                             }
+                         });
+    }
+
+    private void handleResetAndInitCPSubsystem(HttpDeleteCommand command) {
+        getCpSubsystem().getCPSubsystemManagementService().resetAndInit();
+        command.send200();
+    }
+
+    private CPSubsystem getCpSubsystem() {
+        return textCommandService.getNode()
+                                 .getNodeEngine()
+                                 .getHazelcastInstance()
+                                 .getCPSubsystem();
     }
 
     @Override

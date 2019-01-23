@@ -99,7 +99,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
                     CPSession session = registry.getSession(response.getSessionId());
                     assertNotNull(session);
 
-                    Collection<CPSession> sessions = service.getAllSessions(groupId).get();
+                    Collection<CPSession> sessions = service.getAllSessions(groupId.name()).get();
                     assertThat(sessions, hasItem(session));
                 }
             }
@@ -166,7 +166,7 @@ public class RaftSessionServiceTest extends HazelcastRaftTestSupport {
                     RaftSessionRegistry registry = service.getSessionRegistryOrNull(groupId);
                     assertNotNull(registry);
                     assertNull(registry.getSession(response.getSessionId()));
-                    assertThat(service.getAllSessions(groupId).get(), empty());
+                    assertThat(service.getAllSessions(groupId.name()).get(), empty());
                 }
             }
         });

@@ -32,6 +32,7 @@ import com.hazelcast.cp.internal.raftop.NotifyTermChangeOp;
 import com.hazelcast.cp.internal.raftop.metadata.AddCPMemberOp;
 import com.hazelcast.cp.internal.raftop.metadata.CompleteDestroyRaftGroupsOp;
 import com.hazelcast.cp.internal.raftop.metadata.CompleteRaftGroupMembershipChangesOp;
+import com.hazelcast.cp.internal.raftop.metadata.GetActiveRaftGroupIdsOp;
 import com.hazelcast.cp.internal.raftop.metadata.InitializeMetadataRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.CreateRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.CreateRaftNodeOp;
@@ -99,7 +100,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int FORCE_DESTROY_RAFT_GROUP_OP = 35;
     public static final int GET_INITIAL_RAFT_GROUP_MEMBERS_IF_CURRENT_GROUP_MEMBER_OP = 36;
     public static final int GET_RAFT_GROUP_IDS_OP = 37;
-    public static final int RAFT_PRE_JOIN_OP = 38;
+    public static final int GET_ACTIVE_RAFT_GROUP_IDS_OP = 38;
+    public static final int RAFT_PRE_JOIN_OP = 39;
 
     @Override
     public int getFactoryId() {
@@ -186,6 +188,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new GetInitialRaftGroupMembersIfCurrentGroupMemberOp();
                     case GET_RAFT_GROUP_IDS_OP:
                         return new GetRaftGroupIdsOp();
+                    case GET_ACTIVE_RAFT_GROUP_IDS_OP:
+                        return new GetActiveRaftGroupIdsOp();
                     case RAFT_PRE_JOIN_OP:
                         return new RaftServicePreJoinOp();
                     default:

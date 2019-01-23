@@ -44,6 +44,7 @@ import com.hazelcast.cp.internal.raftop.metadata.AddCPMemberOp;
 import com.hazelcast.cp.internal.raftop.metadata.ForceDestroyRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetActiveCPMembersOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetActiveRaftGroupByNameOp;
+import com.hazelcast.cp.internal.raftop.metadata.GetActiveRaftGroupIdsOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetInitialRaftGroupMembersIfCurrentGroupMemberOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupIdsOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupOp;
@@ -158,18 +159,21 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         metadataGroupManager.restoreSnapshot(groupId, commitIndex, snapshot);
     }
 
-    @Override
-    public ICompletableFuture<Collection<CPGroupId>> getCPGroupIds() {
+    public ICompletableFuture<Collection<CPGroupId>> getAllCPGroupIds() {
         return invocationManager.invoke(METADATA_GROUP_ID, new GetRaftGroupIdsOp());
     }
 
     @Override
+    public ICompletableFuture<Collection<CPGroupId>> getCPGroupIds() {
+        return invocationManager.invoke(METADATA_GROUP_ID, new GetActiveRaftGroupIdsOp());
+    }
+
     public ICompletableFuture<CPGroup> getCPGroup(CPGroupId groupId) {
         return invocationManager.invoke(METADATA_GROUP_ID, new GetRaftGroupOp(groupId));
     }
 
     @Override
-    public ICompletableFuture<CPGroup> getActiveCPGroup(String name) {
+    public ICompletableFuture<CPGroup> getCPGroup(String name) {
         return invocationManager.invoke(METADATA_GROUP_ID, new GetActiveRaftGroupByNameOp(name));
     }
 
@@ -178,6 +182,19 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
      */
     @Override
     public void resetAndInit() {
+        // we should clear the current raft state before resetting the metadata manager
+        resetLocalRaftState();
+
+        nodes.clear();
+        destroyedGroupIds.clear();
+
+        invocationManager.reset();
+        metadataGroupManager.resetAndInit();
+
+        logger.info("CP state is reset.");
+    }
+
+    private void resetLocalRaftState() {
         for (ServiceInfo serviceInfo : nodeEngine.getServiceInfos(RaftRemoteService.class)) {
             InternalProxyService proxyService = nodeEngine.getProxyService();
             for (String objectName : proxyService.getDistributedObjectNames(serviceInfo.getName())) {
@@ -189,15 +206,9 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             }
         }
 
-        // we should clear the current raft state before resetting the metadata manager
         for (RaftNode node : nodes.values()) {
             node.forceSetTerminatedStatus();
         }
-        nodes.clear();
-        destroyedGroupIds.clear();
-
-        invocationManager.reset();
-        metadataGroupManager.resetAndInit();
     }
 
     @Override

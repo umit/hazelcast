@@ -240,7 +240,7 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
 
         final CPGroupId groupId = createNewRaftGroup(instances[0], "id", cpNodeCount);
 
-        CPGroup group = instances[0].getCPSubsystem().getCPSubsystemManagementService().getActiveCPGroup("id").get();
+        CPGroup group = instances[0].getCPSubsystem().getCPSubsystemManagementService().getCPGroup("id").get();
         assertNotNull(group);
         assertEquals(groupId, group.id());
 
@@ -309,7 +309,7 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
 
         final CPGroupId groupId = createNewRaftGroup(instances[0], "id", 3);
 
-        CPGroup group = instances[0].getCPSubsystem().getCPSubsystemManagementService().getActiveCPGroup("id").get();
+        CPGroup group = instances[0].getCPSubsystem().getCPSubsystemManagementService().getCPGroup("id").get();
         assertNotNull(group);
         assertEquals(groupId, group.id());
 
@@ -348,7 +348,7 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
 
         final CPGroupId groupId = createNewRaftGroup(instances[0], "id", 3);
 
-        CPGroup group = instances[0].getCPSubsystem().getCPSubsystemManagementService().getActiveCPGroup("id").get();
+        CPGroup group = instances[0].getCPSubsystem().getCPSubsystemManagementService().getCPGroup("id").get();
         assertNotNull(group);
         assertEquals(groupId, group.id());
 

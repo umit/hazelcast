@@ -274,6 +274,56 @@ public class HTTPCommunicator {
         return doPost(url, groupName, groupPassword, permConfJson).response;
     }
 
+    public ConnectionResponse getCPGroupIds() throws IOException {
+        String url = address + "cp-subsystem/cp-group-ids";
+        return doGet(url);
+    }
+
+    public ConnectionResponse getCPGroupByName(String name) throws IOException {
+        String url = address + "cp-subsystem/cp-group/" + name;
+        return doGet(url);
+    }
+
+    public ConnectionResponse getLocalCPMember() throws IOException {
+        String url = address + "cp-subsystem/cp-members/local";
+        return doGet(url);
+    }
+
+    public ConnectionResponse getCPMembers() throws IOException {
+        String url = address + "cp-subsystem/cp-members";
+        return doGet(url);
+    }
+
+    public ConnectionResponse forceDestroyCPGroup(String groupName) throws IOException {
+        String url = address + "cp-subsystem/cp-group/" + groupName;
+        return doDelete(url);
+    }
+
+    public ConnectionResponse removeCPMember(String cpMemberUid) throws IOException {
+        String url = address + "cp-subsystem/cp-members/" + cpMemberUid;
+        return doDelete(url);
+    }
+
+    public ConnectionResponse promoteCPMember() throws IOException {
+        String url = address + "cp-subsystem/cp-members";
+        return doPost(url);
+    }
+
+    public ConnectionResponse resetAndInit() throws IOException {
+        String url = address + "cp-subsystem";
+        return doDelete(url);
+    }
+
+    public ConnectionResponse getCPSessions(String groupName) throws IOException {
+        String url = address + "cp-subsystem/cp-group/" + groupName + "/cp-sessions";
+        return doGet(url);
+    }
+
+    public ConnectionResponse forceCloseCPSession(String groupName, long sessionId) throws IOException {
+        String url = address + "cp-subsystem/cp-group/" + groupName + "/cp-sessions/" + sessionId;
+        return doDelete(url);
+    }
+
     static class ConnectionResponse {
         final String response;
         final int responseCode;

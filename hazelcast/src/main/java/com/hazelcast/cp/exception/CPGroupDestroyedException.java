@@ -14,17 +14,14 @@
  * limitations under the License.
  */
 
-package com.hazelcast.cp.internal.raft.exception;
-
-import com.hazelcast.cp.exception.CPSubsystemException;
+package com.hazelcast.cp.exception;
 
 /**
  * A {@code CPSubsystemException} which is thrown when a request is sent to
  * a destroyed CP group.
- * Handled internally.
  */
-public class RaftGroupDestroyedException extends CPSubsystemException {
-    public RaftGroupDestroyedException() {
+public class CPGroupDestroyedException extends CPSubsystemException {
+    public CPGroupDestroyedException() {
         super(null);
     }
 }

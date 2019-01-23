@@ -18,24 +18,24 @@ package com.hazelcast.cp.internal;
 
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.cp.internal.raft.MembershipChangeType;
-import com.hazelcast.cp.internal.raft.QueryPolicy;
 import com.hazelcast.cp.CPGroup.CPGroupStatus;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.exception.CPGroupDestroyedException;
+import com.hazelcast.cp.internal.MembershipChangeContext.CPGroupMembershipChangeContext;
+import com.hazelcast.cp.internal.raft.MembershipChangeType;
+import com.hazelcast.cp.internal.raft.QueryPolicy;
 import com.hazelcast.cp.internal.raft.exception.MismatchingGroupMembersCommitIndexException;
-import com.hazelcast.cp.internal.raft.exception.RaftGroupDestroyedException;
 import com.hazelcast.cp.internal.raft.impl.RaftNode;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeStatus;
-import com.hazelcast.cp.internal.MembershipChangeContext.CPGroupMembershipChangeContext;
+import com.hazelcast.cp.internal.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.cp.internal.raftop.metadata.CompleteDestroyRaftGroupsOp;
 import com.hazelcast.cp.internal.raftop.metadata.CompleteRaftGroupMembershipChangesOp;
 import com.hazelcast.cp.internal.raftop.metadata.DestroyRaftNodesOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetDestroyingRaftGroupIdsOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetMembershipChangeContextOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupOp;
-import com.hazelcast.cp.internal.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.cp.internal.util.Tuple2;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
@@ -57,6 +57,7 @@ import java.util.concurrent.Future;
 
 import static com.hazelcast.cp.internal.MetadataRaftGroupManager.METADATA_GROUP_ID;
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
+import static com.hazelcast.util.ExceptionUtil.peel;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -204,7 +205,7 @@ class RaftGroupMembershipManager {
                 logger.severe("Cannot get result of DESTROY commit to " + groupId, e);
                 return false;
             } catch (ExecutionException e) {
-                if (e.getCause() instanceof RaftGroupDestroyedException) {
+                if (peel(e) instanceof CPGroupDestroyedException) {
                     return true;
                 }
 

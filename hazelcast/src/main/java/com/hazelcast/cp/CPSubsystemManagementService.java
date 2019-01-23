@@ -18,7 +18,7 @@ package com.hazelcast.cp;
 
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.ICompletableFuture;
-import com.hazelcast.cp.internal.raft.exception.RaftGroupDestroyedException;
+import com.hazelcast.cp.exception.CPGroupDestroyedException;
 
 import java.util.Collection;
 
@@ -84,7 +84,7 @@ import java.util.Collection;
  * {@link #forceDestroyCPGroup(String)} API. When this API is used, the CP
  * group is terminated non-gracefully, without the Raft algorithm mechanics.
  * Then, all CP data structure proxies that talk to this CP group fail with
- * {@link RaftGroupDestroyedException}. However, if a new proxy is created
+ * {@link CPGroupDestroyedException}. However, if a new proxy is created
  * afterwards, then this CP group will be re-created from scratch with a new
  * set of CP members. Losing majority of a CP group can be likened to
  * partition-loss scenario of AP Hazelcast.
@@ -109,21 +109,15 @@ import java.util.Collection;
 public interface CPSubsystemManagementService {
 
     /**
-     * Returns all CP group ids, including destroyed group ids.
+     * Returns all active CP group ids.
      */
     ICompletableFuture<Collection<CPGroupId>> getCPGroupIds();
-
-    /**
-     * Returns the CP group associated with the group id.
-     * The returned CP group can be destroyed.
-     */
-    ICompletableFuture<CPGroup> getCPGroup(CPGroupId groupId);
 
     /**
      * Returns the active CP group with the given name.
      * There can be at most one active CP group with a given name.
      */
-    ICompletableFuture<CPGroup> getActiveCPGroup(String name);
+    ICompletableFuture<CPGroup> getCPGroup(String name);
 
     /**
      * Unconditionally destroys the given active CP group without using
@@ -135,6 +129,8 @@ public interface CPSubsystemManagementService {
      * commit any new operation. Therefore, this method ungracefully terminates
      * remaining members of the given CP group. It also performs a Raft commit
      * to the Metadata CP group to update status of the destroyed group.
+     * Once a CP group id is destroyed, all CP data structure proxies created
+     * before the destroy will fail with {@link CPGroupDestroyedException}.
      * <p>
      * Once a CP group is destroyed, it can be created again with a new set of
      * CP members.

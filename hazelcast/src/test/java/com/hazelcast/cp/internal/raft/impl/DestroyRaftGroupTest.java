@@ -20,7 +20,7 @@ import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.core.Endpoint;
 import com.hazelcast.cp.exception.CannotReplicateException;
 import com.hazelcast.cp.internal.raft.command.DestroyRaftGroupCmd;
-import com.hazelcast.cp.internal.raft.exception.RaftGroupDestroyedException;
+import com.hazelcast.cp.exception.CPGroupDestroyedException;
 import com.hazelcast.cp.internal.raft.impl.dataservice.ApplyRaftRunnable;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendRequest;
 import com.hazelcast.cp.internal.raft.impl.testing.LocalRaftGroup;
@@ -126,14 +126,14 @@ public class DestroyRaftGroupTest extends HazelcastTestSupport {
         try {
             leader.replicate(new ApplyRaftRunnable("val")).get();
             fail();
-        } catch (RaftGroupDestroyedException ignored) {
+        } catch (CPGroupDestroyedException ignored) {
 
         }
 
         try {
             follower.replicate(new ApplyRaftRunnable("val")).get();
             fail();
-        } catch (RaftGroupDestroyedException ignored) {
+        } catch (CPGroupDestroyedException ignored) {
         }
     }
 

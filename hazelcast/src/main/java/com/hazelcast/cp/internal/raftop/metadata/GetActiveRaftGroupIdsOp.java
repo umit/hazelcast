@@ -28,19 +28,19 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import java.io.IOException;
 
 /**
- * Returns ids of the Raft groups.
+ * Returns ids of the active Raft groups.
  * <p/>
  * This operation is committed to the Metadata group.
  */
-public class GetRaftGroupIdsOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
+public class GetActiveRaftGroupIdsOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
-    public GetRaftGroupIdsOp() {
+    public GetActiveRaftGroupIdsOp() {
     }
 
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftService service = getService();
-        return service.getMetadataGroupManager().getGroupIds();
+        return service.getMetadataGroupManager().getActiveGroupIds();
     }
 
     @Override
@@ -60,7 +60,7 @@ public class GetRaftGroupIdsOp extends RaftOp implements IndeterminateOperationS
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.GET_RAFT_GROUP_IDS_OP;
+        return RaftServiceDataSerializerHook.GET_ACTIVE_RAFT_GROUP_IDS_OP;
     }
 
     @Override

@@ -18,6 +18,7 @@ package com.hazelcast.cp.internal;
 
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.Member;
+import com.hazelcast.cp.CPGroup;
 import com.hazelcast.cp.CPGroup.CPGroupStatus;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.exception.CannotCreateRaftGroupException;
@@ -70,7 +71,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:classdataabstractioncoupling"})
 public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRaftGroupSnapshot>  {
 
-    public static final RaftGroupId METADATA_GROUP_ID = new RaftGroupId("METADATA", 0, 0);
+    public static final RaftGroupId METADATA_GROUP_ID = new RaftGroupId(CPGroup.METADATA_CP_GROUP_NAME, 0, 0);
 
     private static final long DISCOVER_INITIAL_CP_MEMBERS_TASK_DELAY_MILLIS = 1000;
     private static final long BROADCAST_ACTIVE_CP_MEMBERS_TASK_PERIOD_SECONDS = 10;
@@ -231,7 +232,23 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     }
 
     public Collection<CPGroupId> getGroupIds() {
-        return new ArrayList<CPGroupId>(groups.keySet());
+        List<CPGroupId> groupIds = new ArrayList<CPGroupId>(groups.keySet());
+        sort(groupIds, new CPGroupIdComparator());
+
+        return groupIds;
+    }
+
+    public Collection<CPGroupId> getActiveGroupIds() {
+        List<CPGroupId> activeGroupIds = new ArrayList<CPGroupId>(1);
+        for (CPGroupInfo group : groups.values()) {
+            if (group.status() == ACTIVE) {
+                activeGroupIds.add(group.id());
+            }
+        }
+
+        sort(activeGroupIds, new CPGroupIdComparator());
+
+        return activeGroupIds;
     }
 
     public CPGroupInfo getRaftGroup(CPGroupId groupId) {
@@ -284,7 +301,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         this.groupIdTerm = groupIdTerm;
 
         if (logger.isFineEnabled()) {
-            logger.fine("METADATA CP group is initialized: " + metadataGroup);
+            logger.fine("METADATA CP group is initialized: " + metadataGroup + " term: " + groupIdTerm);
         }
     }
 
@@ -902,6 +919,13 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         @Override
         public int compare(CPMemberInfo o1, CPMemberInfo o2) {
             return o1.getUuid().compareTo(o2.getUuid());
+        }
+    }
+
+    private static class CPGroupIdComparator implements Comparator<CPGroupId> {
+        @Override
+        public int compare(CPGroupId o1, CPGroupId o2) {
+            return Long.valueOf(o1.id()).compareTo(o2.id());
         }
     }
 }

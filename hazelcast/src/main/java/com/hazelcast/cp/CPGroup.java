@@ -28,6 +28,12 @@ import java.util.Collection;
 public interface CPGroup {
 
     /**
+     * Name of the internal CP group that is used for maintaining CP groups
+     * and CP members
+     */
+    String METADATA_CP_GROUP_NAME = "METADATA";
+
+    /**
      * Name of the DEFAULT CP group that is used when no group name is
      * specified while creating a CP data structure proxy.
      */

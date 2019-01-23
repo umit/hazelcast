@@ -17,22 +17,25 @@
 package com.hazelcast.cp.internal.session;
 
 import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
+import com.hazelcast.cp.CPGroup;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.session.CPSession;
-import com.hazelcast.cp.session.CPSession.CPSessionOwnerType;
-import com.hazelcast.cp.session.CPSessionManagementService;
 import com.hazelcast.cp.internal.RaftGroupLifecycleAwareService;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.TermChangeAwareService;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
 import com.hazelcast.cp.internal.raft.impl.RaftNode;
+import com.hazelcast.cp.internal.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.cp.internal.session.operation.CloseInactiveSessionsOp;
 import com.hazelcast.cp.internal.session.operation.CloseSessionOp;
 import com.hazelcast.cp.internal.session.operation.ExpireSessionsOp;
 import com.hazelcast.cp.internal.session.operation.GetSessionsOp;
 import com.hazelcast.cp.internal.util.PartitionSpecificRunnableAdaptor;
 import com.hazelcast.cp.internal.util.Tuple2;
+import com.hazelcast.cp.session.CPSession;
+import com.hazelcast.cp.session.CPSession.CPSessionOwnerType;
+import com.hazelcast.cp.session.CPSessionManagementService;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.spi.ExecutionService;
@@ -41,6 +44,7 @@ import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.spi.impl.operationservice.impl.OperationServiceImpl;
 import com.hazelcast.util.Clock;
+import com.hazelcast.util.executor.ManagedExecutorService;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -53,8 +57,10 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 
+import static com.hazelcast.spi.ExecutionService.SYSTEM_EXECUTOR;
 import static java.util.Collections.unmodifiableCollection;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -74,6 +80,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * resources to sessions. On session termination, its attached resources will
  * be released automatically.
  */
+@SuppressWarnings({"checkstyle:methodcount"})
 public class RaftSessionService implements ManagedService, SnapshotAwareService<RaftSessionRegistry>, SessionAccessor,
                                            TermChangeAwareService, RaftGroupLifecycleAwareService, CPSessionManagementService {
 
@@ -146,13 +153,80 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
     }
 
     @Override
-    public ICompletableFuture<Collection<CPSession>> getAllSessions(CPGroupId groupId) {
-        return raftService.getInvocationManager().invoke(groupId, new GetSessionsOp());
+    public ICompletableFuture<Collection<CPSession>> getAllSessions(String groupName) {
+        ManagedExecutorService executor = nodeEngine.getExecutionService().getExecutor(SYSTEM_EXECUTOR);
+        final SimpleCompletableFuture<Collection<CPSession>> future
+                = new SimpleCompletableFuture<Collection<CPSession>>(executor, logger);
+
+        final ExecutionCallback<Collection<CPSession>> callback = new ExecutionCallback<Collection<CPSession>>() {
+            @Override
+            public void onResponse(Collection<CPSession> sessions) {
+                future.setResult(sessions);
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                future.setResult(new ExecutionException(t));
+            }
+        };
+
+        raftService.getCPGroup(groupName).andThen(new ExecutionCallback<CPGroup>() {
+            @Override
+            public void onResponse(CPGroup group) {
+                if (group != null) {
+                    raftService.getInvocationManager()
+                            .<Collection<CPSession>>invoke(group.id(), new GetSessionsOp())
+                            .andThen(callback);
+                } else {
+                    future.setResult(Collections.emptyList());
+                }
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                future.setResult(new ExecutionException(t));
+            }
+        });
+
+        return future;
     }
 
     @Override
-    public ICompletableFuture<Boolean> forceCloseSession(CPGroupId groupId, long sessionId) {
-        return raftService.getInvocationManager().invoke(groupId, new CloseSessionOp(sessionId));
+    public ICompletableFuture<Boolean> forceCloseSession(String groupName, final long sessionId) {
+        ManagedExecutorService executor = nodeEngine.getExecutionService().getExecutor(SYSTEM_EXECUTOR);
+        final SimpleCompletableFuture<Boolean> future = new SimpleCompletableFuture<Boolean>(executor, logger);
+
+        final ExecutionCallback<Boolean> callback = new ExecutionCallback<Boolean>() {
+            @Override
+            public void onResponse(Boolean response) {
+                future.setResult(response);
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                future.setResult(new ExecutionException(t));
+            }
+        };
+
+        raftService.getCPGroup(groupName).andThen(new ExecutionCallback<CPGroup>() {
+            @Override
+            public void onResponse(CPGroup group) {
+                if (group != null) {
+                    raftService.getInvocationManager()
+                            .<Boolean>invoke(group.id(), new CloseSessionOp(sessionId))
+                            .andThen(callback);
+                } else {
+                    future.setResult(false);
+                }
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                future.setResult(new ExecutionException(t));
+            }
+        });
+
+        return future;
     }
 
     public SessionResponse createNewSession(CPGroupId groupId, Address endpoint, String endpointName,

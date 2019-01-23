@@ -83,7 +83,11 @@ public class CreateSessionOp extends RaftOp implements IndeterminateOperationSta
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeObject(endpoint);
-        out.writeUTF(endpointName);
+        boolean containsEndpointName = (endpointName != null);
+        out.writeBoolean(containsEndpointName);
+        if (containsEndpointName) {
+            out.writeUTF(endpointName);
+        }
         out.writeUTF(endpointType.name());
         out.writeLong(creationTime);
     }
@@ -91,7 +95,10 @@ public class CreateSessionOp extends RaftOp implements IndeterminateOperationSta
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         endpoint = in.readObject();
-        endpointName = in.readUTF();
+        boolean containsEndpointName = in.readBoolean();
+        if (containsEndpointName) {
+            endpointName = in.readUTF();
+        }
         endpointType = CPSessionOwnerType.valueOf(in.readUTF());
         creationTime = in.readLong();
     }
