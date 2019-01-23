@@ -107,7 +107,7 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     @Override
     protected long generateThreadId(CPGroupId groupId) {
         Data groupIdData = client.getSerializationService().toData(groupId);
-        ClientMessage request = CPSessionGenerateThreadIdCodec.encodeRequest(groupIdData, System.currentTimeMillis());
+        ClientMessage request = CPSessionGenerateThreadIdCodec.encodeRequest(groupIdData);
         ClientMessage response = new ClientInvocation(client, request, "sessionManager").invoke().join();
 
         return CPSessionGenerateThreadIdCodec.decodeResponse(response).response;

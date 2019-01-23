@@ -21,7 +21,7 @@ import com.hazelcast.cp.internal.datastructures.semaphore.operation.AvailablePer
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.ChangePermitsOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.DrainPermitsOp;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.InitSemaphoreOp;
-import com.hazelcast.cp.internal.session.operation.GenerateThreadIdOp;
+import com.hazelcast.cp.internal.datastructures.semaphore.operation.ReleasePermitsOp;
 import com.hazelcast.internal.serialization.DataSerializerHook;
 import com.hazelcast.internal.serialization.impl.FactoryIdHelper;
 import com.hazelcast.nio.serialization.DataSerializableFactory;
@@ -75,7 +75,7 @@ public class RaftSemaphoreDataSerializerHook implements DataSerializerHook {
                     case INIT_SEMAPHORE_OP:
                         return new InitSemaphoreOp();
                     case RELEASE_PERMITS_OP:
-                        return new GenerateThreadIdOp();
+                        return new ReleasePermitsOp();
                     default:
                         throw new IllegalArgumentException("Undefined type: " + typeId);
                 }
