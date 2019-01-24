@@ -100,7 +100,7 @@ public abstract class AbstractBlockingService<W extends WaitKey, R extends Block
     }
 
     @Override
-    public void onCPSubsystemReset() {
+    public void onCPSubsystemRestart() {
         registries.clear();
     }
 

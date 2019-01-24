@@ -79,7 +79,7 @@ public class RaftAtomicRefService implements RaftManagedService, RaftRemoteServi
     }
 
     @Override
-    public void onCPSubsystemReset() {
+    public void onCPSubsystemRestart() {
         atomicRefs.clear();
         destroyedRefs.clear();
     }

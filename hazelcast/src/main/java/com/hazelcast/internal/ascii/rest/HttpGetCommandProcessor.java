@@ -42,6 +42,7 @@ import java.util.Collection;
 import static com.hazelcast.internal.ascii.TextCommandConstants.MIME_TEXT_PLAIN;
 import static com.hazelcast.internal.ascii.rest.HttpCommand.CONTENT_TYPE_BINARY;
 import static com.hazelcast.internal.ascii.rest.HttpCommand.CONTENT_TYPE_PLAIN_TEXT;
+import static com.hazelcast.util.ExceptionUtil.peel;
 import static com.hazelcast.util.StringUtil.stringToBytes;
 
 public class HttpGetCommandProcessor extends HttpCommandProcessor<HttpGetCommand> {
@@ -74,16 +75,12 @@ public class HttpGetCommandProcessor extends HttpCommandProcessor<HttpGetCommand
                 handleHealthcheck(command, uri);
             } else if (uri.startsWith(URI_CLUSTER_VERSION_URL)) {
                 handleGetClusterVersion(command);
-            } else if (uri.startsWith(URI_GET_CP_GROUP_IDS_URL)) {
-                handleGetCPGroupIds(command);
-                sendResponse = false;
-            } else if (uri.startsWith(URI_CP_GROUP_URL)) {
+            } else if (uri.startsWith(URI_CP_GROUPS_URL)) {
                 handleCPGroupRequest(command);
                 sendResponse = false;
             } else if (uri.startsWith(URI_LOCAL_CP_MEMBER_URL)) {
                 // this else if block must be above get-cp-members block
                 handleGetLocalCPMember(command);
-                sendResponse = false;
             } else if (uri.startsWith(URI_CP_MEMBERS_URL)) {
                 handleGetCPMembers(command);
                 sendResponse = false;
@@ -159,6 +156,17 @@ public class HttpGetCommandProcessor extends HttpCommandProcessor<HttpGetCommand
         command.setResponse(HttpCommand.CONTENT_TYPE_JSON, stringToBytes(res));
     }
 
+    private void handleCPGroupRequest(HttpGetCommand command) {
+        String uri = command.getURI();
+        if (uri.contains(URI_CP_SESSIONS_SUFFIX)) {
+            handleGetCPSessions(command);
+        } else if (uri.endsWith(URI_CP_GROUPS_URL) || uri.endsWith(URI_CP_GROUPS_URL + "/")) {
+            handleGetCPGroupIds(command);
+        } else {
+            handleGetCPGroupByName(command);
+        }
+    }
+
     private void handleGetCPGroupIds(final HttpGetCommand command) {
         ICompletableFuture<Collection<CPGroupId>> f = getCpSubsystemManagementService().getCPGroupIds();
         f.andThen(new ExecutionCallback<Collection<CPGroupId>>() {
@@ -180,18 +188,11 @@ public class HttpGetCommandProcessor extends HttpCommandProcessor<HttpGetCommand
         });
     }
 
-    private void handleCPGroupRequest(HttpGetCommand command) {
-        if (command.getURI().contains(URI_CP_SESSIONS_SUFFIX)) {
-            handleGetCPSessions(command);
-        } else {
-            handleGetCPGroupByName(command);
-        }
-    }
-
     private void handleGetCPSessions(final HttpGetCommand command) {
         String uri = command.getURI();
+        String prefix = URI_CP_GROUPS_URL + "/";
         int i = uri.indexOf(URI_CP_SESSIONS_SUFFIX);
-        String groupName = uri.substring(URI_CP_GROUP_URL.length(), i).trim();
+        String groupName = uri.substring(prefix.length(), i).trim();
         getCpSubsystem().getCPSessionManagementService()
                         .getAllSessions(groupName)
                         .andThen(new ExecutionCallback<Collection<CPSession>>() {
@@ -208,14 +209,20 @@ public class HttpGetCommandProcessor extends HttpCommandProcessor<HttpGetCommand
 
                             @Override
                             public void onFailure(Throwable t) {
-                                command.send500();
+                                if (peel(t) instanceof IllegalArgumentException) {
+                                    command.send404();
+                                } else {
+                                    command.send500();
+                                }
+
                                 textCommandService.sendResponse(command);
                             }
                         });
     }
 
     private void handleGetCPGroupByName(final HttpGetCommand command) {
-        String groupName = command.getURI().substring(URI_CP_GROUP_URL.length()).trim();
+        String prefix = URI_CP_GROUPS_URL + "/";
+        String groupName = command.getURI().substring(prefix.length()).trim();
         ICompletableFuture<CPGroup> f = getCpSubsystemManagementService().getCPGroup(groupName);
         f.andThen(new ExecutionCallback<CPGroup>() {
             @Override
@@ -277,8 +284,6 @@ public class HttpGetCommandProcessor extends HttpCommandProcessor<HttpGetCommand
         } else {
             command.send404();
         }
-
-        textCommandService.sendResponse(command);
     }
 
     private CPSubsystemManagementService getCpSubsystemManagementService() {

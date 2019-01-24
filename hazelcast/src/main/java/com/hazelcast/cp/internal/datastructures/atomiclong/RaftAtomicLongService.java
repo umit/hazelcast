@@ -79,7 +79,7 @@ public class RaftAtomicLongService implements RaftManagedService, RaftRemoteServ
     }
 
     @Override
-    public void onCPSubsystemReset() {
+    public void onCPSubsystemRestart() {
         atomicLongs.clear();
         destroyedLongs.clear();
     }

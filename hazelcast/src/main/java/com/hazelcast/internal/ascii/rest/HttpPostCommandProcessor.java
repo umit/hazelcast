@@ -45,6 +45,8 @@ import java.net.URLDecoder;
 import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
 
+import static com.hazelcast.cp.CPGroup.METADATA_CP_GROUP_NAME;
+import static com.hazelcast.util.ExceptionUtil.peel;
 import static com.hazelcast.util.StringUtil.bytesToString;
 import static com.hazelcast.util.StringUtil.lowerCaseInternal;
 import static com.hazelcast.util.StringUtil.stringToBytes;
@@ -112,8 +114,13 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
             } else if (uri.startsWith(URI_UPDATE_PERMISSIONS)) {
                 handleUpdatePermissions(command);
             } else if (uri.startsWith(URI_CP_MEMBERS_URL)) {
-                handlePromoteToCPMember(command);
+                handleCPMember(command);
                 sendResponse = false;
+            } else if (uri.startsWith(URI_CP_GROUPS_URL)) {
+                handleCPGroup(command);
+                sendResponse = false;
+            } else if (uri.startsWith(URI_RESTART_CP_SUBSYSTEM_URL)) {
+                handleResetAndInitCPSubsystem(command);
             } else {
                 command.send404();
             }
@@ -153,7 +160,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         command.setResponse(HttpCommand.CONTENT_TYPE_JSON, stringToBytes(res));
     }
 
-    private void handleGetClusterState(HttpPostCommand command) throws UnsupportedEncodingException {
+    private void handleGetClusterState(HttpPostCommand command) {
         String res;
         try {
             Node node = textCommandService.getNode();
@@ -193,7 +200,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         command.setResponse(HttpCommand.CONTENT_TYPE_JSON, stringToBytes(res));
     }
 
-    private void handleForceStart(HttpPostCommand command) throws UnsupportedEncodingException {
+    private void handleForceStart(HttpPostCommand command) {
         String res;
         try {
             Node node = textCommandService.getNode();
@@ -210,7 +217,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         sendResponse(command, res);
     }
 
-    private void handlePartialStart(HttpPostCommand command) throws UnsupportedEncodingException {
+    private void handlePartialStart(HttpPostCommand command) {
         String res;
         try {
             Node node = textCommandService.getNode();
@@ -227,7 +234,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         sendResponse(command, res);
     }
 
-    private void handleHotRestartBackup(HttpPostCommand command) throws UnsupportedEncodingException {
+    private void handleHotRestartBackup(HttpPostCommand command) {
         String res;
         try {
             if (checkCredentials(command)) {
@@ -243,7 +250,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         sendResponse(command, res);
     }
 
-    private void handleHotRestartBackupInterrupt(HttpPostCommand command) throws UnsupportedEncodingException {
+    private void handleHotRestartBackupInterrupt(HttpPostCommand command) {
         String res;
         try {
             if (checkCredentials(command)) {
@@ -259,7 +266,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         sendResponse(command, res);
     }
 
-    private void handleClusterShutdown(HttpPostCommand command) throws UnsupportedEncodingException {
+    private void handleClusterShutdown(HttpPostCommand command) {
         String res;
         try {
             Node node = textCommandService.getNode();
@@ -279,7 +286,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         sendResponse(command, res);
     }
 
-    private void handleListNodes(HttpPostCommand command) throws UnsupportedEncodingException {
+    private void handleListNodes(HttpPostCommand command) {
         String res;
         try {
             Node node = textCommandService.getNode();
@@ -301,7 +308,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         sendResponse(command, res);
     }
 
-    private void handleShutdownNode(HttpPostCommand command) throws UnsupportedEncodingException {
+    private void handleShutdownNode(HttpPostCommand command) {
         String res;
         try {
             Node node = textCommandService.getNode();
@@ -326,7 +333,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         if (uri.endsWith("/")) {
             suffix = uri.substring(URI_QUEUES.length(), uri.length() - 1);
         } else {
-            suffix = uri.substring(URI_QUEUES.length(), uri.length());
+            suffix = uri.substring(URI_QUEUES.length());
         }
         int indexSlash = suffix.lastIndexOf('/');
 
@@ -335,7 +342,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
             queueName = suffix;
         } else {
             queueName = suffix.substring(0, indexSlash);
-            simpleValue = suffix.substring(indexSlash + 1, suffix.length());
+            simpleValue = suffix.substring(indexSlash + 1);
         }
         byte[] data;
         byte[] contentType;
@@ -603,9 +610,24 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         return;
     }
 
-    private void handlePromoteToCPMember(final HttpPostCommand command) {
+    private void handleCPMember(final HttpPostCommand command) throws UnsupportedEncodingException {
+        if (!checkCredentials(command)) {
+            command.send403();
+            textCommandService.sendResponse(command);
+            return;
+        }
+
+        String uri = command.getURI();
+        if (uri.endsWith(URI_REMOVE_SUFFIX) || uri.endsWith(URI_REMOVE_SUFFIX + "/")) {
+            handleRemoveCPMember(command);
+        } else {
+            handlePromoteToCPMember(command);
+        }
+    }
+
+    private void handlePromoteToCPMember(final HttpPostCommand command) throws UnsupportedEncodingException {
         if (getCpSubsystem().getLocalCPMember() != null) {
-            command.send400();
+            command.send200();
             textCommandService.sendResponse(command);
             return;
         }
@@ -624,6 +646,123 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
                                                  textCommandService.sendResponse(command);
                                              }
                                          });
+    }
+
+    private void handleRemoveCPMember(final HttpPostCommand command) {
+        String uri = command.getURI();
+        String prefix = URI_CP_MEMBERS_URL + "/";
+        String cpMemberUid = uri.substring(prefix.length(), uri.indexOf('/', prefix.length())).trim();
+        getCpSubsystem().getCPSubsystemManagementService()
+                        .removeCPMember(cpMemberUid)
+                        .andThen(new ExecutionCallback<Void>() {
+                            @Override
+                            public void onResponse(Void response) {
+                                command.send200();
+                                textCommandService.sendResponse(command);
+                            }
+
+                            @Override
+                            public void onFailure(Throwable t) {
+                                if (peel(t) instanceof IllegalArgumentException) {
+                                    command.send400();
+                                } else {
+                                    command.send500();
+                                }
+
+                                textCommandService.sendResponse(command);
+                            }
+                        });
+    }
+
+    private void handleCPGroup(HttpPostCommand command) throws UnsupportedEncodingException {
+        if (!checkCredentials(command)) {
+            textCommandService.sendResponse(command);
+            command.send403();
+            return;
+        }
+
+        String uri = command.getURI();
+        if (!uri.endsWith(URI_REMOVE_SUFFIX) && !uri.endsWith(URI_REMOVE_SUFFIX + "/")) {
+            command.send404();
+            textCommandService.sendResponse(command);
+            return;
+        }
+
+        if (uri.contains(URI_CP_SESSIONS_SUFFIX)) {
+            handleForceCloseCPSession(command);
+        } else {
+            handleForceDestroyCPGroup(command);
+        }
+    }
+
+    private void handleForceCloseCPSession(final HttpPostCommand command) {
+        String uri = command.getURI();
+        String prefix = URI_CP_GROUPS_URL + "/";
+        String suffix = URI_CP_SESSIONS_SUFFIX + "/";
+        int i = uri.indexOf(suffix);
+        String groupName = uri.substring(prefix.length(), i).trim();
+        long sessionId = Long.valueOf(uri.substring(i + suffix.length(), uri.indexOf('/', i + suffix.length())));
+
+        getCpSubsystem().getCPSessionManagementService()
+                        .forceCloseSession(groupName, sessionId)
+                        .andThen(new ExecutionCallback<Boolean>() {
+                            @Override
+                            public void onResponse(Boolean response) {
+                                if (response) {
+                                    command.send200();
+                                } else {
+                                    command.send400();
+                                }
+                                textCommandService.sendResponse(command);
+                            }
+
+                            @Override
+                            public void onFailure(Throwable t) {
+                                command.send500();
+                                textCommandService.sendResponse(command);
+                            }
+                        });
+    }
+
+    private void handleForceDestroyCPGroup(final HttpPostCommand command) {
+        String uri = command.getURI();
+        String prefix = URI_CP_GROUPS_URL + "/";
+        String groupName = uri.substring(prefix.length(), uri.indexOf('/', prefix.length())).trim();
+        if (METADATA_CP_GROUP_NAME.equals(groupName)) {
+            command.send400();
+            textCommandService.sendResponse(command);
+            return;
+        }
+
+        getCpSubsystem().getCPSubsystemManagementService()
+                        .forceDestroyCPGroup(groupName)
+                        .andThen(new ExecutionCallback<Void>() {
+                            @Override
+                            public void onResponse(Void response) {
+                                command.send200();
+                                textCommandService.sendResponse(command);
+                            }
+
+                            @Override
+                            public void onFailure(Throwable t) {
+                                if (peel(t) instanceof IllegalArgumentException) {
+                                    command.send400();
+                                } else {
+                                    command.send500();
+                                }
+
+                                textCommandService.sendResponse(command);
+                            }
+                        });
+    }
+
+    private void handleResetAndInitCPSubsystem(HttpPostCommand command) throws UnsupportedEncodingException {
+        if (checkCredentials(command)) {
+            getCpSubsystem().getCPSubsystemManagementService().restart();
+            command.send200();
+        } else {
+            command.send403();
+        }
     }
 
     private CPSubsystemManagementService getCpSubsystemManagementService() {

@@ -64,6 +64,8 @@ public class RestCPSubsystemTest extends HazelcastTestSupport {
     public ExpectedException exception = ExpectedException.none();
 
     private Config config = new Config();
+    private String groupName = config.getGroupConfig().getName();
+    private String groupPassword = config.getGroupConfig().getPassword();
 
     @Before
     public void setup() {
@@ -312,7 +314,7 @@ public class RestCPSubsystemTest extends HazelcastTestSupport {
 
         IAtomicLong long1 = instance1.getCPSubsystem().getAtomicLong("long1");
 
-        ConnectionResponse response = new HTTPCommunicator(instance1).forceDestroyCPGroup(DEFAULT_GROUP_NAME);
+        ConnectionResponse response = new HTTPCommunicator(instance1).forceDestroyCPGroup(DEFAULT_GROUP_NAME, groupName, groupPassword);
 
         assertEquals(200, response.responseCode);
 
@@ -322,12 +324,25 @@ public class RestCPSubsystemTest extends HazelcastTestSupport {
     }
 
     @Test
+    public void test_forceDestroyCPGroup_withInvalidCredentials() throws IOException {
+        HazelcastInstance instance1 = Hazelcast.newHazelcastInstance(config);
+        Hazelcast.newHazelcastInstance(config);
+        Hazelcast.newHazelcastInstance(config);
+
+        instance1.getCPSubsystem().getAtomicLong("long1");
+
+        ConnectionResponse response = new HTTPCommunicator(instance1).forceDestroyCPGroup(DEFAULT_GROUP_NAME, "x", "x");
+
+        assertEquals(403, response.responseCode);
+    }
+
+    @Test
     public void test_forceDestroyMETADATACPGroup() throws IOException {
         HazelcastInstance instance1 = Hazelcast.newHazelcastInstance(config);
         Hazelcast.newHazelcastInstance(config);
         Hazelcast.newHazelcastInstance(config);
 
-        ConnectionResponse response = new HTTPCommunicator(instance1).forceDestroyCPGroup(METADATA_CP_GROUP_NAME);
+        ConnectionResponse response = new HTTPCommunicator(instance1).forceDestroyCPGroup(METADATA_CP_GROUP_NAME, groupName, groupPassword);
 
         assertEquals(400, response.responseCode);
     }
@@ -338,7 +353,7 @@ public class RestCPSubsystemTest extends HazelcastTestSupport {
         Hazelcast.newHazelcastInstance(config);
         Hazelcast.newHazelcastInstance(config);
 
-        ConnectionResponse response = new HTTPCommunicator(instance1).forceDestroyCPGroup("custom");
+        ConnectionResponse response = new HTTPCommunicator(instance1).forceDestroyCPGroup("custom", groupName, groupPassword);
 
         assertEquals(400, response.responseCode);
     }
@@ -354,9 +369,25 @@ public class RestCPSubsystemTest extends HazelcastTestSupport {
 
         assertClusterSizeEventually(2, instance1, instance2);
 
-        ConnectionResponse response = new HTTPCommunicator(instance1).removeCPMember(crashedCPMember.getUuid());
+        ConnectionResponse response = new HTTPCommunicator(instance1).removeCPMember(crashedCPMember.getUuid(), groupName, groupPassword);
 
         assertEquals(200, response.responseCode);
+    }
+
+    @Test
+    public void test_removeCPMember_withInvalidCredentials() throws IOException {
+        HazelcastInstance instance1 = Hazelcast.newHazelcastInstance(config);
+        HazelcastInstance instance2 = Hazelcast.newHazelcastInstance(config);
+        HazelcastInstance instance3 = Hazelcast.newHazelcastInstance(config);
+
+        CPMember crashedCPMember = instance3.getCPSubsystem().getLocalCPMember();
+        instance3.getLifecycleService().terminate();
+
+        assertClusterSizeEventually(2, instance1, instance2);
+
+        ConnectionResponse response = new HTTPCommunicator(instance1).removeCPMember(crashedCPMember.getUuid(), "x", "x");
+
+        assertEquals(403, response.responseCode);
     }
 
     @Test
@@ -365,7 +396,7 @@ public class RestCPSubsystemTest extends HazelcastTestSupport {
         Hazelcast.newHazelcastInstance(config);
         Hazelcast.newHazelcastInstance(config);
 
-        ConnectionResponse response = new HTTPCommunicator(instance1).removeCPMember("invalid_uid");
+        ConnectionResponse response = new HTTPCommunicator(instance1).removeCPMember("invalid_uid", groupName, groupPassword);
 
         assertEquals(400, response.responseCode);
     }
@@ -378,7 +409,7 @@ public class RestCPSubsystemTest extends HazelcastTestSupport {
 
         ConnectionResponse response = new HTTPCommunicator(instance1).removeCPMember(instance2.getCPSubsystem()
                                                                                               .getLocalCPMember()
-                                                                                              .getUuid());
+                                                                                              .getUuid(), groupName, groupPassword);
 
         assertEquals(400, response.responseCode);
     }
@@ -392,7 +423,7 @@ public class RestCPSubsystemTest extends HazelcastTestSupport {
         CPMember crashedCPMember = instance2.getCPSubsystem().getLocalCPMember();
         instance2.getLifecycleService().terminate();
 
-        ConnectionResponse response = new HTTPCommunicator(instance3).removeCPMember(crashedCPMember.getUuid());
+        ConnectionResponse response = new HTTPCommunicator(instance3).removeCPMember(crashedCPMember.getUuid(), groupName, groupPassword);
 
         assertEquals(500, response.responseCode);
     }
@@ -404,7 +435,7 @@ public class RestCPSubsystemTest extends HazelcastTestSupport {
         Hazelcast.newHazelcastInstance(config);
         HazelcastInstance instance4 = Hazelcast.newHazelcastInstance(config);
 
-        ConnectionResponse response = new HTTPCommunicator(instance4).promoteCPMember();
+        ConnectionResponse response = new HTTPCommunicator(instance4).promoteCPMember(groupName, groupPassword);
 
         assertEquals(200, response.responseCode);
 
@@ -413,14 +444,29 @@ public class RestCPSubsystemTest extends HazelcastTestSupport {
     }
 
     @Test
+    public void test_promoteAPMemberToCPMember_withInvalidCredentials() throws IOException, ExecutionException, InterruptedException {
+        HazelcastInstance instance1 = Hazelcast.newHazelcastInstance(config);
+        Hazelcast.newHazelcastInstance(config);
+        Hazelcast.newHazelcastInstance(config);
+        HazelcastInstance instance4 = Hazelcast.newHazelcastInstance(config);
+
+        ConnectionResponse response = new HTTPCommunicator(instance4).promoteCPMember("x", "x");
+
+        assertEquals(403, response.responseCode);
+
+        Collection<CPMember> cpMembers = instance1.getCPSubsystem().getCPSubsystemManagementService().getCPMembers().get();
+        assertEquals(3, cpMembers.size());
+    }
+
+    @Test
     public void test_promoteExistingCPMember() throws IOException, ExecutionException, InterruptedException {
         HazelcastInstance instance1 = Hazelcast.newHazelcastInstance(config);
         Hazelcast.newHazelcastInstance(config);
         Hazelcast.newHazelcastInstance(config);
 
-        ConnectionResponse response = new HTTPCommunicator(instance1).promoteCPMember();
+        ConnectionResponse response = new HTTPCommunicator(instance1).promoteCPMember(groupName, groupPassword);
 
-        assertEquals(400, response.responseCode);
+        assertEquals(200, response.responseCode);
 
         Collection<CPMember> cpMembers = instance1.getCPSubsystem().getCPSubsystemManagementService().getCPMembers().get();
         assertEquals(3, cpMembers.size());
@@ -442,7 +488,7 @@ public class RestCPSubsystemTest extends HazelcastTestSupport {
         sleepAtLeastMillis(10);
 
         for (HazelcastInstance instance : Arrays.asList(instance1, instance2, instance3)) {
-            ConnectionResponse response = new HTTPCommunicator(instance).resetAndInit();
+            ConnectionResponse response = new HTTPCommunicator(instance).restart(groupName, groupPassword);
 
             assertEquals(200, response.responseCode);
         }
@@ -458,6 +504,19 @@ public class RestCPSubsystemTest extends HazelcastTestSupport {
         RaftGroupId id2 = (RaftGroupId) cpGroup2.id();
 
         assertTrue(id2.term() > id1.term());
+    }
+
+    @Test
+    public void test_resetAndInit_withInvalidCredentials() throws IOException {
+        HazelcastInstance instance1 = Hazelcast.newHazelcastInstance(config);
+        HazelcastInstance instance2 = Hazelcast.newHazelcastInstance(config);
+        HazelcastInstance instance3 = Hazelcast.newHazelcastInstance(config);
+
+        for (HazelcastInstance instance : Arrays.asList(instance1, instance2, instance3)) {
+            ConnectionResponse response = new HTTPCommunicator(instance).restart("x", "x");
+
+            assertEquals(403, response.responseCode);
+        }
     }
 
     @Test
@@ -500,9 +559,9 @@ public class RestCPSubsystemTest extends HazelcastTestSupport {
 
         long sessionId = sessions1.iterator().next().id();
 
-        ConnectionResponse response1 = new HTTPCommunicator(instance1).forceCloseCPSession(DEFAULT_GROUP_NAME, sessionId);
+        ConnectionResponse response = new HTTPCommunicator(instance1).forceCloseCPSession(DEFAULT_GROUP_NAME, sessionId, groupName, groupPassword);
 
-        assertEquals(200, response1.responseCode);
+        assertEquals(200, response.responseCode);
 
         Collection<CPSession> sessions2 = instance1.getCPSubsystem()
                                                    .getCPSessionManagementService()
@@ -513,6 +572,36 @@ public class RestCPSubsystemTest extends HazelcastTestSupport {
     }
 
     @Test
+    public void test_forceCloseValidCPSession_withInvalidCredentials() throws IOException, ExecutionException, InterruptedException {
+        HazelcastInstance instance1 = Hazelcast.newHazelcastInstance(config);
+        Hazelcast.newHazelcastInstance(config);
+        Hazelcast.newHazelcastInstance(config);
+
+        instance1.getCPSubsystem().getLock("lock1").lock();
+        instance1.getCPSubsystem().getLock("lock1").unlock();
+
+        Collection<CPSession> sessions1 = instance1.getCPSubsystem()
+                                                   .getCPSessionManagementService()
+                                                   .getAllSessions(DEFAULT_GROUP_NAME)
+                                                   .get();
+
+        assertEquals(1, sessions1.size());
+
+        long sessionId = sessions1.iterator().next().id();
+
+        ConnectionResponse response = new HTTPCommunicator(instance1).forceCloseCPSession(DEFAULT_GROUP_NAME, sessionId, "x", "x");
+
+        assertEquals(403, response.responseCode);
+
+        Collection<CPSession> sessions2 = instance1.getCPSubsystem()
+                                                   .getCPSessionManagementService()
+                                                   .getAllSessions(DEFAULT_GROUP_NAME)
+                                                   .get();
+
+        assertEquals(1, sessions2.size());
+    }
+
+    @Test
     public void test_forceCloseInvalidCPSession() throws IOException {
         HazelcastInstance instance1 = Hazelcast.newHazelcastInstance(config);
         Hazelcast.newHazelcastInstance(config);
@@ -520,7 +609,7 @@ public class RestCPSubsystemTest extends HazelcastTestSupport {
 
         instance1.getCPSubsystem().getAtomicLong("long1").set(5);
 
-        ConnectionResponse response1 = new HTTPCommunicator(instance1).forceCloseCPSession(DEFAULT_GROUP_NAME, 1);
+        ConnectionResponse response1 = new HTTPCommunicator(instance1).forceCloseCPSession(DEFAULT_GROUP_NAME, 1, groupName, groupPassword);
 
         assertEquals(400, response1.responseCode);
     }
@@ -531,7 +620,7 @@ public class RestCPSubsystemTest extends HazelcastTestSupport {
         Hazelcast.newHazelcastInstance(config);
         Hazelcast.newHazelcastInstance(config);
 
-        ConnectionResponse response1 = new HTTPCommunicator(instance1).forceCloseCPSession(DEFAULT_GROUP_NAME, 1);
+        ConnectionResponse response1 = new HTTPCommunicator(instance1).forceCloseCPSession(DEFAULT_GROUP_NAME, 1, groupName, groupPassword);
 
         assertEquals(400, response1.responseCode);
     }

@@ -30,6 +30,7 @@ import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.exception.CPGroupDestroyedException;
 import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.cp.internal.session.SessionExpiredException;
@@ -44,6 +45,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.CP_GROUP_DESTROYED_EXCEPTION;
 import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.LOCK_ACQUIRE_LIMIT_EXCEEDED_EXCEPTION;
 import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.LOCK_OWNERSHIP_LOST_EXCEPTION;
 import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.SESSION_EXPIRED_EXCEPTION;
@@ -100,6 +102,12 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
             @Override
             public Throwable createException(String message, Throwable cause) {
                 return new LockOwnershipLostException(message);
+            }
+        });
+        factory.register(CP_GROUP_DESTROYED_EXCEPTION, CPGroupDestroyedException.class, new ExceptionFactory() {
+            @Override
+            public Throwable createException(String message, Throwable cause) {
+                return new CPGroupDestroyedException();
             }
         });
     }

@@ -95,11 +95,11 @@ import java.util.Collection;
  * <p>
  * Loss of majority of the Metadata CP group is the doomsday scenario for the
  * CP subsystem. It is a fatal failure and the only solution is to reset the
- * whole CP subsystem state via the {@link #resetAndInit()} API. To be able to
+ * whole CP subsystem state via the {@link #restart()} API. To be able to
  * reset the CP subsystem, the initial size of the CP subsystem must be
  * satisfied, which is defined by {@link CPSubsystemConfig#getCPMemberCount()}.
  * For instance, {@link CPSubsystemConfig#getCPMemberCount()} is 5 and only 1
- * CP member is currently alive, {@link #resetAndInit()} must be called on this
+ * CP member is currently alive, {@link #restart()} must be called on this
  * CP member and 4 regular Hazelcast members. New Hazelcast members can be
  * started to satisfy {@link CPSubsystemConfig#getCPMemberCount()}.
  *
@@ -201,6 +201,6 @@ public interface CPSubsystemManagementService {
      * This method is NOT idempotent and multiple invocations
      * on the same member can break the whole system!</strong>
      */
-    void resetAndInit();
+    void restart();
 
 }

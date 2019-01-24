@@ -19,6 +19,7 @@ package com.hazelcast.cp.internal.session;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.exception.CPGroupDestroyedException;
 import com.hazelcast.cp.internal.util.Tuple2;
 import com.hazelcast.util.Clock;
 
@@ -83,18 +84,34 @@ public abstract class AbstractProxySessionManager {
      */
     protected abstract ScheduledFuture<?> scheduleWithRepetition(Runnable task, long period, TimeUnit unit);
 
+    protected final void resetInternalState() {
+        lock.writeLock().lock();
+        try {
+            mutexes.clear();
+            sessions.clear();
+            threadIds.clear();
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
 
     public final Long getOrCreateUniqueThreadId(CPGroupId groupId) {
-        Tuple2<CPGroupId, Long> key = Tuple2.of(groupId, getThreadId());
-        Long globalThreadId = threadIds.get(key);
-        if (globalThreadId != null) {
-            return globalThreadId;
+        lock.readLock().lock();
+        try {
+            Tuple2<CPGroupId, Long> key = Tuple2.of(groupId, getThreadId());
+            Long globalThreadId = threadIds.get(key);
+            if (globalThreadId != null) {
+                return globalThreadId;
+            }
+
+            globalThreadId = generateThreadId(groupId);
+            Long existing = threadIds.putIfAbsent(key, globalThreadId);
+
+            return existing != null ? existing : globalThreadId;
+        } finally {
+            lock.readLock().unlock();
         }
-
-        globalThreadId = generateThreadId(groupId);
-        Long existing = threadIds.putIfAbsent(key, globalThreadId);
-
-        return existing != null ? existing : globalThreadId;
     }
 
     /**
@@ -306,7 +323,8 @@ public abstract class AbstractProxySessionManager {
 
                         @Override
                         public void onFailure(Throwable t) {
-                            if (peel(t) instanceof SessionExpiredException) {
+                            Throwable cause = peel(t);
+                            if (cause instanceof SessionExpiredException || cause instanceof CPGroupDestroyedException) {
                                 invalidateSession(groupId, session.id);
                             }
                         }

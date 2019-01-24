@@ -24,6 +24,7 @@ import com.hazelcast.cp.CPGroup;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.CPMember;
 import com.hazelcast.cp.CPSubsystemManagementService;
+import com.hazelcast.cp.exception.CPGroupDestroyedException;
 import com.hazelcast.cp.internal.datastructures.spi.RaftManagedService;
 import com.hazelcast.cp.internal.datastructures.spi.RaftRemoteService;
 import com.hazelcast.cp.internal.exception.CannotRemoveCPMemberException;
@@ -72,6 +73,7 @@ import com.hazelcast.util.executor.ManagedExecutorService;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Properties;
@@ -89,6 +91,7 @@ import static com.hazelcast.cp.internal.raft.QueryPolicy.LEADER_LOCAL;
 import static com.hazelcast.internal.config.ConfigValidator.checkCPSubsystemConfig;
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 import static com.hazelcast.spi.ExecutionService.SYSTEM_EXECUTOR;
+import static com.hazelcast.util.ExceptionUtil.peel;
 import static com.hazelcast.util.Preconditions.checkState;
 import static com.hazelcast.util.Preconditions.checkTrue;
 import static java.util.Collections.newSetFromMap;
@@ -181,15 +184,12 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
      * this method is NOT idempotent and multiple invocations on the same member can break the whole system !!!
      */
     @Override
-    public void resetAndInit() {
+    public void restart() {
         // we should clear the current raft state before resetting the metadata manager
         resetLocalRaftState();
 
-        nodes.clear();
-        destroyedGroupIds.clear();
-
         invocationManager.reset();
-        metadataGroupManager.resetAndInit();
+        metadataGroupManager.restart();
 
         logger.info("CP state is reset.");
     }
@@ -202,13 +202,18 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             }
 
             if (serviceInfo.getService() instanceof RaftManagedService) {
-                ((RaftManagedService) serviceInfo.getService()).onCPSubsystemReset();
+                ((RaftManagedService) serviceInfo.getService()).onCPSubsystemRestart();
             }
         }
 
         for (RaftNode node : nodes.values()) {
             node.forceSetTerminatedStatus();
         }
+
+        Set<CPGroupId> groupIds = new HashSet<CPGroupId>(nodes.keySet());
+        groupIds.remove(METADATA_GROUP_ID);
+        destroyedGroupIds.addAll(groupIds);
+        nodes.clear();
     }
 
     @Override
@@ -737,6 +742,10 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
                 @Override
                 public void onFailure(Throwable t) {
+                    if (peel(t) instanceof CPGroupDestroyedException) {
+                        destroyedGroupIds.add(groupId);
+                    }
+
                     if (logger.isFineEnabled()) {
                         logger.fine("Cannot get initial members of " + groupId + " from the METADATA CP group", t);
                     }

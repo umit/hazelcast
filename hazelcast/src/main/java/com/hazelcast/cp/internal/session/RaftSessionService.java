@@ -60,7 +60,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 
+import static com.hazelcast.cp.CPGroup.METADATA_CP_GROUP_NAME;
 import static com.hazelcast.spi.ExecutionService.SYSTEM_EXECUTOR;
+import static com.hazelcast.util.Preconditions.checkTrue;
 import static java.util.Collections.unmodifiableCollection;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -154,6 +156,7 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
 
     @Override
     public ICompletableFuture<Collection<CPSession>> getAllSessions(String groupName) {
+        checkTrue(!METADATA_CP_GROUP_NAME.equals(groupName), "Cannot query CP sessions on the METADATA CP group!");
         ManagedExecutorService executor = nodeEngine.getExecutionService().getExecutor(SYSTEM_EXECUTOR);
         final SimpleCompletableFuture<Collection<CPSession>> future
                 = new SimpleCompletableFuture<Collection<CPSession>>(executor, logger);
@@ -178,7 +181,7 @@ public class RaftSessionService implements ManagedService, SnapshotAwareService<
                             .<Collection<CPSession>>invoke(group.id(), new GetSessionsOp())
                             .andThen(callback);
                 } else {
-                    future.setResult(Collections.emptyList());
+                    future.setResult(new ExecutionException(new IllegalArgumentException()));
                 }
             }
 

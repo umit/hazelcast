@@ -16,11 +16,13 @@
 
 package com.hazelcast.client.cp.internal.datastructures.lock;
 
+import com.hazelcast.client.cp.internal.session.ClientProxySessionManager;
 import com.hazelcast.client.impl.clientside.HazelcastClientProxy;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.cp.internal.datastructures.lock.FencedLockBasicTest;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
+import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -29,6 +31,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
 @RunWith(HazelcastSerialClassRunner.class)
@@ -56,6 +60,24 @@ public class FencedLockClientBasicTest extends FencedLockBasicTest {
         lockInstance.shutdown();
 
         assertFalse(instances[0].getCPSubsystem().getLock(proxyName).isLocked());
+    }
+
+    @Test
+    public void test_sessionIsClosedOnCPSubsystemReset() {
+        lock.lock();
+
+        for (HazelcastInstance instance : instances) {
+            instance.getCPSubsystem().getCPSubsystemManagementService().restart();
+        }
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                HazelcastClientProxy clientProxy = (HazelcastClientProxy) lockInstance;
+                ClientProxySessionManager proxySessionManager = clientProxy.client.getProxySessionManager();
+                assertEquals(NO_SESSION_ID, proxySessionManager.getSession(lock.getGroupId()));
+            }
+        });
     }
 
     protected AbstractProxySessionManager getSessionManager(HazelcastInstance instance) {

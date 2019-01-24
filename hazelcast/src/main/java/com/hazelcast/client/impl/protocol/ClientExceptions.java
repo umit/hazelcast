@@ -31,6 +31,7 @@ import com.hazelcast.core.IndeterminateOperationStateException;
 import com.hazelcast.core.LocalMemberResetException;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.core.OperationTimeoutException;
+import com.hazelcast.cp.exception.CPGroupDestroyedException;
 import com.hazelcast.cp.lock.exception.LockAcquireLimitExceededException;
 import com.hazelcast.cp.lock.exception.LockOwnershipLostException;
 import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
@@ -206,6 +207,7 @@ public class ClientExceptions {
         register(ClientProtocolErrorCodes.WAIT_KEY_CANCELLED_EXCEPTION, WaitKeyCancelledException.class);
         register(ClientProtocolErrorCodes.LOCK_ACQUIRE_LIMIT_EXCEEDED_EXCEPTION, LockAcquireLimitExceededException.class);
         register(ClientProtocolErrorCodes.LOCK_OWNERSHIP_LOST_EXCEPTION, LockOwnershipLostException.class);
+        register(ClientProtocolErrorCodes.CP_GROUP_DESTROYED_EXCEPTION, CPGroupDestroyedException.class);
     }
 
 

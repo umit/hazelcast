@@ -21,6 +21,7 @@ import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
+import com.hazelcast.cp.internal.datastructures.spi.RaftManagedService;
 import com.hazelcast.cp.internal.session.operation.CloseSessionOp;
 import com.hazelcast.cp.internal.session.operation.CreateSessionOp;
 import com.hazelcast.cp.internal.session.operation.GenerateThreadIdOp;
@@ -33,6 +34,7 @@ import com.hazelcast.util.ExceptionUtil;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -43,7 +45,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 /**
  * Server-side implementation of Raft proxy session manager
  */
-public class ProxySessionManagerService extends AbstractProxySessionManager implements GracefulShutdownAwareService {
+public class ProxySessionManagerService extends AbstractProxySessionManager implements GracefulShutdownAwareService,
+                                                                                       RaftManagedService {
 
     /**
      * Name of the service
@@ -134,5 +137,22 @@ public class ProxySessionManagerService extends AbstractProxySessionManager impl
     private RaftInvocationManager getInvocationManager() {
         RaftService raftService = nodeEngine.getService(RaftService.SERVICE_NAME);
         return raftService.getInvocationManager();
+    }
+
+    @Override
+    public void init(NodeEngine nodeEngine, Properties properties) {
+    }
+
+    @Override
+    public void reset() {
+    }
+
+    @Override
+    public void shutdown(boolean terminate) {
+    }
+
+    @Override
+    public void onCPSubsystemRestart() {
+        resetInternalState();
     }
 }

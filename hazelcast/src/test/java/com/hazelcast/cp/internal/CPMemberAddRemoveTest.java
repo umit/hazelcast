@@ -32,6 +32,8 @@ import com.hazelcast.cp.internal.raft.impl.command.ApplyRaftGroupMembersCmd;
 import com.hazelcast.cp.internal.raftop.metadata.GetActiveCPMembersOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetMembershipChangeContextOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupOp;
+import com.hazelcast.cp.internal.session.ProxySessionManagerService;
+import com.hazelcast.cp.lock.FencedLock;
 import com.hazelcast.instance.StaticMemberNodeContext;
 import com.hazelcast.nio.Address;
 import com.hazelcast.spi.impl.proxyservice.InternalProxyService;
@@ -56,6 +58,7 @@ import java.util.concurrent.TimeoutException;
 import static com.hazelcast.cp.internal.MetadataRaftGroupManager.METADATA_GROUP_ID;
 import static com.hazelcast.cp.internal.raft.QueryPolicy.LEADER_LOCAL;
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getLastLogOrSnapshotEntry;
+import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 import static com.hazelcast.instance.HazelcastInstanceFactory.newHazelcastInstance;
 import static com.hazelcast.test.TestHazelcastInstanceFactory.initOrCreateConfig;
 import static com.hazelcast.util.FutureUtil.returnWithDeadline;
@@ -300,8 +303,8 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         newInstances[0] = instances[0];
         newInstances[1] = instances[3];
 
-        getRaftService(newInstances[0]).resetAndInit();
-        getRaftService(newInstances[1]).resetAndInit();
+        newInstances[0].getCPSubsystem().getCPSubsystemManagementService().restart();
+        newInstances[1].getCPSubsystem().getCPSubsystemManagementService().restart();
 
         Config config = createConfig(3, 3);
         newInstances[2] = factory.newHazelcastInstance(config);
@@ -364,7 +367,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         instances[2] = factory.newHazelcastInstance(config);
 
         for (HazelcastInstance hz : instances) {
-            getRaftService(hz).resetAndInit();
+            hz.getCPSubsystem().getCPSubsystemManagementService().restart();
         }
 
         List<CPMemberInfo> newEndpoints = getRaftInvocationManager(instance).<List<CPMemberInfo>>invoke(METADATA_GROUP_ID, new GetActiveCPMembersOp()).get();
@@ -381,8 +384,8 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         instances[0].getLifecycleService().terminate();
         assertClusterSizeEventually(2, instances[1], instances[2]);
 
-        getRaftService(instances[1]).resetAndInit();
-        getRaftService(instances[2]).resetAndInit();
+        instances[1].getCPSubsystem().getCPSubsystemManagementService().restart();
+        instances[2].getCPSubsystem().getCPSubsystemManagementService().restart();
 
         Config config = createConfig(3, 3);
         instances[0] = factory.newHazelcastInstance(config);
@@ -562,7 +565,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         try {
             Config config = createConfig(3, 3);
             final HazelcastInstance instance = factory.newHazelcastInstance(config);
-            getRaftService(instance).resetAndInit();
+            instance.getCPSubsystem().getCPSubsystemManagementService().restart();
 
             assertTrueEventually(new AssertTask() {
                 @Override
@@ -574,6 +577,29 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         }
 
         waitAllForLeaderElection(Arrays.copyOf(instances, 2), METADATA_GROUP_ID);
+    }
+
+    @Test
+    public void test_sessionClosedOnCPSubsystemReset() {
+        final HazelcastInstance[] instances = newInstances(3, 3, 1);
+
+        instances[0].getCPSubsystem().getAtomicLong("long1").set(1);
+        instances[0].getCPSubsystem().getAtomicLong("long1@custom").set(2);
+
+        final FencedLock lock = instances[3].getCPSubsystem().getLock("lock");
+        lock.lock();
+
+        for (HazelcastInstance instance : Arrays.asList(instances[0], instances[1], instances[2])) {
+            instance.getCPSubsystem().getCPSubsystemManagementService().restart();
+        }
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                ProxySessionManagerService service = getNodeEngineImpl(instances[3]).getService(ProxySessionManagerService.SERVICE_NAME);
+                assertEquals(NO_SESSION_ID, service.getSession(lock.getGroupId()));
+            }
+        });
     }
 
     @Test

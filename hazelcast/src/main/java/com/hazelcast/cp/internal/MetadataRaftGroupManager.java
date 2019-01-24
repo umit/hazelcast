@@ -21,6 +21,7 @@ import com.hazelcast.core.Member;
 import com.hazelcast.cp.CPGroup;
 import com.hazelcast.cp.CPGroup.CPGroupStatus;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.exception.CPGroupDestroyedException;
 import com.hazelcast.cp.internal.exception.CannotCreateRaftGroupException;
 import com.hazelcast.cp.internal.exception.CannotRemoveCPMemberException;
 import com.hazelcast.cp.internal.exception.MetadataRaftGroupNotInitializedException;
@@ -137,7 +138,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         return localMember.compareAndSet(null, new CPMemberInfo(nodeEngine.getLocalMember()));
     }
 
-    void resetAndInit() {
+    void restart() {
         doSetActiveMembers(Collections.<CPMemberInfo>emptySet());
         groups.clear();
         initialCPMembers = null;
@@ -253,6 +254,11 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
 
     public CPGroupInfo getRaftGroup(CPGroupId groupId) {
         checkNotNull(groupId);
+
+        if (!METADATA_GROUP_ID.equals(groupId) && (groupId instanceof RaftGroupId)
+                && ((RaftGroupId) groupId).term() < groupIdTerm) {
+            throw new CPGroupDestroyedException();
+        }
 
         return groups.get(groupId);
     }

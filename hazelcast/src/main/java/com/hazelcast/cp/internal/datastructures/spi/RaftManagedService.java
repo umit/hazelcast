@@ -25,8 +25,8 @@ import com.hazelcast.spi.ManagedService;
 public interface RaftManagedService extends ManagedService {
 
     /**
-     * Called when the CP subsystem is reset.
+     * Called when the CP subsystem is restarted.
      */
-    void onCPSubsystemReset();
+    void onCPSubsystemRestart();
 
 }
