@@ -223,7 +223,6 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
     }
 
     public static CPGroupId getMetadataGroupId(HazelcastInstance instance) {
-        RaftService raftService = getRaftService(instance);
-        return raftService.getMetadataGroupManager().getMetadataGroupId();
+        return getRaftService(instance).getMetadataGroupId();
     }
 }

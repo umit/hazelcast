@@ -105,8 +105,8 @@ public class RaftInvocationManager {
 
     private void invokeGetMembersToCreateRaftGroup(final String groupName, final int groupSize,
                                                    final SimpleCompletableFuture<CPGroupId> resultFuture) {
-        ICompletableFuture<List<CPMemberInfo>> f = query(raftService.getMetadataGroupManager().getMetadataGroupId(),
-                new GetActiveCPMembersOp(), LEADER_LOCAL);
+        RaftOp op = new GetActiveCPMembersOp();
+        ICompletableFuture<List<CPMemberInfo>> f = query(raftService.getMetadataGroupId(), op, LEADER_LOCAL);
 
         f.andThen(new ExecutionCallback<List<CPMemberInfo>>() {
             @Override
@@ -136,8 +136,7 @@ public class RaftInvocationManager {
     private void invokeCreateRaftGroup(final String groupName, final int groupSize,
                                        final List<CPMemberInfo> members,
                                        final SimpleCompletableFuture<CPGroupId> resultFuture) {
-        ICompletableFuture<CPGroupId> f = invoke(raftService.getMetadataGroupManager().getMetadataGroupId(),
-                new CreateRaftGroupOp(groupName, members));
+        ICompletableFuture<CPGroupId> f = invoke(raftService.getMetadataGroupId(), new CreateRaftGroupOp(groupName, members));
 
         f.andThen(new ExecutionCallback<CPGroupId>() {
             @Override
@@ -162,7 +161,7 @@ public class RaftInvocationManager {
     // TODO [basri] this operation should be here or somewhere else?
     public InternalCompletableFuture<CPGroupId> triggerDestroy(CPGroupId groupId) {
         checkCPSubsystemEnabled();
-        return invoke(raftService.getMetadataGroupManager().getMetadataGroupId(), new TriggerDestroyRaftGroupOp(groupId));
+        return invoke(raftService.getMetadataGroupId(), new TriggerDestroyRaftGroupOp(groupId));
     }
 
     <T> InternalCompletableFuture<T> changeMembership(CPGroupId groupId, long membersCommitIndex,

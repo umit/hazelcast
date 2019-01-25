@@ -230,7 +230,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         return localMember.get();
     }
 
-    public RaftGroupId getMetadataGroupId() {
+    public CPGroupId getMetadataGroupId() {
         return metadataGroupId;
     }
 
@@ -278,7 +278,8 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         return null;
     }
 
-    public void initializeMetadataRaftGroup(List<CPMemberInfo> initialMembers, int metadataMembersCount, long expectedGroupIdSeed) {
+    public void initializeMetadataRaftGroup(List<CPMemberInfo> initialMembers, int metadataMembersCount,
+                                            long expectedGroupIdSeed) {
         checkNotNull(initialMembers);
         checkTrue(metadataMembersCount > 1, "initial METADATA CP group must contain at least 2 members: "
                 + metadataMembersCount);

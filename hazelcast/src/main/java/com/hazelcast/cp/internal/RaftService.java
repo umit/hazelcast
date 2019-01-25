@@ -165,21 +165,21 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     }
 
     public ICompletableFuture<Collection<CPGroupId>> getAllCPGroupIds() {
-        return invocationManager.invoke(metadataGroupManager.getMetadataGroupId(), new GetRaftGroupIdsOp());
+        return invocationManager.invoke(getMetadataGroupId(), new GetRaftGroupIdsOp());
     }
 
     @Override
     public ICompletableFuture<Collection<CPGroupId>> getCPGroupIds() {
-        return invocationManager.invoke(metadataGroupManager.getMetadataGroupId(), new GetActiveRaftGroupIdsOp());
+        return invocationManager.invoke(getMetadataGroupId(), new GetActiveRaftGroupIdsOp());
     }
 
     public ICompletableFuture<CPGroup> getCPGroup(CPGroupId groupId) {
-        return invocationManager.invoke(metadataGroupManager.getMetadataGroupId(), new GetRaftGroupOp(groupId));
+        return invocationManager.invoke(getMetadataGroupId(), new GetRaftGroupOp(groupId));
     }
 
     @Override
     public ICompletableFuture<CPGroup> getCPGroup(String name) {
-        return invocationManager.invoke(metadataGroupManager.getMetadataGroupId(), new GetActiveRaftGroupByNameOp(name));
+        return invocationManager.invoke(getMetadataGroupId(), new GetActiveRaftGroupByNameOp(name));
     }
 
     @Override
@@ -293,7 +293,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         // This new UUID generation can be removed when Hot Restart allows to recover Raft state.
         final CPMemberInfo member = new CPMemberInfo(UuidUtil.newUnsecureUuidString(), localMember.getAddress());
         logger.info("Adding new CP member: " + member);
-        ICompletableFuture<Void> future = invocationManager.invoke(metadataGroupManager.getMetadataGroupId(), new AddCPMemberOp(member));
+        ICompletableFuture<Void> future = invocationManager.invoke(getMetadataGroupId(), new AddCPMemberOp(member));
 
         future.andThen(new ExecutionCallback<Void>() {
             @Override
@@ -342,7 +342,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             }
         };
 
-        invocationManager.<Collection<CPMember>>invoke(metadataGroupManager.getMetadataGroupId(), new GetActiveCPMembersOp())
+        invocationManager.<Collection<CPMember>>invoke(getMetadataGroupId(), new GetActiveCPMembersOp())
                 .andThen(new ExecutionCallback<Collection<CPMember>>() {
             @Override
             public void onResponse(Collection<CPMember> cpMembers) {
@@ -381,12 +381,12 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
      */
     @Override
     public ICompletableFuture<Void> forceDestroyCPGroup(String groupName) {
-        return invocationManager.invoke(metadataGroupManager.getMetadataGroupId(), new ForceDestroyRaftGroupOp(groupName));
+        return invocationManager.invoke(getMetadataGroupId(), new ForceDestroyRaftGroupOp(groupName));
     }
 
     @Override
     public ICompletableFuture<Collection<CPMember>> getCPMembers() {
-        return invocationManager.invoke(metadataGroupManager.getMetadataGroupId(), new GetActiveCPMembersOp());
+        return invocationManager.invoke(getMetadataGroupId(), new GetActiveCPMembersOp());
     }
 
     @Override
@@ -724,17 +724,17 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     public CPGroupId getGroupIdForProxy(String name) {
         String groupName = getGroupNameForProxy(name);
         RaftOp op = new GetActiveRaftGroupByNameOp(groupName);
-        CPGroupInfo group = invocationManager.<CPGroupInfo>invoke(metadataGroupManager.getMetadataGroupId(), op).join();
+        CPGroupInfo group = invocationManager.<CPGroupInfo>invoke(getMetadataGroupId(), op).join();
         return group != null ? group.id() : null;
     }
 
     private ICompletableFuture<Void> invokeTriggerRemoveMember(CPMemberInfo member) {
-        return invocationManager.invoke(metadataGroupManager.getMetadataGroupId(), new TriggerRemoveCPMemberOp(member));
+        return invocationManager.invoke(getMetadataGroupId(), new TriggerRemoveCPMemberOp(member));
     }
 
     private boolean isRemoved(CPMemberInfo member) {
         RaftOp op = new GetActiveCPMembersOp();
-        InternalCompletableFuture<List<CPMemberInfo>> f = invocationManager.query(metadataGroupManager.getMetadataGroupId(), op, LEADER_LOCAL);
+        InternalCompletableFuture<List<CPMemberInfo>> f = invocationManager.query(getMetadataGroupId(), op, LEADER_LOCAL);
         List<CPMemberInfo> members = f.join();
         return !members.contains(member);
     }
@@ -782,6 +782,10 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return objectName;
     }
 
+    public CPGroupId getMetadataGroupId() {
+        return metadataGroupManager.getMetadataGroupId();
+    }
+
     private class InitializeRaftNodeTask implements Runnable {
         private final CPGroupId groupId;
 
@@ -797,7 +801,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         @SuppressWarnings("unchecked")
         private void queryInitialMembersFromMetadataRaftGroup() {
             RaftOp op = new GetRaftGroupOp(groupId);
-            ICompletableFuture<CPGroupInfo> f = invocationManager.query(metadataGroupManager.getMetadataGroupId(), op, LEADER_LOCAL);
+            ICompletableFuture<CPGroupInfo> f = invocationManager.query(getMetadataGroupId(), op, LEADER_LOCAL);
             f.andThen(new ExecutionCallback<CPGroupInfo>() {
                 @Override
                 public void onResponse(CPGroupInfo group) {
