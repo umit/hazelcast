@@ -74,6 +74,11 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
         return instance.getCPSubsystem().getAtomicLong(name);
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateProxyOnMetadataCPGroup() {
+        instances[0].getCPSubsystem().getAtomicLong("long1@metadata");
+    }
+
     @Test
     public void testSet() {
         atomicLong.set(271);

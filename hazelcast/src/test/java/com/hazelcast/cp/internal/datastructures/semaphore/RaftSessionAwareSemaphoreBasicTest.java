@@ -74,6 +74,11 @@ public class RaftSessionAwareSemaphoreBasicTest extends HazelcastRaftTestSupport
         return instances;
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateProxyOnMetadataCPGroup() {
+        semaphoreInstance.getCPSubsystem().getSemaphore(objectName + "@metadata");
+    }
+
     @Test
     public void testInit() {
         assertTrue(semaphore.init(7));

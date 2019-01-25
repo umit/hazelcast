@@ -84,6 +84,11 @@ public class FencedLockFailureTest extends HazelcastRaftTestSupport {
         return getNodeEngineImpl(lockInstance).getService(ProxySessionManagerService.SERVICE_NAME);
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateProxyOnMetadataCPGroup() {
+        lockInstance.getCPSubsystem().getLock(objectName + "@metadata");
+    }
+
     @Test
     public void testRetriedLockDoesNotCancelPendingLockRequest() {
         lockByOtherThread();

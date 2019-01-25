@@ -85,6 +85,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.cp.CPGroup.DEFAULT_GROUP_NAME;
+import static com.hazelcast.cp.CPGroup.METADATA_CP_GROUP_NAME;
 import static com.hazelcast.cp.internal.MetadataRaftGroupManager.METADATA_GROUP_ID;
 import static com.hazelcast.cp.internal.RaftGroupMembershipManager.MANAGEMENT_TASK_PERIOD_IN_MILLIS;
 import static com.hazelcast.cp.internal.raft.QueryPolicy.LEADER_LOCAL;
@@ -92,6 +93,7 @@ import static com.hazelcast.internal.config.ConfigValidator.checkCPSubsystemConf
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 import static com.hazelcast.spi.ExecutionService.SYSTEM_EXECUTOR;
 import static com.hazelcast.util.ExceptionUtil.peel;
+import static com.hazelcast.util.Preconditions.checkFalse;
 import static com.hazelcast.util.Preconditions.checkState;
 import static com.hazelcast.util.Preconditions.checkTrue;
 import static java.util.Collections.newSetFromMap;
@@ -632,6 +634,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
     public CPGroupId createRaftGroupForProxy(String name) {
         String groupName = getGroupNameForProxy(name);
+        checkFalse(groupName.equalsIgnoreCase(METADATA_CP_GROUP_NAME), "CP data structures cannot run on the METADATA CP group!");
 
         try {
             CPGroupId groupId = getGroupIdForProxy(name);

@@ -72,6 +72,11 @@ public class RaftAtomicRefBasicTest extends HazelcastRaftTestSupport {
         return instance.getCPSubsystem().getAtomicReference(name);
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateProxyOnMetadataCPGroup() {
+        instances[0].getCPSubsystem().getAtomicReference("ref@metadata");
+    }
+
     @Test
     public void test_compareAndSet() {
         assertTrue(atomicRef.compareAndSet(null, "str1"));

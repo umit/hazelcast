@@ -61,6 +61,11 @@ public class RaftCountDownLatchBasicTest extends HazelcastRaftTestSupport {
         return instance.getCPSubsystem().getCountDownLatch(name);
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateProxyOnMetadataCPGroup() {
+        instances[0].getCPSubsystem().getCountDownLatch("latch@metadata");
+    }
+
     // ================= trySetCount =================================================
 
     @Test(expected = IllegalArgumentException.class)
