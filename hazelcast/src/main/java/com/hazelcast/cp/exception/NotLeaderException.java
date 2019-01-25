@@ -24,6 +24,8 @@ import com.hazelcast.cp.CPGroupId;
  * a leader-only request is received by a non-leader member.
  */
 public class NotLeaderException extends CPSubsystemException {
+    private static final long serialVersionUID = 1817579502149525710L;
+
     public NotLeaderException(CPGroupId groupId, Endpoint local, Endpoint leader) {
         super(local + " is not LEADER of " + groupId + ". Known leader is: "
                 + (leader != null ? leader : "N/A") , leader);

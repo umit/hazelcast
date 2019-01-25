@@ -20,10 +20,6 @@ import com.hazelcast.core.Endpoint;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.cp.CPGroup;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-
 /**
  * Base exception for failures in the CP subsystem
  * <p>
@@ -33,7 +29,9 @@ import java.io.ObjectOutputStream;
  */
 public class CPSubsystemException extends HazelcastException {
 
-    private transient Endpoint leader;
+    private static final long serialVersionUID = 3165333502175586105L;
+
+    private final Endpoint leader;
 
     public CPSubsystemException(Endpoint leader) {
         this.leader = leader;
@@ -50,24 +48,5 @@ public class CPSubsystemException extends HazelcastException {
      */
     public Endpoint getLeader() {
         return leader;
-    }
-
-    private void writeObject(ObjectOutputStream out) throws IOException {
-        out.defaultWriteObject();
-
-        if (leader == null) {
-            out.writeBoolean(false);
-        } else {
-            out.writeBoolean(true);
-            out.writeObject(leader);
-        }
-    }
-
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        in.defaultReadObject();
-
-        if (in.readBoolean()) {
-            leader = (Endpoint) in.readObject();
-        }
     }
 }

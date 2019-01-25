@@ -49,7 +49,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Executor;
 
-import static com.hazelcast.cp.internal.MetadataRaftGroupManager.METADATA_GROUP_ID;
 import static com.hazelcast.cp.internal.raft.QueryPolicy.LEADER_LOCAL;
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 
@@ -106,7 +105,8 @@ public class RaftInvocationManager {
 
     private void invokeGetMembersToCreateRaftGroup(final String groupName, final int groupSize,
                                                    final SimpleCompletableFuture<CPGroupId> resultFuture) {
-        ICompletableFuture<List<CPMemberInfo>> f = query(METADATA_GROUP_ID, new GetActiveCPMembersOp(), LEADER_LOCAL);
+        ICompletableFuture<List<CPMemberInfo>> f = query(raftService.getMetadataGroupManager().getMetadataGroupId(),
+                new GetActiveCPMembersOp(), LEADER_LOCAL);
 
         f.andThen(new ExecutionCallback<List<CPMemberInfo>>() {
             @Override
@@ -136,7 +136,8 @@ public class RaftInvocationManager {
     private void invokeCreateRaftGroup(final String groupName, final int groupSize,
                                        final List<CPMemberInfo> members,
                                        final SimpleCompletableFuture<CPGroupId> resultFuture) {
-        ICompletableFuture<CPGroupId> f = invoke(METADATA_GROUP_ID, new CreateRaftGroupOp(groupName, members));
+        ICompletableFuture<CPGroupId> f = invoke(raftService.getMetadataGroupManager().getMetadataGroupId(),
+                new CreateRaftGroupOp(groupName, members));
 
         f.andThen(new ExecutionCallback<CPGroupId>() {
             @Override
@@ -161,7 +162,7 @@ public class RaftInvocationManager {
     // TODO [basri] this operation should be here or somewhere else?
     public InternalCompletableFuture<CPGroupId> triggerDestroy(CPGroupId groupId) {
         checkCPSubsystemEnabled();
-        return invoke(METADATA_GROUP_ID, new TriggerDestroyRaftGroupOp(groupId));
+        return invoke(raftService.getMetadataGroupManager().getMetadataGroupId(), new TriggerDestroyRaftGroupOp(groupId));
     }
 
     <T> InternalCompletableFuture<T> changeMembership(CPGroupId groupId, long membersCommitIndex,

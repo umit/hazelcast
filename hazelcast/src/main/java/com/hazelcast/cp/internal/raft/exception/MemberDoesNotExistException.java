@@ -27,6 +27,8 @@ import com.hazelcast.cp.exception.CPSubsystemException;
  */
 public class MemberDoesNotExistException extends CPSubsystemException {
 
+    private static final long serialVersionUID = -6536728347770526039L;
+
     public MemberDoesNotExistException(Endpoint member) {
         super("Member does not exist: " + member, null);
     }

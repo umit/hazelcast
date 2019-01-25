@@ -20,6 +20,7 @@ import com.hazelcast.cp.internal.operation.ChangeRaftGroupMembershipOp;
 import com.hazelcast.cp.internal.operation.DefaultRaftReplicateOp;
 import com.hazelcast.cp.internal.operation.DestroyRaftGroupOp;
 import com.hazelcast.cp.internal.operation.RaftQueryOp;
+import com.hazelcast.cp.internal.operation.RestartCPMemberOp;
 import com.hazelcast.cp.internal.operation.integration.AppendFailureResponseOp;
 import com.hazelcast.cp.internal.operation.integration.AppendRequestOp;
 import com.hazelcast.cp.internal.operation.integration.AppendSuccessResponseOp;
@@ -102,6 +103,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int GET_RAFT_GROUP_IDS_OP = 37;
     public static final int GET_ACTIVE_RAFT_GROUP_IDS_OP = 38;
     public static final int RAFT_PRE_JOIN_OP = 39;
+    public static final int RESTART_CP_MEMBER_OP = 40;
 
     @Override
     public int getFactoryId() {
@@ -192,6 +194,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new GetActiveRaftGroupIdsOp();
                     case RAFT_PRE_JOIN_OP:
                         return new RaftServicePreJoinOp();
+                    case RESTART_CP_MEMBER_OP:
+                        return new RestartCPMemberOp();
                     default:
                         throw new IllegalArgumentException("Undefined type: " + typeId);
                 }

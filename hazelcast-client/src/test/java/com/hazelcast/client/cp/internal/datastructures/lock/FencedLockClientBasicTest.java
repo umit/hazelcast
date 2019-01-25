@@ -63,12 +63,10 @@ public class FencedLockClientBasicTest extends FencedLockBasicTest {
     }
 
     @Test
-    public void test_sessionIsClosedOnCPSubsystemReset() {
+    public void test_sessionIsClosedOnCPSubsystemReset() throws Exception {
         lock.lock();
 
-        for (HazelcastInstance instance : instances) {
-            instance.getCPSubsystem().getCPSubsystemManagementService().restart();
-        }
+        instances[0].getCPSubsystem().getCPSubsystemManagementService().restart().get();
 
         assertTrueEventually(new AssertTask() {
             @Override

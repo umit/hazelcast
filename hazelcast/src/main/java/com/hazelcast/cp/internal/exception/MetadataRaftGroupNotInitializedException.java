@@ -26,6 +26,8 @@ import com.hazelcast.spi.exception.RetryableException;
  */
 public class MetadataRaftGroupNotInitializedException extends CPSubsystemException
         implements RetryableException {
+    private static final long serialVersionUID = -587586143908312910L;
+
     public MetadataRaftGroupNotInitializedException() {
         super(null);
     }

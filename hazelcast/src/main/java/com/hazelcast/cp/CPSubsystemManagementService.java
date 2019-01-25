@@ -99,9 +99,10 @@ import java.util.Collection;
  * reset the CP subsystem, the initial size of the CP subsystem must be
  * satisfied, which is defined by {@link CPSubsystemConfig#getCPMemberCount()}.
  * For instance, {@link CPSubsystemConfig#getCPMemberCount()} is 5 and only 1
- * CP member is currently alive, {@link #restart()} must be called on this
- * CP member and 4 regular Hazelcast members. New Hazelcast members can be
- * started to satisfy {@link CPSubsystemConfig#getCPMemberCount()}.
+ * CP member is currently alive, when {@link #restart()} is called,
+ * additional 4 regular Hazelcast members should exist in the cluster.
+ * New Hazelcast members can be started to satisfy
+ * {@link CPSubsystemConfig#getCPMemberCount()}.
  *
  * @see CPMember
  * @see CPSubsystemConfig
@@ -189,18 +190,20 @@ public interface CPSubsystemManagementService {
     ICompletableFuture<Void> removeCPMember(String cpMemberUuid);
 
     /**
-     * Wipes & resets the local CP state and initializes it as if this member
-     * is starting up initially.
+     * Wipes & resets the whole CP subsystem and initializes it as if the Hazelcast
+     * cluster is starting up initially.
      * This method must be used only when the Metadata CP group loses
      * its majority and cannot make progress anymore.
      * <p>
      * After this method is called, all CP state and data will be wiped
      * and CP members will start with empty state.
      * <p>
+     * This method can be invoked only from the Hazelcast master member.
+     * <p>
      * <strong>Use with caution:
      * This method is NOT idempotent and multiple invocations
-     * on the same member can break the whole system!</strong>
+     * can break the whole system!</strong>
      */
-    void restart();
+    ICompletableFuture<Void> restart();
 
 }

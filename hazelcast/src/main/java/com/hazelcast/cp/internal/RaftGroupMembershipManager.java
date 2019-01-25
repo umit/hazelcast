@@ -55,7 +55,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 
-import static com.hazelcast.cp.internal.MetadataRaftGroupManager.METADATA_GROUP_ID;
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 import static com.hazelcast.util.ExceptionUtil.peel;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -111,7 +110,7 @@ class RaftGroupMembershipManager {
         public void run() {
             for (RaftNode raftNode : raftService.getAllRaftNodes()) {
                 final CPGroupId groupId = raftNode.getGroupId();
-                if (groupId.equals(METADATA_GROUP_ID)) {
+                if (groupId.equals(raftService.getMetadataGroupManager().getMetadataGroupId())) {
                     continue;
                 }
 
@@ -217,7 +216,8 @@ class RaftGroupMembershipManager {
 
         private boolean commitDestroyedRaftGroups(Set<CPGroupId> destroyedGroupIds) {
             RaftOp op = new CompleteDestroyRaftGroupsOp(destroyedGroupIds);
-            Future<Collection<CPGroupId>> f = invocationManager.invoke(METADATA_GROUP_ID, op);
+            RaftGroupId metadataGroupId = raftService.getMetadataGroupManager().getMetadataGroupId();
+            Future<Collection<CPGroupId>> f = invocationManager.invoke(metadataGroupId, op);
 
             try {
                 f.get();
@@ -425,7 +425,8 @@ class RaftGroupMembershipManager {
 
         private void completeMembershipChanges(Map<CPGroupId, Tuple2<Long, Long>> changedGroups) {
             RaftOp op = new CompleteRaftGroupMembershipChangesOp(changedGroups);
-            ICompletableFuture<Object> future = invocationManager.invoke(METADATA_GROUP_ID, op);
+            RaftGroupId metadataGroupId = raftService.getMetadataGroupManager().getMetadataGroupId();
+            ICompletableFuture<Object> future = invocationManager.invoke(metadataGroupId, op);
 
             try {
                 future.get();
@@ -436,6 +437,6 @@ class RaftGroupMembershipManager {
     }
 
     private <T> InternalCompletableFuture<T> queryMetadata(RaftOp raftOp) {
-        return invocationManager.query(METADATA_GROUP_ID, raftOp, QueryPolicy.LEADER_LOCAL);
+        return invocationManager.query(raftService.getMetadataGroupManager().getMetadataGroupId(), raftOp, QueryPolicy.LEADER_LOCAL);
     }
 }

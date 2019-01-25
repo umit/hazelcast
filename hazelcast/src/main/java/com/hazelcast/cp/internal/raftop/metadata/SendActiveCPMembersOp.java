@@ -16,6 +16,7 @@
 
 package com.hazelcast.cp.internal.raftop.metadata;
 
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
@@ -39,19 +40,21 @@ import java.util.Collection;
  */
 public class SendActiveCPMembersOp extends Operation implements IdentifiedDataSerializable, RaftSystemOperation {
 
+    private RaftGroupId metadataGroupId;
     private Collection<CPMemberInfo> members;
 
     public SendActiveCPMembersOp() {
     }
 
-    public SendActiveCPMembersOp(Collection<CPMemberInfo> members) {
+    public SendActiveCPMembersOp(RaftGroupId metadataGroupId, Collection<CPMemberInfo> members) {
+        this.metadataGroupId = metadataGroupId;
         this.members = members;
     }
 
     @Override
     public void run() {
         RaftService service = getService();
-        service.getMetadataGroupManager().setActiveMembers(members);
+        service.getMetadataGroupManager().setActiveMembers(metadataGroupId, members);
     }
 
     @Override
@@ -77,6 +80,7 @@ public class SendActiveCPMembersOp extends Operation implements IdentifiedDataSe
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
+        out.writeObject(metadataGroupId);
         out.writeInt(members.size());
         for (CPMemberInfo member : members) {
             out.writeObject(member);
@@ -86,6 +90,7 @@ public class SendActiveCPMembersOp extends Operation implements IdentifiedDataSe
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
+        metadataGroupId = in.readObject();
         int len = in.readInt();
         members = new ArrayList<CPMemberInfo>(len);
         for (int i = 0; i < len; i++) {

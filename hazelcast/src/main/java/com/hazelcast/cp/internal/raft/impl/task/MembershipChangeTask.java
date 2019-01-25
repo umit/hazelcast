@@ -125,7 +125,7 @@ public class MembershipChangeTask implements Runnable {
 
     private boolean verifyRaftNodeStatus() {
         if (raftNode.getStatus() == RaftNodeStatus.TERMINATED) {
-            resultFuture.setResult(new CPGroupDestroyedException());
+            resultFuture.setResult(new CPGroupDestroyedException(raftNode.getGroupId()));
             logger.severe("Cannot " + changeType + " " + member + " with expected members commit index: "
                     + groupMembersCommitIndex + " since raft node is terminated.");
             return false;

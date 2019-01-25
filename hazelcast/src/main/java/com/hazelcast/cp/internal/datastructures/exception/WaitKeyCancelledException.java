@@ -25,6 +25,8 @@ import com.hazelcast.core.HazelcastException;
  */
 public class WaitKeyCancelledException extends HazelcastException {
 
+    private static final long serialVersionUID = 437835746549840631L;
+
     public WaitKeyCancelledException() {
     }
 

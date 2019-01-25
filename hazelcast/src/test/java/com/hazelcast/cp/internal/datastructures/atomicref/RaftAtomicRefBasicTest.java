@@ -40,7 +40,6 @@ import org.junit.runner.RunWith;
 import java.util.concurrent.ExecutionException;
 
 import static com.hazelcast.cp.CPGroup.DEFAULT_GROUP_NAME;
-import static com.hazelcast.cp.internal.MetadataRaftGroupManager.METADATA_GROUP_ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -245,7 +244,7 @@ public class RaftAtomicRefBasicTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                CPGroup group = invocationManager.<CPGroup>invoke(METADATA_GROUP_ID, new GetRaftGroupOp(groupId)).join();
+                CPGroup group = invocationManager.<CPGroup>invoke(getMetadataGroupId(instances[0]), new GetRaftGroupOp(groupId)).join();
                 assertEquals(CPGroupStatus.DESTROYED, group.status());
             }
         });

@@ -16,12 +16,28 @@
 
 package com.hazelcast.cp.exception;
 
+import com.hazelcast.cp.CPGroupId;
+
 /**
  * A {@code CPSubsystemException} which is thrown when a request is sent to
  * a destroyed CP group.
  */
 public class CPGroupDestroyedException extends CPSubsystemException {
+
+    private static final long serialVersionUID = -5363753263443789491L;
+
+    private final CPGroupId groupId;
+
     public CPGroupDestroyedException() {
-        super(null);
+        this(null);
+    }
+
+    public CPGroupDestroyedException(CPGroupId groupId) {
+        super(String.valueOf(groupId), null);
+        this.groupId = groupId;
+    }
+
+    public CPGroupId getGroupId() {
+        return groupId;
     }
 }

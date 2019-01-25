@@ -41,6 +41,8 @@ import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
+import org.hamcrest.Matcher;
+import org.hamcrest.Matchers;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -55,18 +57,21 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import static com.hazelcast.cp.internal.MetadataRaftGroupManager.METADATA_GROUP_ID;
+import static com.hazelcast.cp.internal.MetadataRaftGroupManager.INITIAL_METADATA_GROUP_ID;
 import static com.hazelcast.cp.internal.raft.QueryPolicy.LEADER_LOCAL;
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getLastLogOrSnapshotEntry;
 import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
 import static com.hazelcast.instance.HazelcastInstanceFactory.newHazelcastInstance;
 import static com.hazelcast.test.TestHazelcastInstanceFactory.initOrCreateConfig;
 import static com.hazelcast.util.FutureUtil.returnWithDeadline;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.isIn;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(HazelcastSerialClassRunner.class)
@@ -105,7 +110,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                CPGroupInfo metadataGroupInfo = getRaftGroupLocally(instances[1], METADATA_GROUP_ID);
+                CPGroupInfo metadataGroupInfo = getRaftGroupLocally(instances[1], getMetadataGroupId(instances[1]));
                 assertEquals(2, metadataGroupInfo.memberCount());
                 assertFalse(metadataGroupInfo.containsMember(removedEndpoint));
 
@@ -134,7 +139,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                CPGroupInfo metadataGroup = getRaftGroupLocally(instances[1], METADATA_GROUP_ID);
+                CPGroupInfo metadataGroup = getRaftGroupLocally(instances[1], getMetadataGroupId(instances[1]));
                 assertEquals(2, metadataGroup.memberCount());
                 assertFalse(metadataGroup.containsMember(removedEndpoint));
 
@@ -149,13 +154,14 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
     public void testRemoveMemberFromForceDestroyedRaftGroup() throws ExecutionException, InterruptedException {
         HazelcastInstance[] instances = newInstances(3, 3, 0);
 
-        waitAllForLeaderElection(instances, METADATA_GROUP_ID);
+        waitAllForLeaderElection(instances, INITIAL_METADATA_GROUP_ID);
 
         CPGroupId groupId = getRaftInvocationManager(instances[0]).createRaftGroup("test", 2).get();
-        CPGroupInfo group = getRaftInvocationManager(instances[0]).<CPGroupInfo>invoke(METADATA_GROUP_ID, new GetRaftGroupOp(groupId)).get();
+        CPGroupInfo group = getRaftInvocationManager(instances[0]).<CPGroupInfo>invoke(getMetadataGroupId(instances[0]),
+                new GetRaftGroupOp(groupId)).get();
         final CPMemberInfo crashedMember = group.membersArray()[0];
 
-        HazelcastInstance runningInstance = (getAddress(instances[0])).equals(crashedMember.getAddress()) ? instances[1] : instances[0];
+        final HazelcastInstance runningInstance = (getAddress(instances[0])).equals(crashedMember.getAddress()) ? instances[1] : instances[0];
 
         factory.getInstance(crashedMember.getAddress()).getLifecycleService().terminate();
 
@@ -167,7 +173,8 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
             @Override
             public void run()
                     throws Exception {
-                List<CPMemberInfo> activeMembers = invocationManager.<List<CPMemberInfo>>query(METADATA_GROUP_ID, new GetActiveCPMembersOp(), LEADER_LOCAL).get();
+                List<CPMemberInfo> activeMembers = invocationManager.<List<CPMemberInfo>>query(getMetadataGroupId(runningInstance),
+                        new GetActiveCPMembersOp(), LEADER_LOCAL).get();
                 assertFalse(activeMembers.contains(crashedMember));
             }
         });
@@ -177,18 +184,19 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
     public void testRemoveMemberFromMajorityLostRaftGroup() throws ExecutionException, InterruptedException {
         HazelcastInstance[] instances = newInstances(3, 3, 0);
 
-        waitAllForLeaderElection(instances, METADATA_GROUP_ID);
+        waitAllForLeaderElection(instances, INITIAL_METADATA_GROUP_ID);
 
         CPGroupId groupId = getRaftInvocationManager(instances[0]).createRaftGroup("test", 2).get();
 
         getRaftInvocationManager(instances[0]).invoke(groupId, new DummyOp()).get();
 
         final RaftNodeImpl groupLeaderRaftNode = getLeaderNode(instances, groupId);
-        CPGroupInfo group = getRaftInvocationManager(instances[0]).<CPGroupInfo>invoke(METADATA_GROUP_ID, new GetRaftGroupOp(groupId)).get();
+        CPGroupInfo group = getRaftInvocationManager(instances[0]).<CPGroupInfo>invoke(getMetadataGroupId(instances[0]),
+                new GetRaftGroupOp(groupId)).get();
         CPMemberInfo[] groupMembers = group.membersArray();
         final CPMemberInfo crashedMember = groupMembers[0].equals(groupLeaderRaftNode.getLocalMember()) ? groupMembers[1] : groupMembers[0];
 
-        HazelcastInstance runningInstance = (getAddress(instances[0])).equals(crashedMember.getAddress()) ? instances[1] : instances[0];
+        final HazelcastInstance runningInstance = (getAddress(instances[0])).equals(crashedMember.getAddress()) ? instances[1] : instances[0];
 
         final RaftInvocationManager invocationManager = getRaftInvocationManager(runningInstance);
 
@@ -214,7 +222,8 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
-                MembershipChangeContext ctx = invocationManager.<MembershipChangeContext>query(METADATA_GROUP_ID, new GetMembershipChangeContextOp(), LEADER_LOCAL).get();
+                MembershipChangeContext ctx = invocationManager.<MembershipChangeContext>query(getMetadataGroupId(runningInstance),
+                        new GetMembershipChangeContextOp(), LEADER_LOCAL).get();
                 assertNull(ctx);
             }
         });
@@ -240,7 +249,8 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         master.getCPSubsystem().getCPSubsystemManagementService().removeCPMember(promotedMember.getUuid()).get();
 
-        MembershipChangeContext ctx = getRaftInvocationManager(master).<MembershipChangeContext>query(METADATA_GROUP_ID, new GetMembershipChangeContextOp(), LEADER_LOCAL).get();
+        MembershipChangeContext ctx = getRaftInvocationManager(master).<MembershipChangeContext>query(getMetadataGroupId(master),
+                new GetMembershipChangeContextOp(), LEADER_LOCAL).get();
         assertNull(ctx);
     }
 
@@ -261,7 +271,8 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         promoted.getLifecycleService().shutdown();
 
-        MembershipChangeContext ctx = getRaftInvocationManager(master).<MembershipChangeContext>query(METADATA_GROUP_ID, new GetMembershipChangeContextOp(), LEADER_LOCAL).get();
+        MembershipChangeContext ctx = getRaftInvocationManager(master).<MembershipChangeContext>query(getMetadataGroupId(master),
+                new GetMembershipChangeContextOp(), LEADER_LOCAL).get();
         assertNull(ctx);
     }
 
@@ -270,7 +281,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         final HazelcastInstance[] instances = newInstances(3, 3, 1);
         waitUntilCPDiscoveryCompleted(instances);
 
-        long groupIdTerm = getRaftService(instances[0]).getMetadataGroupManager().getGroupIdTerm();
+        long groupIdTerm = getRaftService(instances[0]).getMetadataGroupManager().getGroupIdSeed();
         RaftGroupId groupId = (RaftGroupId) getRaftInvocationManager(instances[0]).createRaftGroup(CPGroup.DEFAULT_GROUP_NAME).get();
 
         instances[0].getCPSubsystem().getAtomicLong("proxy");
@@ -303,30 +314,30 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         newInstances[0] = instances[0];
         newInstances[1] = instances[3];
 
-        newInstances[0].getCPSubsystem().getCPSubsystemManagementService().restart();
-        newInstances[1].getCPSubsystem().getCPSubsystemManagementService().restart();
-
         Config config = createConfig(3, 3);
         newInstances[2] = factory.newHazelcastInstance(config);
 
+        assertClusterSizeEventually(3, newInstances);
+        newInstances[0].getCPSubsystem().getCPSubsystemManagementService().restart().get();
         waitUntilCPDiscoveryCompleted(newInstances);
 
-        long newGroupIdTerm = getRaftService(newInstances[0]).getMetadataGroupManager().getGroupIdTerm();
+        long newGroupIdTerm = getRaftService(newInstances[0]).getMetadataGroupManager().getGroupIdSeed();
         RaftGroupId newGroupId = (RaftGroupId) getRaftInvocationManager(instances[0]).createRaftGroup(CPGroup.DEFAULT_GROUP_NAME).get();
 
-        assertTrue(newGroupIdTerm > groupIdTerm);
-        assertTrue(newGroupId.term() > groupId.term());
+        assertThat(newGroupIdTerm, greaterThan(groupIdTerm));
+        assertThat(newGroupId.seed(), greaterThan(groupId.seed()));
 
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
                 for (HazelcastInstance instance : newInstances) {
                     InternalProxyService proxyService = getNodeEngineImpl(instance).getProxyService();
-                    assertTrue(proxyService.getDistributedObjectNames(RaftAtomicLongService.SERVICE_NAME).isEmpty());
-                    assertTrue(proxyService.getDistributedObjectNames(RaftAtomicRefService.SERVICE_NAME).isEmpty());
-                    assertTrue(proxyService.getDistributedObjectNames(RaftLockService.SERVICE_NAME).isEmpty());
-                    assertTrue(proxyService.getDistributedObjectNames(RaftSemaphoreService.SERVICE_NAME).isEmpty());
-                    assertTrue(proxyService.getDistributedObjectNames(RaftCountDownLatchService.SERVICE_NAME).isEmpty());
+                    Matcher<Collection<? extends String>> empty = Matchers.empty();
+                    assertThat(proxyService.getDistributedObjectNames(RaftAtomicLongService.SERVICE_NAME), empty);
+                    assertThat(proxyService.getDistributedObjectNames(RaftAtomicRefService.SERVICE_NAME), empty);
+                    assertThat(proxyService.getDistributedObjectNames(RaftLockService.SERVICE_NAME), empty);
+                    assertThat(proxyService.getDistributedObjectNames(RaftSemaphoreService.SERVICE_NAME), empty);
+                    assertThat(proxyService.getDistributedObjectNames(RaftCountDownLatchService.SERVICE_NAME), empty);
                 }
             }
         });
@@ -334,14 +345,14 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                CPGroupInfo group = getRaftGroupLocally(newInstances[2], METADATA_GROUP_ID);
+                CPGroupInfo group = getRaftGroupLocally(newInstances[2], getMetadataGroupId(newInstances[2]));
                 assertNotNull(group);
                 Collection<CPMemberInfo> endpoints = group.memberImpls();
 
                 for (HazelcastInstance instance : newInstances) {
                     Member localMember = instance.getCluster().getLocalMember();
                     CPMemberInfo endpoint = new CPMemberInfo(localMember);
-                    assertTrue(endpoints.contains(endpoint));
+                    assertThat(endpoint, isIn(endpoints));
                 }
             }
         });
@@ -366,11 +377,10 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         instances[1] = factory.newHazelcastInstance(config);
         instances[2] = factory.newHazelcastInstance(config);
 
-        for (HazelcastInstance hz : instances) {
-            hz.getCPSubsystem().getCPSubsystemManagementService().restart();
-        }
+        instance.getCPSubsystem().getCPSubsystemManagementService().restart().get();
 
-        List<CPMemberInfo> newEndpoints = getRaftInvocationManager(instance).<List<CPMemberInfo>>invoke(METADATA_GROUP_ID, new GetActiveCPMembersOp()).get();
+        List<CPMemberInfo> newEndpoints = getRaftInvocationManager(instance).<List<CPMemberInfo>>invoke(getMetadataGroupId(instance),
+                new GetActiveCPMembersOp()).get();
         assertEquals(3, newEndpoints.size());
     }
 
@@ -384,13 +394,13 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         instances[0].getLifecycleService().terminate();
         assertClusterSizeEventually(2, instances[1], instances[2]);
 
-        instances[1].getCPSubsystem().getCPSubsystemManagementService().restart();
-        instances[2].getCPSubsystem().getCPSubsystemManagementService().restart();
-
         Config config = createConfig(3, 3);
         instances[0] = factory.newHazelcastInstance(config);
 
-        List<CPMemberInfo> newEndpoints = invocationManager.<List<CPMemberInfo>>invoke(METADATA_GROUP_ID, new GetActiveCPMembersOp()).get();
+        instances[1].getCPSubsystem().getCPSubsystemManagementService().restart().get();
+
+        List<CPMemberInfo> newEndpoints = invocationManager.<List<CPMemberInfo>>invoke(getMetadataGroupId(instances[2]),
+                new GetActiveCPMembersOp()).get();
         for (HazelcastInstance instance : instances) {
             assertTrue(newEndpoints.contains(new CPMemberInfo(instance.getCluster().getLocalMember())));
         }
@@ -430,12 +440,12 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws ExecutionException, InterruptedException {
-                CPGroupInfo group = invocationManager.<CPGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID), LEADER_LOCAL).get();
+                CPGroupId metadataGroupId = getMetadataGroupId(instances[3]);
+                CPGroupInfo group = invocationManager.<CPGroupInfo>query(metadataGroupId, new GetRaftGroupOp(metadataGroupId), LEADER_LOCAL).get();
                 assertEquals(3, group.memberCount());
                 Collection<CPMemberInfo> members = group.memberImpls();
                 assertTrue(members.contains(getRaftService(instances[3]).getLocalMember()));
-
-                assertNotNull(getRaftNode(instances[3], METADATA_GROUP_ID));
+                assertNotNull(getRaftNode(instances[3], metadataGroupId));
             }
         });
     }
@@ -455,11 +465,12 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws ExecutionException, InterruptedException {
-                CPGroupInfo group = invocationManager.<CPGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID), LEADER_LOCAL).get();
+                CPGroupId metadataGroupId = getMetadataGroupId(instances[3]);
+                CPGroupInfo group = invocationManager.<CPGroupInfo>query(metadataGroupId, new GetRaftGroupOp(metadataGroupId), LEADER_LOCAL).get();
                 assertEquals(3, group.memberCount());
                 Collection<CPMemberInfo> members = group.memberImpls();
                 assertTrue(members.contains(getRaftService(instances[5]).getLocalMember()));
-                assertNotNull(getRaftNode(instances[5], METADATA_GROUP_ID));
+                assertNotNull(getRaftNode(instances[5], metadataGroupId));
             }
         });
 
@@ -468,11 +479,12 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws ExecutionException, InterruptedException {
-                CPGroupInfo group = invocationManager.<CPGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID), LEADER_LOCAL).get();
+                CPGroupId metadataGroupId = getMetadataGroupId(instances[3]);
+                CPGroupInfo group = invocationManager.<CPGroupInfo>query(metadataGroupId, new GetRaftGroupOp(metadataGroupId), LEADER_LOCAL).get();
                 assertEquals(4, group.memberCount());
                 Collection<CPMemberInfo> members = group.memberImpls();
                 assertTrue(members.contains(getRaftService(instances[6]).getLocalMember()));
-                assertNotNull(getRaftNode(instances[6], METADATA_GROUP_ID));
+                assertNotNull(getRaftNode(instances[6], metadataGroupId));
             }
         });
 
@@ -481,12 +493,12 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws ExecutionException, InterruptedException {
-                CPGroupInfo group = invocationManager.<CPGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID), LEADER_LOCAL).get();
+                CPGroupId metadataGroupId = getMetadataGroupId(instances[3]);
+                CPGroupInfo group = invocationManager.<CPGroupInfo>query(metadataGroupId, new GetRaftGroupOp(metadataGroupId), LEADER_LOCAL).get();
                 assertEquals(5, group.memberCount());
                 Collection<CPMemberInfo> members = group.memberImpls();
                 assertTrue(members.contains(getRaftService(instances[7]).getLocalMember()));
-
-                assertNotNull(getRaftNode(instances[7], METADATA_GROUP_ID));
+                assertNotNull(getRaftNode(instances[7], metadataGroupId));
             }
         });
     }
@@ -499,7 +511,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         final CPGroupId groupId = invocationManager.createRaftGroup("g1", 5).get();
         invocationManager.invoke(groupId, new DummyOp()).get();
 
-        CPGroupInfo otherGroup = invocationManager.<CPGroupInfo>invoke(METADATA_GROUP_ID, new GetRaftGroupOp(groupId)).get();
+        CPGroupInfo otherGroup = invocationManager.<CPGroupInfo>invoke(getMetadataGroupId(instances[6]), new GetRaftGroupOp(groupId)).get();
         CPMemberInfo[] otherGroupMembers = otherGroup.membersArray();
         List<Address> shutdownAddresses = Arrays.asList(otherGroupMembers[0].getAddress(), otherGroupMembers[1].getAddress());
 
@@ -512,12 +524,13 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws ExecutionException, InterruptedException {
-                CPGroupInfo metadataGroup = invocationManager.<CPGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID), LEADER_LOCAL).get();
-                CPGroupInfo otherGroup = invocationManager.<CPGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId), LEADER_LOCAL).get();
+                CPGroupId metadataGroupId = getMetadataGroupId(instances[6]);
+                CPGroupInfo metadataGroup = invocationManager.<CPGroupInfo>query(metadataGroupId, new GetRaftGroupOp(metadataGroupId), LEADER_LOCAL).get();
+                CPGroupInfo otherGroup = invocationManager.<CPGroupInfo>query(metadataGroupId, new GetRaftGroupOp(groupId), LEADER_LOCAL).get();
                 assertEquals(4, metadataGroup.memberCount());
                 assertEquals(4, otherGroup.memberCount());
 
-                assertNotNull(getRaftNode(instances[5], METADATA_GROUP_ID));
+                assertNotNull(getRaftNode(instances[5], metadataGroupId));
                 assertNotNull(getRaftNode(instances[5], groupId));
             }
         });
@@ -527,12 +540,13 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws ExecutionException, InterruptedException {
-                CPGroupInfo metadataGroup = invocationManager.<CPGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(METADATA_GROUP_ID), LEADER_LOCAL).get();
-                CPGroupInfo otherGroup = invocationManager.<CPGroupInfo>query(METADATA_GROUP_ID, new GetRaftGroupOp(groupId), LEADER_LOCAL).get();
+                CPGroupId metadataGroupId = getMetadataGroupId(instances[6]);
+                CPGroupInfo metadataGroup = invocationManager.<CPGroupInfo>query(metadataGroupId, new GetRaftGroupOp(metadataGroupId), LEADER_LOCAL).get();
+                CPGroupInfo otherGroup = invocationManager.<CPGroupInfo>query(metadataGroupId, new GetRaftGroupOp(groupId), LEADER_LOCAL).get();
                 assertEquals(5, metadataGroup.memberCount());
                 assertEquals(5, otherGroup.memberCount());
 
-                assertNotNull(getRaftNode(instances[6], METADATA_GROUP_ID));
+                assertNotNull(getRaftNode(instances[6], metadataGroupId));
                 assertNotNull(getRaftNode(instances[5], groupId));
             }
         });
@@ -546,7 +560,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         Config config = createConfig(cpNodeCount, cpNodeCount);
         final HazelcastInstance instance = factory.newHazelcastInstance(config);
 
-        waitAllForLeaderElection(instances, METADATA_GROUP_ID);
+        waitAllForLeaderElection(instances, INITIAL_METADATA_GROUP_ID);
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -557,30 +571,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testNodeTerminates_whenInitialRaftMembers_doesNotMatch() {
-        HazelcastInstance[] instances = newInstances(3);
-
-        instances[2].getLifecycleService().terminate();
-
-        try {
-            Config config = createConfig(3, 3);
-            final HazelcastInstance instance = factory.newHazelcastInstance(config);
-            instance.getCPSubsystem().getCPSubsystemManagementService().restart();
-
-            assertTrueEventually(new AssertTask() {
-                @Override
-                public void run() {
-                    assertFalse(instance.getLifecycleService().isRunning());
-                }
-            });
-        } catch (IllegalStateException ignored) {
-        }
-
-        waitAllForLeaderElection(Arrays.copyOf(instances, 2), METADATA_GROUP_ID);
-    }
-
-    @Test
-    public void test_sessionClosedOnCPSubsystemReset() {
+    public void test_sessionClosedOnCPSubsystemReset() throws Exception {
         final HazelcastInstance[] instances = newInstances(3, 3, 1);
 
         instances[0].getCPSubsystem().getAtomicLong("long1").set(1);
@@ -589,9 +580,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         final FencedLock lock = instances[3].getCPSubsystem().getLock("lock");
         lock.lock();
 
-        for (HazelcastInstance instance : Arrays.asList(instances[0], instances[1], instances[2])) {
-            instance.getCPSubsystem().getCPSubsystemManagementService().restart();
-        }
+        instances[0].getCPSubsystem().getCPSubsystemManagementService().restart().get();
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -632,7 +621,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
                     if (getRaftService(instance).getLocalMember() != null) {
                         cpCount++;
                     }
-                    if (getRaftGroupLocally(instance, METADATA_GROUP_ID) != null) {
+                    if (getRaftGroupLocally(instance, getMetadataGroupId(instance)) != null) {
                         metadataCount++;
                     }
                 }
@@ -646,7 +635,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
     public void testCPMemberIdentityChanges_whenLocalMemberIsRecovered_duringRestart() {
         final HazelcastInstance[] instances = newInstances(3);
         waitUntilCPDiscoveryCompleted(instances);
-        waitAllForLeaderElection(instances, METADATA_GROUP_ID);
+        waitAllForLeaderElection(instances, INITIAL_METADATA_GROUP_ID);
 
         Member localMember = instances[0].getCluster().getLocalMember();
         CPMember localCpMember = instances[0].getCPSubsystem().getLocalCPMember();

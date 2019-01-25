@@ -26,6 +26,8 @@ import com.hazelcast.core.IndeterminateOperationState;
  */
 public class StaleAppendRequestException extends CPSubsystemException implements IndeterminateOperationState {
 
+    private static final long serialVersionUID = -736303015926722821L;
+
     public StaleAppendRequestException(Endpoint leader) {
         super(leader);
     }

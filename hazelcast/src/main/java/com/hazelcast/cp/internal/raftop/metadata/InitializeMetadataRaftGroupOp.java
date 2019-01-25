@@ -42,22 +42,22 @@ public class InitializeMetadataRaftGroupOp extends RaftOp implements Indetermina
 
     private List<CPMemberInfo> initialMembers;
     private int metadataMembersCount;
-    private long groupIdTerm;
+    private long groupIdSeed;
 
     public InitializeMetadataRaftGroupOp() {
     }
 
-    public InitializeMetadataRaftGroupOp(List<CPMemberInfo> initialMembers, int metadataMembersCount, long groupIdTerm) {
+    public InitializeMetadataRaftGroupOp(List<CPMemberInfo> initialMembers, int metadataMembersCount, long groupIdSeed) {
         this.initialMembers = initialMembers;
         this.metadataMembersCount = metadataMembersCount;
-        this.groupIdTerm = groupIdTerm;
+        this.groupIdSeed = groupIdSeed;
     }
 
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftService service = getService();
         MetadataRaftGroupManager metadataManager = service.getMetadataGroupManager();
-        metadataManager.initializeMetadataRaftGroup(initialMembers, metadataMembersCount, groupIdTerm);
+        metadataManager.initializeMetadataRaftGroup(initialMembers, metadataMembersCount, groupIdSeed);
         return null;
     }
 
@@ -88,7 +88,7 @@ public class InitializeMetadataRaftGroupOp extends RaftOp implements Indetermina
             out.writeObject(member);
         }
         out.writeInt(metadataMembersCount);
-        out.writeLong(groupIdTerm);
+        out.writeLong(groupIdSeed);
     }
 
     @Override
@@ -100,13 +100,13 @@ public class InitializeMetadataRaftGroupOp extends RaftOp implements Indetermina
             initialMembers.add(member);
         }
         metadataMembersCount = in.readInt();
-        groupIdTerm = in.readLong();
+        groupIdSeed = in.readLong();
     }
 
     @Override
     protected void toString(StringBuilder sb) {
         sb.append("members=").append(initialMembers)
           .append(", metadataMemberCount=").append(metadataMembersCount)
-          .append(", groupIdTerm=").append(groupIdTerm);
+          .append(", groupIdSeed=").append(groupIdSeed);
     }
 }

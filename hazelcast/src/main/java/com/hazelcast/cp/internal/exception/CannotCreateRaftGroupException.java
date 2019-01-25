@@ -25,6 +25,8 @@ import com.hazelcast.core.HazelcastException;
  * exception will be handled internally and will not be exposed to the user.
  */
 public class CannotCreateRaftGroupException extends HazelcastException {
+    private static final long serialVersionUID = 3849291601278316593L;
+
     public CannotCreateRaftGroupException(String message) {
         super(message);
     }

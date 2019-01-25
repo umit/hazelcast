@@ -19,11 +19,7 @@ package com.hazelcast.cp.internal.raft.exception;
 import com.hazelcast.core.Endpoint;
 import com.hazelcast.cp.exception.CPSubsystemException;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.Collection;
-import java.util.HashSet;
 
 /**
  * A {@code CPSubsystemException} which is thrown when a membership change is
@@ -33,9 +29,11 @@ import java.util.HashSet;
  */
 public class MismatchingGroupMembersCommitIndexException extends CPSubsystemException {
 
-    private transient long commitIndex;
+    private static final long serialVersionUID = -109570074579015635L;
 
-    private transient Collection<Endpoint> members;
+    private final long commitIndex;
+
+    private final Collection<Endpoint> members;
 
     public MismatchingGroupMembersCommitIndexException(long commitIndex, Collection<Endpoint> members) {
         super(null);
@@ -49,24 +47,5 @@ public class MismatchingGroupMembersCommitIndexException extends CPSubsystemExce
 
     public Collection<Endpoint> getMembers() {
         return members;
-    }
-
-    private void writeObject(ObjectOutputStream out) throws IOException {
-        out.defaultWriteObject();
-        out.writeLong(commitIndex);
-        out.writeInt(members.size());
-        for (Endpoint endpoint : members) {
-            out.writeObject(endpoint);
-        }
-    }
-
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        in.defaultReadObject();
-        commitIndex = in.readLong();
-        int count = in.readInt();
-        members = new HashSet<Endpoint>(count);
-        for (int i = 0; i < count; i++) {
-            members.add((Endpoint) in.readObject());
-        }
     }
 }

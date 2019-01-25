@@ -756,10 +756,20 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
                         });
     }
 
-    private void handleResetAndInitCPSubsystem(HttpPostCommand command) throws UnsupportedEncodingException {
+    private void handleResetAndInitCPSubsystem(final HttpPostCommand command) throws UnsupportedEncodingException {
         if (checkCredentials(command)) {
-            getCpSubsystem().getCPSubsystemManagementService().restart();
-            command.send200();
+            getCpSubsystem().getCPSubsystemManagementService().restart()
+                .andThen(new ExecutionCallback<Void>() {
+                    @Override
+                    public void onResponse(Void response) {
+                        command.send200();
+                    }
+
+                    @Override
+                    public void onFailure(Throwable t) {
+                        command.send500();
+                    }
+                });
         } else {
             command.send403();
         }

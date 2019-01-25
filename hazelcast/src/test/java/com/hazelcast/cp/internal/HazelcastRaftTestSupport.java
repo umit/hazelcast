@@ -114,11 +114,7 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
         HazelcastInstance[] instances = new HazelcastInstance[nodeCount];
         for (int i = 0; i < nodeCount; i++) {
             Config config = createConfig(cpNodeCount, groupSize);
-            if (i < cpNodeCount) {
-                instances[i] = factory.newHazelcastInstance(config);
-            } else {
-                instances[i] = factory.newHazelcastInstance(config);
-            }
+            instances[i] = factory.newHazelcastInstance(config);
         }
 
         assertClusterSizeEventually(nodeCount, instances);
@@ -224,5 +220,10 @@ public abstract class HazelcastRaftTestSupport extends HazelcastTestSupport {
 
     public static CPGroupInfo getRaftGroupLocally(HazelcastInstance instance, CPGroupId groupId) {
         return getRaftService(instance).getMetadataGroupManager().getRaftGroup(groupId);
+    }
+
+    public static CPGroupId getMetadataGroupId(HazelcastInstance instance) {
+        RaftService raftService = getRaftService(instance);
+        return raftService.getMetadataGroupManager().getMetadataGroupId();
     }
 }

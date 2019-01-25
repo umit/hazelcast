@@ -22,23 +22,28 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 
 /**
  * Implementation of {@link CPGroupId}.
  */
-public final class RaftGroupId implements CPGroupId, IdentifiedDataSerializable {
+public final class RaftGroupId implements CPGroupId, IdentifiedDataSerializable, Serializable {
+
+    private static final long serialVersionUID = -2381010126931378167L;
 
     private String name;
-    private long term;
+    private long seed;
     private long commitIndex;
 
     public RaftGroupId() {
     }
 
-    public RaftGroupId(String name, long term, long commitIndex) {
+    public RaftGroupId(String name, long seed, long commitIndex) {
         assert name != null;
         this.name = name;
-        this.term = term;
+        this.seed = seed;
         this.commitIndex = commitIndex;
     }
 
@@ -47,8 +52,8 @@ public final class RaftGroupId implements CPGroupId, IdentifiedDataSerializable 
         return name;
     }
 
-    public long term() {
-        return term;
+    public long seed() {
+        return seed;
     }
 
     @Override
@@ -59,14 +64,28 @@ public final class RaftGroupId implements CPGroupId, IdentifiedDataSerializable 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeUTF(name);
-        out.writeLong(term);
+        out.writeLong(seed);
         out.writeLong(commitIndex);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         name = in.readUTF();
-        term = in.readLong();
+        seed = in.readLong();
+        commitIndex = in.readLong();
+    }
+
+    private void writeObject(ObjectOutputStream out) throws IOException {
+        out.defaultWriteObject();
+        out.writeUTF(name);
+        out.writeLong(seed);
+        out.writeLong(commitIndex);
+    }
+
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        name = in.readUTF();
+        seed = in.readLong();
         commitIndex = in.readLong();
     }
 
@@ -91,7 +110,7 @@ public final class RaftGroupId implements CPGroupId, IdentifiedDataSerializable 
 
         RaftGroupId that = (RaftGroupId) o;
 
-        if (term != that.term) {
+        if (seed != that.seed) {
             return false;
         }
         if (commitIndex != that.commitIndex) {
@@ -103,13 +122,13 @@ public final class RaftGroupId implements CPGroupId, IdentifiedDataSerializable 
     @Override
     public int hashCode() {
         int result = name.hashCode();
-        result = 31 * result + (int) (term ^ (term >>> 32));
+        result = 31 * result + (int) (seed ^ (seed >>> 32));
         result = 31 * result + (int) (commitIndex ^ (commitIndex >>> 32));
         return result;
     }
 
     @Override
     public String toString() {
-        return "CPGroupId{" + "name='" + name + '\'' + ", term= " + term + ", commitIndex=" + commitIndex + '}';
+        return "CPGroupId{" + "name='" + name + '\'' + ", seed=" + seed + ", commitIndex=" + commitIndex + '}';
     }
 }

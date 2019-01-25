@@ -16,19 +16,18 @@
 
 package com.hazelcast.cp.internal.raftop.metadata;
 
-import com.hazelcast.nio.ObjectDataInput;
-import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.CPMemberInfo;
+import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
+import com.hazelcast.cp.internal.MetadataRaftGroupManager;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
-import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
 import java.io.IOException;
-
-import static com.hazelcast.cp.internal.MetadataRaftGroupManager.METADATA_GROUP_ID;
 
 /**
  * A {@link RaftOp} that adds a new CP member to the CP subsystem.
@@ -49,9 +48,10 @@ public class AddCPMemberOp extends RaftOp implements IndeterminateOperationState
 
     @Override
     public Object run(CPGroupId groupId, long commitIndex) {
-        assert METADATA_GROUP_ID.equals(groupId);
         RaftService service = getService();
-        service.getMetadataGroupManager().addActiveMember(member);
+        MetadataRaftGroupManager metadataGroupManager = service.getMetadataGroupManager();
+        assert metadataGroupManager.getMetadataGroupId().equals(groupId);
+        metadataGroupManager.addActiveMember(member);
         return null;
     }
 
