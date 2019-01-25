@@ -98,7 +98,6 @@ import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 import static com.hazelcast.spi.ExecutionService.SYSTEM_EXECUTOR;
 import static com.hazelcast.util.ExceptionUtil.peel;
 import static com.hazelcast.util.Preconditions.checkFalse;
-import static com.hazelcast.util.Preconditions.checkState;
 import static com.hazelcast.util.Preconditions.checkTrue;
 import static java.util.Collections.newSetFromMap;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -185,8 +184,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
     @Override
     public ICompletableFuture<Void> restart() {
-        ManagedExecutorService executor = nodeEngine.getExecutionService().getExecutor(SYSTEM_EXECUTOR);
-        final SimpleCompletableFuture<Void> future = new SimpleCompletableFuture<Void>(executor, logger);
+        final SimpleCompletableFuture<Void> future = newCompletableFuture();
         ClusterService clusterService = nodeEngine.getClusterService();
         final Collection<Member> members = clusterService.getMembers(NON_LOCAL_MEMBER_SELECTOR);
 
@@ -203,17 +201,21 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
         ExecutionCallback<Void> callback = new ExecutionCallback<Void>() {
             final AtomicInteger latch = new AtomicInteger(members.size());
+            volatile Throwable failure;
 
             @Override
             public void onResponse(Void response) {
                 if (latch.decrementAndGet() == 0) {
-                    future.setResult(response);
+                    future.setResult(failure != null ? new ExecutionException(failure) : response);
                 }
             }
 
             @Override
             public void onFailure(Throwable t) {
-                future.setResult(t);
+                failure = t;
+                if (latch.decrementAndGet() == 0) {
+                    future.setResult(new ExecutionException(t));
+                }
             }
         };
 
@@ -278,7 +280,11 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
     @Override
     public ICompletableFuture<Void> promoteToCPMember() {
-        checkState(metadataGroupManager.getLocalMember() == null, "We are already a CP member!");
+        if (metadataGroupManager.getLocalMember() != null) {
+            SimpleCompletableFuture<Void> f = newCompletableFuture();
+            f.setResult(null);
+            return f;
+        }
 
         MemberImpl localMember = nodeEngine.getLocalMember();
         // Local member may be recovered during restart, for instance via Hot Restart,
@@ -302,14 +308,18 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return future;
     }
 
+    private SimpleCompletableFuture<Void> newCompletableFuture() {
+        ManagedExecutorService executor = nodeEngine.getExecutionService().getExecutor(SYSTEM_EXECUTOR);
+        return new SimpleCompletableFuture<Void>(executor, logger);
+    }
+
     /**
      * this method is idempotent
      */
     @Override
     public ICompletableFuture<Void> removeCPMember(final String cpMemberUuid) {
         final ClusterService clusterService = nodeEngine.getClusterService();
-        ManagedExecutorService executor = nodeEngine.getExecutionService().getExecutor(SYSTEM_EXECUTOR);
-        final SimpleCompletableFuture<Void> future = new SimpleCompletableFuture<Void>(executor, logger);
+        final SimpleCompletableFuture<Void> future = newCompletableFuture();
 
         if (!clusterService.isMaster()) {
             future.setResult(new IllegalStateException("Only master can remove a CP member!"));
@@ -361,7 +371,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             public void onFailure(Throwable t) {
                 future.setResult(new ExecutionException(t));
             }
-        }, executor);
+        });
 
         return future;
     }
@@ -682,7 +692,6 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     }
 
     public void destroyRaftNode(CPGroupId groupId) {
-        logger.severe("ADD:::::: " + groupId, new Throwable());
         destroyedGroupIds.add(groupId);
         RaftNode node = nodes.remove(groupId);
         if (node != null) {

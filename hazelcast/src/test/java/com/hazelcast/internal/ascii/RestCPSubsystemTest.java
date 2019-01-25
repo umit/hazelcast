@@ -475,8 +475,8 @@ public class RestCPSubsystemTest extends HazelcastTestSupport {
     @Test
     public void test_resetAndInit() throws ExecutionException, InterruptedException, IOException {
         HazelcastInstance instance1 = Hazelcast.newHazelcastInstance(config);
-        HazelcastInstance instance2 = Hazelcast.newHazelcastInstance(config);
-        HazelcastInstance instance3 = Hazelcast.newHazelcastInstance(config);
+        Hazelcast.newHazelcastInstance(config);
+        Hazelcast.newHazelcastInstance(config);
 
         instance1.getCPSubsystem().getAtomicLong("long1").set(5);
 
@@ -487,11 +487,8 @@ public class RestCPSubsystemTest extends HazelcastTestSupport {
 
         sleepAtLeastMillis(10);
 
-        for (HazelcastInstance instance : Arrays.asList(instance1, instance2, instance3)) {
-            ConnectionResponse response = new HTTPCommunicator(instance).restart(groupName, groupPassword);
-
-            assertEquals(200, response.responseCode);
-        }
+        ConnectionResponse response = new HTTPCommunicator(instance1).restart(groupName, groupPassword);
+        assertEquals(200, response.responseCode);
 
         instance1.getCPSubsystem().getAtomicLong("long1").set(5);
 

@@ -64,6 +64,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
     }
 
     @Override
+    @SuppressWarnings("checkstyle:npathcomplexity")
     public void handle(HttpPostCommand command) {
         boolean sendResponse = true;
         try {
@@ -121,6 +122,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
                 sendResponse = false;
             } else if (uri.startsWith(URI_RESTART_CP_SUBSYSTEM_URL)) {
                 handleResetAndInitCPSubsystem(command);
+                sendResponse = false;
             } else {
                 command.send404();
             }
@@ -758,20 +760,24 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
 
     private void handleResetAndInitCPSubsystem(final HttpPostCommand command) throws UnsupportedEncodingException {
         if (checkCredentials(command)) {
-            getCpSubsystem().getCPSubsystemManagementService().restart()
-                .andThen(new ExecutionCallback<Void>() {
-                    @Override
-                    public void onResponse(Void response) {
-                        command.send200();
-                    }
+            getCpSubsystem().getCPSubsystemManagementService()
+                            .restart()
+                            .andThen(new ExecutionCallback<Void>() {
+                                @Override
+                                public void onResponse(Void response) {
+                                    command.send200();
+                                    textCommandService.sendResponse(command);
+                                }
 
-                    @Override
-                    public void onFailure(Throwable t) {
-                        command.send500();
-                    }
-                });
+                                @Override
+                                public void onFailure(Throwable t) {
+                                    command.send500();
+                                    textCommandService.sendResponse(command);
+                                }
+                            });
         } else {
             command.send403();
+            textCommandService.sendResponse(command);
         }
     }
 

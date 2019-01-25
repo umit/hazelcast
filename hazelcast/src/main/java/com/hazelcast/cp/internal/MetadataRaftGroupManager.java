@@ -261,8 +261,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     public CPGroupInfo getRaftGroup(CPGroupId groupId) {
         checkNotNull(groupId);
 
-        if (!metadataGroupId.equals(groupId) && (groupId instanceof RaftGroupId)
-                && ((RaftGroupId) groupId).seed() < groupIdSeed) {
+        if ((groupId instanceof RaftGroupId) && ((RaftGroupId) groupId).seed() < groupIdSeed) {
             throw new CPGroupDestroyedException(groupId);
         }
 
@@ -320,7 +319,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     }
 
     public CPGroupId createRaftGroup(String groupName, Collection<CPMemberInfo> members, long commitIndex) {
-        checkFalse(metadataGroupId.name().equals(groupName), groupName + " is reserved for internal usage!");
+        checkFalse(metadataGroupId.name().equalsIgnoreCase(groupName), groupName + " is reserved for internal usage!");
         checkIfMetadataRaftGroupInitialized();
 
         // keep configuration on every metadata node
@@ -427,7 +426,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
 
     public void forceDestroyRaftGroup(String groupName) {
         checkNotNull(groupName);
-        checkFalse(metadataGroupId.name().equals(groupName), "Cannot force-destroy the METADATA CP group!");
+        checkFalse(metadataGroupId.name().equalsIgnoreCase(groupName), "Cannot force-destroy the METADATA CP group!");
 
         boolean found = false;
 
