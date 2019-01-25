@@ -703,7 +703,7 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         String suffix = URI_CP_SESSIONS_SUFFIX + "/";
         int i = uri.indexOf(suffix);
         String groupName = uri.substring(prefix.length(), i).trim();
-        long sessionId = Long.valueOf(uri.substring(i + suffix.length(), uri.indexOf('/', i + suffix.length())));
+        long sessionId = Long.parseLong(uri.substring(i + suffix.length(), uri.indexOf('/', i + suffix.length())));
 
         getCpSubsystem().getCPSessionManagementService()
                         .forceCloseSession(groupName, sessionId)

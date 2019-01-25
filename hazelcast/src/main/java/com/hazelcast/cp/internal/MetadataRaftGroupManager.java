@@ -38,6 +38,7 @@ import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.spi.impl.NodeEngineImpl;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -932,6 +933,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         }
     }
 
+    @SuppressFBWarnings("SE_COMPARATOR_SHOULD_BE_SERIALIZABLE")
     private static class CPMemberComparator implements Comparator<CPMemberInfo> {
         @Override
         public int compare(CPMemberInfo o1, CPMemberInfo o2) {
@@ -939,6 +941,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         }
     }
 
+    @SuppressFBWarnings("SE_COMPARATOR_SHOULD_BE_SERIALIZABLE")
     private static class CPGroupIdComparator implements Comparator<CPGroupId> {
         @Override
         public int compare(CPGroupId o1, CPGroupId o2) {

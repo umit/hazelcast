@@ -22,6 +22,7 @@ import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -48,6 +49,7 @@ public class AppendRequest implements IdentifiedDataSerializable {
     public AppendRequest() {
     }
 
+    @SuppressFBWarnings("EI_EXPOSE_REP2")
     public AppendRequest(Endpoint leader, int term, int prevLogTerm, long prevLogIndex, long leaderCommitIndex,
             LogEntry[] entries) {
         this.term = term;
@@ -78,6 +80,7 @@ public class AppendRequest implements IdentifiedDataSerializable {
         return leaderCommitIndex;
     }
 
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public LogEntry[] entries() {
         return entries;
     }

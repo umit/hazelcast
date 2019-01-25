@@ -21,6 +21,7 @@ import com.hazelcast.cp.CPMember;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -157,6 +158,8 @@ public final class CPGroupInfo implements CPGroup, IdentifiedDataSerializable {
         return true;
     }
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP",
+            justification = "Returning internal array intentionally to avoid performance penalty.")
     public CPMemberInfo[] membersArray() {
         return membersArray;
     }

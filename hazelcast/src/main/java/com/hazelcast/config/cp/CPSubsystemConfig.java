@@ -21,12 +21,12 @@ import com.hazelcast.config.matcher.MatchingPointConfigPatternMatcher;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.core.IndeterminateOperationStateException;
 import com.hazelcast.cp.CPGroup;
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.CPMember;
 import com.hazelcast.cp.CPSubsystem;
 import com.hazelcast.cp.lock.FencedLock;
 import com.hazelcast.cp.session.CPSession;
 import com.hazelcast.cp.session.CPSessionManagementService;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.util.Map;
 import java.util.Map.Entry;
@@ -168,7 +168,7 @@ public class CPSubsystemConfig {
      * {@link CPSessionManagementService}, to deal with liveliness issues
      * related to CP sessions. In order to prevent premature session expires,
      * session TTL configuration can be set a relatively large value and
-     * {@link CPSessionManagementService#forceCloseSession(CPGroupId, long)}
+     * {@link CPSessionManagementService#forceCloseSession(String, long)}
      * can be manually called to close CP session of a crashed Hazelcast
      * instance.
      * <p>
@@ -317,6 +317,7 @@ public class CPSubsystemConfig {
      *
      * @return this config instance
      */
+    @SuppressFBWarnings(value = "IM_BAD_CHECK_FOR_ODD", justification = "It's obvious that groupSize is not negative.")
     public CPSubsystemConfig setGroupSize(int groupSize) {
         checkTrue(groupSize == 0 || (groupSize >= MIN_GROUP_SIZE && groupSize <= MAX_GROUP_SIZE
                 && (groupSize % 2 == 1)), "Group size must be an odd value between 3 and 7");

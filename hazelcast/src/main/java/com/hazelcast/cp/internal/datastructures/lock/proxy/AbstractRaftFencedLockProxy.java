@@ -28,6 +28,7 @@ import com.hazelcast.cp.lock.exception.LockAcquireLimitExceededException;
 import com.hazelcast.cp.lock.exception.LockOwnershipLostException;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.util.Clock;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import javax.annotation.Nonnull;
 import java.util.Map;
@@ -190,6 +191,7 @@ public abstract class AbstractRaftFencedLockProxy extends SessionAwareProxy impl
     }
 
     @Override
+    @SuppressFBWarnings("IMSE_DONT_CATCH_IMSE")
     public final void unlock() {
         long threadId = getThreadId();
         long sessionId = getSession();
