@@ -57,7 +57,9 @@ public class CreateSessionMessageTask extends AbstractMessageTask<CPSessionCreat
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        return CPSessionCreateSessionCodec.encodeResponse((SessionResponse) response);
+        SessionResponse session = (SessionResponse) response;
+        return CPSessionCreateSessionCodec.encodeResponse(session.getSessionId(), session.getTtlMillis(),
+                session.getHeartbeatMillis());
     }
 
     @Override

@@ -124,7 +124,8 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
     protected SessionResponse requestNewSession(RaftGroupId groupId) {
         ClientMessage request = CPSessionCreateSessionCodec.encodeRequest(groupId, client.getName());
         ClientMessage response = new ClientInvocation(client, request, "sessionManager").invoke().join();
-        return CPSessionCreateSessionCodec.decodeResponse(response).session;
+        CPSessionCreateSessionCodec.ResponseParameters params = CPSessionCreateSessionCodec.decodeResponse(response);
+        return new SessionResponse(params.sessionId, params.ttlMillis, params.heartbeatMillis);
     }
 
     @Override

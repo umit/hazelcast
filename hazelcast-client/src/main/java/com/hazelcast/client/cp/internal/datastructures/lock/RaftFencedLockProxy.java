@@ -70,7 +70,9 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
     private static final ClientMessageDecoder GET_LOCK_OWNERSHIP_STATE_RESPONSE_DECODER = new ClientMessageDecoder() {
         @Override
         public RaftLockOwnershipState decodeClientMessage(ClientMessage clientMessage) {
-            return CPFencedLockGetLockOwnershipCodec.decodeResponse(clientMessage).lockState;
+            CPFencedLockGetLockOwnershipCodec.ResponseParameters params = CPFencedLockGetLockOwnershipCodec
+                    .decodeResponse(clientMessage);
+            return new RaftLockOwnershipState(params.fence, params.lockCount, params.sessionId, params.threadId);
         }
     };
 

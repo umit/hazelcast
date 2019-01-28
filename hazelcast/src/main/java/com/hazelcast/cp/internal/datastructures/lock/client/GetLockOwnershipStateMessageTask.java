@@ -54,7 +54,9 @@ public class GetLockOwnershipStateMessageTask extends AbstractMessageTask<CPFenc
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        return CPFencedLockGetLockOwnershipCodec.encodeResponse((RaftLockOwnershipState) response);
+        RaftLockOwnershipState lockState = (RaftLockOwnershipState) response;
+        return CPFencedLockGetLockOwnershipCodec.encodeResponse(lockState.getFence(), lockState.getLockCount(),
+                lockState.getSessionId(), lockState.getThreadId());
     }
 
     @Override
