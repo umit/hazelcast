@@ -19,8 +19,8 @@ package com.hazelcast.cp.internal.session;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.test.AssertTask;
@@ -47,7 +47,7 @@ public abstract class AbstractProxySessionManagerTest extends HazelcastRaftTestS
     private static final int sessionTTLSeconds = 5;
 
     HazelcastInstance[] members;
-    protected CPGroupId groupId;
+    protected RaftGroupId groupId;
 
     @Before
     public void setup() throws ExecutionException, InterruptedException {

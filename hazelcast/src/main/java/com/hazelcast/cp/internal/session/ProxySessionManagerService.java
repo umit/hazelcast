@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.session;
 
 import com.hazelcast.core.ICompletableFuture;
-import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
@@ -63,12 +63,12 @@ public class ProxySessionManagerService extends AbstractProxySessionManager impl
     }
 
     @Override
-    protected long generateThreadId(CPGroupId groupId) {
+    protected long generateThreadId(RaftGroupId groupId) {
         return getInvocationManager().<Long>invoke(groupId, new GenerateThreadIdOp()).join();
     }
 
     @Override
-    protected SessionResponse requestNewSession(CPGroupId groupId) {
+    protected SessionResponse requestNewSession(RaftGroupId groupId) {
         String instanceName = nodeEngine.getConfig().getInstanceName();
         long creationTime = System.currentTimeMillis();
         RaftOp op = new CreateSessionOp(nodeEngine.getThisAddress(), instanceName, SERVER, creationTime);
@@ -81,12 +81,12 @@ public class ProxySessionManagerService extends AbstractProxySessionManager impl
     }
 
     @Override
-    protected ICompletableFuture<Object> heartbeat(CPGroupId groupId, long sessionId) {
+    protected ICompletableFuture<Object> heartbeat(RaftGroupId groupId, long sessionId) {
         return getInvocationManager().invoke(groupId, new HeartbeatSessionOp(sessionId));
     }
 
     @Override
-    protected ICompletableFuture<Object> closeSession(CPGroupId groupId, Long sessionId) {
+    protected ICompletableFuture<Object> closeSession(RaftGroupId groupId, Long sessionId) {
         return getInvocationManager().invoke(groupId, new CloseSessionOp(sessionId));
     }
 
@@ -99,15 +99,15 @@ public class ProxySessionManagerService extends AbstractProxySessionManager impl
     public boolean onShutdown(long timeout, TimeUnit unit) {
         ILogger logger = nodeEngine.getLogger(getClass());
 
-        Map<CPGroupId, ICompletableFuture<Object>> futures = shutdown();
+        Map<RaftGroupId, ICompletableFuture<Object>> futures = shutdown();
         long remainingTimeNanos = unit.toNanos(timeout);
         boolean successful = true;
 
         while (remainingTimeNanos > 0 && futures.size() > 0) {
-            Iterator<Entry<CPGroupId, ICompletableFuture<Object>>> it = futures.entrySet().iterator();
+            Iterator<Entry<RaftGroupId, ICompletableFuture<Object>>> it = futures.entrySet().iterator();
             while (it.hasNext()) {
-                Entry<CPGroupId, ICompletableFuture<Object>> entry = it.next();
-                CPGroupId groupId = entry.getKey();
+                Entry<RaftGroupId, ICompletableFuture<Object>> entry = it.next();
+                RaftGroupId groupId = entry.getKey();
                 ICompletableFuture<Object> f = entry.getValue();
                 if (f.isDone()) {
                     it.remove();

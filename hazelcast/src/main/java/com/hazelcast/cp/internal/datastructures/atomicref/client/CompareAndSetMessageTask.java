@@ -20,7 +20,7 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.CPAtomicRefCompareAndSetCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.atomicref.RaftAtomicRefService;
 import com.hazelcast.cp.internal.datastructures.atomicref.operation.CompareAndSetOp;
@@ -41,11 +41,9 @@ public class CompareAndSetMessageTask extends AbstractMessageTask<CPAtomicRefCom
 
     @Override
     protected void processMessage() {
-        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
-        service.getInvocationManager()
-               .<Boolean>invoke(groupId, new CompareAndSetOp(parameters.name, parameters.oldValue, parameters.newValue))
-               .andThen(this);
+        RaftOp op = new CompareAndSetOp(parameters.name, parameters.oldValue, parameters.newValue);
+        service.getInvocationManager().<Boolean>invoke(parameters.groupId, op).andThen(this);
     }
 
     @Override

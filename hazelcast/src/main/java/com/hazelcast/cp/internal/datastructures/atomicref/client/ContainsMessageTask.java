@@ -20,7 +20,6 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.CPAtomicRefContainsCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.atomicref.RaftAtomicRefService;
 import com.hazelcast.cp.internal.datastructures.atomicref.operation.ContainsOp;
@@ -41,10 +40,9 @@ public class ContainsMessageTask extends AbstractMessageTask<CPAtomicRefContains
 
     @Override
     protected void processMessage() {
-        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         service.getInvocationManager()
-               .<Boolean>invoke(groupId, new ContainsOp(parameters.name, parameters.value))
+               .<Boolean>invoke(parameters.groupId, new ContainsOp(parameters.name, parameters.value))
                .andThen(this);
     }
 

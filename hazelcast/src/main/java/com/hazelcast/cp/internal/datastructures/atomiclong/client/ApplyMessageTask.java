@@ -21,7 +21,6 @@ import com.hazelcast.client.impl.protocol.codec.CPAtomicLongApplyCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.IFunction;
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongService;
 import com.hazelcast.cp.internal.datastructures.atomiclong.operation.ApplyOp;
@@ -43,10 +42,9 @@ public class ApplyMessageTask extends AbstractMessageTask<CPAtomicLongApplyCodec
     @Override
     protected void processMessage() {
         IFunction<Long, Object> function = serializationService.toObject(parameters.function);
-        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         service.getInvocationManager()
-               .invoke(groupId, new ApplyOp<Object>(parameters.name, function))
+               .invoke(parameters.groupId, new ApplyOp<Object>(parameters.name, function))
                .andThen(this);
     }
 

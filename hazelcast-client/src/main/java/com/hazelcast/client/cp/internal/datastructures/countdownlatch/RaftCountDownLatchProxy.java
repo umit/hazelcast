@@ -29,8 +29,8 @@ import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.core.ICountDownLatch;
 import com.hazelcast.core.OperationTimeoutException;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
-import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.util.EmptyStatement;
 
 import java.util.UUID;
@@ -44,10 +44,10 @@ import static com.hazelcast.util.UuidUtil.newUnsecureUUID;
  */
 class RaftCountDownLatchProxy extends ClientProxy implements ICountDownLatch {
 
-    private final CPGroupId groupId;
+    private final RaftGroupId groupId;
     private final String objectName;
 
-    RaftCountDownLatchProxy(ClientContext context, CPGroupId groupId, String proxyName, String objectName) {
+    RaftCountDownLatchProxy(ClientContext context, RaftGroupId groupId, String proxyName, String objectName) {
         super(RaftCountDownLatchService.SERVICE_NAME, proxyName, context);
         this.groupId = groupId;
         this.objectName = objectName;
@@ -57,10 +57,8 @@ class RaftCountDownLatchProxy extends ClientProxy implements ICountDownLatch {
     public boolean await(long timeout, TimeUnit unit) {
         checkNotNull(unit);
 
-        Data groupId = getSerializationService().toData(this.groupId);
-        Data invocationUid = getSerializationService().toData(newUnsecureUUID());
         long timeoutMillis = Math.max(0, unit.toMillis(timeout));
-        ClientMessage request = CPCountDownLatchAwaitCodec.encodeRequest(groupId, objectName, invocationUid, timeoutMillis);
+        ClientMessage request = CPCountDownLatchAwaitCodec.encodeRequest(groupId, objectName, newUnsecureUUID(), timeoutMillis);
         ClientMessage response = new ClientInvocation(getClient(), request, name).invoke().join();
 
         return CPCountDownLatchAwaitCodec.decodeResponse(response).response;
@@ -82,7 +80,6 @@ class RaftCountDownLatchProxy extends ClientProxy implements ICountDownLatch {
     }
 
     private int getRound() {
-        Data groupId = getSerializationService().toData(this.groupId);
         ClientMessage request = CPCountDownLatchGetRoundCodec.encodeRequest(groupId, objectName);
         ClientMessage response = new ClientInvocation(getClient(), request, name).invoke().join();
 
@@ -90,16 +87,13 @@ class RaftCountDownLatchProxy extends ClientProxy implements ICountDownLatch {
     }
 
     private void countDown(int round, UUID invocationUid) {
-        Data groupId = getSerializationService().toData(this.groupId);
-        Data invocationUidData = getSerializationService().toData(invocationUid);
-        ClientMessage request = CPCountDownLatchCountDownCodec.encodeRequest(groupId, objectName, invocationUidData, round);
+        ClientMessage request = CPCountDownLatchCountDownCodec.encodeRequest(groupId, objectName, invocationUid, round);
 
         new ClientInvocation(getClient(), request, name).invoke().join();
     }
 
     @Override
     public int getCount() {
-        Data groupId = getSerializationService().toData(this.groupId);
         ClientMessage request = CPCountDownLatchGetCountCodec.encodeRequest(groupId, objectName);
         ClientMessage response = new ClientInvocation(getClient(), request, name).invoke().join();
 
@@ -108,7 +102,6 @@ class RaftCountDownLatchProxy extends ClientProxy implements ICountDownLatch {
 
     @Override
     public boolean trySetCount(int count) {
-        Data groupId = getSerializationService().toData(this.groupId);
         ClientMessage request = CPCountDownLatchTrySetCountCodec.encodeRequest(groupId, objectName, count);
         ClientMessage response = new ClientInvocation(getClient(), request, name).invoke().join();
 
@@ -126,7 +119,6 @@ class RaftCountDownLatchProxy extends ClientProxy implements ICountDownLatch {
 
     @Override
     public void onDestroy() {
-        Data groupId = getSerializationService().toData(this.groupId);
         ClientMessage request = CPGroupDestroyCPObjectCodec.encodeRequest(groupId, getServiceName(), objectName);
         new ClientInvocation(getClient(), request, name).invoke().join();
     }

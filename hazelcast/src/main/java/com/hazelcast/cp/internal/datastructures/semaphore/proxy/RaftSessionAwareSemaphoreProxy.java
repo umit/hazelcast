@@ -17,7 +17,7 @@
 package com.hazelcast.cp.internal.datastructures.semaphore.proxy;
 
 import com.hazelcast.core.ISemaphore;
-import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
@@ -65,7 +65,7 @@ public class RaftSessionAwareSemaphoreProxy extends SessionAwareProxy implements
     private final String proxyName;
     private final String objectName;
 
-    public RaftSessionAwareSemaphoreProxy(NodeEngine nodeEngine, CPGroupId groupId, String proxyName, String objectName) {
+    public RaftSessionAwareSemaphoreProxy(NodeEngine nodeEngine, RaftGroupId groupId, String proxyName, String objectName) {
         super((ProxySessionManagerService) nodeEngine.getService(ProxySessionManagerService.SERVICE_NAME), groupId);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         this.invocationManager = service.getInvocationManager();

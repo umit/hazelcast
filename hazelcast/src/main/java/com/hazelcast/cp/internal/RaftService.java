@@ -702,12 +702,12 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
     }
 
-    public CPGroupId createRaftGroupForProxy(String name) {
+    public RaftGroupId createRaftGroupForProxy(String name) {
         String groupName = getGroupNameForProxy(name);
         checkFalse(groupName.equalsIgnoreCase(METADATA_CP_GROUP_NAME), "CP data structures cannot run on the METADATA CP group!");
 
         try {
-            CPGroupId groupId = getGroupIdForProxy(name);
+            RaftGroupId groupId = getGroupIdForProxy(name);
             if (groupId != null) {
                 return groupId;
             }
@@ -721,7 +721,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
     }
 
-    public CPGroupId getGroupIdForProxy(String name) {
+    public RaftGroupId getGroupIdForProxy(String name) {
         String groupName = getGroupNameForProxy(name);
         RaftOp op = new GetActiveRaftGroupByNameOp(groupName);
         CPGroupInfo group = invocationManager.<CPGroupInfo>invoke(getMetadataGroupId(), op).join();

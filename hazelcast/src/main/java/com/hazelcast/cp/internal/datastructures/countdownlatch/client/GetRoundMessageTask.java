@@ -20,7 +20,6 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.CPCountDownLatchGetRoundCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatchService;
 import com.hazelcast.cp.internal.datastructures.countdownlatch.operation.GetRoundOp;
@@ -41,10 +40,9 @@ public class GetRoundMessageTask extends AbstractMessageTask<CPCountDownLatchGet
 
     @Override
     protected void processMessage() {
-        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         service.getInvocationManager()
-               .<Integer>invoke(groupId, new GetRoundOp(parameters.name))
+               .<Integer>invoke(parameters.groupId, new GetRoundOp(parameters.name))
                 .andThen(this);
     }
 

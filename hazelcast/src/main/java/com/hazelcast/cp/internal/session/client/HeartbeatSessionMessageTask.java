@@ -20,7 +20,6 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.CPSessionHeartbeatSessionCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.session.operation.HeartbeatSessionOp;
 import com.hazelcast.instance.Node;
@@ -40,10 +39,9 @@ public class HeartbeatSessionMessageTask extends AbstractMessageTask<CPSessionHe
 
     @Override
     protected void processMessage() {
-        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         service.getInvocationManager()
-               .invoke(groupId, new HeartbeatSessionOp(parameters.sessionId))
+               .invoke(parameters.groupId, new HeartbeatSessionOp(parameters.sessionId))
                .andThen(this);
     }
 

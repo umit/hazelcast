@@ -20,7 +20,6 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.CPAtomicRefApplyCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongService;
 import com.hazelcast.cp.internal.datastructures.atomicref.operation.ApplyOp;
@@ -42,11 +41,10 @@ public class ApplyMessageTask extends AbstractMessageTask<CPAtomicRefApplyCodec.
 
     @Override
     protected void processMessage() {
-        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
         ReturnValueType returnValueType = ReturnValueType.fromValue(parameters.returnValueType);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         service.getInvocationManager()
-               .invoke(groupId, new ApplyOp(parameters.name, parameters.function, returnValueType, parameters.alter))
+               .invoke(parameters.groupId, new ApplyOp(parameters.name, parameters.function, returnValueType, parameters.alter))
                .andThen(this);
     }
 

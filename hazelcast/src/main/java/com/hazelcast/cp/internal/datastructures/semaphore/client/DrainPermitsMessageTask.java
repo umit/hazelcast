@@ -20,7 +20,6 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.CPSemaphoreDrainCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
@@ -29,7 +28,6 @@ import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
 
 import java.security.Permission;
-import java.util.UUID;
 
 /**
  * Client message task for {@link DrainPermitsOp}
@@ -43,11 +41,9 @@ public class DrainPermitsMessageTask extends AbstractMessageTask<CPSemaphoreDrai
 
     @Override
     protected void processMessage() {
-        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
-        UUID invocationUid = nodeEngine.toObject(parameters.invocationUid);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
-        RaftOp op = new DrainPermitsOp(parameters.name, parameters.sessionId, parameters.threadId, invocationUid);
-        service.getInvocationManager().<Integer>invoke(groupId, op).andThen(this);
+        RaftOp op = new DrainPermitsOp(parameters.name, parameters.sessionId, parameters.threadId, parameters.invocationUid);
+        service.getInvocationManager().<Integer>invoke(parameters.groupId, op).andThen(this);
     }
 
     @Override

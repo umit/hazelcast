@@ -21,6 +21,7 @@ import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.lock.operation.UnlockOp;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.ResourceRegistry;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
@@ -254,7 +255,7 @@ public class FencedLockAdvancedTest extends HazelcastRaftTestSupport {
     public void testInactiveSessionsAreEventuallyClosed() throws ExecutionException, InterruptedException {
         lock.lock();
 
-        final CPGroupId groupId = lock.getGroupId();
+        final RaftGroupId groupId = (RaftGroupId) lock.getGroupId();
 
         assertTrueEventually(new AssertTask() {
             @Override

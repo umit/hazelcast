@@ -18,6 +18,7 @@ package com.hazelcast.cp.internal.datastructures.lock;
 
 import com.hazelcast.core.DistributedObject;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
 import com.hazelcast.cp.internal.datastructures.lock.proxy.RaftFencedLockProxy;
 import com.hazelcast.cp.internal.datastructures.spi.blocking.AbstractBlockingService;
@@ -178,7 +179,7 @@ public class RaftLockService extends AbstractBlockingService<LockInvocationKey, 
     @Override
     public DistributedObject createDistributedObject(String proxyName) {
         try {
-            CPGroupId groupId = raftService.createRaftGroupForProxy(proxyName);
+            RaftGroupId groupId = raftService.createRaftGroupForProxy(proxyName);
             return new RaftFencedLockProxy(nodeEngine, groupId, proxyName, getObjectNameForProxy(proxyName));
         } catch (Exception e) {
             throw rethrow(e);

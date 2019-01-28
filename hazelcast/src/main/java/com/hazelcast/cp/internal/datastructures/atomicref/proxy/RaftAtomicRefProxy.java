@@ -19,6 +19,7 @@ package com.hazelcast.cp.internal.datastructures.atomicref.proxy;
 import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.RaftInvocationManager;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.atomicref.RaftAtomicRefService;
@@ -49,11 +50,11 @@ public class RaftAtomicRefProxy<T> implements IAtomicReference<T> {
     private final RaftInvocationManager invocationManager;
     private final SerializationService serializationService;
     private final ProxyService proxyService;
-    private final CPGroupId groupId;
+    private final RaftGroupId groupId;
     private final String proxyName;
     private final String objectName;
 
-    public RaftAtomicRefProxy(NodeEngine nodeEngine, CPGroupId groupId, String proxyName, String objectName) {
+    public RaftAtomicRefProxy(NodeEngine nodeEngine, RaftGroupId groupId, String proxyName, String objectName) {
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         this.invocationManager = service.getInvocationManager();
         this.serializationService = nodeEngine.getSerializationService();

@@ -31,9 +31,10 @@ import com.hazelcast.client.spi.ClientProxy;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
-import com.hazelcast.nio.serialization.Data;
 
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.cp.internal.session.AbstractProxySessionManager.NO_SESSION_ID;
@@ -48,10 +49,10 @@ import static java.lang.Math.max;
 class RaftSessionlessSemaphoreProxy extends ClientProxy implements ISemaphore {
 
     private final ClientProxySessionManager sessionManager;
-    private final CPGroupId groupId;
+    private final RaftGroupId groupId;
     private final String objectName;
 
-    RaftSessionlessSemaphoreProxy(ClientContext context, CPGroupId groupId, String proxyName, String objectName) {
+    RaftSessionlessSemaphoreProxy(ClientContext context, RaftGroupId groupId, String proxyName, String objectName) {
         super(RaftSemaphoreService.SERVICE_NAME, proxyName, context);
         this.sessionManager = getClient().getProxySessionManager();
         this.groupId = groupId;
@@ -62,7 +63,6 @@ class RaftSessionlessSemaphoreProxy extends ClientProxy implements ISemaphore {
     public boolean init(int permits) {
         checkNotNegative(permits, "Permits must be non-negative!");
 
-        Data groupId = getSerializationService().toData(this.groupId);
         ClientMessage request = CPSemaphoreInitCodec.encodeRequest(groupId, objectName, permits);
         HazelcastClientInstanceImpl client = getClient();
         ClientMessage response = new ClientInvocation(client, request, objectName).invoke().join();
@@ -79,8 +79,7 @@ class RaftSessionlessSemaphoreProxy extends ClientProxy implements ISemaphore {
         checkPositive(permits, "Permits must be positive!");
 
         long clusterWideThreadId = sessionManager.getOrCreateUniqueThreadId(groupId);
-        Data invocationUid = getSerializationService().toData(newUnsecureUUID());
-        Data groupId = getSerializationService().toData(this.groupId);
+        UUID invocationUid = newUnsecureUUID();
 
         ClientMessage request = CPSemaphoreAcquireCodec.encodeRequest(groupId, objectName, NO_SESSION_ID, clusterWideThreadId,
                 invocationUid, permits, -1);
@@ -108,8 +107,7 @@ class RaftSessionlessSemaphoreProxy extends ClientProxy implements ISemaphore {
         checkPositive(permits, "Permits must be positive!");
 
         long clusterWideThreadId = sessionManager.getOrCreateUniqueThreadId(groupId);
-        Data groupId = getSerializationService().toData(this.groupId);
-        Data invocationUid = getSerializationService().toData(newUnsecureUUID());
+        UUID invocationUid = newUnsecureUUID();
         long timeoutMs = max(0, unit.toMillis(timeout));
 
         ClientMessage request = CPSemaphoreAcquireCodec.encodeRequest(groupId, objectName, NO_SESSION_ID, clusterWideThreadId,
@@ -129,8 +127,7 @@ class RaftSessionlessSemaphoreProxy extends ClientProxy implements ISemaphore {
         checkPositive(permits, "Permits must be positive!");
 
         long clusterWideThreadId = sessionManager.getOrCreateUniqueThreadId(groupId);
-        Data groupId = getSerializationService().toData(this.groupId);
-        Data invocationUid = getSerializationService().toData(newUnsecureUUID());
+        UUID invocationUid = newUnsecureUUID();
 
         ClientMessage request = CPSemaphoreReleaseCodec.encodeRequest(groupId, objectName, NO_SESSION_ID, clusterWideThreadId,
                 invocationUid, permits);
@@ -140,7 +137,6 @@ class RaftSessionlessSemaphoreProxy extends ClientProxy implements ISemaphore {
 
     @Override
     public int availablePermits() {
-        Data groupId = getSerializationService().toData(this.groupId);
         ClientMessage request = CPSemaphoreAvailablePermitsCodec.encodeRequest(groupId, objectName);
         HazelcastClientInstanceImpl client = getClient();
         ClientMessage response = new ClientInvocation(client, request, objectName).invoke().join();
@@ -150,8 +146,7 @@ class RaftSessionlessSemaphoreProxy extends ClientProxy implements ISemaphore {
     @Override
     public int drainPermits() {
         long clusterWideThreadId = sessionManager.getOrCreateUniqueThreadId(groupId);
-        Data invocationUid = getSerializationService().toData(newUnsecureUUID());
-        Data groupId = getSerializationService().toData(this.groupId);
+        UUID invocationUid = newUnsecureUUID();
 
         ClientMessage request = CPSemaphoreDrainCodec.encodeRequest(groupId, objectName, NO_SESSION_ID, clusterWideThreadId,
                 invocationUid);
@@ -168,8 +163,7 @@ class RaftSessionlessSemaphoreProxy extends ClientProxy implements ISemaphore {
         }
 
         long clusterWideThreadId = sessionManager.getOrCreateUniqueThreadId(groupId);
-        Data invocationUid = getSerializationService().toData(newUnsecureUUID());
-        Data groupId = getSerializationService().toData(this.groupId);
+        UUID invocationUid = newUnsecureUUID();
 
         ClientMessage request = CPSemaphoreChangeCodec.encodeRequest(groupId, objectName, NO_SESSION_ID, clusterWideThreadId,
                 invocationUid, -reduction);
@@ -184,8 +178,7 @@ class RaftSessionlessSemaphoreProxy extends ClientProxy implements ISemaphore {
         }
 
         long clusterWideThreadId = sessionManager.getOrCreateUniqueThreadId(groupId);
-        Data invocationUid = getSerializationService().toData(newUnsecureUUID());
-        Data groupId = getSerializationService().toData(this.groupId);
+        UUID invocationUid = newUnsecureUUID();
 
         ClientMessage request = CPSemaphoreChangeCodec.encodeRequest(groupId, objectName, NO_SESSION_ID, clusterWideThreadId,
                 invocationUid, increase);
@@ -199,7 +192,6 @@ class RaftSessionlessSemaphoreProxy extends ClientProxy implements ISemaphore {
 
     @Override
     public void onDestroy() {
-        Data groupId = getSerializationService().toData(this.groupId);
         ClientMessage request = CPGroupDestroyCPObjectCodec.encodeRequest(groupId, getServiceName(), objectName);
         new ClientInvocation(getClient(), request, name).invoke().join();
     }

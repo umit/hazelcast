@@ -20,7 +20,6 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.CPSessionCreateSessionCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.session.SessionResponse;
@@ -44,11 +43,10 @@ public class CreateSessionMessageTask extends AbstractMessageTask<CPSessionCreat
 
     @Override
     protected void processMessage() {
-        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         RaftOp op = new CreateSessionOp(connection.getEndPoint(), parameters.endpointName, CLIENT, System.currentTimeMillis());
         service.getInvocationManager()
-                .<SessionResponse>invoke(groupId, op)
+                .<SessionResponse>invoke(parameters.groupId, op)
                 .andThen(this);
     }
 
@@ -59,7 +57,7 @@ public class CreateSessionMessageTask extends AbstractMessageTask<CPSessionCreat
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        return CPSessionCreateSessionCodec.encodeResponse(serializationService.toData(response));
+        return CPSessionCreateSessionCodec.encodeResponse((SessionResponse) response);
     }
 
     @Override

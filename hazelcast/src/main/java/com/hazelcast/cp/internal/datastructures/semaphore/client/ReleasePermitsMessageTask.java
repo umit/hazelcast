@@ -20,7 +20,7 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.CPSemaphoreReleaseCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
 import com.hazelcast.cp.internal.datastructures.semaphore.operation.ReleasePermitsOp;
@@ -28,7 +28,6 @@ import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
 
 import java.security.Permission;
-import java.util.UUID;
 
 /**
  * Client message task for {@link ReleasePermitsOp}
@@ -42,12 +41,11 @@ public class ReleasePermitsMessageTask extends AbstractMessageTask<CPSemaphoreRe
 
     @Override
     protected void processMessage() {
-        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
-        UUID invocationUid = nodeEngine.toObject(parameters.invocationUid);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
+        RaftOp op = new ReleasePermitsOp(parameters.name, parameters.sessionId, parameters.threadId, parameters.invocationUid,
+                parameters.permits);
         service.getInvocationManager()
-               .<Boolean>invoke(groupId, new ReleasePermitsOp(parameters.name, parameters.sessionId, parameters.threadId,
-                       invocationUid, parameters.permits))
+               .<Boolean>invoke(parameters.groupId, op)
                .andThen(this);
     }
 

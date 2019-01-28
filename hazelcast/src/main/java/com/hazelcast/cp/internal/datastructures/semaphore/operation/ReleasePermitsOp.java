@@ -42,7 +42,7 @@ public class ReleasePermitsOp extends AbstractSemaphoreOp implements Indetermina
     public ReleasePermitsOp() {
     }
 
-    public ReleasePermitsOp(String name, long sessionId, long threadId, UUID invocationUid,  int permits) {
+    public ReleasePermitsOp(String name, long sessionId, long threadId, UUID invocationUid, int permits) {
         super(name, sessionId, threadId, invocationUid);
         this.permits = permits;
     }

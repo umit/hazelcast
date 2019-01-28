@@ -31,11 +31,12 @@ import com.hazelcast.client.spi.ClientProxy;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
 import com.hazelcast.cp.internal.session.SessionExpiredException;
-import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.util.Clock;
 
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.cp.internal.datastructures.semaphore.proxy.RaftSessionAwareSemaphoreProxy.DRAIN_SESSION_ACQ_COUNT;
@@ -52,10 +53,10 @@ import static java.lang.Math.max;
 class RaftSessionAwareSemaphoreProxy extends ClientProxy implements ISemaphore {
 
     private final ClientProxySessionManager sessionManager;
-    private final CPGroupId groupId;
+    private final RaftGroupId groupId;
     private final String objectName;
 
-    RaftSessionAwareSemaphoreProxy(ClientContext context, CPGroupId groupId, String proxyName, String objectName) {
+    RaftSessionAwareSemaphoreProxy(ClientContext context, RaftGroupId groupId, String proxyName, String objectName) {
         super(RaftSemaphoreService.SERVICE_NAME, proxyName, context);
         this.sessionManager = getClient().getProxySessionManager();
         this.groupId = groupId;
@@ -66,7 +67,6 @@ class RaftSessionAwareSemaphoreProxy extends ClientProxy implements ISemaphore {
     public boolean init(int permits) {
         checkNotNegative(permits, "Permits must be non-negative!");
 
-        Data groupId = getSerializationService().toData(this.groupId);
         ClientMessage request = CPSemaphoreInitCodec.encodeRequest(groupId, objectName, permits);
         HazelcastClientInstanceImpl client = getClient();
         ClientMessage response = new ClientInvocation(client, request, objectName).invoke().join();
@@ -82,8 +82,7 @@ class RaftSessionAwareSemaphoreProxy extends ClientProxy implements ISemaphore {
     public void acquire(int permits) {
         checkPositive(permits, "Permits must be positive!");
         long threadId = getThreadId();
-        Data invocationUid = getSerializationService().toData(newUnsecureUUID());
-        Data groupId = getSerializationService().toData(this.groupId);
+        UUID invocationUid = newUnsecureUUID();
 
         for (;;) {
             long sessionId = sessionManager.acquireSession(this.groupId, permits);
@@ -119,8 +118,7 @@ class RaftSessionAwareSemaphoreProxy extends ClientProxy implements ISemaphore {
         checkPositive(permits, "Permits must be positive!");
         long timeoutMs = max(0, unit.toMillis(timeout));
         long threadId = getThreadId();
-        Data invocationUid = getSerializationService().toData(newUnsecureUUID());
-        Data groupId = getSerializationService().toData(this.groupId);
+        UUID invocationUid = newUnsecureUUID();
         long start;
         for (;;) {
             start = Clock.currentTimeMillis();
@@ -159,8 +157,7 @@ class RaftSessionAwareSemaphoreProxy extends ClientProxy implements ISemaphore {
         }
 
         long threadId = getThreadId();
-        Data invocationUid = getSerializationService().toData(newUnsecureUUID());
-        Data groupId = getSerializationService().toData(this.groupId);
+        UUID invocationUid = newUnsecureUUID();
         try {
             ClientMessage request = CPSemaphoreReleaseCodec.encodeRequest(groupId, objectName, sessionId, threadId, invocationUid,
                     permits);
@@ -176,7 +173,6 @@ class RaftSessionAwareSemaphoreProxy extends ClientProxy implements ISemaphore {
 
     @Override
     public int availablePermits() {
-        Data groupId = getSerializationService().toData(this.groupId);
         ClientMessage request = CPSemaphoreAvailablePermitsCodec.encodeRequest(groupId, objectName);
         HazelcastClientInstanceImpl client = getClient();
         ClientMessage response = new ClientInvocation(client, request, objectName).invoke().join();
@@ -186,8 +182,7 @@ class RaftSessionAwareSemaphoreProxy extends ClientProxy implements ISemaphore {
     @Override
     public int drainPermits() {
         long threadId = getThreadId();
-        Data invocationUid = getSerializationService().toData(newUnsecureUUID());
-        Data groupId = getSerializationService().toData(this.groupId);
+        UUID invocationUid = newUnsecureUUID();
 
         for (;;) {
             long sessionId = sessionManager.acquireSession(this.groupId, DRAIN_SESSION_ACQ_COUNT);
@@ -216,8 +211,7 @@ class RaftSessionAwareSemaphoreProxy extends ClientProxy implements ISemaphore {
         }
 
         long threadId = getThreadId();
-        Data invocationUid = getSerializationService().toData(newUnsecureUUID());
-        Data groupId = getSerializationService().toData(this.groupId);
+        UUID invocationUid = newUnsecureUUID();
 
         try {
             ClientMessage request = CPSemaphoreChangeCodec.encodeRequest(groupId, objectName, sessionId, threadId,
@@ -244,8 +238,7 @@ class RaftSessionAwareSemaphoreProxy extends ClientProxy implements ISemaphore {
         }
 
         long threadId = getThreadId();
-        Data invocationUid = getSerializationService().toData(newUnsecureUUID());
-        Data groupId = getSerializationService().toData(this.groupId);
+        UUID invocationUid = newUnsecureUUID();
 
         try {
             ClientMessage request = CPSemaphoreChangeCodec.encodeRequest(groupId, objectName, sessionId, threadId,
@@ -266,7 +259,6 @@ class RaftSessionAwareSemaphoreProxy extends ClientProxy implements ISemaphore {
 
     @Override
     public void onDestroy() {
-        Data groupId = getSerializationService().toData(this.groupId);
         ClientMessage request = CPGroupDestroyCPObjectCodec.encodeRequest(groupId, getServiceName(), objectName);
         new ClientInvocation(getClient(), request, name).invoke().join();
     }

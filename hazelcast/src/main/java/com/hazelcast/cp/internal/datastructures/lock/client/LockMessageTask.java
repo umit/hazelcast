@@ -20,7 +20,6 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.CPFencedLockLockCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockService;
 import com.hazelcast.cp.internal.datastructures.lock.operation.LockOp;
@@ -28,7 +27,6 @@ import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
 
 import java.security.Permission;
-import java.util.UUID;
 
 /**
  * Client message task for {@link LockOp}
@@ -42,11 +40,10 @@ public class LockMessageTask extends AbstractMessageTask<CPFencedLockLockCodec.R
 
     @Override
     protected void processMessage() {
-        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
-        UUID invocationUid = nodeEngine.toObject(parameters.invocationUid);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         service.getInvocationManager()
-               .<Long>invoke(groupId, new LockOp(parameters.name, parameters.sessionId, parameters.threadId, invocationUid))
+               .<Long>invoke(parameters.groupId, new LockOp(parameters.name, parameters.sessionId, parameters.threadId,
+                       parameters.invocationUid))
                .andThen(this);
     }
 

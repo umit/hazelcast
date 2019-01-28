@@ -586,7 +586,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 ProxySessionManagerService service = getNodeEngineImpl(instances[3]).getService(ProxySessionManagerService.SERVICE_NAME);
-                assertEquals(NO_SESSION_ID, service.getSession(lock.getGroupId()));
+                assertEquals(NO_SESSION_ID, service.getSession((RaftGroupId) lock.getGroupId()));
             }
         });
     }

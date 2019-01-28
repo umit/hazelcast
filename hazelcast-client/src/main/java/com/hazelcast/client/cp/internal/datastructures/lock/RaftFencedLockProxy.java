@@ -29,12 +29,12 @@ import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockOwnershipState;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockService;
 import com.hazelcast.cp.internal.datastructures.lock.proxy.AbstractRaftFencedLockProxy;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
 import com.hazelcast.cp.lock.FencedLock;
-import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.InternalCompletableFuture;
 
 import java.util.UUID;
@@ -69,14 +69,14 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
 
     private static final ClientMessageDecoder GET_LOCK_OWNERSHIP_STATE_RESPONSE_DECODER = new ClientMessageDecoder() {
         @Override
-        public Data decodeClientMessage(ClientMessage clientMessage) {
-            return CPFencedLockGetLockOwnershipCodec.decodeResponse(clientMessage).response;
+        public RaftLockOwnershipState decodeClientMessage(ClientMessage clientMessage) {
+            return CPFencedLockGetLockOwnershipCodec.decodeResponse(clientMessage).lockState;
         }
     };
 
     private final FencedLockImpl lock;
 
-    RaftFencedLockProxy(ClientContext context, CPGroupId groupId, String proxyName, String objectName) {
+    RaftFencedLockProxy(ClientContext context, RaftGroupId groupId, String proxyName, String objectName) {
         super(RaftLockService.SERVICE_NAME, proxyName, context);
         this.lock = new FencedLockImpl(getClient().getProxySessionManager(), groupId, proxyName, objectName);
     }
@@ -153,9 +153,8 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
 
     @Override
     public void onDestroy() {
-        Data groupId = getSerializationService().toData(lock.getGroupId());
-        ClientMessage request = CPGroupDestroyCPObjectCodec.encodeRequest(groupId, getServiceName(), lock.getObjectName());
-        new ClientInvocation(getClient(), request, name).invoke().join();
+        ClientMessage msg = CPGroupDestroyCPObjectCodec.encodeRequest(lock.getGroupId(), getServiceName(), lock.getObjectName());
+        new ClientInvocation(getClient(), msg, name).invoke().join();
     }
 
     @Override
@@ -166,16 +165,13 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
 
 
     private class FencedLockImpl extends AbstractRaftFencedLockProxy {
-        FencedLockImpl(AbstractProxySessionManager sessionManager, CPGroupId groupId, String proxyName, String objectName) {
+        FencedLockImpl(AbstractProxySessionManager sessionManager, RaftGroupId groupId, String proxyName, String objectName) {
             super(sessionManager, groupId, proxyName, objectName);
         }
 
         @Override
         protected InternalCompletableFuture<Long> doLock(long sessionId, long threadId, UUID invocationUid) {
-            Data groupId = getSerializationService().toData(this.groupId);
-            Data invocationUidData = getSerializationService().toData(invocationUid);
-            ClientMessage request = CPFencedLockLockCodec.encodeRequest(groupId, objectName, sessionId, threadId,
-                    invocationUidData);
+            ClientMessage request = CPFencedLockLockCodec.encodeRequest(groupId, objectName, sessionId, threadId, invocationUid);
             ClientInvocationFuture future = new ClientInvocation(getClient(), request, name).invoke();
             return new ClientDelegatingFuture<Long>(future, getSerializationService(), LOCK_RESPONSE_DECODER);
         }
@@ -183,27 +179,22 @@ class RaftFencedLockProxy extends ClientProxy implements FencedLock {
         @Override
         protected InternalCompletableFuture<Long> doTryLock(long sessionId, long threadId, UUID invocationUid,
                                                             long timeoutMillis) {
-            Data groupId = getSerializationService().toData(this.groupId);
-            Data invocationUidData = getSerializationService().toData(invocationUid);
             ClientMessage request = CPFencedLockTryLockCodec.encodeRequest(groupId, objectName, sessionId, threadId,
-                    invocationUidData, timeoutMillis);
+                    invocationUid, timeoutMillis);
             ClientInvocationFuture future = new ClientInvocation(getClient(), request, name).invoke();
             return new ClientDelegatingFuture<Long>(future, getSerializationService(), TRY_RESPONSE_DECODER);
         }
 
         @Override
         protected InternalCompletableFuture<Boolean> doUnlock(long sessionId, long threadId, UUID invocationUid) {
-            Data groupId = getSerializationService().toData(this.groupId);
-            Data invocationUidData = getSerializationService().toData(invocationUid);
             ClientMessage request = CPFencedLockUnlockCodec.encodeRequest(groupId, objectName, sessionId, threadId,
-                    invocationUidData);
+                    invocationUid);
             ClientInvocationFuture future = new ClientInvocation(getClient(), request, name).invoke();
             return new ClientDelegatingFuture<Boolean>(future, getSerializationService(), UNLOCK_RESPONSE_DECODER);
         }
 
         @Override
         protected InternalCompletableFuture<RaftLockOwnershipState> doGetLockOwnershipState() {
-            Data groupId = getSerializationService().toData(this.groupId);
             ClientMessage request = CPFencedLockGetLockOwnershipCodec.encodeRequest(groupId, objectName);
             ClientInvocationFuture future = new ClientInvocation(getClient(), request, name).invoke();
             return new ClientDelegatingFuture<RaftLockOwnershipState>(future, getSerializationService(),

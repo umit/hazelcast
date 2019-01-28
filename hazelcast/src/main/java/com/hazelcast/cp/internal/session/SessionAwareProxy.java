@@ -16,26 +16,26 @@
 
 package com.hazelcast.cp.internal.session;
 
-import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.RaftGroupId;
 
 /**
  * Base class for server and client proxies that make use of Raft sessions
  */
 public abstract class SessionAwareProxy {
 
-    protected final CPGroupId groupId;
+    protected final RaftGroupId groupId;
     private final AbstractProxySessionManager sessionManager;
 
-    protected SessionAwareProxy(AbstractProxySessionManager sessionManager, CPGroupId groupId) {
+    protected SessionAwareProxy(AbstractProxySessionManager sessionManager, RaftGroupId groupId) {
         this.sessionManager = sessionManager;
         this.groupId = groupId;
     }
 
-    public final CPGroupId getGroupId() {
+    public final RaftGroupId getGroupId() {
         return groupId;
     }
 
-    protected final Long getOrCreateUniqueThreadId(CPGroupId groupId) {
+    protected final Long getOrCreateUniqueThreadId(RaftGroupId groupId) {
         return sessionManager.getOrCreateUniqueThreadId(groupId);
     }
 

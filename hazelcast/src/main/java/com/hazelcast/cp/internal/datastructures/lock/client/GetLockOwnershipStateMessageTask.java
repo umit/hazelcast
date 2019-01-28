@@ -20,7 +20,6 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.CPFencedLockGetLockOwnershipCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockOwnershipState;
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockService;
@@ -42,10 +41,9 @@ public class GetLockOwnershipStateMessageTask extends AbstractMessageTask<CPFenc
 
     @Override
     protected void processMessage() {
-        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         service.getInvocationManager()
-               .<RaftLockOwnershipState>invoke(groupId, new GetLockOwnershipStateOp(parameters.name))
+               .<RaftLockOwnershipState>invoke(parameters.groupId, new GetLockOwnershipStateOp(parameters.name))
                .andThen(this);
     }
 
@@ -56,7 +54,7 @@ public class GetLockOwnershipStateMessageTask extends AbstractMessageTask<CPFenc
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        return CPFencedLockGetLockOwnershipCodec.encodeResponse(serializationService.toData(response));
+        return CPFencedLockGetLockOwnershipCodec.encodeResponse((RaftLockOwnershipState) response);
     }
 
     @Override

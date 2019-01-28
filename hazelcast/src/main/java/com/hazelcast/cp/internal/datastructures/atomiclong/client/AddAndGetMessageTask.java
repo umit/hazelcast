@@ -20,7 +20,6 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.CPAtomicLongAddAndGetCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
 import com.hazelcast.core.ExecutionCallback;
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.datastructures.atomiclong.RaftAtomicLongService;
 import com.hazelcast.cp.internal.datastructures.atomiclong.operation.AddAndGetOp;
@@ -41,10 +40,9 @@ public class AddAndGetMessageTask extends AbstractMessageTask<CPAtomicLongAddAnd
 
     @Override
     protected void processMessage() {
-        CPGroupId groupId = nodeEngine.toObject(parameters.groupId);
         RaftService service = nodeEngine.getService(RaftService.SERVICE_NAME);
         service.getInvocationManager()
-                .<Long>invoke(groupId, new AddAndGetOp(parameters.name, parameters.delta))
+                .<Long>invoke(parameters.groupId, new AddAndGetOp(parameters.name, parameters.delta))
                 .andThen(this);
     }
 
