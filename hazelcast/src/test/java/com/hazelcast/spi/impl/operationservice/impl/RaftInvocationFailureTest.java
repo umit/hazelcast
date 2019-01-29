@@ -80,7 +80,7 @@ public class RaftInvocationFailureTest extends HazelcastRaftTestSupport {
             f.get(60, TimeUnit.SECONDS);
             fail();
         } catch (Exception e) {
-            assertTrue(e.getCause() instanceof IndeterminateOperationStateException);
+            assertInstanceOf(IndeterminateOperationStateException.class, e.getCause());
         }
 
         assertTrue(COMMIT_COUNT.get() <= groupSize);
@@ -100,7 +100,7 @@ public class RaftInvocationFailureTest extends HazelcastRaftTestSupport {
             f.get(60, TimeUnit.SECONDS);
             fail();
         } catch (Exception e) {
-            assertTrue(e.getCause() instanceof IndeterminateOperationStateException);
+            assertInstanceOf(IndeterminateOperationStateException.class, e.getCause());
         }
 
         assertTrue(COMMIT_COUNT.get() > groupSize);
@@ -120,7 +120,7 @@ public class RaftInvocationFailureTest extends HazelcastRaftTestSupport {
             f.get(60, TimeUnit.SECONDS);
             fail();
         } catch (Exception e) {
-            assertTrue(e.getCause() instanceof IndeterminateOperationStateException);
+            assertInstanceOf(IndeterminateOperationStateException.class, e.getCause());
         }
 
         assertTrue(COMMIT_COUNT.get() > groupSize);
@@ -140,7 +140,7 @@ public class RaftInvocationFailureTest extends HazelcastRaftTestSupport {
             f.get(60, TimeUnit.SECONDS);
             fail();
         } catch (Exception e) {
-            assertTrue(e.getCause() instanceof IndeterminateOperationStateException);
+            assertInstanceOf(IndeterminateOperationStateException.class, e.getCause());
         }
 
         assertTrue(COMMIT_COUNT.get() > groupSize);
@@ -160,7 +160,7 @@ public class RaftInvocationFailureTest extends HazelcastRaftTestSupport {
             f.get(60, TimeUnit.SECONDS);
             fail();
         } catch (Exception e) {
-            assertTrue(e.getCause() instanceof IllegalStateException);
+            assertInstanceOf(IllegalStateException.class, e.getCause());
         }
 
         assertTrue(COMMIT_COUNT.get() > groupSize);
