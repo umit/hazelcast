@@ -16,11 +16,10 @@
 
 package com.hazelcast.cp.internal;
 
+import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.DataSerializable;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.cp.CPGroupId;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -79,7 +78,7 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
     /**
      * Contains a membership change that will be performed on a CP group
      */
-    public static class CPGroupMembershipChangeContext implements DataSerializable {
+    public static class CPGroupMembershipChangeContext implements IdentifiedDataSerializable {
 
         private CPGroupId groupId;
 
@@ -145,6 +144,16 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
             }
             memberToAdd = in.readObject();
             memberToRemove = in.readObject();
+        }
+
+        @Override
+        public int getFactoryId() {
+            return RaftServiceDataSerializerHook.F_ID;
+        }
+
+        @Override
+        public int getId() {
+            return RaftServiceDataSerializerHook.GROUP_MEMBERSHIP_CHANGE_CTX;
         }
 
         @Override

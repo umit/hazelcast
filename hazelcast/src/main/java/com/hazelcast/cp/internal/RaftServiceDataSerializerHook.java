@@ -16,6 +16,7 @@
 
 package com.hazelcast.cp.internal;
 
+import com.hazelcast.cp.internal.MembershipChangeContext.CPGroupMembershipChangeContext;
 import com.hazelcast.cp.internal.operation.ChangeRaftGroupMembershipOp;
 import com.hazelcast.cp.internal.operation.DefaultRaftReplicateOp;
 import com.hazelcast.cp.internal.operation.DestroyRaftGroupOp;
@@ -104,6 +105,7 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int GET_ACTIVE_RAFT_GROUP_IDS_OP = 38;
     public static final int RAFT_PRE_JOIN_OP = 39;
     public static final int RESTART_CP_MEMBER_OP = 40;
+    public static final int GROUP_MEMBERSHIP_CHANGE_CTX = 41;
 
     @Override
     public int getFactoryId() {
@@ -196,6 +198,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new RaftServicePreJoinOp();
                     case RESTART_CP_MEMBER_OP:
                         return new RestartCPMemberOp();
+                    case GROUP_MEMBERSHIP_CHANGE_CTX:
+                        return new CPGroupMembershipChangeContext();
                     default:
                         throw new IllegalArgumentException("Undefined type: " + typeId);
                 }

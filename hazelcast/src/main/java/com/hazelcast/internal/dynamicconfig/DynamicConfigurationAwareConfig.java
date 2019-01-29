@@ -161,10 +161,10 @@ public class DynamicConfigurationAwareConfig extends Config {
     private final Config staticConfig;
     private final ConfigPatternMatcher configPatternMatcher;
     private final boolean isStaticFirst;
+    private final DynamicCPSubsystemConfig dynamicCPSubsystemConfig;
 
     private volatile ConfigurationService configurationService = new EmptyConfigurationService();
     private volatile DynamicSecurityConfig dynamicSecurityConfig;
-    private volatile DynamicCPSubsystemConfig dynamicCPSubsystemConfig;
     private volatile Searcher configSearcher;
 
     public DynamicConfigurationAwareConfig(Config staticConfig, HazelcastProperties properties) {
