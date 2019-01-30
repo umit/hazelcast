@@ -657,29 +657,35 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         return activeMembers;
     }
 
-    public void setActiveMembers(RaftGroupId metadataGroupId, Collection<CPMemberInfo> members) {
+    public void setActiveMembers(RaftGroupId latestMetadataGroupId, Collection<CPMemberInfo> members) {
         if (!isDiscoveryCompleted()) {
             if (logger.isFineEnabled()) {
                 logger.fine("Ignoring received active CP members: " + members + " since discovery is in progress.");
             }
             return;
         }
-        CPMemberInfo localMember = getLocalMember();
-        if (localMember != null) {
-            if (logger.isFineEnabled()) {
-                logger.fine(localMember + " is already part of CP members!");
-            }
-            assert this.metadataGroupId.equals(metadataGroupId);
-            assert members.contains(localMember);
-            return;
-        }
         checkNotNull(members);
         checkTrue(members.size() > 1, "active members must contain at least 2 members: " + members);
 
-        if (logger.isFineEnabled()) {
-            logger.fine("Setting active CP members: " + members + ", METADATA groupId: " + metadataGroupId);
+        CPMemberInfo localMember = getLocalMember();
+        assert localMember == null || members.contains(localMember);
+
+        if (raftService.getRaftNode(latestMetadataGroupId) != null) {
+            if (logger.isFineEnabled()) {
+                logger.fine(localMember + " is already part of METADATA group! Ignoring received active CP members.");
+            }
+            return;
         }
-        this.metadataGroupId = metadataGroupId;
+        if (!latestMetadataGroupId.equals(metadataGroupId) && raftService.getRaftNode(metadataGroupId) != null) {
+            logger.warning(localMember + " was part of " + metadataGroupId + ", but received active CP members for "
+                    + latestMetadataGroupId + ".");
+            return;
+        }
+
+        if (logger.isFineEnabled()) {
+            logger.fine("Setting active CP members: " + members + ", METADATA groupId: " + latestMetadataGroupId);
+        }
+        this.metadataGroupId = latestMetadataGroupId;
         doSetActiveMembers(unmodifiableCollection(new LinkedHashSet<CPMemberInfo>(members)));
     }
 
