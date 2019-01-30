@@ -86,6 +86,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.hazelcast.cluster.memberselector.MemberSelectors.NON_LOCAL_MEMBER_SELECTOR;
@@ -403,34 +404,15 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
         logger.fine("Triggering remove member procedure for " + localMember);
 
-        long remainingTimeNanos = unit.toNanos(timeout);
-        long start = System.nanoTime();
-
-        ensureTriggerShutdown(localMember, remainingTimeNanos);
-        remainingTimeNanos -= (System.nanoTime() - start);
-
-        // wait for us being replaced in all raft groups we are participating
-        // and removed from all raft groups
-        logger.fine("Waiting remove member procedure to be completed for " + localMember
-                + ", remaining time: " + TimeUnit.NANOSECONDS.toMillis(remainingTimeNanos) + " ms.");
-        while (remainingTimeNanos > 0) {
-            if (isRemoved(localMember)) {
-                logger.fine("Remove member procedure completed for " + localMember);
-                return true;
-            }
-            try {
-                Thread.sleep(MANAGEMENT_TASK_PERIOD_IN_MILLIS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return false;
-            }
-            remainingTimeNanos -= MANAGEMENT_TASK_PERIOD_IN_MILLIS;
+        if (ensureCPMemberRemoved(localMember, unit.toNanos(timeout))) {
+            return true;
         }
+
         logger.fine("Remove member procedure NOT completed for " + localMember + " in " + unit.toMillis(timeout) + " ms.");
         return false;
     }
 
-    private void ensureTriggerShutdown(CPMemberInfo member, long remainingTimeNanos) {
+    private boolean ensureCPMemberRemoved(CPMemberInfo member, long remainingTimeNanos) {
         while (remainingTimeNanos > 0) {
             long start = System.nanoTime();
             try {
@@ -438,17 +420,27 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
                 Future<Void> future = invokeTriggerRemoveMember(member);
                 future.get(remainingTimeNanos, TimeUnit.NANOSECONDS);
                 logger.fine(member + " is marked as being removed.");
-                return;
-            } catch (CannotRemoveCPMemberException e) {
+                break;
+            } catch (CannotRemoveCPMemberException e1) {
                 remainingTimeNanos -= (System.nanoTime() - start);
                 if (remainingTimeNanos <= 0) {
-                    throw e;
+                    throw new IllegalStateException(e1.getMessage());
                 }
-                logger.fine(e.getMessage());
+                logger.fine(e1.getMessage());
+                try {
+                    Thread.sleep(MANAGEMENT_TASK_PERIOD_IN_MILLIS);
+                } catch (InterruptedException e2) {
+                    Thread.currentThread().interrupt();
+                    return false;
+                }
+            } catch (TimeoutException e) {
+                return false;
             } catch (Exception e) {
                 throw ExceptionUtil.rethrow(e);
             }
         }
+
+        return true;
     }
 
     @Override

@@ -27,6 +27,7 @@ import com.hazelcast.cp.internal.exception.CannotRemoveCPMemberException;
 import com.hazelcast.cp.internal.exception.MetadataRaftGroupNotInitializedException;
 import com.hazelcast.cp.internal.raft.SnapshotAwareService;
 import com.hazelcast.cp.internal.raft.impl.RaftNode;
+import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raftop.metadata.CreateRaftNodeOp;
 import com.hazelcast.cp.internal.raftop.metadata.DestroyRaftNodesOp;
 import com.hazelcast.cp.internal.raftop.metadata.InitializeMetadataRaftGroupOp;
@@ -61,6 +62,7 @@ import static com.hazelcast.util.Preconditions.checkFalse;
 import static com.hazelcast.util.Preconditions.checkNotNull;
 import static com.hazelcast.util.Preconditions.checkState;
 import static com.hazelcast.util.Preconditions.checkTrue;
+import static java.util.Collections.singletonList;
 import static java.util.Collections.sort;
 import static java.util.Collections.unmodifiableCollection;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -465,24 +467,40 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     /**
      * this method is idempotent
      */
-    public void triggerRemoveMember(CPMemberInfo leavingMember) {
+    public boolean triggerRemoveMember(long commitIndex, CPMemberInfo leavingMember) {
         checkNotNull(leavingMember);
         checkIfMetadataRaftGroupInitialized();
 
-        if (shouldRemoveMember(leavingMember)) {
-            return;
+        if (!activeMembers.contains(leavingMember)) {
+            logger.warning("Not removing " + leavingMember + " since it is not an active CP members");
+            return true;
+        }
+
+        if (membershipChangeContext != null) {
+            if (leavingMember.equals(membershipChangeContext.getLeavingMember())) {
+                membershipChangeContext.addRetriedCommitIndex(commitIndex);
+
+                if (logger.isFineEnabled()) {
+                    logger.fine(leavingMember + " is already marked as leaving.");
+                }
+
+                return true;
+            }
+
+            throw new CannotRemoveCPMemberException("There is already an ongoing CP membership change process. "
+                    + "Cannot process remove request of " + leavingMember);
         }
 
         if (activeMembers.size() <= 2) {
             logger.warning(leavingMember + " is directly removed as there are only " + activeMembers.size() + " CP members");
             removeActiveMember(leavingMember);
-            return;
+            return true;
         }
 
-        initializeMembershipChangeContextForLeavingMember(leavingMember);
+        return initializeMembershipChangeContextForLeavingMember(commitIndex, leavingMember);
     }
 
-    private void initializeMembershipChangeContextForLeavingMember(CPMemberInfo leavingMember) {
+    private boolean initializeMembershipChangeContextForLeavingMember(long commitIndex, CPMemberInfo leavingMember) {
         List<CPGroupId> leavingGroupIds = new ArrayList<CPGroupId>();
         List<CPGroupMembershipChangeContext> leavingGroups = new ArrayList<CPGroupMembershipChangeContext>();
         for (CPGroupInfo group : groups.values()) {
@@ -508,33 +526,14 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
                 logger.fine("Removing " + leavingMember + " directly since it is not present in any CP group.");
             }
             removeActiveMember(leavingMember);
-            return;
+            return true;
         }
 
-        membershipChangeContext = new MembershipChangeContext(leavingMember, leavingGroups);
+        membershipChangeContext = new MembershipChangeContext(singletonList(commitIndex), leavingMember, leavingGroups);
         if (logger.isFineEnabled()) {
             logger.info(leavingMember + " will be removed from from " + leavingGroups);
         } else {
             logger.info(leavingMember + " will be removed from from " + leavingGroupIds);
-        }
-    }
-
-    private boolean shouldRemoveMember(CPMemberInfo leavingMember) {
-        if (!activeMembers.contains(leavingMember)) {
-            logger.warning("Not removing " + leavingMember + " since it is not an active CP members");
-            return false;
-        }
-
-        if (membershipChangeContext != null) {
-            if (leavingMember.equals(membershipChangeContext.getLeavingMember())) {
-                if (logger.isFineEnabled()) {
-                    logger.fine(leavingMember + " is already marked as leaving.");
-                }
-                return true;
-            }
-
-            throw new CannotRemoveCPMemberException("There is already an ongoing CP membership change process. "
-                    + "Cannot process remove request of " + leavingMember);
         }
 
         return false;
@@ -582,15 +581,31 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             checkState(membershipChangeContext.getChanges().isEmpty(), "Leaving " + leavingMember
                     + " is removed from all groups but there are still pending membership changes: "
                     + membershipChangeContext);
-            logger.info(leavingMember + " is removed from the CP subsystem.");
             removeActiveMember(leavingMember);
+            completeFutures(metadataGroupId, membershipChangeContext.getMembershipChangeCommitIndices(), null);
             membershipChangeContext = null;
+            logger.info(leavingMember + " is removed from the CP subsystem.");
+
         } else if (membershipChangeContext.getChanges().isEmpty()) {
-            logger.info("Rebalancing is completed.");
+            completeFutures(metadataGroupId, membershipChangeContext.getMembershipChangeCommitIndices(), null);
             membershipChangeContext = null;
+            logger.info("Rebalancing is completed.");
         }
 
         return membershipChangeContext;
+    }
+
+    private void completeFutures(CPGroupId groupId, Collection<Long> indices, Object result) {
+        if (!indices.isEmpty()) {
+            RaftNodeImpl raftNode = (RaftNodeImpl) raftService.getRaftNode(groupId);
+            if (raftNode != null) {
+                for (Long index : indices) {
+                    raftNode.completeFuture(index, result);
+                }
+            } else {
+                logger.severe("RaftNode not found for " + groupId + " to notify commit indices " + indices + " with " + result);
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -608,10 +623,6 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             if (getLocalMember().equals(addedMember)) {
                 // we are the added member to the group, we can try to create the local raft node if not created already
                 raftService.createRaftNode(group.id(), group.memberImpls());
-            } else if (addedMember != null) {
-                // publish group-info to the joining member
-                Operation op = new CreateRaftNodeOp(group.id(), (Collection) group.initialMembers());
-                nodeEngine.getOperationService().send(op, addedMember.getAddress());
             }
         } else {
             logger.severe("Could not apply add-member: " + (addedMember != null ? addedMember : "-")
@@ -720,15 +731,23 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     /**
      * this method is idempotent
      */
-    public void addActiveMember(CPMemberInfo member) {
+    public boolean addActiveMember(long commitIndex, CPMemberInfo member) {
         checkNotNull(member);
         checkIfMetadataRaftGroupInitialized();
 
-        if (activeMembers.contains(member)) {
-            if (logger.isFineEnabled()) {
-                logger.fine(member + " already exists.");
+        for (CPMemberInfo existingMember : activeMembers) {
+            if (existingMember.getAddress().equals(member.getAddress())) {
+                if (existingMember.getUuid().equals(member.getUuid())) {
+                    if (logger.isFineEnabled()) {
+                        logger.fine(member + " already exists.");
+                    }
+
+                    return true;
+                }
+
+                throw new IllegalStateException(member + " cannot be added to the CP subsystem because another " + existingMember
+                        + " exists with the same address!");
             }
-            return;
         }
 
         checkState(membershipChangeContext == null,
@@ -744,8 +763,12 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             if (logger.isFineEnabled()) {
                 logger.fine("CP group rebalancing is triggered for " + changes);
             }
-            membershipChangeContext = new MembershipChangeContext(null, changes);
+            membershipChangeContext = new MembershipChangeContext(singletonList(commitIndex), null, changes);
+
+            return false;
         }
+
+        return true;
     }
 
     private void removeActiveMember(CPMemberInfo member) {
@@ -901,7 +924,6 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             return false;
         }
 
-        @SuppressWarnings("unchecked")
         private boolean commitInitialMetadataRaftGroup(List<CPMemberInfo> initialCPMembers) {
             int metadataGroupSize = config.getGroupSize();
             List<CPMemberInfo> metadataMembers = initialCPMembers.subList(0, metadataGroupSize);

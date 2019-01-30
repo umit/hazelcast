@@ -23,6 +23,7 @@ import com.hazelcast.cp.internal.MetadataRaftGroupManager;
 import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
+import com.hazelcast.cp.internal.raft.impl.util.PostponedResponse;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
@@ -50,8 +51,11 @@ public class TriggerRemoveCPMemberOp extends RaftOp implements IndeterminateOper
     public Object run(CPGroupId groupId, long commitIndex) {
         RaftService service = getService();
         MetadataRaftGroupManager metadataManager = service.getMetadataGroupManager();
-        metadataManager.triggerRemoveMember(member);
-        return null;
+        if (metadataManager.triggerRemoveMember(commitIndex, member)) {
+            return null;
+        }
+
+        return PostponedResponse.INSTANCE;
     }
 
     @Override

@@ -41,13 +41,16 @@ import static java.util.Collections.unmodifiableList;
  */
 public class MembershipChangeContext implements IdentifiedDataSerializable {
 
+    private List<Long> membershipChangeCommitIndices;
     private CPMemberInfo leavingMember;
     private final List<CPGroupMembershipChangeContext> changes = new ArrayList<CPGroupMembershipChangeContext>();
 
     MembershipChangeContext() {
     }
 
-    MembershipChangeContext(CPMemberInfo leavingMember, List<CPGroupMembershipChangeContext> changes) {
+    MembershipChangeContext(List<Long> membershipChangeCommitIndices, CPMemberInfo leavingMember,
+                            List<CPGroupMembershipChangeContext> changes) {
+        this.membershipChangeCommitIndices = membershipChangeCommitIndices;
         this.leavingMember = leavingMember;
         this.changes.addAll(changes);
     }
@@ -72,7 +75,15 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
             }
         }
 
-        return new MembershipChangeContext(leavingMember, remainingChanges);
+        return new MembershipChangeContext(membershipChangeCommitIndices, leavingMember, remainingChanges);
+    }
+
+    List<Long> getMembershipChangeCommitIndices() {
+        return membershipChangeCommitIndices;
+    }
+
+    void addRetriedCommitIndex(long commitIndex) {
+        membershipChangeCommitIndices.add(commitIndex);
     }
 
     /**
@@ -175,6 +186,10 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
+        out.writeInt(membershipChangeCommitIndices.size());
+        for (long commitIndex : membershipChangeCommitIndices) {
+            out.writeLong(commitIndex);
+        }
         out.writeObject(leavingMember);
         out.writeInt(changes.size());
         for (CPGroupMembershipChangeContext ctx : changes) {
@@ -184,6 +199,12 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
+        int membershipChangeCommitIndexCount = in.readInt();
+        membershipChangeCommitIndices = new ArrayList<Long>(membershipChangeCommitIndexCount);
+        for (int i = 0; i < membershipChangeCommitIndexCount; i++) {
+            long commitIndex = in.readLong();
+            membershipChangeCommitIndices.add(commitIndex);
+        }
         leavingMember = in.readObject();
         int groupCount = in.readInt();
         for (int i = 0; i < groupCount; i++) {
@@ -195,6 +216,7 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
 
     @Override
     public String toString() {
-        return "MembershipChangeContext{" + ", leavingMember=" + leavingMember + ", changes=" + changes + '}';
+        return "MembershipChangeContext{" + "membershipChangeCommitIndices=" + membershipChangeCommitIndices
+                + ", leavingMember=" + leavingMember + ", changes=" + changes + '}';
     }
 }

@@ -74,6 +74,7 @@ import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.TERMINATED;
 import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.TERMINATING;
 import static com.hazelcast.cp.internal.raft.impl.RaftRole.FOLLOWER;
 import static com.hazelcast.cp.internal.raft.impl.RaftRole.LEADER;
+import static com.hazelcast.util.Preconditions.checkNotNull;
 import static java.lang.Math.min;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -105,6 +106,9 @@ public class RaftNodeImpl implements RaftNode {
 
     public RaftNodeImpl(CPGroupId groupId, Endpoint localMember, Collection<Endpoint> members,
                         RaftAlgorithmConfig raftAlgorithmConfig, RaftIntegration raftIntegration) {
+        checkNotNull(groupId);
+        checkNotNull(localMember);
+        checkNotNull(members);
         this.groupId = groupId;
         this.raftIntegration = raftIntegration;
         this.localMember = localMember;

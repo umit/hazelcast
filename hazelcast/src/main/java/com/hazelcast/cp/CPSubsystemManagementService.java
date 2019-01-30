@@ -161,10 +161,16 @@ public interface CPSubsystemManagementService {
      * If the local member is currently being removed from
      * the active CP members list, then the returning Future object
      * will throw {@link IllegalArgumentException}.
+     * <p>
+     * If there is an ongoing membership change in the CP subsystem when this
+     * method is invoked, then the returning Future object will throw
+     * {@link IllegalStateException}
      *
      * @return a Future representing pending completion of the operation
      * @throws IllegalArgumentException If the local member is currently being
      *         removed from the active CP members list
+     * @throws IllegalStateException If there is an ongoing membership change
+     *         in the CP subsystem
      */
     ICompletableFuture<Void> promoteToCPMember();
 
@@ -176,16 +182,15 @@ public interface CPSubsystemManagementService {
      * shrink and their majority values will be recalculated.
      * <p>
      * This method can be invoked only from the Hazelcast master member.
-     * <p>
-     * This method is idempotent.
-     * If the given member is not in the active CP members list,
-     * then this method will have no effect.
      *
      * @return a Future representing pending completion of the operation
      * @throws IllegalStateException When member removal initiated by
      *         a non-master member or the given member is still member of
      *         the Hazelcast cluster or another CP member is being removed
      *         from the CP sub-system
+     * @throws IllegalArgumentException if the given CP member is still part
+     *         of the Hazelcast cluster or already removed from the CP member
+     *         list
      */
     ICompletableFuture<Void> removeCPMember(String cpMemberUuid);
 
