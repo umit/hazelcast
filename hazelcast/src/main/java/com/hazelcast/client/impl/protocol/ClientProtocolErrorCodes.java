@@ -116,6 +116,9 @@ public final class ClientProtocolErrorCodes {
     public static final int LOCK_ACQUIRE_LIMIT_EXCEEDED_EXCEPTION = 91;
     public static final int LOCK_OWNERSHIP_LOST_EXCEPTION = 92;
     public static final int CP_GROUP_DESTROYED_EXCEPTION = 93;
+    public static final int CANNOT_REPLICATE_EXCEPTION = 94;
+    public static final int LEADER_DEMOTED_EXCEPTION = 95;
+    public static final int STALE_APPEND_REQUEST_EXCEPTION = 96;
 
     // These exception codes are reserved to by used by hazelcast-jet project
     public static final int JET_EXCEPTIONS_RANGE_START = 500;

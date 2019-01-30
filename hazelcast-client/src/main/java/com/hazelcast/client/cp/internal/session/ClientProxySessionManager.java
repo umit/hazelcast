@@ -16,8 +16,6 @@
 
 package com.hazelcast.client.cp.internal.session;
 
-import com.hazelcast.client.impl.clientside.ClientExceptionFactory;
-import com.hazelcast.client.impl.clientside.ClientExceptionFactory.ExceptionFactory;
 import com.hazelcast.client.impl.clientside.ClientMessageDecoder;
 import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.protocol.ClientMessage;
@@ -30,14 +28,9 @@ import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.client.util.ClientDelegatingFuture;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.CPGroupId;
-import com.hazelcast.cp.exception.CPGroupDestroyedException;
 import com.hazelcast.cp.internal.RaftGroupId;
-import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
 import com.hazelcast.cp.internal.session.AbstractProxySessionManager;
-import com.hazelcast.cp.internal.session.SessionExpiredException;
 import com.hazelcast.cp.internal.session.SessionResponse;
-import com.hazelcast.cp.lock.exception.LockAcquireLimitExceededException;
-import com.hazelcast.cp.lock.exception.LockOwnershipLostException;
 import com.hazelcast.logging.ILogger;
 
 import java.util.Map;
@@ -45,11 +38,6 @@ import java.util.Map.Entry;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.CP_GROUP_DESTROYED_EXCEPTION;
-import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.LOCK_ACQUIRE_LIMIT_EXCEEDED_EXCEPTION;
-import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.LOCK_OWNERSHIP_LOST_EXCEPTION;
-import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.SESSION_EXPIRED_EXCEPTION;
-import static com.hazelcast.client.impl.protocol.ClientProtocolErrorCodes.WAIT_KEY_CANCELLED_EXCEPTION;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
@@ -79,37 +67,6 @@ public class ClientProxySessionManager extends AbstractProxySessionManager {
 
     public ClientProxySessionManager(HazelcastClientInstanceImpl client) {
         this.client = client;
-        ClientExceptionFactory factory = client.getClientExceptionFactory();
-        factory.register(SESSION_EXPIRED_EXCEPTION, SessionExpiredException.class, new ExceptionFactory() {
-            @Override
-            public Throwable createException(String message, Throwable cause) {
-                return new SessionExpiredException(message, cause);
-            }
-        });
-        factory.register(WAIT_KEY_CANCELLED_EXCEPTION, WaitKeyCancelledException.class, new ExceptionFactory() {
-            @Override
-            public Throwable createException(String message, Throwable cause) {
-                return new WaitKeyCancelledException(message, cause);
-            }
-        });
-        factory.register(LOCK_ACQUIRE_LIMIT_EXCEEDED_EXCEPTION, LockAcquireLimitExceededException.class, new ExceptionFactory() {
-            @Override
-            public Throwable createException(String message, Throwable cause) {
-                return new LockAcquireLimitExceededException(message);
-            }
-        });
-        factory.register(LOCK_OWNERSHIP_LOST_EXCEPTION, LockOwnershipLostException.class, new ExceptionFactory() {
-            @Override
-            public Throwable createException(String message, Throwable cause) {
-                return new LockOwnershipLostException(message);
-            }
-        });
-        factory.register(CP_GROUP_DESTROYED_EXCEPTION, CPGroupDestroyedException.class, new ExceptionFactory() {
-            @Override
-            public Throwable createException(String message, Throwable cause) {
-                return new CPGroupDestroyedException();
-            }
-        });
     }
 
     @Override

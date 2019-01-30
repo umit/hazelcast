@@ -32,6 +32,9 @@ import com.hazelcast.core.LocalMemberResetException;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.core.OperationTimeoutException;
 import com.hazelcast.cp.exception.CPGroupDestroyedException;
+import com.hazelcast.cp.exception.CannotReplicateException;
+import com.hazelcast.cp.exception.LeaderDemotedException;
+import com.hazelcast.cp.exception.StaleAppendRequestException;
 import com.hazelcast.cp.lock.exception.LockAcquireLimitExceededException;
 import com.hazelcast.cp.lock.exception.LockOwnershipLostException;
 import com.hazelcast.cp.internal.datastructures.exception.WaitKeyCancelledException;
@@ -208,6 +211,9 @@ public class ClientExceptions {
         register(ClientProtocolErrorCodes.LOCK_ACQUIRE_LIMIT_EXCEEDED_EXCEPTION, LockAcquireLimitExceededException.class);
         register(ClientProtocolErrorCodes.LOCK_OWNERSHIP_LOST_EXCEPTION, LockOwnershipLostException.class);
         register(ClientProtocolErrorCodes.CP_GROUP_DESTROYED_EXCEPTION, CPGroupDestroyedException.class);
+        register(ClientProtocolErrorCodes.CANNOT_REPLICATE_EXCEPTION, CannotReplicateException.class);
+        register(ClientProtocolErrorCodes.LEADER_DEMOTED_EXCEPTION, LeaderDemotedException.class);
+        register(ClientProtocolErrorCodes.STALE_APPEND_REQUEST_EXCEPTION, StaleAppendRequestException.class);
     }
 
 
