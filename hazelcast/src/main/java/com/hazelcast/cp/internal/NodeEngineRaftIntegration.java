@@ -217,6 +217,12 @@ final class NodeEngineRaftIntegration implements RaftIntegration {
 
     private boolean send(AsyncRaftOp operation, Endpoint target) {
         CPMember targetMember = (CPMember) target;
+        if (nodeEngine.getThisAddress().equals(targetMember.getAddress())) {
+            ILogger logger = nodeEngine.getLogger(this.getClass());
+            logger.severe("Cannot send " + operation + " to " + target + " because its address is same with local address!");
+            return false;
+        }
+
         operation.setTargetMember(targetMember).setPartitionId(partitionId);
         return operationService.send(operation, targetMember.getAddress());
     }
