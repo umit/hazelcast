@@ -444,6 +444,11 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
     public void testExpandRaftGroupMultipleTimes() throws ExecutionException, InterruptedException {
         final HazelcastInstance[] instances = newInstances(5, 5, 3);
 
+        waitUntilCPDiscoveryCompleted(instances);
+        final CPGroupId metadataGroupId = getMetadataGroupId(instances[0]);
+
+        waitAllForLeaderElection(Arrays.copyOf(instances, 5), metadataGroupId);
+
         final RaftInvocationManager invocationManager = getRaftInvocationManager(instances[3]);
 
         instances[0].shutdown();
@@ -452,7 +457,6 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         getRaftService(instances[5]).promoteToCPMember().get();
 
-        final CPGroupId metadataGroupId = getMetadataGroupId(instances[3]);
         CPGroupInfo group = invocationManager.<CPGroupInfo>query(metadataGroupId, new GetRaftGroupOp(metadataGroupId), LEADER_LOCAL).get();
         assertEquals(3, group.memberCount());
         Collection<CPMemberInfo> members = group.memberImpls();
@@ -492,24 +496,30 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
     }
 
     @Test
-    public void testExpandMultipleRaftGroupsMultipleTimes() throws ExecutionException, InterruptedException {
+    public void testExpandMultipleRaftGroupsMultipleTimes() throws ExecutionException, InterruptedException, TimeoutException {
         final HazelcastInstance[] instances = newInstances(5, 5, 2);
+
+        final CPGroupId metadataGroupId = getMetadataGroupId(instances[0]);
 
         final RaftInvocationManager invocationManager = getRaftInvocationManager(instances[6]);
         final CPGroupId groupId = invocationManager.createRaftGroup("g1", 5).get();
         invocationManager.invoke(groupId, new DummyOp()).get();
 
-        CPGroupInfo otherGroup = invocationManager.<CPGroupInfo>invoke(getMetadataGroupId(instances[6]), new GetRaftGroupOp(groupId)).get();
+        waitUntilCPDiscoveryCompleted(instances);
+        waitAllForLeaderElection(Arrays.copyOf(instances, 5), metadataGroupId);
+
+        waitUntilCPDiscoveryCompleted(instances);
+        waitAllForLeaderElection(Arrays.copyOf(instances, 5), groupId);
+
+        CPGroupInfo otherGroup = invocationManager.<CPGroupInfo>invoke(metadataGroupId, new GetRaftGroupOp(groupId)).get();
         CPMemberInfo[] otherGroupMembers = otherGroup.membersArray();
         List<Address> shutdownAddresses = Arrays.asList(otherGroupMembers[0].getAddress(), otherGroupMembers[1].getAddress());
+
+        getRaftService(instances[5]).promoteToCPMember().get(30, TimeUnit.SECONDS);
 
         for (Address address : shutdownAddresses) {
             factory.getInstance(address).shutdown();
         }
-
-        getRaftService(instances[5]).promoteToCPMember().get();
-
-        final CPGroupId metadataGroupId = getMetadataGroupId(instances[6]);
 
         CPGroupInfo metadataGroup = invocationManager.<CPGroupInfo>query(metadataGroupId, new GetRaftGroupOp(metadataGroupId), LEADER_LOCAL).get();
         otherGroup = invocationManager.<CPGroupInfo>query(metadataGroupId, new GetRaftGroupOp(groupId), LEADER_LOCAL).get();
@@ -518,13 +528,13 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws ExecutionException, InterruptedException {
+            public void run() {
                 assertNotNull(getRaftNode(instances[5], metadataGroupId));
                 assertNotNull(getRaftNode(instances[5], groupId));
             }
         });
 
-        getRaftService(instances[6]).promoteToCPMember().get();
+        getRaftService(instances[6]).promoteToCPMember().get(30, TimeUnit.SECONDS);
 
         metadataGroup = invocationManager.<CPGroupInfo>query(metadataGroupId, new GetRaftGroupOp(metadataGroupId), LEADER_LOCAL).get();
         otherGroup = invocationManager.<CPGroupInfo>query(metadataGroupId, new GetRaftGroupOp(groupId), LEADER_LOCAL).get();
@@ -533,7 +543,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         assertTrueEventually(new AssertTask() {
             @Override
-            public void run() throws ExecutionException, InterruptedException {
+            public void run() {
                 assertNotNull(getRaftNode(instances[6], metadataGroupId));
                 assertNotNull(getRaftNode(instances[5], groupId));
             }

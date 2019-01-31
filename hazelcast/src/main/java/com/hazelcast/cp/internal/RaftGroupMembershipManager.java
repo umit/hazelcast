@@ -252,7 +252,7 @@ class RaftGroupMembershipManager {
             CountDownLatch latch = new CountDownLatch(changes.size());
 
             for (CPGroupMembershipChangeContext ctx : changes) {
-                addMember(changedGroups, latch, ctx);
+                applyMembershipChangeOnRaftGroup(changedGroups, latch, ctx);
             }
 
             try {
@@ -270,9 +270,9 @@ class RaftGroupMembershipManager {
             return f.join();
         }
 
-        private void addMember(final Map<CPGroupId, Tuple2<Long, Long>> changedGroups,
-                               final CountDownLatch latch,
-                               final CPGroupMembershipChangeContext ctx) {
+        private void applyMembershipChangeOnRaftGroup(final Map<CPGroupId, Tuple2<Long, Long>> changedGroups,
+                                                      final CountDownLatch latch,
+                                                      final CPGroupMembershipChangeContext ctx) {
             final CPGroupId groupId = ctx.getGroupId();
             ICompletableFuture<Long> future;
             if (ctx.getMemberToAdd() == null) {

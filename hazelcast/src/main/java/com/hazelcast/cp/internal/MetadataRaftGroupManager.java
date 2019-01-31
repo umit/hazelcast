@@ -472,19 +472,19 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         checkIfMetadataRaftGroupInitialized();
 
         if (!activeMembers.contains(leavingMember)) {
-            logger.warning("Not removing " + leavingMember + " since it is not an active CP members");
+            logger.warning("Not removing " + leavingMember + " since it is not an active CP member");
             return true;
         }
 
         if (membershipChangeContext != null) {
             if (leavingMember.equals(membershipChangeContext.getLeavingMember())) {
-                membershipChangeContext.addRetriedCommitIndex(commitIndex);
+                membershipChangeContext = membershipChangeContext.addRetriedCommitIndex(commitIndex);
 
                 if (logger.isFineEnabled()) {
                     logger.fine(leavingMember + " is already marked as leaving.");
                 }
 
-                return true;
+                return false;
             }
 
             throw new CannotRemoveCPMemberException("There is already an ongoing CP membership change process. "
@@ -529,11 +529,11 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             return true;
         }
 
-        membershipChangeContext = new MembershipChangeContext(singletonList(commitIndex), leavingMember, leavingGroups);
+        membershipChangeContext = MembershipChangeContext.memberLeaving(singletonList(commitIndex), leavingMember, leavingGroups);
         if (logger.isFineEnabled()) {
-            logger.info(leavingMember + " will be removed from from " + leavingGroups);
+            logger.info(leavingMember + " will be removed from " + leavingGroups);
         } else {
-            logger.info(leavingMember + " will be removed from from " + leavingGroupIds);
+            logger.info(leavingMember + " will be removed from " + leavingGroupIds);
         }
 
         return false;
@@ -608,7 +608,6 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         }
     }
 
-    @SuppressWarnings("unchecked")
     private void applyMembershipChange(CPGroupMembershipChangeContext ctx, CPGroupInfo group,
                                        long expectedMembersCommitIndex, long newMembersCommitIndex) {
         CPMemberInfo addedMember = ctx.getMemberToAdd();
@@ -742,6 +741,12 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
                         logger.fine(member + " already exists.");
                     }
 
+                    if (membershipChangeContext != null && member.equals(membershipChangeContext.getAddedMember())) {
+                        membershipChangeContext = membershipChangeContext.addRetriedCommitIndex(commitIndex);
+                        logger.info("CP groups are already being rebalanced for " + member);
+                        return false;
+                    }
+
                     return true;
                 }
 
@@ -763,7 +768,8 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             if (logger.isFineEnabled()) {
                 logger.fine("CP group rebalancing is triggered for " + changes);
             }
-            membershipChangeContext = new MembershipChangeContext(singletonList(commitIndex), null, changes);
+
+            membershipChangeContext = MembershipChangeContext.memberAdded(singletonList(commitIndex), member, changes);
 
             return false;
         }

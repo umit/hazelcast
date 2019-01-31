@@ -416,11 +416,15 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         while (remainingTimeNanos > 0) {
             long start = System.nanoTime();
             try {
-                // mark us as shutting-down in metadata
                 Future<Void> future = invokeTriggerRemoveMember(member);
-                future.get(remainingTimeNanos, TimeUnit.NANOSECONDS);
+                future.get(MANAGEMENT_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
                 logger.fine(member + " is marked as being removed.");
                 break;
+            } catch (TimeoutException e) {
+                remainingTimeNanos -= (System.nanoTime() - start);
+                if (remainingTimeNanos <= 0) {
+                    return false;
+                }
             } catch (CannotRemoveCPMemberException e1) {
                 remainingTimeNanos -= (System.nanoTime() - start);
                 if (remainingTimeNanos <= 0) {
@@ -433,8 +437,6 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
                     Thread.currentThread().interrupt();
                     return false;
                 }
-            } catch (TimeoutException e) {
-                return false;
             } catch (Exception e) {
                 throw ExceptionUtil.rethrow(e);
             }

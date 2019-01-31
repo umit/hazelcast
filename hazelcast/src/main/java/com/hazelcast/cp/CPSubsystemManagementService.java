@@ -138,15 +138,11 @@ public interface CPSubsystemManagementService {
      * <p>
      * This method is idempotent. It has no effect if the given CP group is
      * already destroyed.
-     *
-     * @return a Future representing pending completion of the operation
      */
     ICompletableFuture<Void> forceDestroyCPGroup(String groupName);
 
     /**
      * Returns the current list of CP members
-     *
-     * @return the current list of CP members
      */
     ICompletableFuture<Collection<CPMember>> getCPMembers();
 
@@ -158,15 +154,18 @@ public interface CPSubsystemManagementService {
      * method will have no effect. When the current member is promoted to CP
      * member, its member UUID is assigned as CP member UUID.
      * <p>
+     * Once the returned {@code Future} object is completed, the promoted CP
+     * member has been added to the CP groups that have missing members, i.e.,
+     * whose size is smaller than {@link CPSubsystemConfig#getGroupSize()}.
+     * <p>
      * If the local member is currently being removed from
-     * the active CP members list, then the returning Future object
+     * the active CP members list, then the returned {@code Future} object
      * will throw {@link IllegalArgumentException}.
      * <p>
      * If there is an ongoing membership change in the CP subsystem when this
-     * method is invoked, then the returning Future object will throw
+     * method is invoked, then the returned {@code Future} object will throw
      * {@link IllegalStateException}
      *
-     * @return a Future representing pending completion of the operation
      * @throws IllegalArgumentException If the local member is currently being
      *         removed from the active CP members list
      * @throws IllegalStateException If there is an ongoing membership change
@@ -183,7 +182,6 @@ public interface CPSubsystemManagementService {
      * <p>
      * This method can be invoked only from the Hazelcast master member.
      *
-     * @return a Future representing pending completion of the operation
      * @throws IllegalStateException When member removal initiated by
      *         a non-master member or the given member is still member of
      *         the Hazelcast cluster or another CP member is being removed

@@ -41,22 +41,33 @@ import static java.util.Collections.unmodifiableList;
  */
 public class MembershipChangeContext implements IdentifiedDataSerializable {
 
+    public enum MembershipChangeMode {
+        ADD,
+        LEAVE
+    }
+
     private List<Long> membershipChangeCommitIndices;
-    private CPMemberInfo leavingMember;
+    private CPMemberInfo member;
+    private MembershipChangeMode membershipChangeMode;
     private final List<CPGroupMembershipChangeContext> changes = new ArrayList<CPGroupMembershipChangeContext>();
 
     MembershipChangeContext() {
     }
 
-    MembershipChangeContext(List<Long> membershipChangeCommitIndices, CPMemberInfo leavingMember,
-                            List<CPGroupMembershipChangeContext> changes) {
+    private MembershipChangeContext(List<Long> membershipChangeCommitIndices, CPMemberInfo member,
+                                    MembershipChangeMode membershipChangeMode, List<CPGroupMembershipChangeContext> changes) {
         this.membershipChangeCommitIndices = membershipChangeCommitIndices;
-        this.leavingMember = leavingMember;
+        this.member = member;
+        this.membershipChangeMode = membershipChangeMode;
         this.changes.addAll(changes);
     }
 
+    CPMemberInfo getAddedMember() {
+        return membershipChangeMode == MembershipChangeMode.ADD ? member : null;
+    }
+
     CPMemberInfo getLeavingMember() {
-        return leavingMember;
+        return membershipChangeMode == MembershipChangeMode.LEAVE ? member : null;
     }
 
     List<CPGroupMembershipChangeContext> getChanges() {
@@ -75,15 +86,27 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
             }
         }
 
-        return new MembershipChangeContext(membershipChangeCommitIndices, leavingMember, remainingChanges);
+        return new MembershipChangeContext(membershipChangeCommitIndices, member, membershipChangeMode, remainingChanges);
     }
 
     List<Long> getMembershipChangeCommitIndices() {
         return membershipChangeCommitIndices;
     }
 
-    void addRetriedCommitIndex(long commitIndex) {
+    MembershipChangeContext addRetriedCommitIndex(long commitIndex) {
+        List<Long> membershipChangeCommitIndices = new ArrayList<Long>(this.membershipChangeCommitIndices);
         membershipChangeCommitIndices.add(commitIndex);
+        return new MembershipChangeContext(membershipChangeCommitIndices, member, membershipChangeMode, changes);
+    }
+
+    static MembershipChangeContext memberAdded(List<Long> membershipChangeCommitIndices, CPMemberInfo member,
+                                               List<CPGroupMembershipChangeContext> changes) {
+        return new MembershipChangeContext(membershipChangeCommitIndices, member, MembershipChangeMode.ADD, changes);
+    }
+
+    static MembershipChangeContext memberLeaving(List<Long> membershipChangeCommitIndices, CPMemberInfo member,
+                                                 List<CPGroupMembershipChangeContext> changes) {
+        return new MembershipChangeContext(membershipChangeCommitIndices, member, MembershipChangeMode.LEAVE, changes);
     }
 
     /**
@@ -190,7 +213,8 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
         for (long commitIndex : membershipChangeCommitIndices) {
             out.writeLong(commitIndex);
         }
-        out.writeObject(leavingMember);
+        out.writeObject(member);
+        out.writeUTF(membershipChangeMode.name());
         out.writeInt(changes.size());
         for (CPGroupMembershipChangeContext ctx : changes) {
             ctx.writeData(out);
@@ -205,7 +229,8 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
             long commitIndex = in.readLong();
             membershipChangeCommitIndices.add(commitIndex);
         }
-        leavingMember = in.readObject();
+        member = in.readObject();
+        membershipChangeMode = MembershipChangeMode.valueOf(in.readUTF());
         int groupCount = in.readInt();
         for (int i = 0; i < groupCount; i++) {
             CPGroupMembershipChangeContext context = new CPGroupMembershipChangeContext();
@@ -216,7 +241,7 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
 
     @Override
     public String toString() {
-        return "MembershipChangeContext{" + "membershipChangeCommitIndices=" + membershipChangeCommitIndices
-                + ", leavingMember=" + leavingMember + ", changes=" + changes + '}';
+        return "MembershipChangeContext{" + "membershipChangeCommitIndices=" + membershipChangeCommitIndices + ", member="
+                + member + ", membershipChangeMode=" + membershipChangeMode + ", changes=" + changes + '}';
     }
 }
