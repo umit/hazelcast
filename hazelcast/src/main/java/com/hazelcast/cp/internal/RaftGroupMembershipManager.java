@@ -98,7 +98,7 @@ class RaftGroupMembershipManager {
     }
 
     private CPMemberInfo getLocalMember() {
-        return raftService.getMetadataGroupManager().getLocalMember();
+        return raftService.getMetadataGroupManager().getLocalCPMember();
     }
 
     private boolean skipRunningTask() {
@@ -163,7 +163,7 @@ class RaftGroupMembershipManager {
 
             OperationService operationService = nodeEngine.getOperationService();
             for (CPMemberInfo member : raftService.getMetadataGroupManager().getActiveMembers()) {
-                if (!member.equals(raftService.getLocalMember())) {
+                if (!member.equals(raftService.getLocalCPMember())) {
                     operationService.send(new DestroyRaftNodesOp(destroyedGroupIds), member.getAddress());
                 }
             }

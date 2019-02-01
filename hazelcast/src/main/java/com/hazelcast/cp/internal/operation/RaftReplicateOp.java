@@ -59,7 +59,7 @@ public abstract class RaftReplicateOp extends Operation implements IdentifiedDat
             if (service.isRaftGroupDestroyed(groupId)) {
                 sendResponse(new CPGroupDestroyedException(groupId));
             } else {
-                sendResponse(new NotLeaderException(groupId, service.getLocalMember(), null));
+                sendResponse(new NotLeaderException(groupId, service.getLocalCPMember(), null));
             }
             return;
         }

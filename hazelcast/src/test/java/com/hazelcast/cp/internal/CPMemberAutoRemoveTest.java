@@ -18,6 +18,7 @@ package com.hazelcast.cp.internal;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.cp.CPMember;
 import com.hazelcast.spi.properties.GroupProperty;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -45,9 +46,7 @@ public class CPMemberAutoRemoveTest extends HazelcastRaftTestSupport {
         missingRaftMemberRemovalSeconds = 10;
         final HazelcastInstance[] instances = newInstances(3, 3, 0);
 
-        waitUntilCPDiscoveryCompleted(instances);
-
-        final CPMemberInfo terminatedMember = getRaftService(instances[2]).getLocalMember();
+        final CPMember terminatedMember = instances[2].getCPSubsystem().getLocalCPMember();
         instances[2].getLifecycleService().terminate();
 
         assertTrueEventually(new AssertTask() {
@@ -66,11 +65,9 @@ public class CPMemberAutoRemoveTest extends HazelcastRaftTestSupport {
         missingRaftMemberRemovalSeconds = 300;
         final HazelcastInstance[] instances = newInstances(3, 3, 0);
 
-        waitUntilCPDiscoveryCompleted(instances);
-
-        final CPMemberInfo cpMember0 = getRaftService(instances[0]).getLocalMember();
-        final CPMemberInfo cpMember1 = getRaftService(instances[1]).getLocalMember();
-        final CPMemberInfo cpMember2 = getRaftService(instances[2]).getLocalMember();
+        final CPMember cpMember0 = instances[0].getCPSubsystem().getLocalCPMember();
+        final CPMember cpMember1 = instances[1].getCPSubsystem().getLocalCPMember();
+        final CPMember cpMember2 = instances[2].getCPSubsystem().getLocalCPMember();
 
         blockCommunicationBetween(instances[1], instances[2]);
         blockCommunicationBetween(instances[0], instances[2]);

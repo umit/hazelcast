@@ -281,11 +281,13 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
     @Override
     public ICompletableFuture<Void> promoteToCPMember() {
-        if (metadataGroupManager.getLocalMember() != null) {
+        if (metadataGroupManager.getLocalCPMember() != null) {
             SimpleCompletableFuture<Void> f = newCompletableFuture();
             f.setResult(null);
             return f;
         }
+
+        final SimpleCompletableFuture<Void> future = newCompletableFuture();
 
         MemberImpl localMember = nodeEngine.getLocalMember();
         // Local member may be recovered during restart, for instance via Hot Restart,
@@ -294,18 +296,20 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         // This new UUID generation can be removed when Hot Restart allows to recover Raft state.
         final CPMemberInfo member = new CPMemberInfo(UuidUtil.newUnsecureUuidString(), localMember.getAddress());
         logger.info("Adding new CP member: " + member);
-        ICompletableFuture<Void> future = invocationManager.invoke(getMetadataGroupId(), new AddCPMemberOp(member));
 
-        future.andThen(new ExecutionCallback<Void>() {
-            @Override
-            public void onResponse(Void response) {
-                metadataGroupManager.initPromotedCPMember(member);
-            }
+        invocationManager.invoke(getMetadataGroupId(), new AddCPMemberOp(member))
+                         .andThen(new ExecutionCallback<Object>() {
+                             @Override
+                             public void onResponse(Object response) {
+                                 metadataGroupManager.initPromotedCPMember(member);
+                                 future.setResult(response);
+                             }
 
-            @Override
-            public void onFailure(Throwable t) {
-            }
-        });
+                             @Override
+                             public void onFailure(Throwable t) {
+                                 future.setResult(new ExecutionException(t));
+                             }
+                         });
         return future;
     }
 
@@ -392,7 +396,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
     @Override
     public boolean onShutdown(long timeout, TimeUnit unit) {
-        CPMemberInfo localMember = getLocalMember();
+        CPMemberInfo localMember = getLocalCPMember();
         if (localMember == null) {
             return true;
         }
@@ -621,7 +625,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     }
 
     private boolean isTargetLocalMember(Object request, CPMember target) {
-        if (!target.equals(metadataGroupManager.getLocalMember())) {
+        if (!target.equals(metadataGroupManager.getLocalCPMember())) {
             if (logger.isFineEnabled()) {
                 logger.fine("Won't handle " + request + ". We are not the expected target: " + target);
             }
@@ -655,8 +659,8 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return config;
     }
 
-    public CPMemberInfo getLocalMember() {
-        return metadataGroupManager.getLocalMember();
+    public CPMemberInfo getLocalCPMember() {
+        return metadataGroupManager.getLocalCPMember();
     }
 
     public void createRaftNode(CPGroupId groupId, Collection<CPMemberInfo> members) {
@@ -671,7 +675,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
         RaftIntegration integration = new NodeEngineRaftIntegration(nodeEngine, groupId);
         RaftAlgorithmConfig raftAlgorithmConfig = config.getRaftAlgorithmConfig();
-        RaftNodeImpl node = new RaftNodeImpl(groupId, getLocalMember(), (Collection) members, raftAlgorithmConfig, integration);
+        RaftNodeImpl node = new RaftNodeImpl(groupId, getLocalCPMember(), (Collection) members, raftAlgorithmConfig, integration);
 
         if (nodes.putIfAbsent(groupId, node) == null) {
             if (destroyedGroupIds.contains(groupId)) {
@@ -800,7 +804,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
                 @Override
                 public void onResponse(CPGroupInfo group) {
                     if (group != null) {
-                        if (group.memberImpls().contains(getLocalMember())) {
+                        if (group.memberImpls().contains(getLocalCPMember())) {
                             createRaftNode(groupId, (Collection) group.initialMembers());
                         } else {
                             // I can be the member that is just added to the raft group...
@@ -827,7 +831,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         }
 
         void queryInitialMembersFromTargetRaftGroup() {
-            CPMemberInfo localMember = getLocalMember();
+            CPMemberInfo localMember = getLocalCPMember();
             if (localMember == null) {
                 return;
             }

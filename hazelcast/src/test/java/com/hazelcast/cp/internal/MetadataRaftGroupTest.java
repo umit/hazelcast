@@ -23,6 +23,7 @@ import com.hazelcast.core.Member;
 import com.hazelcast.cp.CPGroup;
 import com.hazelcast.cp.CPGroup.CPGroupStatus;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.CPMember;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raftop.metadata.CreateRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetActiveCPMembersOp;
@@ -467,7 +468,7 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
         final CPGroupId groupId = f.get();
 
         for (final HazelcastInstance instance : instances) {
-            if (endpoints.contains(getRaftService(instance).getLocalMember())) {
+            if (endpoints.contains(instance.getCPSubsystem().getLocalCPMember())) {
                 assertTrueEventually(new AssertTask() {
                     @Override
                     public void run() {
@@ -572,8 +573,8 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
             }
         });
 
-        CPMemberInfo endpoint3 = getRaftService(instances[3]).getLocalMember();
-        CPMemberInfo endpoint4 = getRaftService(instances[4]).getLocalMember();
+        CPMember endpoint3 = instances[3].getCPSubsystem().getLocalCPMember();
+        CPMember endpoint4 = instances[4].getCPSubsystem().getLocalCPMember();
         instances[3].getLifecycleService().terminate();
         instances[4].getLifecycleService().terminate();
 
@@ -584,12 +585,12 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
         RaftNodeImpl leaderNode = waitAllForLeaderElection(Arrays.copyOf(instances, 3), INITIAL_METADATA_GROUP_ID);
         HazelcastInstance leader = factory.getInstance(((CPMemberInfo) leaderNode.getLocalMember()).getAddress());
         CPGroupInfo g3Group = getRaftGroupLocally(leader, g3);
-        assertThat(g3Group.memberImpls(), not(hasItem(endpoint3)));
-        assertThat(g3Group.memberImpls(), not(hasItem(endpoint4)));
+        assertThat(g3Group.members(), not(hasItem(endpoint3)));
+        assertThat(g3Group.members(), not(hasItem(endpoint4)));
 
         CPGroupInfo g4Group = getRaftGroupLocally(leader, g4);
-        boolean b3 = g4Group.containsMember(endpoint3);
-        boolean b4 = g4Group.containsMember(endpoint4);
+        boolean b3 = g4Group.containsMember((CPMemberInfo) endpoint3);
+        boolean b4 = g4Group.containsMember((CPMemberInfo) endpoint4);
         assertTrue(b3 ^ b4);
     }
 
