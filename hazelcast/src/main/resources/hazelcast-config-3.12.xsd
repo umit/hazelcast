@@ -4217,6 +4217,13 @@
                     </xs:documentation>
                 </xs:annotation>
             </xs:element>
+            <xs:element name="max-missed-leader-heartbeat-count" type="xs:unsignedInt" minOccurs="0" maxOccurs="1" default="5">
+                <xs:annotation>
+                    <xs:documentation>
+                        Max number of missed leader heartbeats to trigger a new leader election
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
             <xs:element name="append-request-max-entry-count" type="xs:unsignedInt" minOccurs="0" maxOccurs="1" default="50">
                 <xs:annotation>
                     <xs:documentation>

@@ -100,6 +100,7 @@ public class RaftNodeImpl implements RaftNode {
     private final int maxUncommittedEntryCount;
     private final int appendRequestMaxEntryCount;
     private final int commitIndexAdvanceCountToSnapshot;
+    private final int maxMissedLeaderHeartbeatCount;
 
     private long lastAppendEntriesTimestamp;
     private volatile RaftNodeStatus status = ACTIVE;
@@ -119,6 +120,7 @@ public class RaftNodeImpl implements RaftNode {
         this.commitIndexAdvanceCountToSnapshot = raftAlgorithmConfig.getCommitIndexAdvanceCountToSnapshot();
         this.leaderElectionTimeout = (int) raftAlgorithmConfig.getLeaderElectionTimeoutInMillis();
         this.heartbeatPeriodInMillis = raftAlgorithmConfig.getLeaderHeartbeatPeriodInMillis();
+        this.maxMissedLeaderHeartbeatCount = raftAlgorithmConfig.getMaxMissedLeaderHeartbeatCount();
     }
 
     public ILogger getLogger(Class clazz) {
@@ -853,6 +855,11 @@ public class RaftNodeImpl implements RaftNode {
                 } else if (!raftIntegration.isReachable(leader)) {
                     logger.warning("Current leader " + leader + " is not reachable. Will start new election round...");
                     resetLeaderAndStartElection();
+                } else if (isLeaderHeartbeatTimedOut()) {
+                    // Even though leader endpoint is reachable by raft-integration,
+                    // leader itself may be crashed and another member may be restarted on the same endpoint.
+                    logger.warning("Current leader " + leader + "'s heartbeats are timed-out. Will start new election round...");
+                    resetLeaderAndStartElection();
                 } else if (!state.committedGroupMembers().isKnownMember(leader)) {
                     logger.warning("Current leader " + leader + " is not member anymore. Will start new election round...");
                     resetLeaderAndStartElection();
@@ -862,7 +869,12 @@ public class RaftNodeImpl implements RaftNode {
             }
         }
 
-        private void resetLeaderAndStartElection() {
+        private boolean isLeaderHeartbeatTimedOut() {
+            long missedHeartbeatThreshold = maxMissedLeaderHeartbeatCount * heartbeatPeriodInMillis;
+            return lastAppendEntriesTimestamp + missedHeartbeatThreshold < Clock.currentTimeMillis();
+        }
+
+        final void resetLeaderAndStartElection() {
             state.leader(null);
             printMemberState();
             runPreVoteTask();

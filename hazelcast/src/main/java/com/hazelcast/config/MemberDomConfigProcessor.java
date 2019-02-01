@@ -2427,6 +2427,8 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
                 raftAlgorithmConfig.setLeaderElectionTimeoutInMillis(Integer.parseInt(value));
             } else if ("leader-heartbeat-period-in-millis".equals(nodeName)) {
                 raftAlgorithmConfig.setLeaderHeartbeatPeriodInMillis(Integer.parseInt(value));
+            } else if ("max-missed-leader-heartbeat-count".equals(nodeName)) {
+                raftAlgorithmConfig.setMaxMissedLeaderHeartbeatCount(Integer.parseInt(value));
             } else if ("append-request-max-entry-count".equals(nodeName)) {
                 raftAlgorithmConfig.setAppendRequestMaxEntryCount(Integer.parseInt(value));
             } else if ("commit-index-advance-count-to-snapshot".equals(nodeName)) {

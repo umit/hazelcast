@@ -54,6 +54,11 @@ public class RaftAlgorithmConfig {
     public static final int DEFAULT_UNCOMMITTED_ENTRY_COUNT_TO_REJECT_NEW_APPENDS = 100;
 
     /**
+     * Default max number of missed heartbeats to trigger a new leader election.
+     */
+    public static final int DEFAULT_MAX_MISSED_LEADER_HEARTBEAT_COUNT = 5;
+
+    /**
      * Leader election timeout in milliseconds. If a candidate cannot win
      * majority of the votes in time, a new election round is initiated.
      */
@@ -63,6 +68,11 @@ public class RaftAlgorithmConfig {
      * Period for leader to send heartbeat messages to its followers
      */
     private long leaderHeartbeatPeriodInMillis = DEFAULT_LEADER_HEARTBEAT_PERIOD_IN_MILLIS;
+
+    /**
+     * Max number of missed leader heartbeats to trigger a new leader election
+     */
+    private int maxMissedLeaderHeartbeatCount = DEFAULT_MAX_MISSED_LEADER_HEARTBEAT_COUNT;
 
     /**
      * Max entry count that can be sent in a single batch of
@@ -91,6 +101,7 @@ public class RaftAlgorithmConfig {
         this.appendRequestMaxEntryCount = config.appendRequestMaxEntryCount;
         this.commitIndexAdvanceCountToSnapshot = config.commitIndexAdvanceCountToSnapshot;
         this.uncommittedEntryCountToRejectNewAppends = config.uncommittedEntryCountToRejectNewAppends;
+        this.maxMissedLeaderHeartbeatCount = config.maxMissedLeaderHeartbeatCount;
     }
 
     public long getLeaderElectionTimeoutInMillis() {
@@ -148,4 +159,13 @@ public class RaftAlgorithmConfig {
         return this;
     }
 
+    public int getMaxMissedLeaderHeartbeatCount() {
+        return maxMissedLeaderHeartbeatCount;
+    }
+
+    public RaftAlgorithmConfig setMaxMissedLeaderHeartbeatCount(int maxMissedLeaderHeartbeatCount) {
+        checkPositive(maxMissedLeaderHeartbeatCount, "max missed leader heartbeat count must be positive!");
+        this.maxMissedLeaderHeartbeatCount = maxMissedLeaderHeartbeatCount;
+        return this;
+    }
 }

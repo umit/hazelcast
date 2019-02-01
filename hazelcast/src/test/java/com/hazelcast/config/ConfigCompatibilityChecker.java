@@ -708,6 +708,7 @@ public class ConfigCompatibilityChecker {
                     (r1.getLeaderElectionTimeoutInMillis() == r2.getLeaderElectionTimeoutInMillis()
                     && r1.getLeaderHeartbeatPeriodInMillis() == r2.getLeaderHeartbeatPeriodInMillis()
                     && r1.getAppendRequestMaxEntryCount() == r2.getAppendRequestMaxEntryCount()
+                    && r1.getMaxMissedLeaderHeartbeatCount() == r2.getMaxMissedLeaderHeartbeatCount()
                     && r1.getCommitIndexAdvanceCountToSnapshot() == r2.getCommitIndexAdvanceCountToSnapshot()
                     && r1.getUncommittedEntryCountToRejectNewAppends() == r2.getUncommittedEntryCountToRejectNewAppends());
 
