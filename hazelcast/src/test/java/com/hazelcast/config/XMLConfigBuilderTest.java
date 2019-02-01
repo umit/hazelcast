@@ -2921,6 +2921,7 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
                 + "    <append-request-max-entry-count>25</append-request-max-entry-count>\n"
                 + "    <commit-index-advance-count-to-snapshot>250</commit-index-advance-count-to-snapshot>\n"
                 + "    <uncommitted-entry-count-to-reject-new-appends>75</uncommitted-entry-count-to-reject-new-appends>\n"
+                + "    <append-request-backoff-timeout-in-millis>50</append-request-backoff-timeout-in-millis>\n"
                 + "  </raft-algorithm>\n"
                 + "  <semaphores>\n"
                 + "    <cp-semaphore>\n"
@@ -2959,6 +2960,7 @@ public class XMLConfigBuilderTest extends HazelcastTestSupport {
         assertEquals(25, raftAlgorithmConfig.getAppendRequestMaxEntryCount());
         assertEquals(250, raftAlgorithmConfig.getCommitIndexAdvanceCountToSnapshot());
         assertEquals(75, raftAlgorithmConfig.getUncommittedEntryCountToRejectNewAppends());
+        assertEquals(50, raftAlgorithmConfig.getAppendRequestBackoffTimeoutInMillis());
         CPSemaphoreConfig semaphoreConfig1 = cpSubsystemConfig.findSemaphoreConfig("sem1");
         CPSemaphoreConfig semaphoreConfig2 = cpSubsystemConfig.findSemaphoreConfig("sem2");
         assertNotNull(semaphoreConfig1);

@@ -1337,6 +1337,7 @@ public class ConfigXmlGenerator {
            .node("commit-index-advance-count-to-snapshot", raftAlgorithmConfig.getCommitIndexAdvanceCountToSnapshot())
            .node("uncommitted-entry-count-to-reject-new-appends",
                    raftAlgorithmConfig.getUncommittedEntryCountToRejectNewAppends())
+           .node("append-request-backoff-timeout-in-millis", raftAlgorithmConfig.getAppendRequestBackoffTimeoutInMillis())
            .close();
 
         gen.open("semaphores");

@@ -1439,6 +1439,7 @@ public class TestFullApplicationContext extends HazelcastTestSupport {
         assertEquals(25, raftAlgorithmConfig.getAppendRequestMaxEntryCount());
         assertEquals(250, raftAlgorithmConfig.getCommitIndexAdvanceCountToSnapshot());
         assertEquals(75, raftAlgorithmConfig.getUncommittedEntryCountToRejectNewAppends());
+        assertEquals(50, raftAlgorithmConfig.getAppendRequestBackoffTimeoutInMillis());
         CPSemaphoreConfig cpSemaphoreConfig1 = cpSubsystemConfig.findSemaphoreConfig("sem1");
         CPSemaphoreConfig cpSemaphoreConfig2 = cpSubsystemConfig.findSemaphoreConfig("sem2");
         assertNotNull(cpSemaphoreConfig1);

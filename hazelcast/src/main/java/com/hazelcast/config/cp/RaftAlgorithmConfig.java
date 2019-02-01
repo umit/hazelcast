@@ -59,6 +59,11 @@ public class RaftAlgorithmConfig {
     public static final int DEFAULT_MAX_MISSED_LEADER_HEARTBEAT_COUNT = 5;
 
     /**
+     * Default append request backoff timeout in millis.
+     */
+    public static final long DEFAULT_APPEND_REQUEST_BACKOFF_TIMEOUT_IN_MILLIS = 100;
+
+    /**
      * Leader election timeout in milliseconds. If a candidate cannot win
      * majority of the votes in time, a new election round is initiated.
      */
@@ -92,6 +97,12 @@ public class RaftAlgorithmConfig {
      */
     private int uncommittedEntryCountToRejectNewAppends = DEFAULT_UNCOMMITTED_ENTRY_COUNT_TO_REJECT_NEW_APPENDS;
 
+    /**
+     * Timeout for append request backoff in millis. A subsequent append request will not be sent
+     * to a follower until it responds to the former request or this timeout happens.
+     */
+    private long appendRequestBackoffTimeoutInMillis = DEFAULT_APPEND_REQUEST_BACKOFF_TIMEOUT_IN_MILLIS;
+
     public RaftAlgorithmConfig() {
     }
 
@@ -102,6 +113,7 @@ public class RaftAlgorithmConfig {
         this.commitIndexAdvanceCountToSnapshot = config.commitIndexAdvanceCountToSnapshot;
         this.uncommittedEntryCountToRejectNewAppends = config.uncommittedEntryCountToRejectNewAppends;
         this.maxMissedLeaderHeartbeatCount = config.maxMissedLeaderHeartbeatCount;
+        this.appendRequestBackoffTimeoutInMillis = config.appendRequestBackoffTimeoutInMillis;
     }
 
     public long getLeaderElectionTimeoutInMillis() {
@@ -166,6 +178,16 @@ public class RaftAlgorithmConfig {
     public RaftAlgorithmConfig setMaxMissedLeaderHeartbeatCount(int maxMissedLeaderHeartbeatCount) {
         checkPositive(maxMissedLeaderHeartbeatCount, "max missed leader heartbeat count must be positive!");
         this.maxMissedLeaderHeartbeatCount = maxMissedLeaderHeartbeatCount;
+        return this;
+    }
+
+    public long getAppendRequestBackoffTimeoutInMillis() {
+        return appendRequestBackoffTimeoutInMillis;
+    }
+
+    public RaftAlgorithmConfig setAppendRequestBackoffTimeoutInMillis(long appendRequestBackoffTimeoutInMillis) {
+        checkPositive(appendRequestBackoffTimeoutInMillis, "append request backoff timeout must be positive!");
+        this.appendRequestBackoffTimeoutInMillis = appendRequestBackoffTimeoutInMillis;
         return this;
     }
 }

@@ -21,11 +21,11 @@ import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendSuccessResponse;
 import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
 import com.hazelcast.cp.internal.raft.impl.log.RaftLog;
+import com.hazelcast.cp.internal.raft.impl.state.FollowerState;
 import com.hazelcast.cp.internal.raft.impl.state.LeaderState;
 import com.hazelcast.cp.internal.raft.impl.state.RaftState;
 
 import java.util.Arrays;
-import java.util.Collection;
 
 import static com.hazelcast.cp.internal.raft.impl.RaftRole.LEADER;
 import static java.util.Arrays.sort;
@@ -94,7 +94,11 @@ public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTas
     private void updateFollowerIndices(RaftState state) {
         Endpoint follower = resp.follower();
         LeaderState leaderState = state.leaderState();
-        long matchIndex = leaderState.getMatchIndex(follower);
+        FollowerState followerState = leaderState.getFollowerState(follower);
+
+        followerState.clearWaitingAppendAck();
+
+        long matchIndex = followerState.matchIndex();
         long followerLastLogIndex = resp.lastLogIndex();
 
         if (followerLastLogIndex > matchIndex) {
@@ -103,8 +107,17 @@ public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTas
                 logger.fine("Updating match index: " + followerLastLogIndex + " and next index: " + newNextIndex
                         + " for follower: " + follower);
             }
-            leaderState.setMatchIndex(follower, followerLastLogIndex);
-            leaderState.setNextIndex(follower, newNextIndex);
+            followerState.matchIndex(followerLastLogIndex);
+            followerState.nextIndex(newNextIndex);
+
+            if (state.log().lastLogOrSnapshotIndex() > followerLastLogIndex
+                || state.commitIndex() >= followerLastLogIndex) {
+                // Follower responded to the append request.
+                // If follower is still missing some log entries or has not learnt the latest commit index yet,
+                // then send another append request.
+                raftNode.sendAppendRequest(follower);
+            }
+
         } else if (followerLastLogIndex < matchIndex) {
             if (logger.isFineEnabled()) {
                 logger.fine("Will not update match index for follower: " + follower + ". follower last log index: "
@@ -115,24 +128,16 @@ public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTas
 
     private long findQuorumMatchIndex(RaftState state) {
         LeaderState leaderState = state.leaderState();
-        Collection<Long> matchIndices = leaderState.matchIndices();
-
-        long[] indices;
-        int k;
+        long[] indices = leaderState.matchIndices();
 
         // if the leader is leaving, it should not count its vote for quorum...
         if (raftNode.state().isKnownMember(raftNode.getLocalMember())) {
-            indices = new long[matchIndices.size() + 1];
-            indices[0] = state.log().lastLogOrSnapshotIndex();
-            k = 1;
+            indices[indices.length - 1] = state.log().lastLogOrSnapshotIndex();
         } else {
-            indices = new long[matchIndices.size()];
-            k = 0;
+            // Remove the last empty slot reserved for leader index
+            indices = Arrays.copyOf(indices, indices.length - 1);
         }
 
-        for (long index : matchIndices) {
-            indices[k++] = index;
-        }
         sort(indices);
 
         long quorumMatchIndex = indices[(indices.length - 1) / 2];

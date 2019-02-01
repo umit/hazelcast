@@ -46,6 +46,7 @@ import com.hazelcast.cp.internal.raft.impl.handler.VoteResponseHandlerTask;
 import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
 import com.hazelcast.cp.internal.raft.impl.log.RaftLog;
 import com.hazelcast.cp.internal.raft.impl.log.SnapshotEntry;
+import com.hazelcast.cp.internal.raft.impl.state.FollowerState;
 import com.hazelcast.cp.internal.raft.impl.state.LeaderState;
 import com.hazelcast.cp.internal.raft.impl.state.RaftState;
 import com.hazelcast.cp.internal.raft.impl.task.MembershipChangeTask;
@@ -101,8 +102,11 @@ public class RaftNodeImpl implements RaftNode {
     private final int appendRequestMaxEntryCount;
     private final int commitIndexAdvanceCountToSnapshot;
     private final int maxMissedLeaderHeartbeatCount;
+    private final long appendRequestBackoffTimeoutInMillis;
+    private final Runnable appendAckResetTask;
 
     private long lastAppendEntriesTimestamp;
+    private boolean appendAckResetTaskScheduled;
     private volatile RaftNodeStatus status = ACTIVE;
 
     public RaftNodeImpl(CPGroupId groupId, Endpoint localMember, Collection<Endpoint> members,
@@ -121,6 +125,8 @@ public class RaftNodeImpl implements RaftNode {
         this.leaderElectionTimeout = (int) raftAlgorithmConfig.getLeaderElectionTimeoutInMillis();
         this.heartbeatPeriodInMillis = raftAlgorithmConfig.getLeaderHeartbeatPeriodInMillis();
         this.maxMissedLeaderHeartbeatCount = raftAlgorithmConfig.getMaxMissedLeaderHeartbeatCount();
+        this.appendRequestBackoffTimeoutInMillis = raftAlgorithmConfig.getAppendRequestBackoffTimeoutInMillis();
+        this.appendAckResetTask = new AppendWaitingAcksResetTask();
     }
 
     public ILogger getLogger(Class clazz) {
@@ -429,10 +435,22 @@ public class RaftNodeImpl implements RaftNode {
      */
     @SuppressWarnings("checkstyle:npathcomplexity")
     public void sendAppendRequest(Endpoint follower) {
+        if (!raftIntegration.isReachable(follower)) {
+            return;
+        }
+
         RaftLog raftLog = state.log();
         LeaderState leaderState = state.leaderState();
 
-        long nextIndex = leaderState.getNextIndex(follower);
+        FollowerState followerState = leaderState.getFollowerState(follower);
+        if (followerState.isWaitingAppendAck()) {
+            // Follower still not send an ACK for the last append request.
+            // We will send it append entries later either it responds back
+            // or a back-off timeout happens.
+            return;
+        }
+
+        long nextIndex = followerState.nextIndex();
 
         if (nextIndex <= raftLog.snapshotIndex()) {
             InstallSnapshot installSnapshot = new InstallSnapshot(localMember, state.term(), raftLog.snapshot());
@@ -440,6 +458,7 @@ public class RaftNodeImpl implements RaftNode {
                 logger.fine("Sending " + installSnapshot + " to " + follower + " since next index: " + nextIndex
                         + " <= snapshot index: " + raftLog.snapshotIndex());
             }
+            followerState.setWaitingAppendAck();
             raftIntegration.send(installSnapshot, follower);
             return;
         }
@@ -450,7 +469,7 @@ public class RaftNodeImpl implements RaftNode {
             long prevEntryIndex = nextIndex - 1;
             prevEntry = (prevEntryIndex == raftLog.snapshotIndex()) ? raftLog.snapshot() : raftLog.getLogEntry(prevEntryIndex);
 
-            long matchIndex = leaderState.getMatchIndex(follower);
+            long matchIndex = followerState.matchIndex();
             if (matchIndex == 0) {
                 // Until the leader has discovered where it and the follower's logs match,
                 // the leader can send AppendEntries with no entries (like heartbeats) to save bandwidth.
@@ -484,6 +503,11 @@ public class RaftNodeImpl implements RaftNode {
 
         if (logger.isFineEnabled()) {
             logger.fine("Sending " + appendRequest + " to " + follower + " with next index: " + nextIndex);
+        }
+        if (entries.length > 0) {
+            // Append request is not empty, set the waiting append ack flag on follower.
+            // Next append request will not be sent to this follower before it sends an ack.
+            followerState.setWaitingAppendAck();
         }
 
         send(appendRequest, follower);
@@ -812,6 +836,15 @@ public class RaftNodeImpl implements RaftNode {
         printMemberState();
     }
 
+    public void scheduleAppendAckResetTask() {
+        if (appendAckResetTaskScheduled) {
+            return;
+        }
+
+        appendAckResetTaskScheduled = true;
+        schedule(appendAckResetTask, appendRequestBackoffTimeoutInMillis);
+    }
+
     /**
      * Periodic heartbeat task, which is scheduled on leader only with {@link #heartbeatPeriodInMillis} delay,
      * and sends heartbeat messages (append-entries) if no append-entries request is sent
@@ -883,6 +916,29 @@ public class RaftNodeImpl implements RaftNode {
         private void runPreVoteTask() {
             if (state.preCandidateState() == null) {
                 new PreVoteTask(RaftNodeImpl.this).run();
+            }
+        }
+    }
+
+    private class AppendWaitingAcksResetTask extends RaftNodeStatusAwareTask {
+        AppendWaitingAcksResetTask() {
+            super(RaftNodeImpl.this);
+        }
+
+        @Override
+        protected void innerRun() {
+            appendAckResetTaskScheduled = false;
+            LeaderState leaderState = state.leaderState();
+
+            if (leaderState != null) {
+                Map<Endpoint, FollowerState> followerStates = leaderState.getFollowerStates();
+                for (Map.Entry<Endpoint, FollowerState> entry : followerStates.entrySet()) {
+                    FollowerState followerState = entry.getValue();
+                    if (followerState.clearWaitingAppendAck()) {
+                        sendAppendRequest(entry.getKey());
+                        scheduleAppendAckResetTask();
+                    }
+                }
             }
         }
     }

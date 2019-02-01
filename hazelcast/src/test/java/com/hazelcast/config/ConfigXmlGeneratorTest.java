@@ -1384,7 +1384,8 @@ public class ConfigXmlGeneratorTest {
               .setMaxMissedLeaderHeartbeatCount(10)
               .setAppendRequestMaxEntryCount(25)
               .setAppendRequestMaxEntryCount(250)
-              .setUncommittedEntryCountToRejectNewAppends(75);
+              .setUncommittedEntryCountToRejectNewAppends(75)
+                .setAppendRequestBackoffTimeoutInMillis(50);
 
         config.getCPSubsystemConfig()
               .addSemaphoreConfig(new CPSemaphoreConfig("sem1", true))

@@ -198,12 +198,13 @@ public class RaftStateTest {
         assertNotNull(leaderState);
 
         for (Endpoint endpoint : state.remoteMembers()) {
-            assertEquals(0, leaderState.getMatchIndex(endpoint));
-            assertEquals(lastLogIndex + 1, leaderState.getNextIndex(endpoint));
+            FollowerState followerState = leaderState.getFollowerState(endpoint);
+            assertEquals(0, followerState.matchIndex());
+            assertEquals(lastLogIndex + 1, followerState.nextIndex());
         }
 
-        Collection<Long> matchIndices = leaderState.matchIndices();
-        assertEquals(state.remoteMembers().size(), matchIndices.size());
+        long[] matchIndices = leaderState.matchIndices();
+        assertEquals(state.remoteMembers().size() + 1, matchIndices.length);
         for (long index : matchIndices) {
             assertEquals(0, index);
         }

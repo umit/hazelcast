@@ -4247,6 +4247,15 @@
                     </xs:documentation>
                 </xs:annotation>
             </xs:element>
+            <xs:element name="append-request-backoff-timeout-in-millis" type="xs:unsignedInt" minOccurs="0" maxOccurs="1"
+                        default="100">
+                <xs:annotation>
+                    <xs:documentation>
+                        Timeout for append request backoff in millis. A subsequent append request will not be sent
+                        to a follower until it responds to the former request or this timeout happens.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
         </xs:all>
     </xs:complexType>
 
