@@ -789,7 +789,7 @@ public class RaftNodeImpl implements RaftNode {
         if (logger.isFineEnabled()) {
             logger.fine("Snapshot: " + snapshot + " is installed.");
         } else {
-            logger.info("Snapshot is installed at commit index: " + commitIndex);
+            logger.info("Snapshot is installed at commit index: " + state.commitIndex());
         }
 
         return true;
