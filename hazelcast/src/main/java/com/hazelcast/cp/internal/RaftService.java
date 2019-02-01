@@ -359,10 +359,12 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
                     future.setResult(new ExecutionException(new IllegalArgumentException("No CPMember found with uuid: "
                             + cpMemberUuid)));
                     return;
-                } else if (clusterService.getMember(cpMemberToRemove.getAddress()) != null) {
-                    future.setResult(new ExecutionException(new IllegalArgumentException("Cannot remove: " + cpMemberToRemove
-                            + ", it is a live member!")));
-                    return;
+                } else {
+                    Member member = clusterService.getMember(cpMemberToRemove.getAddress());
+                    if (member != null) {
+                        logger.warning("Only unreachable/crashed CP members should be removed. " + member + " is alive but "
+                                + cpMemberToRemove + " with the same address is being removed.");
+                    }
                 }
 
                 invokeTriggerRemoveMember(cpMemberToRemove).andThen(removeMemberCallback);
