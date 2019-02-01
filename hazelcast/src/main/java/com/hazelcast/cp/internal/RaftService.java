@@ -354,7 +354,6 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
                         break;
                     }
                 }
-
                 if (cpMemberToRemove == null) {
                     future.setResult(new ExecutionException(new IllegalArgumentException("No CPMember found with uuid: "
                             + cpMemberUuid)));
@@ -366,7 +365,6 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
                                 + cpMemberToRemove + " with the same address is being removed.");
                     }
                 }
-
                 invokeTriggerRemoveMember(cpMemberToRemove).andThen(removeMemberCallback);
             }
 
