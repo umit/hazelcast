@@ -24,8 +24,8 @@ package com.hazelcast.cp.internal.raft.impl.state;
  * (initialized to leader's {@code lastLogIndex + 1})</li>
  * <li>{@code matchIndex}: index of highest log entry known to be replicated
  * on server (initialized to 0, increases monotonically)</li>
- * <li>{@code waitingAppendAck}: a boolean flag indicating that leader is still
- * waiting for ACK to an append request</li>
+ * <li>{@code appendRequestBackoff}: a boolean flag indicating that leader is still
+ * waiting for a response to the last sent append request</li>
  * </ul>
  */
 public class FollowerState {
@@ -34,7 +34,7 @@ public class FollowerState {
 
     private long nextIndex;
 
-    private boolean waitingAppendAck;
+    private boolean appendRequestBackoff;
 
     FollowerState(long matchIndex, long nextIndex) {
         this.matchIndex = matchIndex;
@@ -70,26 +70,26 @@ public class FollowerState {
     }
 
     /**
-     * Returns whether leader is waiting for ACK to a append request or not.
+     * Returns whether leader is waiting for response of the last append request.
      */
-    public boolean isWaitingAppendAck() {
-        return waitingAppendAck;
+    public boolean isAppendRequestBackoffSet() {
+        return appendRequestBackoff;
     }
 
     /**
-     * Sets the flag for waiting ACK to an append request.
+     * Sets the flag for append request backoff. A new append request will not be sent
+     * to this follower either until it sends an append response or a backoff timeout occurs.
      */
-    public void setWaitingAppendAck() {
-        this.waitingAppendAck = true;
+    public void setAppendRequestBackoff() {
+        this.appendRequestBackoff = true;
     }
 
     /**
-     * Clears the flag for waiting ACK to an append request
-     * and returns whether or not flag was set previously.
+     * Clears the flag for the append request backoff and returns whether or not flag was set previously.
      */
-    public boolean clearWaitingAppendAck() {
-        if (waitingAppendAck) {
-            waitingAppendAck = false;
+    public boolean resetAppendRequestBackoff() {
+        if (appendRequestBackoff) {
+            appendRequestBackoff = false;
             return true;
         }
         return false;
@@ -97,7 +97,7 @@ public class FollowerState {
 
     @Override
     public String toString() {
-        return "FollowerState{" + "matchIndex=" + matchIndex + ", nextIndex=" + nextIndex + ", waitingAppendAck="
-                + waitingAppendAck + '}';
+        return "FollowerState{" + "matchIndex=" + matchIndex + ", nextIndex=" + nextIndex + ", appendRequestBackoff="
+                + appendRequestBackoff + '}';
     }
 }

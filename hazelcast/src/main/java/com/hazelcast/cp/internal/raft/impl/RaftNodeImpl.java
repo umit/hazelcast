@@ -66,6 +66,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.ACTIVE;
@@ -103,10 +104,10 @@ public class RaftNodeImpl implements RaftNode {
     private final int commitIndexAdvanceCountToSnapshot;
     private final int maxMissedLeaderHeartbeatCount;
     private final long appendRequestBackoffTimeoutInMillis;
-    private final Runnable appendAckResetTask;
+    private final Runnable appendRequestBackoffResetTask;
 
     private long lastAppendEntriesTimestamp;
-    private boolean appendAckResetTaskScheduled;
+    private boolean appendRequestBackoffResetTaskScheduled;
     private volatile RaftNodeStatus status = ACTIVE;
 
     public RaftNodeImpl(CPGroupId groupId, Endpoint localMember, Collection<Endpoint> members,
@@ -126,7 +127,7 @@ public class RaftNodeImpl implements RaftNode {
         this.heartbeatPeriodInMillis = raftAlgorithmConfig.getLeaderHeartbeatPeriodInMillis();
         this.maxMissedLeaderHeartbeatCount = raftAlgorithmConfig.getMaxMissedLeaderHeartbeatCount();
         this.appendRequestBackoffTimeoutInMillis = raftAlgorithmConfig.getAppendRequestBackoffTimeoutInMillis();
-        this.appendAckResetTask = new AppendWaitingAcksResetTask();
+        this.appendRequestBackoffResetTask = new AppendRequestBackoffResetTask();
     }
 
     public ILogger getLogger(Class clazz) {
@@ -433,7 +434,7 @@ public class RaftNodeImpl implements RaftNode {
      * If log entries contains multiple membership change entries, then entries batch is split to send only a single
      * membership change in single append-entries request.
      */
-    @SuppressWarnings("checkstyle:npathcomplexity")
+    @SuppressWarnings({"checkstyle:npathcomplexity", "checkstyle:cyclomaticcomplexity"})
     public void sendAppendRequest(Endpoint follower) {
         if (!raftIntegration.isReachable(follower)) {
             return;
@@ -441,12 +442,11 @@ public class RaftNodeImpl implements RaftNode {
 
         RaftLog raftLog = state.log();
         LeaderState leaderState = state.leaderState();
-
         FollowerState followerState = leaderState.getFollowerState(follower);
-        if (followerState.isWaitingAppendAck()) {
-            // Follower still not send an ACK for the last append request.
-            // We will send it append entries later either it responds back
-            // or a back-off timeout happens.
+        if (followerState.isAppendRequestBackoffSet()) {
+            // The follower still has not sent a response for the last append request.
+            // We will send a new append request either when the follower sends a response
+            // or a back-off timeout occurs.
             return;
         }
 
@@ -458,7 +458,7 @@ public class RaftNodeImpl implements RaftNode {
                 logger.fine("Sending " + installSnapshot + " to " + follower + " since next index: " + nextIndex
                         + " <= snapshot index: " + raftLog.snapshotIndex());
             }
-            followerState.setWaitingAppendAck();
+            followerState.setAppendRequestBackoff();
             raftIntegration.send(installSnapshot, follower);
             return;
         }
@@ -505,9 +505,9 @@ public class RaftNodeImpl implements RaftNode {
             logger.fine("Sending " + appendRequest + " to " + follower + " with next index: " + nextIndex);
         }
         if (entries.length > 0) {
-            // Append request is not empty, set the waiting append ack flag on follower.
-            // Next append request will not be sent to this follower before it sends an ack.
-            followerState.setWaitingAppendAck();
+            // The append request to be sent is not empty, set the flag on follower.
+            // Next append request will not be sent to this follower before it sends a response.
+            followerState.setAppendRequestBackoff();
         }
 
         send(appendRequest, follower);
@@ -681,9 +681,9 @@ public class RaftNodeImpl implements RaftNode {
      */
     public void invalidateFuturesFrom(long entryIndex) {
         int count = 0;
-        Iterator<Map.Entry<Long, SimpleCompletableFuture>> iterator = futures.entrySet().iterator();
+        Iterator<Entry<Long, SimpleCompletableFuture>> iterator = futures.entrySet().iterator();
         while (iterator.hasNext()) {
-            Map.Entry<Long, SimpleCompletableFuture> entry = iterator.next();
+            Entry<Long, SimpleCompletableFuture> entry = iterator.next();
             long index = entry.getKey();
             if (index >= entryIndex) {
                 entry.getValue().setResult(new LeaderDemotedException(localMember, state.leader()));
@@ -701,9 +701,9 @@ public class RaftNodeImpl implements RaftNode {
      */
     private void invalidateFuturesUntil(long entryIndex) {
         int count = 0;
-        Iterator<Map.Entry<Long, SimpleCompletableFuture>> iterator = futures.entrySet().iterator();
+        Iterator<Entry<Long, SimpleCompletableFuture>> iterator = futures.entrySet().iterator();
         while (iterator.hasNext()) {
-            Map.Entry<Long, SimpleCompletableFuture> entry = iterator.next();
+            Entry<Long, SimpleCompletableFuture> entry = iterator.next();
             long index = entry.getKey();
             if (index <= entryIndex) {
                 entry.getValue().setResult(new StaleAppendRequestException(state.leader()));
@@ -836,13 +836,19 @@ public class RaftNodeImpl implements RaftNode {
         printMemberState();
     }
 
+    /**
+     * Schedules a task to reset append request backoff flags,
+     * if not scheduled already.
+     *
+     * @see RaftAlgorithmConfig#getAppendRequestBackoffTimeoutInMillis()
+     */
     public void scheduleAppendAckResetTask() {
-        if (appendAckResetTaskScheduled) {
+        if (appendRequestBackoffResetTaskScheduled) {
             return;
         }
 
-        appendAckResetTaskScheduled = true;
-        schedule(appendAckResetTask, appendRequestBackoffTimeoutInMillis);
+        appendRequestBackoffResetTaskScheduled = true;
+        schedule(appendRequestBackoffResetTask, appendRequestBackoffTimeoutInMillis);
     }
 
     /**
@@ -920,21 +926,27 @@ public class RaftNodeImpl implements RaftNode {
         }
     }
 
-    private class AppendWaitingAcksResetTask extends RaftNodeStatusAwareTask {
-        AppendWaitingAcksResetTask() {
+    /**
+     * If the append request backoff flag is set for any follower, this task resets
+     * the flag, sends a new append request, and schedules itself again.
+     */
+    private class AppendRequestBackoffResetTask extends RaftNodeStatusAwareTask {
+        AppendRequestBackoffResetTask() {
             super(RaftNodeImpl.this);
         }
 
         @Override
         protected void innerRun() {
-            appendAckResetTaskScheduled = false;
+            appendRequestBackoffResetTaskScheduled = false;
             LeaderState leaderState = state.leaderState();
 
             if (leaderState != null) {
                 Map<Endpoint, FollowerState> followerStates = leaderState.getFollowerStates();
-                for (Map.Entry<Endpoint, FollowerState> entry : followerStates.entrySet()) {
+                for (Entry<Endpoint, FollowerState> entry : followerStates.entrySet()) {
                     FollowerState followerState = entry.getValue();
-                    if (followerState.clearWaitingAppendAck()) {
+                    if (followerState.resetAppendRequestBackoff()) {
+                        // This follower has not sent a response to the last append request.
+                        // Send another append request and schedule the task again...
                         sendAppendRequest(entry.getKey());
                         scheduleAppendAckResetTask();
                     }
@@ -943,6 +955,10 @@ public class RaftNodeImpl implements RaftNode {
         }
     }
 
+    /**
+     * If too many entries are appended to the log after the last snapshot,
+     * this task takes a snapshot. The task reschedules itself in any case.
+     */
     private class SnapshotTask extends RaftNodeStatusAwareTask {
         SnapshotTask() {
             super(RaftNodeImpl.this);
