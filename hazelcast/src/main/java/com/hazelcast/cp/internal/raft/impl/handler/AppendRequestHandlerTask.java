@@ -175,19 +175,27 @@ public class AppendRequestHandlerTask extends RaftNodeStatusAwareTask implements
         }
 
         long lastLogIndex = req.prevLogIndex() + req.entryCount();
+        long oldCommitIndex = state.commitIndex();
 
         // Update the commit index
         if (req.leaderCommitIndex() > state.commitIndex()) {
             // If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
             long newCommitIndex = min(req.leaderCommitIndex(), lastLogIndex);
-            logger.fine("Setting commit index: " + newCommitIndex);
+            if (logger.isFineEnabled()) {
+                logger.fine("Setting commit index: " + newCommitIndex);
+            }
             state.commitIndex(newCommitIndex);
             raftNode.applyLogEntries();
         }
 
         raftNode.updateLastAppendEntriesTimestamp();
-        AppendSuccessResponse resp = new AppendSuccessResponse(raftNode.getLocalMember(), state.term(), lastLogIndex);
-        raftNode.send(resp, req.leader());
+
+        // If I just appended any new entry or the leader is trying to adjust my match index, I must send a response.
+        // Otherwise, I just learnt the last commit index and I don't need to send a response.
+        if (req.entryCount() > 0 || oldCommitIndex == state.commitIndex()) {
+            AppendSuccessResponse resp = new AppendSuccessResponse(raftNode.getLocalMember(), state.term(), lastLogIndex);
+            raftNode.send(resp, req.leader());
+        }
     }
 
     private void handleRaftGroupCmd(List<LogEntry> entries, boolean revert) {
