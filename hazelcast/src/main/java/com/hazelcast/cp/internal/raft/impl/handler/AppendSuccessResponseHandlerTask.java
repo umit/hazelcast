@@ -70,7 +70,9 @@ public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTas
         }
 
         // If successful: update nextIndex and matchIndex for follower (§5.3)
-        updateFollowerIndices(state);
+        if (!updateFollowerIndices(state)) {
+            return;
+        }
 
         // If there exists an N such that N > commitIndex, a majority of matchIndex[i] ≥ N, and log[N].term == currentTerm:
         // set commitIndex = N (§5.3, §5.4)
@@ -91,7 +93,7 @@ public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTas
         }
     }
 
-    private void updateFollowerIndices(RaftState state) {
+    private boolean updateFollowerIndices(RaftState state) {
         Endpoint follower = resp.follower();
         LeaderState leaderState = state.leaderState();
         FollowerState followerState = leaderState.getFollowerState(follower);
@@ -103,27 +105,29 @@ public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTas
 
         if (followerLastLogIndex > matchIndex) {
             long newNextIndex = followerLastLogIndex + 1;
-            if (logger.isFineEnabled()) {
-                logger.fine("Updating match index: " + followerLastLogIndex + " and next index: " + newNextIndex
-                        + " for follower: " + follower);
-            }
             followerState.matchIndex(followerLastLogIndex);
             followerState.nextIndex(newNextIndex);
 
-            if (state.log().lastLogOrSnapshotIndex() > followerLastLogIndex
-                || state.commitIndex() >= followerLastLogIndex) {
-                // Follower responded to the append request.
-                // If follower is still missing some log entries or has not learnt the latest commit index yet,
+            if (logger.isFineEnabled()) {
+                logger.fine("Updated match index: " + followerLastLogIndex + " and next index: " + newNextIndex
+                        + " for follower: " + follower);
+            }
+
+            if (state.log().lastLogOrSnapshotIndex() > followerLastLogIndex || state.commitIndex() == followerLastLogIndex) {
+                // If the follower is still missing some log entries or has not learnt the latest commit index yet,
                 // then send another append request.
                 raftNode.sendAppendRequest(follower);
             }
 
+            return true;
         } else if (followerLastLogIndex < matchIndex) {
             if (logger.isFineEnabled()) {
                 logger.fine("Will not update match index for follower: " + follower + ". follower last log index: "
                         + followerLastLogIndex + ", match index: " + matchIndex);
             }
         }
+
+        return false;
     }
 
     private long findQuorumMatchIndex(RaftState state) {
