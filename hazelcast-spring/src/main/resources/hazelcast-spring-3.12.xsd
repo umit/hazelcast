@@ -4365,7 +4365,8 @@
                         default="100">
                 <xs:annotation>
                     <xs:documentation>
-                        Max number of allowed uncommitted entries before temporarily rejecting new append requests
+                        Max number of uncommitted entries in the leader's Raft log before
+                        temporarily rejecting new requests of callers.
                     </xs:documentation>
                 </xs:annotation>
             </xs:element>
@@ -4373,8 +4374,9 @@
                         default="100">
                 <xs:annotation>
                     <xs:documentation>
-                        Timeout for append request backoff in millis. A subsequent append request will not be sent
-                        to a follower until it responds to the former request or this timeout happens.
+                        Timeout for append request backoff in millis. After the leader sends
+                        an append request to a follower, it will not send a subsequent append
+                        request until the responds to the former request or this timeout occurs.
                     </xs:documentation>
                 </xs:annotation>
             </xs:element>

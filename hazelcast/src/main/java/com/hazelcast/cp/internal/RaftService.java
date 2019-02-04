@@ -318,18 +318,10 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return new SimpleCompletableFuture<Void>(executor, logger);
     }
 
-    /**
-     * this method is idempotent
-     */
     @Override
     public ICompletableFuture<Void> removeCPMember(final String cpMemberUuid) {
         final ClusterService clusterService = nodeEngine.getClusterService();
         final SimpleCompletableFuture<Void> future = newCompletableFuture();
-
-        if (!clusterService.isMaster()) {
-            future.setResult(new IllegalStateException("Only master can remove a CP member!"));
-            return future;
-        }
 
         final ExecutionCallback<Void> removeMemberCallback = new ExecutionCallback<Void>() {
             @Override

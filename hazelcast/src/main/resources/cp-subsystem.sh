@@ -25,7 +25,6 @@ if [[ "$1" = "--help" ]] || [[ "$1" = "-h" ]]; then
    	echo "	- 'remove-member' removes the given CP member (-m) from the active CP member list."
    	echo "	   The removed member will be removed from the CP groups as well."
    	echo "	   Before removing a CP member, please make sure that the missing member is actually crashed, not partitioned away."
-   	echo "	   You can call this API only on the Hazelcast master member (i.e., the first member in the Hazelcast cluster member list) and the member to be removed must not be present in the member list."
    	echo "	- 'promote-member' promotes the contacted Hazelcast member to the CP member role."
    	echo "	- 'get-sessions' returns the list of CP sessions created in the requested CP group (-c)."
    	echo "	- 'force-close-session' closes the given CP session (-s) on the given CP group (-c)."

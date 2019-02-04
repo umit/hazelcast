@@ -18,6 +18,7 @@ package com.hazelcast.cp;
 
 import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.config.cp.CPSubsystemConfig;
+import com.hazelcast.core.DistributedObject;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.IAtomicReference;
@@ -103,6 +104,13 @@ import com.hazelcast.spi.annotation.Beta;
  * should be sufficient to maintain all CP data structure instances. Custom
  * CP groups could be created when throughput of the CP subsystem is needed
  * to be improved.
+ * <p>
+ * <strong>CP data structure proxies differ from other data structure proxies in
+ * one aspect, that is, if you call the {@link DistributedObject#destroy()} API
+ * on a CP data structure proxy, that data structure is terminated
+ * on the underlying CP and cannot be re-initialized on the same CP group.
+ * For this reason, please make sure that you are completely done with
+ * a CP data structure before destroying its proxy.</strong>
  *
  * @see CPSubsystemConfig
  * @see CPMember
