@@ -764,7 +764,7 @@ public class RaftNodeImpl implements RaftNode {
             return false;
         } else if (commitIndex == snapshot.index()) {
             logger.warning("Ignored snapshot: " + snapshot + " since commit index is same.");
-            return false;
+            return true;
         }
 
         state.commitIndex(snapshot.index());
