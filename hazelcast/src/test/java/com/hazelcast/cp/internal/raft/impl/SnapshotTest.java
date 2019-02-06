@@ -18,11 +18,15 @@ package com.hazelcast.cp.internal.raft.impl;
 
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.core.Endpoint;
+import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.exception.StaleAppendRequestException;
+import com.hazelcast.cp.internal.raft.MembershipChangeType;
 import com.hazelcast.cp.internal.raft.impl.dataservice.ApplyRaftRunnable;
 import com.hazelcast.cp.internal.raft.impl.dataservice.RaftDataService;
+import com.hazelcast.cp.internal.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendRequest;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendSuccessResponse;
+import com.hazelcast.cp.internal.raft.impl.dto.InstallSnapshot;
 import com.hazelcast.cp.internal.raft.impl.testing.LocalRaftGroup;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -40,10 +44,14 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
+import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.ACTIVE;
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getCommitIndex;
+import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getCommittedGroupMembers;
+import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getLastLogOrSnapshotEntry;
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getLeaderMember;
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getMatchIndex;
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getSnapshotEntry;
+import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getStatus;
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.newGroupWithService;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -393,5 +401,88 @@ public class SnapshotTest extends HazelcastTestSupport {
                 }
             }
         });
+    }
+
+    @Test
+    public void when_followersLastAppendIsMembershipChange_then_itUpdatesRaftNodeStateWithInstalledSnapshot() throws ExecutionException, InterruptedException {
+        final int entryCount = 50;
+        group = newGroupWithService(5, new RaftAlgorithmConfig().setCommitIndexAdvanceCountToSnapshot(entryCount));
+        group.start();
+
+        final RaftNodeImpl leader = group.waitUntilLeaderElected();
+        final RaftNodeImpl[] followers = group.getNodesExcept(leader.getLocalMember());
+
+        leader.replicate(new ApplyRaftRunnable("val")).get();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (RaftNodeImpl follower : followers) {
+                    assertEquals(1L, getCommitIndex(follower));
+                }
+            }
+        });
+
+        final RaftNodeImpl slowFollower = followers[0];
+
+        for (RaftNodeImpl follower : followers) {
+            if (follower != slowFollower) {
+                group.dropMessagesToMember(follower.getLocalMember(), follower.getLeader(), AppendSuccessResponse.class);
+                group.dropMessagesToMember(follower.getLocalMember(), follower.getLeader(), AppendFailureResponse.class);
+            }
+        }
+
+        final RaftNodeImpl newRaftNode1 = group.createNewRaftNode();
+        final ICompletableFuture f1 = leader.replicateMembershipChange(newRaftNode1.getLocalMember(), MembershipChangeType.ADD);
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (RaftNodeImpl follower : followers) {
+                    assertEquals(2L, getLastLogOrSnapshotEntry(follower).index());
+                }
+            }
+        });
+
+        group.dropMessagesToMember(leader.getLocalMember(), slowFollower.getLocalMember(), AppendRequest.class);
+        group.dropMessagesToMember(leader.getLocalMember(), slowFollower.getLocalMember(), InstallSnapshot.class);
+
+        for (RaftNodeImpl follower : followers) {
+            if (follower != slowFollower) {
+                group.allowAllMessagesToMember(follower.getLocalMember(), leader.getLeader());
+            }
+        }
+
+        f1.get();
+
+        for (int i = 0; i < entryCount; i++) {
+            leader.replicate(new ApplyRaftRunnable("val" + i)).get();
+        }
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertTrue(entryCount < getSnapshotEntry(leader).index());
+            }
+        });
+
+        group.allowAllMessagesToMember(leader.getLeader(), slowFollower.getLocalMember());
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertTrue(entryCount < getSnapshotEntry(slowFollower).index());
+            }
+        });
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertEquals(getCommittedGroupMembers(leader).index(), getCommittedGroupMembers(slowFollower).index());
+                assertEquals(ACTIVE, getStatus(slowFollower));
+            }
+        });
+
+
     }
 }

@@ -142,6 +142,7 @@ public class LocalRaftGroup {
         System.arraycopy(this.integrations, 0, integrations, 0, oldSize);
         System.arraycopy(this.nodes, 0, nodes, 0, oldSize);
         LocalRaftIntegration integration = createNewLocalRaftIntegration();
+        createdNodeCount++;
         integrations[oldSize] = integration;
         Endpoint endpoint = integration.getLocalEndpoint();
         endpoints[oldSize] = endpoint;

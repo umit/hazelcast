@@ -18,6 +18,7 @@ package com.hazelcast.cp.internal.raft.impl;
 
 import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.core.Endpoint;
+import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.exception.CannotReplicateException;
 import com.hazelcast.cp.internal.raft.MembershipChangeType;
 import com.hazelcast.cp.internal.raft.exception.MemberAlreadyExistsException;
@@ -508,4 +509,87 @@ public class MembershipChangeTest extends HazelcastTestSupport {
             }
         });
     }
+
+    @Test
+    public void when_followerAppendsMultipleMembershipChangesAtOnce_then_itCommitsThemCorrectly() throws ExecutionException, InterruptedException {
+        group = newGroupWithService(5, new RaftAlgorithmConfig().setLeaderHeartbeatPeriodInMillis(1000));
+        group.start();
+
+        final RaftNodeImpl leader = group.waitUntilLeaderElected();
+        final RaftNodeImpl[] followers = group.getNodesExcept(leader.getLocalMember());
+
+        leader.replicate(new ApplyRaftRunnable("val")).get();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (RaftNodeImpl follower : followers) {
+                    assertEquals(1L, getCommitIndex(follower));
+                }
+            }
+        });
+
+        final RaftNodeImpl slowFollower = followers[0];
+
+        for (RaftNodeImpl follower : followers) {
+            if (follower != slowFollower) {
+                group.dropMessagesToMember(follower.getLocalMember(), follower.getLeader(), AppendSuccessResponse.class);
+                group.dropMessagesToMember(follower.getLocalMember(), follower.getLeader(), AppendFailureResponse.class);
+            }
+        }
+
+        final RaftNodeImpl newRaftNode1 = group.createNewRaftNode();
+        group.dropMessagesToMember(leader.getLocalMember(), newRaftNode1.getLocalMember(), AppendRequest.class);
+        final ICompletableFuture f1 = leader.replicateMembershipChange(newRaftNode1.getLocalMember(), MembershipChangeType.ADD);
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (RaftNodeImpl follower : followers) {
+                    assertEquals(2L, getLastLogOrSnapshotEntry(follower).index());
+                }
+            }
+        });
+
+        group.dropMessagesToMember(leader.getLocalMember(), slowFollower.getLocalMember(), AppendRequest.class);
+
+        for (RaftNodeImpl follower : followers) {
+            if (follower != slowFollower) {
+                group.allowAllMessagesToMember(follower.getLocalMember(), leader.getLeader());
+            }
+        }
+
+        f1.get();
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (RaftNodeImpl follower : followers) {
+                    if (follower != slowFollower) {
+                        assertEquals(6, getCommittedGroupMembers(follower).memberCount());
+                    } else {
+                        assertEquals(5, getCommittedGroupMembers(follower).memberCount());
+                        assertEquals(6, getLastGroupMembers(follower).memberCount());
+                    }
+                }
+            }
+        });
+
+        final RaftNodeImpl newRaftNode2 = group.createNewRaftNode();
+        leader.replicateMembershipChange(newRaftNode2.getLocalMember(), MembershipChangeType.ADD).get();
+
+        group.allowAllMessagesToMember(leader.getLocalMember(), slowFollower.getLocalMember());
+        group.allowAllMessagesToMember(slowFollower.getLocalMember(), leader.getLocalMember());
+        group.allowAllMessagesToMember(leader.getLocalMember(), newRaftNode1.getLocalMember());
+
+        final RaftGroupMembers leaderCommittedGroupMembers = getCommittedGroupMembers(leader);
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertEquals(leaderCommittedGroupMembers.index(), getCommittedGroupMembers(slowFollower).index());
+                assertEquals(leaderCommittedGroupMembers.index(), getCommittedGroupMembers(newRaftNode1).index());
+                assertEquals(leaderCommittedGroupMembers.index(), getCommittedGroupMembers(newRaftNode2).index());
+            }
+        });
+    }
+
 }

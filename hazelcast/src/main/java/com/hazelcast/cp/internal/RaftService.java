@@ -77,7 +77,6 @@ import com.hazelcast.util.executor.ManagedExecutorService;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
@@ -97,7 +96,6 @@ import static com.hazelcast.cp.internal.raft.QueryPolicy.LEADER_LOCAL;
 import static com.hazelcast.internal.config.ConfigValidator.checkCPSubsystemConfig;
 import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 import static com.hazelcast.spi.ExecutionService.SYSTEM_EXECUTOR;
-import static com.hazelcast.util.ExceptionUtil.peel;
 import static com.hazelcast.util.Preconditions.checkFalse;
 import static com.hazelcast.util.Preconditions.checkTrue;
 import static java.util.Collections.newSetFromMap;
@@ -722,13 +720,6 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return invocationManager.invoke(getMetadataGroupId(), new TriggerRemoveCPMemberOp(member));
     }
 
-    private boolean isRemoved(CPMemberInfo member) {
-        RaftOp op = new GetActiveCPMembersOp();
-        InternalCompletableFuture<List<CPMemberInfo>> f = invocationManager.query(getMetadataGroupId(), op, LEADER_LOCAL);
-        List<CPMemberInfo> members = f.join();
-        return !members.contains(member);
-    }
-
     public static String withoutDefaultGroupName(String name) {
         name = name.trim();
         int i = name.indexOf("@");
@@ -809,9 +800,8 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
                 @Override
                 public void onFailure(Throwable t) {
-                    RuntimeException cause = peel(t);
-                    if (cause instanceof CPGroupDestroyedException) {
-                        CPGroupId destroyedGroupId = ((CPGroupDestroyedException) cause).getGroupId();
+                    if (t instanceof CPGroupDestroyedException) {
+                        CPGroupId destroyedGroupId = ((CPGroupDestroyedException) t).getGroupId();
                         destroyedGroupIds.add(destroyedGroupId);
                     }
 

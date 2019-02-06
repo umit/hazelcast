@@ -765,11 +765,10 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
 
         List<CPGroupMembershipChangeContext> changes = getGroupMembershipChangesForNewMember(member);
         if (changes.size() > 0) {
-            if (logger.isFineEnabled()) {
-                logger.fine("CP group rebalancing is triggered for " + changes);
-            }
-
             membershipChangeContext = MembershipChangeContext.memberAdded(singletonList(commitIndex), member, changes);
+            if (logger.isFineEnabled()) {
+                logger.fine("CP group rebalancing is triggered for " + member + ", changes: " + membershipChangeContext);
+            }
 
             return false;
         }

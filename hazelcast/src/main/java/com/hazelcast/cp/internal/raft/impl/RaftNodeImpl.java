@@ -61,7 +61,6 @@ import com.hazelcast.util.Clock;
 import com.hazelcast.util.RandomPicker;
 import com.hazelcast.util.collection.Long2ObjectHashMap;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -70,7 +69,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.ACTIVE;
-import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.CHANGING_MEMBERSHIP;
+import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.UPDATING_GROUP_MEMBER_LIST;
 import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.STEPPED_DOWN;
 import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.TERMINATED;
 import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.TERMINATING;
@@ -342,7 +341,7 @@ public class RaftNodeImpl implements RaftNode {
 
         if (status == TERMINATING) {
             return false;
-        } else if (status == CHANGING_MEMBERSHIP) {
+        } else if (status == UPDATING_GROUP_MEMBER_LIST) {
             return !(operation instanceof RaftGroupCmd);
         }
 
@@ -493,11 +492,6 @@ public class RaftNodeImpl implements RaftNode {
 
         assert prevEntry != null : "Follower: " + follower + ", next index: " + nextIndex;
 
-        if (prevEntry.index() < state.commitIndex()) {
-            // send at most one ApplyRaftGroupMembersOp in single batch
-            entries = trimEntriesIfContainsMultipleMembershipChanges(entries);
-        }
-
         AppendRequest appendRequest = new AppendRequest(getLocalMember(), state.term(), prevEntry.term(), prevEntry.index(),
                 state.commitIndex(), entries);
 
@@ -511,32 +505,6 @@ public class RaftNodeImpl implements RaftNode {
         }
 
         send(appendRequest, follower);
-    }
-
-    /**
-     * If log entries contains multiple membership change entries, then splits entries to send only a single
-     * membership change in single append-entries request.
-     */
-    private LogEntry[] trimEntriesIfContainsMultipleMembershipChanges(LogEntry[] entries) {
-        int trim = entries.length;
-        boolean found = false;
-        for (int i = 0; i < entries.length; i++) {
-            LogEntry entry = entries[i];
-            if (entry.operation() instanceof ApplyRaftGroupMembersCmd) {
-                if (found) {
-                    trim = i;
-                    break;
-                } else {
-                    found = true;
-                }
-            }
-        }
-
-        if (trim < entries.length) {
-            logger.fine("Trimming append entries up to index of the second ApplyRaftGroupMembersOp: " + trim);
-            return Arrays.copyOf(entries, trim);
-        }
-        return entries;
     }
 
     /**
@@ -592,10 +560,17 @@ public class RaftNodeImpl implements RaftNode {
         Object operation = entry.operation();
         if (operation instanceof RaftGroupCmd) {
             if (operation instanceof DestroyRaftGroupCmd) {
-                assert status == TERMINATING;
                 setStatus(TERMINATED);
             } else if (operation instanceof ApplyRaftGroupMembersCmd) {
-                assert status == CHANGING_MEMBERSHIP : "STATUS: " + status;
+                if (state.lastGroupMembers().index() < entry.index()) {
+                    setStatus(UPDATING_GROUP_MEMBER_LIST);
+                    ApplyRaftGroupMembersCmd op = (ApplyRaftGroupMembersCmd) operation;
+                    updateGroupMembers(entry.index(), op.getMembers());
+                }
+
+                assert status == UPDATING_GROUP_MEMBER_LIST : "STATUS: " + status;
+                assert state.lastGroupMembers().index() == entry.index();
+
                 state.commitGroupMembers();
                 ApplyRaftGroupMembersCmd cmd = (ApplyRaftGroupMembersCmd) operation;
                 if (cmd.getMember().equals(localMember) && cmd.getChangeType() == MembershipChangeType.REMOVE) {
@@ -692,7 +667,9 @@ public class RaftNodeImpl implements RaftNode {
             }
         }
 
-        logger.warning("Invalidated " + count + " futures from log index: " + entryIndex);
+        if (count > 0) {
+            logger.warning("Invalidated " + count + " futures from log index: " + entryIndex);
+        }
     }
 
     /**
@@ -712,7 +689,9 @@ public class RaftNodeImpl implements RaftNode {
             }
         }
 
-        logger.warning("Invalidated " + count + " futures until log index: " + entryIndex);
+        if (count > 0) {
+            logger.warning("Invalidated " + count + " futures until log index: " + entryIndex);
+        }
     }
 
     /**
@@ -777,8 +756,12 @@ public class RaftNodeImpl implements RaftNode {
 
         raftIntegration.restoreSnapshot(snapshot.operation(), snapshot.index());
 
-        // If I am installing a snapshot, it means I am still present in the last member list so I don't need to update status.
+        // If I am installing a snapshot, it means I am still present in the last member list,
+        // but it is possible that the last entry I appended before the snapshot could be a membership change.
+        // Because of this, I need to update my status.
         // Nevertheless, I may not be present in the restored member list, which is ok.
+
+        setStatus(ACTIVE);
         state.restoreGroupMembers(snapshot.groupMembersLogIndex(), snapshot.groupMembers());
         printMemberState();
 

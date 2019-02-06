@@ -17,6 +17,7 @@
 package com.hazelcast.cp.internal.raft.impl.handler;
 
 import com.hazelcast.cp.internal.raft.command.DestroyRaftGroupCmd;
+import com.hazelcast.cp.internal.raft.command.RaftGroupCmd;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeStatus;
 import com.hazelcast.cp.internal.raft.impl.command.ApplyRaftGroupMembersCmd;
@@ -28,12 +29,12 @@ import com.hazelcast.cp.internal.raft.impl.log.RaftLog;
 import com.hazelcast.cp.internal.raft.impl.state.RaftState;
 import com.hazelcast.cp.internal.raft.impl.task.RaftNodeStatusAwareTask;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import static com.hazelcast.cp.internal.raft.impl.RaftRole.FOLLOWER;
 import static java.lang.Math.min;
-import static java.util.Arrays.asList;
 
 /**
  * Handles {@link AppendRequest} sent by the leader. Responds with
@@ -126,12 +127,12 @@ public class AppendRequestHandlerTask extends RaftNodeStatusAwareTask implements
             }
         }
 
+        LogEntry[] newEntries = null;
         // Process any new entries
         if (req.entryCount() > 0) {
             // Delete any conflicting entries, skip any duplicates
             long lastLogIndex = raftLog.lastLogOrSnapshotIndex();
 
-            LogEntry[] newEntries = null;
             for (int i = 0; i < req.entryCount(); i++) {
                 LogEntry reqEntry = req.entries()[i];
 
@@ -156,7 +157,7 @@ public class AppendRequestHandlerTask extends RaftNodeStatusAwareTask implements
                     }
 
                     raftNode.invalidateFuturesFrom(reqEntry.index());
-                    handleRaftGroupCmd(truncated, true);
+                    revertRaftGroupCmd(truncated);
 
                     newEntries = Arrays.copyOfRange(req.entries(), i, req.entryCount());
                     break;
@@ -170,7 +171,6 @@ public class AppendRequestHandlerTask extends RaftNodeStatusAwareTask implements
                 }
 
                 raftLog.appendEntries(newEntries);
-                handleRaftGroupCmd(asList(newEntries), false);
             }
         }
 
@@ -185,34 +185,68 @@ public class AppendRequestHandlerTask extends RaftNodeStatusAwareTask implements
                 logger.fine("Setting commit index: " + newCommitIndex);
             }
             state.commitIndex(newCommitIndex);
-            raftNode.applyLogEntries();
         }
 
         raftNode.updateLastAppendEntriesTimestamp();
 
-        // If I just appended any new entry or the leader is trying to adjust my match index, I must send a response.
-        // Otherwise, I just learnt the last commit index and I don't need to send a response.
-        if (req.entryCount() > 0 || oldCommitIndex == state.commitIndex()) {
-            AppendSuccessResponse resp = new AppendSuccessResponse(raftNode.getLocalMember(), state.term(), lastLogIndex);
-            raftNode.send(resp, req.leader());
+        try {
+            // If I just appended any new entry or the leader is trying to adjust my match index, I must send a response.
+            // Otherwise, I just learnt the last commit index and I don't need to send a response.
+            if (req.entryCount() > 0 || oldCommitIndex == state.commitIndex()) {
+                AppendSuccessResponse resp = new AppendSuccessResponse(raftNode.getLocalMember(), state.term(), lastLogIndex);
+                raftNode.send(resp, req.leader());
+            }
+        } finally {
+            if (state.commitIndex() > oldCommitIndex) {
+                raftNode.applyLogEntries();
+            }
+            if (newEntries != null) {
+                preApplyRaftGroupCmd(newEntries, state.commitIndex());
+            }
         }
     }
 
-    private void handleRaftGroupCmd(List<LogEntry> entries, boolean revert) {
+
+    private void preApplyRaftGroupCmd(LogEntry[] entries, long commitIndex) {
+        // There can be at most one appended & not-committed command in the log
+        for (LogEntry entry : entries) {
+            Object operation = entry.operation();
+            if (entry.index() <= commitIndex || !(operation instanceof RaftGroupCmd)) {
+                continue;
+            }
+
+            if (operation instanceof DestroyRaftGroupCmd) {
+                raftNode.setStatus(RaftNodeStatus.TERMINATING);
+            } else if (operation instanceof ApplyRaftGroupMembersCmd) {
+                raftNode.setStatus(RaftNodeStatus.UPDATING_GROUP_MEMBER_LIST);
+                ApplyRaftGroupMembersCmd op = (ApplyRaftGroupMembersCmd) operation;
+                raftNode.updateGroupMembers(entry.index(), op.getMembers());
+            } else {
+                assert false : "Invalid command: " + operation + " in " + raftNode.getGroupId();
+            }
+
+            return;
+        }
+    }
+
+    private void revertRaftGroupCmd(List<LogEntry> entries) {
+        // I am reverting appended-but-uncommitted entries and there can be at most 1 uncommitted Raft command...
+        List<LogEntry> commandEntries = new ArrayList<LogEntry>();
+        for (LogEntry entry : entries) {
+            if (entry.operation() instanceof RaftGroupCmd) {
+                commandEntries.add(entry);
+            }
+        }
+
+        assert commandEntries.size() <= 1 : "Reverted command entries: " + commandEntries;
+
         for (LogEntry entry : entries) {
             if (entry.operation() instanceof DestroyRaftGroupCmd) {
-                RaftNodeStatus status = revert ? RaftNodeStatus.ACTIVE : RaftNodeStatus.TERMINATING;
-                raftNode.setStatus(status);
+                raftNode.setStatus(RaftNodeStatus.ACTIVE);
                 return;
             } else if (entry.operation() instanceof ApplyRaftGroupMembersCmd) {
-                RaftNodeStatus status = revert ? RaftNodeStatus.ACTIVE : RaftNodeStatus.CHANGING_MEMBERSHIP;
-                raftNode.setStatus(status);
-                if (revert) {
-                    raftNode.resetGroupMembers();
-                } else {
-                    ApplyRaftGroupMembersCmd op = (ApplyRaftGroupMembersCmd) entry.operation();
-                    raftNode.updateGroupMembers(entry.index(), op.getMembers());
-                }
+                raftNode.setStatus(RaftNodeStatus.ACTIVE);
+                raftNode.resetGroupMembers();
                 return;
             }
         }

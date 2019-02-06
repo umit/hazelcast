@@ -16,18 +16,19 @@
 
 package com.hazelcast.cp.internal.raft.impl.task;
 
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.cp.internal.raft.command.DestroyRaftGroupCmd;
+import com.hazelcast.cp.exception.CPGroupDestroyedException;
 import com.hazelcast.cp.exception.CannotReplicateException;
 import com.hazelcast.cp.exception.NotLeaderException;
-import com.hazelcast.cp.exception.CPGroupDestroyedException;
+import com.hazelcast.cp.internal.raft.command.DestroyRaftGroupCmd;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeStatus;
 import com.hazelcast.cp.internal.raft.impl.command.ApplyRaftGroupMembersCmd;
 import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
 import com.hazelcast.cp.internal.raft.impl.state.RaftState;
 import com.hazelcast.cp.internal.raft.impl.util.SimpleCompletableFuture;
+import com.hazelcast.logging.ILogger;
 
+import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.UPDATING_GROUP_MEMBER_LIST;
 import static com.hazelcast.cp.internal.raft.impl.RaftRole.LEADER;
 
 /**
@@ -105,9 +106,10 @@ public class ReplicateTask implements Runnable {
         if (operation instanceof DestroyRaftGroupCmd) {
             raftNode.setStatus(RaftNodeStatus.TERMINATING);
         } else if (operation instanceof ApplyRaftGroupMembersCmd) {
-            raftNode.setStatus(RaftNodeStatus.CHANGING_MEMBERSHIP);
+            raftNode.setStatus(UPDATING_GROUP_MEMBER_LIST);
             ApplyRaftGroupMembersCmd op = (ApplyRaftGroupMembersCmd) operation;
             raftNode.updateGroupMembers(logIndex, op.getMembers());
+            // TODO following suggestions are optimizations. No rush for impl'ing them...
             // TODO update quorum match indices...
             // TODO if the Raft group shrinks, we can move the commit index forward...
         }

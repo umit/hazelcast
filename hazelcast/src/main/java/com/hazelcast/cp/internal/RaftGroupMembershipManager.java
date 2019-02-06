@@ -245,7 +245,9 @@ class RaftGroupMembershipManager {
                 return;
             }
 
-            logger.fine("Handling " + membershipChangeContext);
+            if (logger.isFineEnabled()) {
+                logger.fine("Handling " + membershipChangeContext);
+            }
 
             List<CPGroupMembershipChangeContext> changes = membershipChangeContext.getChanges();
             Map<CPGroupId, Tuple2<Long, Long>> changedGroups = new ConcurrentHashMap<CPGroupId, Tuple2<Long, Long>>();
@@ -340,9 +342,8 @@ class RaftGroupMembershipManager {
         }
 
         private long getMemberAddCommitIndex(CPGroupMembershipChangeContext ctx, Throwable t) {
-            if (t.getCause() instanceof MismatchingGroupMembersCommitIndexException) {
-                MismatchingGroupMembersCommitIndexException m = (MismatchingGroupMembersCommitIndexException) t.getCause();
-
+            if (t instanceof MismatchingGroupMembersCommitIndexException) {
+                MismatchingGroupMembersCommitIndexException m = (MismatchingGroupMembersCommitIndexException) t;
                 String msg = "MEMBER ADD commit of " + ctx.getMemberToAdd() + " to " + ctx.getGroupId()
                         + " with members commit index: " + ctx.getMembersCommitIndex() + " failed. Actual group members: "
                         + m.getMembers() + " with commit index: " + m.getCommitIndex();
@@ -377,9 +378,8 @@ class RaftGroupMembershipManager {
         private long getMemberRemoveCommitIndex(CPGroupMembershipChangeContext ctx, Throwable t) {
             CPMemberInfo removedMember = ctx.getMemberToRemove();
 
-            if (t.getCause() instanceof MismatchingGroupMembersCommitIndexException) {
-                MismatchingGroupMembersCommitIndexException m = (MismatchingGroupMembersCommitIndexException) t.getCause();
-
+            if (t instanceof MismatchingGroupMembersCommitIndexException) {
+                MismatchingGroupMembersCommitIndexException m = (MismatchingGroupMembersCommitIndexException) t;
                 String msg = "MEMBER REMOVE commit of " + removedMember + " to " + ctx.getGroupId()
                         + " failed. Actual group members: " + m.getMembers() + " with commit index: " + m.getCommitIndex();
 

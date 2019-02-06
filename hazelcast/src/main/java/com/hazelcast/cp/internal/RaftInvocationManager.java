@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 
 import static com.hazelcast.cp.internal.raft.QueryPolicy.LEADER_LOCAL;
@@ -128,7 +129,7 @@ public class RaftInvocationManager {
 
             @Override
             public void onFailure(Throwable t) {
-                resultFuture.setResult(t);
+                resultFuture.setResult(new ExecutionException(t));
             }
         });
     }
@@ -146,7 +147,7 @@ public class RaftInvocationManager {
 
             @Override
             public void onFailure(Throwable t) {
-                if (t.getCause() instanceof CannotCreateRaftGroupException) {
+                if (t instanceof CannotCreateRaftGroupException) {
                     logger.fine("Could not create CP group: " + groupName + " with members: " + members,
                             t.getCause());
                     invokeGetMembersToCreateRaftGroup(groupName, groupSize, resultFuture);

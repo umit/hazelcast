@@ -434,12 +434,11 @@ public class RaftState {
      * and {@link #lastGroupMembers} are overwritten and they become the same.
      */
     public void restoreGroupMembers(long logIndex, Collection<Endpoint> members) {
-        assert committedGroupMembers == lastGroupMembers
-                : "Cannot restore group members to: " + members + " at log index: " + logIndex + " because last group members: "
-                + lastGroupMembers + " is different than committed group members: " + committedGroupMembers;
         assert lastGroupMembers.index() <= logIndex
                 : "Cannot restore group members to: " + members + " at log index: " + logIndex + " because last group members: "
                 + lastGroupMembers + " has a bigger log index.";
+
+        // there is no leader state to clean up
 
         RaftGroupMembers groupMembers = new RaftGroupMembers(logIndex, members, localEndpoint);
         this.committedGroupMembers = groupMembers;

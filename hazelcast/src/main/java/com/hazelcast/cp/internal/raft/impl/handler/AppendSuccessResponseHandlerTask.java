@@ -154,7 +154,9 @@ public class AppendSuccessResponseHandlerTask extends AbstractResponseHandlerTas
     }
 
     private void commitEntries(RaftState state, long commitIndex) {
-        logger.fine("Setting commit index: " + commitIndex);
+        if (logger.isFineEnabled()) {
+            logger.fine("Setting commit index: " + commitIndex);
+        }
         state.commitIndex(commitIndex);
         raftNode.broadcastAppendRequest();
         raftNode.applyLogEntries();
