@@ -64,7 +64,6 @@ import com.hazelcast.util.collection.Long2ObjectHashMap;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
@@ -87,7 +86,6 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 @SuppressWarnings({"checkstyle:methodcount", "checkstyle:classdataabstractioncoupling", "checkstyle:classfanoutcomplexity"})
 public class RaftNodeImpl implements RaftNode {
 
-    private static final long SNAPSHOT_TASK_PERIOD_IN_SECONDS = 1;
     private static final int LEADER_ELECTION_TIMEOUT_RANGE = 1000;
     private static final long RAFT_NODE_INIT_DELAY_MILLIS = 500;
     private static final float RATIO_TO_KEEP_LOGS_AFTER_SNAPSHOT = 0.05f;
@@ -207,7 +205,6 @@ public class RaftNodeImpl implements RaftNode {
         raftIntegration.execute(new PreVoteTask(this));
 
         scheduleLeaderFailureDetection();
-        scheduleSnapshot();
     }
 
     @Override
@@ -369,13 +366,6 @@ public class RaftNodeImpl implements RaftNode {
      */
     private void scheduleLeaderFailureDetection() {
         schedule(new LeaderFailureDetectionTask(), getLeaderElectionTimeoutInMillis());
-    }
-
-    /**
-     * Schedules periodic snapshot task.
-     */
-    private void scheduleSnapshot() {
-        schedule(new SnapshotTask(), TimeUnit.SECONDS.toMillis(SNAPSHOT_TASK_PERIOD_IN_SECONDS));
     }
 
     /**
@@ -555,6 +545,10 @@ public class RaftNodeImpl implements RaftNode {
 
         assert status != TERMINATED || commitIndex == raftLog.lastLogOrSnapshotIndex()
                 : "commit index: " + commitIndex + " must be equal to " + raftLog.lastLogOrSnapshotIndex() + " on termination.";
+
+        if (state.role() == LEADER || state.role() == FOLLOWER) {
+            takeSnapshotIfCommitIndexAdvanced();
+        }
     }
 
     /**
@@ -946,27 +940,6 @@ public class RaftNodeImpl implements RaftNode {
                         scheduleAppendAckResetTask();
                     }
                 }
-            }
-        }
-    }
-
-    /**
-     * If too many entries are appended to the log after the last snapshot,
-     * this task takes a snapshot. The task reschedules itself in any case.
-     */
-    private class SnapshotTask extends RaftNodeStatusAwareTask {
-        SnapshotTask() {
-            super(RaftNodeImpl.this);
-        }
-
-        @Override
-        protected void innerRun() {
-            try {
-                if (state.role() == LEADER || state.role() == FOLLOWER) {
-                    takeSnapshotIfCommitIndexAdvanced();
-                }
-            } finally {
-                scheduleSnapshot();
             }
         }
     }

@@ -53,9 +53,11 @@ import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getMatchIndex;
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getSnapshotEntry;
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getStatus;
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.newGroupWithService;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -462,7 +464,7 @@ public class SnapshotTest extends HazelcastTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                assertTrue(entryCount < getSnapshotEntry(leader).index());
+                assertThat(getSnapshotEntry(leader).index(), greaterThanOrEqualTo((long) entryCount));
             }
         });
 
@@ -471,7 +473,7 @@ public class SnapshotTest extends HazelcastTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                assertTrue(entryCount < getSnapshotEntry(slowFollower).index());
+                assertThat(getSnapshotEntry(slowFollower).index(), greaterThanOrEqualTo((long) entryCount));
             }
         });
 
