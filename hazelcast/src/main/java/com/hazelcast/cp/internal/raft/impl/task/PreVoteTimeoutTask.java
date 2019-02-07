@@ -36,7 +36,7 @@ public class PreVoteTimeoutTask extends RaftNodeStatusAwareTask implements Runna
         if (raftNode.state().role() != FOLLOWER) {
             return;
         }
-        logger.info("Pre-vote for term: " + raftNode.state().term() + " has timed out!");
+        logger.fine("Pre-vote for term: " + raftNode.state().term() + " has timed out!");
         new PreVoteTask(raftNode).run();
     }
 }

@@ -315,7 +315,7 @@ public class SnapshotTest extends HazelcastTestSupport {
                     assertEquals("valFinal", service.get(51));
                 }
             }
-        });
+        }, 30);
     }
 
     @Test

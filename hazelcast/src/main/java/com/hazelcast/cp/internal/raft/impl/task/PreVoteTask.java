@@ -44,7 +44,7 @@ public class PreVoteTask extends RaftNodeStatusAwareTask implements Runnable {
         RaftState state = raftNode.state();
 
         if (state.leader() != null) {
-            logger.info("No new pre-vote phase, we already have a LEADER: " + state.leader());
+            logger.fine("No new pre-vote phase, we already have a LEADER: " + state.leader());
             return;
         }
 

@@ -305,7 +305,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         // but Raft state cannot be recovered back.
         // That's why we generate a new UUID while promoting a member to CP.
         // This new UUID generation can be removed when Hot Restart allows to recover Raft state.
-        final CPMemberInfo member = new CPMemberInfo(UuidUtil.newUnsecureUuidString(), localMember.getAddress());
+        final CPMemberInfo member = new CPMemberInfo(UuidUtil.newUnsecureUUID(), localMember.getAddress());
         logger.info("Adding new CP member: " + member);
 
         invocationManager.invoke(getMetadataGroupId(), new AddCPMemberOp(member))

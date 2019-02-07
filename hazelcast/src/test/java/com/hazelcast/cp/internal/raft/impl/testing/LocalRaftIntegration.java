@@ -46,6 +46,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -105,12 +106,20 @@ public class LocalRaftIntegration implements RaftIntegration {
 
     @Override
     public void execute(Runnable task) {
-        scheduledExecutor.execute(task);
+        try {
+            scheduledExecutor.execute(task);
+        } catch (RejectedExecutionException e) {
+            loggingService.getLogger(getClass()).warning(e);
+        }
     }
 
     @Override
     public void schedule(Runnable task, long delay, TimeUnit timeUnit) {
-        scheduledExecutor.schedule(task, delay, timeUnit);
+        try {
+            scheduledExecutor.schedule(task, delay, timeUnit);
+        } catch (RejectedExecutionException e) {
+            loggingService.getLogger(getClass()).warning(e);
+        }
     }
 
     @Override

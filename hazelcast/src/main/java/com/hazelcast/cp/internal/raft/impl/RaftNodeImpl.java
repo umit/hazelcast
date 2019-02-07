@@ -61,6 +61,7 @@ import com.hazelcast.util.Clock;
 import com.hazelcast.util.RandomPicker;
 import com.hazelcast.util.collection.Long2ObjectHashMap;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -69,13 +70,14 @@ import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.ACTIVE;
-import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.UPDATING_GROUP_MEMBER_LIST;
 import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.STEPPED_DOWN;
 import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.TERMINATED;
 import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.TERMINATING;
+import static com.hazelcast.cp.internal.raft.impl.RaftNodeStatus.UPDATING_GROUP_MEMBER_LIST;
 import static com.hazelcast.cp.internal.raft.impl.RaftRole.FOLLOWER;
 import static com.hazelcast.cp.internal.raft.impl.RaftRole.LEADER;
 import static com.hazelcast.util.Preconditions.checkNotNull;
+import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -88,6 +90,7 @@ public class RaftNodeImpl implements RaftNode {
     private static final long SNAPSHOT_TASK_PERIOD_IN_SECONDS = 1;
     private static final int LEADER_ELECTION_TIMEOUT_RANGE = 1000;
     private static final long RAFT_NODE_INIT_DELAY_MILLIS = 500;
+    private static final float RATIO_TO_KEEP_LOGS_AFTER_SNAPSHOT = 0.05f;
 
     private final CPGroupId groupId;
     private final ILogger logger;
@@ -103,6 +106,7 @@ public class RaftNodeImpl implements RaftNode {
     private final int commitIndexAdvanceCountToSnapshot;
     private final int maxMissedLeaderHeartbeatCount;
     private final long appendRequestBackoffTimeoutInMillis;
+    private final int maxNumberOfLogsToKeepAfterSnapshot;
     private final Runnable appendRequestBackoffResetTask;
 
     private long lastAppendEntriesTimestamp;
@@ -125,6 +129,7 @@ public class RaftNodeImpl implements RaftNode {
         this.leaderElectionTimeout = (int) raftAlgorithmConfig.getLeaderElectionTimeoutInMillis();
         this.heartbeatPeriodInMillis = raftAlgorithmConfig.getLeaderHeartbeatPeriodInMillis();
         this.maxMissedLeaderHeartbeatCount = raftAlgorithmConfig.getMaxMissedLeaderHeartbeatCount();
+        this.maxNumberOfLogsToKeepAfterSnapshot = (int) (commitIndexAdvanceCountToSnapshot * RATIO_TO_KEEP_LOGS_AFTER_SNAPSHOT);
         this.appendRequestBackoffTimeoutInMillis = raftAlgorithmConfig.getAppendRequestBackoffTimeoutInMillis();
         this.appendRequestBackoffResetTask = new AppendRequestBackoffResetTask();
     }
@@ -414,7 +419,11 @@ public class RaftNodeImpl implements RaftNode {
      */
     public void broadcastAppendRequest() {
         for (Endpoint follower : state.remoteMembers()) {
-            sendAppendRequest(follower);
+            try {
+                sendAppendRequest(follower);
+            } catch (Throwable e) {
+                logger.severe(e);
+            }
         }
         updateLastAppendEntriesTimestamp();
     }
@@ -451,7 +460,8 @@ public class RaftNodeImpl implements RaftNode {
 
         long nextIndex = followerState.nextIndex();
 
-        if (nextIndex <= raftLog.snapshotIndex()) {
+        if (nextIndex <= raftLog.snapshotIndex()
+                && (!raftLog.containsLogEntry(nextIndex) || (nextIndex > 1 && !raftLog.containsLogEntry(nextIndex - 1)))) {
             InstallSnapshot installSnapshot = new InstallSnapshot(localMember, state.term(), raftLog.snapshot());
             if (logger.isFineEnabled()) {
                 logger.fine("Sending " + installSnapshot + " to " + follower + " since next index: " + nextIndex
@@ -462,11 +472,15 @@ public class RaftNodeImpl implements RaftNode {
             return;
         }
 
-        LogEntry prevEntry;
+
+        int prevEntryTerm = 0;
+        long prevEntryIndex = 0;
         LogEntry[] entries;
         if (nextIndex > 1) {
-            long prevEntryIndex = nextIndex - 1;
-            prevEntry = (prevEntryIndex == raftLog.snapshotIndex()) ? raftLog.snapshot() : raftLog.getLogEntry(prevEntryIndex);
+            prevEntryIndex = nextIndex - 1;
+            LogEntry prevEntry = (raftLog.snapshotIndex() == prevEntryIndex) ? raftLog.snapshot() : raftLog.getLogEntry(prevEntryIndex);
+            assert prevEntry != null : "Prev entry index: " + prevEntryIndex + ", snapshot: " + raftLog.snapshotIndex();
+            prevEntryTerm = prevEntry.term();
 
             long matchIndex = followerState.matchIndex();
             if (matchIndex == 0) {
@@ -482,17 +496,13 @@ public class RaftNodeImpl implements RaftNode {
                 entries = new LogEntry[0];
             }
         } else if (nextIndex == 1 && raftLog.lastLogOrSnapshotIndex() > 0) {
-            prevEntry = new LogEntry();
             long end = min(nextIndex + appendRequestMaxEntryCount, raftLog.lastLogOrSnapshotIndex());
             entries = raftLog.getEntriesBetween(nextIndex, end);
         } else {
-            prevEntry = new LogEntry();
             entries = new LogEntry[0];
         }
 
-        assert prevEntry != null : "Follower: " + follower + ", next index: " + nextIndex;
-
-        AppendRequest appendRequest = new AppendRequest(getLocalMember(), state.term(), prevEntry.term(), prevEntry.index(),
+        AppendRequest appendRequest = new AppendRequest(getLocalMember(), state.term(), prevEntryTerm, prevEntryIndex,
                 state.commitIndex(), entries);
 
         if (logger.isFineEnabled()) {
@@ -722,12 +732,22 @@ public class RaftNodeImpl implements RaftNode {
         LogEntry committedEntry = log.getLogEntry(commitIndex);
         SnapshotEntry snapshotEntry = new SnapshotEntry(committedEntry.term(), commitIndex, snapshot,
                 state.membersLogIndex(), state.members());
-        log.setSnapshot(snapshotEntry);
+
+        long minMatchIndex = 0L;
+        LeaderState leaderState = state.leaderState();
+        if (leaderState != null) {
+            long[] indices = leaderState.matchIndices();
+            // Last slot is reserved for leader index,
+            // and always zero. That's why we are skipping it.
+            Arrays.sort(indices, 0, indices.length - 1);
+            minMatchIndex = indices[0];
+        }
+
+        long truncateLogsUpToIndex = max(commitIndex - maxNumberOfLogsToKeepAfterSnapshot, minMatchIndex);
+        int truncated = log.setSnapshot(snapshotEntry, truncateLogsUpToIndex);
 
         if (logger.isFineEnabled()) {
-            logger.fine("Snapshot: "  + snapshotEntry + " is taken.");
-        } else {
-            logger.info("Snapshot is taken at commit index: " + commitIndex);
+            logger.fine(snapshotEntry + " is taken, " + truncated + " entries are truncated.");
         }
     }
 
@@ -739,19 +759,17 @@ public class RaftNodeImpl implements RaftNode {
     public boolean installSnapshot(SnapshotEntry snapshot) {
         long commitIndex = state.commitIndex();
         if (commitIndex > snapshot.index()) {
-            logger.warning("Ignored stale snapshot: " + snapshot + ". commit index: " + commitIndex);
+            logger.info("Ignored stale " + snapshot + ", commit index at: " + commitIndex);
             return false;
         } else if (commitIndex == snapshot.index()) {
-            logger.warning("Ignored snapshot: " + snapshot + " since commit index is same.");
+            logger.info("Ignored " + snapshot + " since commit index is same.");
             return true;
         }
 
         state.commitIndex(snapshot.index());
-        List<LogEntry> truncated = state.log().setSnapshot(snapshot);
-        if (logger.isFineEnabled()) {
-            logger.fine(truncated.size() + " entries are truncated to install snapshot: " + snapshot + " => " + truncated);
-        } else if (truncated.size() > 0) {
-            logger.info(truncated.size() + " entries are truncated to install snapshot: " + snapshot);
+        int truncated = state.log().setSnapshot(snapshot);
+        if (truncated > 0) {
+            logger.info(truncated + " entries are truncated to install " + snapshot);
         }
 
         raftIntegration.restoreSnapshot(snapshot.operation(), snapshot.index());
@@ -766,14 +784,8 @@ public class RaftNodeImpl implements RaftNode {
         printMemberState();
 
         state.lastApplied(snapshot.index());
-
         invalidateFuturesUntil(snapshot.index());
-
-        if (logger.isFineEnabled()) {
-            logger.fine("Snapshot: " + snapshot + " is installed.");
-        } else {
-            logger.info("Snapshot is installed at commit index: " + state.commitIndex());
-        }
+        logger.info(snapshot + " is installed.");
 
         return true;
     }
