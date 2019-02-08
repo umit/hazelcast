@@ -163,7 +163,11 @@ public interface CPSubsystemManagementService {
      * will throw {@link IllegalArgumentException}.
      * <p>
      * If there is an ongoing membership change in the CP subsystem when this
-     * method is invoked, then the returned {@code Future} object will throw
+     * method is invoked, then the returned {@code Future} object throws
+     * {@link IllegalStateException}
+     * <p>
+     * If the CP subsystem initial discovery process has not completed when
+     * this method is invoked, then the returned {@code Future} object throws
      * {@link IllegalStateException}
      *
      * @throws IllegalArgumentException If the local member is currently being
@@ -186,7 +190,7 @@ public interface CPSubsystemManagementService {
      * CP member is removed from the CP subsystem.
      *
      * @throws IllegalStateException When another CP member is being removed
-     *         from the CP sub-system
+     *         from the CP subsystem
      * @throws IllegalArgumentException if the given CP member is still part
      *         of the Hazelcast cluster or already removed from the CP member
      *         list
@@ -194,8 +198,8 @@ public interface CPSubsystemManagementService {
     ICompletableFuture<Void> removeCPMember(String cpMemberUuid);
 
     /**
-     * Wipes & resets the whole CP subsystem and initializes it as if the Hazelcast
-     * cluster is starting up initially.
+     * Wipes & resets the whole CP subsystem and initializes it
+     * as if the Hazelcast cluster is starting up initially.
      * This method must be used only when the Metadata CP group loses
      * its majority and cannot make progress anymore.
      * <p>
@@ -203,6 +207,11 @@ public interface CPSubsystemManagementService {
      * and CP members will start with empty state.
      * <p>
      * This method can be invoked only from the Hazelcast master member.
+     * <p>
+     * This method must not be called while there are membership changes
+     * in the cluster. Before calling this method, please make sure that
+     * there is no new member joining and all existing Hazelcast members
+     * have seen the same member list.
      * <p>
      * <strong>Use with caution:
      * This method is NOT idempotent and multiple invocations can break

@@ -30,9 +30,9 @@ import java.util.Collection;
 public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializable {
 
     private final Collection<CPMemberInfo> members = new ArrayList<CPMemberInfo>();
+    private long membersCommitIndex;
     private final Collection<CPGroupInfo> groups = new ArrayList<CPGroupInfo>();
     private MembershipChangeContext membershipChangeContext;
-    private long groupIdTerm;
 
     public void addRaftGroup(CPGroupInfo group) {
         groups.add(group);
@@ -46,6 +46,14 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
         return members;
     }
 
+    public long getMembersCommitIndex() {
+        return membersCommitIndex;
+    }
+
+    public void setMembersCommitIndex(long membersCommitIndex) {
+        this.membersCommitIndex = membersCommitIndex;
+    }
+
     public Collection<CPGroupInfo> getGroups() {
         return groups;
     }
@@ -56,14 +64,6 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
 
     public void setMembershipChangeContext(MembershipChangeContext membershipChangeContext) {
         this.membershipChangeContext = membershipChangeContext;
-    }
-
-    public long getGroupIdTerm() {
-        return groupIdTerm;
-    }
-
-    public void setGroupIdTerm(long groupIdTerm) {
-        this.groupIdTerm = groupIdTerm;
     }
 
     @Override
@@ -82,12 +82,12 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
         for (CPMemberInfo member : members) {
             out.writeObject(member);
         }
+        out.writeLong(membersCommitIndex);
         out.writeInt(groups.size());
         for (CPGroupInfo group : groups) {
             out.writeObject(group);
         }
         out.writeObject(membershipChangeContext);
-        out.writeLong(groupIdTerm);
     }
 
     @Override
@@ -97,6 +97,7 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
             CPMemberInfo member = in.readObject();
             members.add(member);
         }
+        membersCommitIndex = in.readLong();
 
         len = in.readInt();
         for (int i = 0; i < len; i++) {
@@ -104,6 +105,5 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
             groups.add(group);
         }
         membershipChangeContext = in.readObject();
-        groupIdTerm = in.readLong();
     }
 }

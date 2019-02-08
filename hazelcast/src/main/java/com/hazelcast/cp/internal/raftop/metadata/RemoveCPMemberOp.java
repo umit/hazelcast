@@ -16,11 +16,9 @@
 
 package com.hazelcast.cp.internal.raftop.metadata;
 
-import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.internal.CPMemberInfo;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.MetadataRaftGroupManager;
-import com.hazelcast.cp.internal.RaftOp;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
 import com.hazelcast.cp.internal.raft.impl.util.PostponedResponse;
@@ -32,26 +30,25 @@ import java.io.IOException;
 
 /**
  * When a CP member is shutting down gracefully, or a crashed CP member is
- * removed from the CP sub-system via
+ * removed from the CP subsystem via
  * {@link RaftService#removeCPMember(String)}, this operation is
  * committed to the Metadata Raft group.
  */
-public class TriggerRemoveCPMemberOp extends RaftOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
+public class RemoveCPMemberOp extends MetadataRaftGroupOp implements IndeterminateOperationStateAware,
+                                                                     IdentifiedDataSerializable {
 
     private CPMemberInfo member;
 
-    public TriggerRemoveCPMemberOp() {
+    public RemoveCPMemberOp() {
     }
 
-    public TriggerRemoveCPMemberOp(CPMemberInfo member) {
+    public RemoveCPMemberOp(CPMemberInfo member) {
         this.member = member;
     }
 
     @Override
-    public Object run(CPGroupId groupId, long commitIndex) {
-        RaftService service = getService();
-        MetadataRaftGroupManager metadataManager = service.getMetadataGroupManager();
-        if (metadataManager.triggerRemoveMember(commitIndex, member)) {
+    public Object run(MetadataRaftGroupManager metadataGroupManager, long commitIndex) {
+        if (metadataGroupManager.triggerRemoveMember(commitIndex, member)) {
             return null;
         }
 
@@ -64,18 +61,13 @@ public class TriggerRemoveCPMemberOp extends RaftOp implements IndeterminateOper
     }
 
     @Override
-    public String getServiceName() {
-        return RaftService.SERVICE_NAME;
-    }
-
-    @Override
     public int getFactoryId() {
         return RaftServiceDataSerializerHook.F_ID;
     }
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.TRIGGER_REMOVE_CP_MEMBER_OP;
+        return RaftServiceDataSerializerHook.REMOVE_CP_MEMBER_OP;
     }
 
     @Override

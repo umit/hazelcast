@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal.exception;
 
-import com.hazelcast.cp.exception.CPSubsystemException;
+import com.hazelcast.core.HazelcastException;
 import com.hazelcast.spi.exception.RetryableException;
 
 /**
@@ -24,11 +24,7 @@ import com.hazelcast.spi.exception.RetryableException;
  * and initialization of the Metadata Raft group is not done yet.
  * Handled and retried internally.
  */
-public class MetadataRaftGroupNotInitializedException extends CPSubsystemException
-        implements RetryableException {
+public class MetadataRaftGroupNotInitializedException extends HazelcastException implements RetryableException {
     private static final long serialVersionUID = -587586143908312910L;
 
-    public MetadataRaftGroupNotInitializedException() {
-        super(null);
-    }
 }
