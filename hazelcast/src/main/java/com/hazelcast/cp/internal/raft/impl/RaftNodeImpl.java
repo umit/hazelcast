@@ -88,7 +88,7 @@ public class RaftNodeImpl implements RaftNode {
 
     private static final int LEADER_ELECTION_TIMEOUT_RANGE = 1000;
     private static final long RAFT_NODE_INIT_DELAY_MILLIS = 500;
-    private static final float RATIO_TO_KEEP_LOGS_AFTER_SNAPSHOT = 0.05f;
+    private static final float RATIO_TO_KEEP_LOGS_AFTER_SNAPSHOT = 0.1f;
 
     private final CPGroupId groupId;
     private final ILogger logger;
@@ -119,8 +119,6 @@ public class RaftNodeImpl implements RaftNode {
         this.groupId = groupId;
         this.raftIntegration = raftIntegration;
         this.localMember = localMember;
-        this.state = new RaftState(groupId, localMember, members);
-        this.logger = getLogger(RaftNode.class);
         this.maxUncommittedEntryCount = raftAlgorithmConfig.getUncommittedEntryCountToRejectNewAppends();
         this.appendRequestMaxEntryCount = raftAlgorithmConfig.getAppendRequestMaxEntryCount();
         this.commitIndexAdvanceCountToSnapshot = raftAlgorithmConfig.getCommitIndexAdvanceCountToSnapshot();
@@ -129,6 +127,9 @@ public class RaftNodeImpl implements RaftNode {
         this.maxMissedLeaderHeartbeatCount = raftAlgorithmConfig.getMaxMissedLeaderHeartbeatCount();
         this.maxNumberOfLogsToKeepAfterSnapshot = (int) (commitIndexAdvanceCountToSnapshot * RATIO_TO_KEEP_LOGS_AFTER_SNAPSHOT);
         this.appendRequestBackoffTimeoutInMillis = raftAlgorithmConfig.getAppendRequestBackoffTimeoutInMillis();
+        int logCapacity = commitIndexAdvanceCountToSnapshot + maxUncommittedEntryCount + maxNumberOfLogsToKeepAfterSnapshot;
+        this.state = new RaftState(groupId, localMember, members, logCapacity);
+        this.logger = getLogger(RaftNode.class);
         this.appendRequestBackoffResetTask = new AppendRequestBackoffResetTask();
     }
 

@@ -109,7 +109,7 @@ public class LocalRaftIntegration implements RaftIntegration {
         try {
             scheduledExecutor.execute(task);
         } catch (RejectedExecutionException e) {
-            loggingService.getLogger(getClass()).warning(e);
+            loggingService.getLogger(getClass()).fine(e);
         }
     }
 
@@ -118,7 +118,7 @@ public class LocalRaftIntegration implements RaftIntegration {
         try {
             scheduledExecutor.schedule(task, delay, timeUnit);
         } catch (RejectedExecutionException e) {
-            loggingService.getLogger(getClass()).warning(e);
+            loggingService.getLogger(getClass()).fine(e);
         }
     }
 

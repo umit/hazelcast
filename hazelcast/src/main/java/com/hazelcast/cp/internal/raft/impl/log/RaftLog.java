@@ -16,6 +16,9 @@
 
 package com.hazelcast.cp.internal.raft.impl.log;
 
+import com.hazelcast.ringbuffer.impl.ArrayRingbuffer;
+import com.hazelcast.ringbuffer.impl.Ringbuffer;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,15 +49,16 @@ public class RaftLog {
      * <p/>
      * Important: Log entry indices start from 1, not 0.
      */
-    private final ArrayList<LogEntry> logs = new ArrayList<LogEntry>();
-
-    private SnapshotEntry snapshot = new SnapshotEntry();
+    private final Ringbuffer<LogEntry> logs;
 
     /**
-     * Number of remaining entries in the log
-     * which are included in the snapshot.
+     * Latest snapshot entry. Initially snapshot is empty.
      */
-    private int remainingEntriesAfterSnapshot;
+    private SnapshotEntry snapshot = new SnapshotEntry();
+
+    public RaftLog(int capacity) {
+        logs = new ArrayRingbuffer<LogEntry>(capacity);
+    }
 
     /**
      * Returns the last entry index in the Raft log,
@@ -80,7 +84,7 @@ public class RaftLog {
      * if no logs are available.
      */
     public LogEntry lastLogOrSnapshotEntry() {
-        return logs.size() > 0 ? logs.get(logs.size() - 1) : snapshot;
+        return !logs.isEmpty() ? logs.read(logs.tailSequence()) : snapshot;
     }
 
     /**
@@ -90,8 +94,8 @@ public class RaftLog {
      * Important: Log entry indices start from 1, not 0.
      */
     public boolean containsLogEntry(long entryIndex) {
-        int index = toArrayIndex(entryIndex);
-        return index >= 0 && logs.size() > index;
+        long sequence = toSequence(entryIndex);
+        return sequence >= logs.headSequence() && sequence <= logs.tailSequence();
     }
 
     /**
@@ -110,7 +114,7 @@ public class RaftLog {
             return null;
         }
 
-        LogEntry logEntry = logs.get(toArrayIndex(entryIndex));
+        LogEntry logEntry = logs.read(toSequence(entryIndex));
         assert logEntry.index() == entryIndex : "Expected: " + entryIndex + ", Entry: " + logEntry;
         return logEntry;
     }
@@ -133,12 +137,12 @@ public class RaftLog {
         }
 
         List<LogEntry> truncated = new ArrayList<LogEntry>();
-        for (int i = logs.size() - 1, j = toArrayIndex(entryIndex); i >= j; i--) {
-            truncated.add(logs.remove(i));
+        for (long ix = logs.tailSequence(); ix >= toSequence(entryIndex); ix--) {
+            truncated.add(logs.read(ix));
         }
+        logs.setTailSequence(toSequence(entryIndex) - 1);
 
         reverse(truncated);
-
         return truncated;
     }
 
@@ -154,6 +158,10 @@ public class RaftLog {
     public void appendEntries(LogEntry... newEntries) {
         int lastTerm = lastLogOrSnapshotTerm();
         long lastIndex = lastLogOrSnapshotIndex();
+
+        assert logs.getCapacity() - logs.size() >= newEntries.length
+                : "Not enough capacity! Capacity: " + logs.getCapacity()
+                + ", Size: " + logs.size() + ", New entries: " + newEntries.length;
 
         for (LogEntry entry : newEntries) {
             if (entry.term() < lastTerm) {
@@ -199,7 +207,14 @@ public class RaftLog {
                     + lastLogOrSnapshotIndex());
         }
 
-        return logs.subList(toArrayIndex(fromEntryIndex), toArrayIndex(toEntryIndex + 1)).toArray(new LogEntry[0]);
+        assert ((int) (toEntryIndex - fromEntryIndex)) >= 0 : "From: " + fromEntryIndex + ", to: " + toEntryIndex;
+        LogEntry[] entries = new LogEntry[(int) (toEntryIndex - fromEntryIndex + 1)];
+        long offset = toSequence(fromEntryIndex);
+
+        for (int i = 0; i < entries.length; i++) {
+            entries[i] = logs.read(offset + i);
+        }
+        return entries;
     }
 
     /**
@@ -221,22 +236,20 @@ public class RaftLog {
                     + snapshotIndex());
         }
 
-        reverse(logs);
-        int truncated = 0;
-        for (int i = logs.size() - 1; i >= 0; i--) {
-            LogEntry logEntry = logs.get(i);
-            if (logEntry.index() > truncateUpToIndex) {
-                break;
-            }
+        long newHeadSeq = toSequence(truncateUpToIndex) + 1;
+        long newTailSeq = Math.max(logs.tailSequence(), newHeadSeq - 1);
 
-            truncated++;
-            logs.remove(i);
+        long prevSize = logs.size();
+        // Set truncated slots to null to reduce memory usage.
+        // Otherwise this has no effect on correctness.
+        for (long seq = logs.headSequence(); seq < newHeadSeq; seq++) {
+            logs.set(seq, null);
         }
-        reverse(logs);
+        logs.setHeadSequence(newHeadSeq);
+        logs.setTailSequence(newTailSeq);
 
-        remainingEntriesAfterSnapshot = (int) (snapshot.index() - truncateUpToIndex);
         this.snapshot = snapshot;
-        return truncated;
+        return (int) (prevSize - logs.size());
     }
 
     /**
@@ -253,7 +266,7 @@ public class RaftLog {
         return snapshot;
     }
 
-    private int toArrayIndex(long entryIndex) {
-        return (int) (entryIndex - snapshotIndex()) + remainingEntriesAfterSnapshot - 1;
+    private long toSequence(long entryIndex) {
+        return entryIndex - 1;
     }
 }

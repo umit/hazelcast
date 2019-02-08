@@ -66,7 +66,7 @@ public class RaftStateTest {
                 newRaftMember(5003),
                 newRaftMember(5004)));
 
-        state = new RaftState(groupId, localMember, members);
+        state = new RaftState(groupId, localMember, members, 100);
     }
 
     @Test
@@ -239,7 +239,7 @@ public class RaftStateTest {
             members.add(newRaftMember(1000 + i));
         }
 
-        state = new RaftState(groupId, localMember, members);
+        state = new RaftState(groupId, localMember, members, 100);
 
         assertEquals(majority(count), state.majority());
     }
