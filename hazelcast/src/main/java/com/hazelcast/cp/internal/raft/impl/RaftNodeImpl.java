@@ -934,12 +934,16 @@ public class RaftNodeImpl implements RaftNode {
                 Map<Endpoint, FollowerState> followerStates = leaderState.getFollowerStates();
                 for (Entry<Endpoint, FollowerState> entry : followerStates.entrySet()) {
                     FollowerState followerState = entry.getValue();
-                    if (followerState.resetAppendRequestBackoff()) {
-                        // This follower has not sent a response to the last append request.
-                        // Send another append request and schedule the task again...
-                        sendAppendRequest(entry.getKey());
-                        scheduleAppendAckResetTask();
+                    if (!followerState.isAppendRequestBackoffSet()) {
+                        continue;
                     }
+                    if (followerState.completeAppendRequestBackoffRound()) {
+                        // This follower has not sent a response to the last append request.
+                        // Send another append request
+                        sendAppendRequest(entry.getKey());
+                    }
+                    // Schedule the task again, we still have backoff flag set followers
+                    scheduleAppendAckResetTask();
                 }
             }
         }

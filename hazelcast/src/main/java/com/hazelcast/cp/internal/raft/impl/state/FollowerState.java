@@ -34,7 +34,9 @@ public class FollowerState {
 
     private long nextIndex;
 
-    private boolean appendRequestBackoff;
+    private int backoffRound;
+
+    private int nextBackoffRound = 1;
 
     FollowerState(long matchIndex, long nextIndex) {
         this.matchIndex = matchIndex;
@@ -73,7 +75,7 @@ public class FollowerState {
      * Returns whether leader is waiting for response of the last append request.
      */
     public boolean isAppendRequestBackoffSet() {
-        return appendRequestBackoff;
+        return backoffRound > 0;
     }
 
     /**
@@ -81,23 +83,30 @@ public class FollowerState {
      * to this follower either until it sends an append response or a backoff timeout occurs.
      */
     public void setAppendRequestBackoff() {
-        this.appendRequestBackoff = true;
+        backoffRound = nextBackoffRound;
+        nextBackoffRound = 1 << nextBackoffRound;
     }
 
     /**
-     * Clears the flag for the append request backoff and returns whether or not flag was set previously.
+     * Completes a single round of append request backoff.
+     *
+     * @return true if round number reaches to {@code 0}, false otherwise
      */
-    public boolean resetAppendRequestBackoff() {
-        if (appendRequestBackoff) {
-            appendRequestBackoff = false;
-            return true;
-        }
-        return false;
+    public boolean completeAppendRequestBackoffRound() {
+        return --backoffRound == 0;
+    }
+
+    /**
+     * Clears the flag for the append request backoff.
+     */
+    public void resetAppendRequestBackoff() {
+        backoffRound = 0;
+        nextBackoffRound = 1;
     }
 
     @Override
     public String toString() {
-        return "FollowerState{" + "matchIndex=" + matchIndex + ", nextIndex=" + nextIndex + ", appendRequestBackoff="
-                + appendRequestBackoff + '}';
+        return "FollowerState{" + "matchIndex=" + matchIndex + ", nextIndex=" + nextIndex + ", backoffRound=" + backoffRound
+                + ", nextBackoffRound=" + nextBackoffRound + '}';
     }
 }
