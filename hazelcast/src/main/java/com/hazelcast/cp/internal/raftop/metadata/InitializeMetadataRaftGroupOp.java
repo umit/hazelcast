@@ -37,22 +37,22 @@ import java.util.List;
 public class InitializeMetadataRaftGroupOp extends MetadataRaftGroupOp implements IndeterminateOperationStateAware,
                                                                                   IdentifiedDataSerializable {
 
-    private List<CPMemberInfo> initialMembers;
-    private int metadataMembersCount;
+    private CPMemberInfo callerCPMember;
+    private List<CPMemberInfo> discoveredCPMembers;
     private long groupIdSeed;
 
     public InitializeMetadataRaftGroupOp() {
     }
 
-    public InitializeMetadataRaftGroupOp(List<CPMemberInfo> initialMembers, int metadataMembersCount, long groupIdSeed) {
-        this.initialMembers = initialMembers;
-        this.metadataMembersCount = metadataMembersCount;
+    public InitializeMetadataRaftGroupOp(CPMemberInfo callerCPMember, List<CPMemberInfo> discoveredCPMembers, long groupIdSeed) {
+        this.callerCPMember = callerCPMember;
+        this.discoveredCPMembers = discoveredCPMembers;
         this.groupIdSeed = groupIdSeed;
     }
 
     @Override
     public Object run(MetadataRaftGroupManager metadataGroupManager, long commitIndex) {
-        metadataGroupManager.initializeMetadataRaftGroup(commitIndex, initialMembers, metadataMembersCount, groupIdSeed);
+        metadataGroupManager.initializeMetadataRaftGroup(commitIndex, callerCPMember, discoveredCPMembers, groupIdSeed);
         return null;
     }
 
@@ -73,30 +73,30 @@ public class InitializeMetadataRaftGroupOp extends MetadataRaftGroupOp implement
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeInt(initialMembers.size());
-        for (CPMemberInfo member : initialMembers) {
+        out.writeObject(callerCPMember);
+        out.writeInt(discoveredCPMembers.size());
+        for (CPMemberInfo member : discoveredCPMembers) {
             out.writeObject(member);
         }
-        out.writeInt(metadataMembersCount);
         out.writeLong(groupIdSeed);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
+        callerCPMember = in.readObject();
         int len = in.readInt();
-        initialMembers = new ArrayList<CPMemberInfo>(len);
+        discoveredCPMembers = new ArrayList<CPMemberInfo>(len);
         for (int i = 0; i < len; i++) {
             CPMemberInfo member = in.readObject();
-            initialMembers.add(member);
+            discoveredCPMembers.add(member);
         }
-        metadataMembersCount = in.readInt();
         groupIdSeed = in.readLong();
     }
 
     @Override
     protected void toString(StringBuilder sb) {
-        sb.append("members=").append(initialMembers)
-          .append(", metadataMemberCount=").append(metadataMembersCount)
+        sb.append(", callerCPMember=").append(callerCPMember)
+          .append(", discoveredCPMembers=").append(discoveredCPMembers)
           .append(", groupIdSeed=").append(groupIdSeed);
     }
 }

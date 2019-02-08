@@ -23,6 +23,9 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Snapshot of the Metadata Raft group state
@@ -33,13 +36,15 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
     private long membersCommitIndex;
     private final Collection<CPGroupInfo> groups = new ArrayList<CPGroupInfo>();
     private MembershipChangeContext membershipChangeContext;
+    private List<CPMemberInfo> initialCPMembers;
+    private Set<CPMemberInfo> initializedCPMembers = new HashSet<CPMemberInfo>();
 
-    public void addRaftGroup(CPGroupInfo group) {
-        groups.add(group);
+    public void setGroups(Collection<CPGroupInfo> groups) {
+        this.groups.addAll(groups);
     }
 
-    public void addMember(CPMemberInfo member) {
-        members.add(member);
+    public void setMembers(Collection<CPMemberInfo> members) {
+        this.members.addAll(members);
     }
 
     public Collection<CPMemberInfo> getMembers() {
@@ -66,6 +71,22 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
         this.membershipChangeContext = membershipChangeContext;
     }
 
+    public Set<CPMemberInfo> getInitializedCPMembers() {
+        return initializedCPMembers;
+    }
+
+    public void setInitializedCPMembers(Collection<CPMemberInfo> initializedCPMembers) {
+        this.initializedCPMembers.addAll(initializedCPMembers);
+    }
+
+    public List<CPMemberInfo> getInitialCPMembers() {
+        return initialCPMembers;
+    }
+
+    public void setInitialCPMembers(List<CPMemberInfo> initialCPMembers) {
+        this.initialCPMembers = initialCPMembers;
+    }
+
     @Override
     public int getFactoryId() {
         return RaftServiceDataSerializerHook.F_ID;
@@ -88,6 +109,18 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
             out.writeObject(group);
         }
         out.writeObject(membershipChangeContext);
+        boolean discoveredInitialCPMembers = initialCPMembers != null;
+        out.writeBoolean(discoveredInitialCPMembers);
+        if (discoveredInitialCPMembers) {
+            out.writeInt(initialCPMembers.size());
+            for (CPMemberInfo member : initialCPMembers) {
+                out.writeObject(member);
+            }
+        }
+        out.writeInt(initializedCPMembers.size());
+        for (CPMemberInfo member : initializedCPMembers) {
+            out.writeObject(member);
+        }
     }
 
     @Override
@@ -105,5 +138,20 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
             groups.add(group);
         }
         membershipChangeContext = in.readObject();
+        boolean discoveredInitialCPMembers = in.readBoolean();
+        if (discoveredInitialCPMembers) {
+            len = in.readInt();
+            initialCPMembers = new ArrayList<CPMemberInfo>(len);
+            for (int i = 0; i < len; i++) {
+                CPMemberInfo member = in.readObject();
+                initialCPMembers.add(member);
+            }
+        }
+
+        len = in.readInt();
+        for (int i = 0; i < len; i++) {
+            CPMemberInfo member = in.readObject();
+            initializedCPMembers.add(member);
+        }
     }
 }

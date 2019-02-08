@@ -48,7 +48,7 @@ public class RemoveCPMemberOp extends MetadataRaftGroupOp implements Indetermina
 
     @Override
     public Object run(MetadataRaftGroupManager metadataGroupManager, long commitIndex) {
-        if (metadataGroupManager.triggerRemoveMember(commitIndex, member)) {
+        if (metadataGroupManager.removeMember(commitIndex, member)) {
             return null;
         }
 
