@@ -134,10 +134,6 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     }
 
     void restart(long seed) {
-        if (logger.isFineEnabled()) {
-            logger.warning("Setting new group id seed: " + seed);
-        }
-
         // reset order:
         // 1. active members
         // 2. active members index
