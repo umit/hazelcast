@@ -23,6 +23,7 @@ import com.hazelcast.cp.internal.CPGroupInfo;
 import com.hazelcast.cp.internal.CPMemberInfo;
 import com.hazelcast.cp.internal.RaftService;
 import com.hazelcast.logging.ILogger;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;
@@ -115,6 +116,26 @@ public class RaftInvocationContext {
         return new MemberCursor(members);
     }
 
+    /**
+     * Iterates over Raft members
+     */
+    static final class MemberCursor {
+        private final CPMember[] members;
+        private int index = -1;
+
+        MemberCursor(CPMember[] members) {
+            this.members = members;
+        }
+
+        boolean advance() {
+            return ++index < members.length;
+        }
+
+        CPMember get() {
+            return members[index];
+        }
+    }
+
     private static class ActiveCPMembersContainer {
         final ActiveCPMembersVersion version;
         final CPMemberInfo[] members;
@@ -125,6 +146,7 @@ public class RaftInvocationContext {
         }
     }
 
+    @SuppressFBWarnings("EQ_COMPARETO_USE_OBJECT_EQUALS")
     private static class ActiveCPMembersVersion implements Comparable<ActiveCPMembersVersion> {
 
         private final long groupIdSeed;

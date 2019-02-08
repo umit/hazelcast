@@ -469,7 +469,8 @@ public class RaftNodeImpl implements RaftNode {
         LogEntry[] entries;
         if (nextIndex > 1) {
             prevEntryIndex = nextIndex - 1;
-            LogEntry prevEntry = (raftLog.snapshotIndex() == prevEntryIndex) ? raftLog.snapshot() : raftLog.getLogEntry(prevEntryIndex);
+            LogEntry prevEntry = (raftLog.snapshotIndex() == prevEntryIndex)
+                    ? raftLog.snapshot() : raftLog.getLogEntry(prevEntryIndex);
             assert prevEntry != null : "Prev entry index: " + prevEntryIndex + ", snapshot: " + raftLog.snapshotIndex();
             prevEntryTerm = prevEntry.term();
 
