@@ -191,9 +191,8 @@ public interface CPSubsystemManagementService {
      *
      * @throws IllegalStateException When another CP member is being removed
      *         from the CP subsystem
-     * @throws IllegalArgumentException if the given CP member is still part
-     *         of the Hazelcast cluster or already removed from the CP member
-     *         list
+     * @throws IllegalArgumentException if the given CP member is already
+     *         removed from the CP member list
      */
     ICompletableFuture<Void> removeCPMember(String cpMemberUuid);
 
@@ -218,6 +217,12 @@ public interface CPSubsystemManagementService {
      * the whole system! After calling this API, you must observe the system
      * to see if the restart process is successfully completed or failed
      * before making another call.</strong>
+     *
+     * @throws IllegalStateException When this method is called on
+     *         a Hazelcast member that is not the Hazelcast cluster master
+     * @throws IllegalStateException if current member count of the cluster
+     *         is smaller than {@link CPSubsystemConfig#getCPMemberCount()}
+     *
      */
     ICompletableFuture<Void> restart();
 

@@ -57,7 +57,6 @@ import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.GracefulShutdownAwareService;
-import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.MemberAttributeServiceEvent;
 import com.hazelcast.spi.MembershipAwareService;
@@ -192,14 +191,12 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         final Collection<Member> members = clusterService.getMembers(NON_LOCAL_MEMBER_SELECTOR);
 
         if (!clusterService.isMaster()) {
-            future.setResult(new IllegalStateException("Only master can restart CP subsystem!"));
-            return future;
+            return complete(future, new IllegalStateException("Only master can restart CP subsystem!"));
         }
 
         if (config.getCPMemberCount() > members.size() + 1) {
-            future.setResult(new IllegalStateException("Not enough cluster members to restart CP subsystem. "
+            return complete(future, new IllegalStateException("Not enough cluster members to restart CP subsystem! "
                     + "Required: " + config.getCPMemberCount() + ", available: " + (members.size() + 1)));
-            return future;
         }
 
         ExecutionCallback<Void> callback = new ExecutionCallback<Void>() {
@@ -209,7 +206,11 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             @Override
             public void onResponse(Void response) {
                 if (latch.decrementAndGet() == 0) {
-                    future.setResult(failure != null ? new ExecutionException(failure) : response);
+                    if (failure == null) {
+                        future.setResult(response);
+                    } else {
+                        complete(future, failure);
+                    }
                 }
             }
 
@@ -217,7 +218,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             public void onFailure(Throwable t) {
                 failure = t;
                 if (latch.decrementAndGet() == 0) {
-                    future.setResult(new ExecutionException(t));
+                    complete(future, t);
                 }
             }
         };
@@ -226,9 +227,8 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         logger.warning("Restarting CP subsystem with groupId seed: " + seed);
         InternalOperationService operationService = nodeEngine.getOperationService();
         for (Member member : members) {
-            InternalCompletableFuture<Void> f =
-                    operationService.invokeOnTarget(SERVICE_NAME, new RestartCPMemberOp(seed), member.getAddress());
-            f.andThen(callback);
+            Operation op = new RestartCPMemberOp(seed);
+            operationService.<Void>invokeOnTarget(SERVICE_NAME, op, member.getAddress()).andThen(callback);
         }
 
         restartLocal(seed);
@@ -292,8 +292,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         final SimpleCompletableFuture<Void> future = newCompletableFuture();
 
         if (!metadataGroupManager.isDiscoveryCompleted()) {
-            future.setResult(new ExecutionException(new IllegalStateException("CP subsystem discovery is not completed yet!")));
-            return future;
+            return complete(future, new IllegalStateException("CP subsystem discovery is not completed yet!"));
         }
 
         if (getLocalCPMember() != null) {
@@ -319,7 +318,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
                              @Override
                              public void onFailure(Throwable t) {
-                                 future.setResult(new ExecutionException(t));
+                                 complete(future, t);
                              }
                          });
         return future;
@@ -347,7 +346,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
                     t = new IllegalStateException(t.getMessage());
                 }
 
-                future.setResult(new ExecutionException(t));
+                complete(future, t);
             }
         };
 
@@ -363,8 +362,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
                     }
                 }
                 if (cpMemberToRemove == null) {
-                    future.setResult(new ExecutionException(new IllegalArgumentException("No CPMember found with uuid: "
-                            + cpMemberUuid)));
+                    complete(future, new IllegalArgumentException("No CPMember found with uuid: " + cpMemberUuid));
                     return;
                 } else {
                     Member member = clusterService.getMember(cpMemberToRemove.getAddress());
@@ -378,7 +376,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
             @Override
             public void onFailure(Throwable t) {
-                future.setResult(new ExecutionException(t));
+                complete(future, t);
             }
         });
 
@@ -735,6 +733,15 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
 
     private ICompletableFuture<Void> invokeTriggerRemoveMember(CPMemberInfo member) {
         return invocationManager.invoke(getMetadataGroupId(), new RemoveCPMemberOp(member));
+    }
+
+    private <T> SimpleCompletableFuture<T> complete(SimpleCompletableFuture<T> future, Throwable t) {
+        if (!(t instanceof ExecutionException)) {
+            t = new ExecutionException(t);
+        }
+
+        future.setResult(t);
+        return future;
     }
 
     public static String withoutDefaultGroupName(String name) {

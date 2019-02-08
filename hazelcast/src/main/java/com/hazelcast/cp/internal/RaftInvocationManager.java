@@ -30,7 +30,6 @@ import com.hazelcast.cp.internal.raft.QueryPolicy;
 import com.hazelcast.cp.internal.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.cp.internal.raftop.metadata.CreateRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetActiveCPMembersOp;
-import com.hazelcast.cp.internal.raftop.metadata.TriggerDestroyRaftGroupOp;
 import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.InternalCompletableFuture;
@@ -157,12 +156,6 @@ public class RaftInvocationManager {
                 resultFuture.setResult(t);
             }
         });
-    }
-
-    // TODO [basri] this operation should be here or somewhere else?
-    public InternalCompletableFuture<CPGroupId> triggerDestroy(CPGroupId groupId) {
-        checkCPSubsystemEnabled();
-        return invoke(raftService.getMetadataGroupId(), new TriggerDestroyRaftGroupOp(groupId));
     }
 
     <T> InternalCompletableFuture<T> changeMembership(CPGroupId groupId, long membersCommitIndex,

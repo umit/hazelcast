@@ -24,10 +24,14 @@ import com.hazelcast.cp.CPGroup;
 import com.hazelcast.cp.CPGroup.CPGroupStatus;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.CPMember;
+import com.hazelcast.cp.internal.operation.RestartCPMemberOp;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raftop.metadata.CreateRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetActiveCPMembersOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupOp;
+import com.hazelcast.cp.internal.raftop.metadata.TriggerDestroyRaftGroupOp;
+import com.hazelcast.instance.Node;
+import com.hazelcast.instance.NodeState;
 import com.hazelcast.nio.Address;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -601,6 +605,78 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
         waitUntilCPDiscoveryCompleted(instances);
     }
 
+    @Test
+    public void when_membersLeaveDuringInitialDiscovery_thenAllMembersTerminate() {
+        final int nodeCount = 5;
+        final int startedNodeCount = nodeCount - 1;
+        Config config = createConfig(nodeCount, nodeCount);
+
+        final HazelcastInstance[] instances = new HazelcastInstance[startedNodeCount];
+        final Node[] nodes = new Node[startedNodeCount];
+        for (int i = 0; i < startedNodeCount; i++) {
+            instances[i] = factory.newHazelcastInstance(config);
+            nodes[i] = getNode(instances[i]);
+        }
+
+        // wait for the cp discovery process to start
+        sleepAtLeastSeconds(10);
+
+        instances[0].getLifecycleService().terminate();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (int i = 0; i < startedNodeCount; i++) {
+                    assertEquals(NodeState.SHUT_DOWN, nodes[i].getState());
+                }
+            }
+        });
+    }
+
+    @Test
+    public void when_membersLeaveDuringDiscoveryAfterCPSubsystemRestart_then_discoveryIsCancelled() throws ExecutionException, InterruptedException {
+        final int nodeCount = 5;
+        Config config = createConfig(nodeCount, nodeCount);
+
+        final HazelcastInstance[] instances = new HazelcastInstance[nodeCount];
+        for (int i = 0; i < nodeCount; i++) {
+            instances[i] = factory.newHazelcastInstance(config);
+        }
+
+        waitUntilCPDiscoveryCompleted(instances);
+
+        instances[2].getLifecycleService().terminate();
+        instances[3].getLifecycleService().terminate();
+        instances[4].getLifecycleService().terminate();
+
+        instances[2] = factory.newHazelcastInstance(config);
+        instances[3] = factory.newHazelcastInstance(config);
+
+        // we are triggering the restart mechanism while there is a missing member already.
+        // the cp subsystem discovery won't be able to complete and we kill another member meanwhile
+        long seed = System.currentTimeMillis();
+        for (HazelcastInstance instance : Arrays.copyOf(instances, nodeCount - 1)) {
+            Address address = instance.getCluster().getLocalMember().getAddress();
+            getNodeEngineImpl(instance).getOperationService()
+                                       .invokeOnTarget(RaftService.SERVICE_NAME, new RestartCPMemberOp(seed), address).get();
+        }
+
+        // wait for the cp discovery process to start
+        sleepAtLeastSeconds(10);
+
+        instances[3].getLifecycleService().terminate();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (int i = 0; i < 3; i++) {
+                    assertTrue(getRaftService(instances[i]).getMetadataGroupManager().isDiscoveryCompleted());
+                    assertNull(instances[i].getCPSubsystem().getLocalCPMember());
+                }
+            }
+        });
+    }
+
     private CPGroupId createNewRaftGroup(HazelcastInstance instance, String name, int groupSize) {
         RaftInvocationManager invocationManager = getRaftService(instance).getInvocationManager();
         try {
@@ -611,9 +687,10 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
     }
 
     private void destroyRaftGroup(HazelcastInstance instance, CPGroupId groupId) {
-        RaftInvocationManager invocationManager = getRaftService(instance).getInvocationManager();
+        RaftService service = getRaftService(instance);
+        RaftInvocationManager invocationManager = service.getInvocationManager();
         try {
-            invocationManager.triggerDestroy(groupId).get();
+            invocationManager.invoke(service.getMetadataGroupId(), new TriggerDestroyRaftGroupOp(groupId)).get();
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }

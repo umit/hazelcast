@@ -116,7 +116,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     boolean init() {
         boolean cpSubsystemEnabled = (config.getCPMemberCount() > 0);
         if (cpSubsystemEnabled) {
-            scheduleDiscoverInitialCPMembersTask();
+            scheduleDiscoverInitialCPMembersTask(true);
         } else {
             disableDiscovery();
         }
@@ -158,7 +158,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         localMember.set(null);
         discoveryCompleted.set(false);
 
-        scheduleDiscoverInitialCPMembersTask();
+        scheduleDiscoverInitialCPMembersTask(false);
     }
 
     @Override
@@ -320,7 +320,8 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         doSetActiveMembers(commitIndex, discoveredCPMembers);
 
         if (logger.isFineEnabled()) {
-            logger.fine("METADATA CP group is initialized: " + metadataGroup + " with seed: " + expectedGroupIdSeed);
+            logger.fine("METADATA " + metadataGroup + " initialization is committed for " + callerCPMember + " with seed: "
+                    + expectedGroupIdSeed);
         }
     }
 
@@ -870,8 +871,8 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         discoveryCompleted.set(true);
     }
 
-    private void scheduleDiscoverInitialCPMembersTask() {
-        Runnable task = new DiscoverInitialCPMembersTask();
+    private void scheduleDiscoverInitialCPMembersTask(boolean terminateOnDiscoveryFailure) {
+        Runnable task = new DiscoverInitialCPMembersTask(terminateOnDiscoveryFailure);
         ExecutionService executionService = nodeEngine.getExecutionService();
         executionService.schedule(task, DISCOVER_INITIAL_CP_MEMBERS_TASK_DELAY_MILLIS, MILLISECONDS);
     }
@@ -889,6 +890,11 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     private class DiscoverInitialCPMembersTask implements Runnable {
 
         private Collection<Member> latestMembers = Collections.emptySet();
+        private final boolean terminateOnDiscoveryFailure;
+
+        DiscoverInitialCPMembersTask(boolean terminateOnDiscoveryFailure) {
+            this.terminateOnDiscoveryFailure = terminateOnDiscoveryFailure;
+        }
 
         @Override
         public void run() {
@@ -899,8 +905,8 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             Collection<Member> members = nodeEngine.getClusterService().getMembers();
             for (Member member : latestMembers) {
                 if (!members.contains(member)) {
-                    logger.severe(member + " left the cluster while discovering initial CP members!");
-                    terminateNode();
+                    logger.severe(member + " left the cluster while CP subsystem discovery in progress!");
+                    handleDiscoveryFailure();
                     return;
                 }
             }
@@ -931,11 +937,11 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             updateInvocationManagerMembers(getMetadataGroupId().seed(), 0, discoveredCPMembers);
 
             if (!initializeMetadataRaftGroup(localMemberCandidate, discoveredCPMembers)) {
-                terminateNode();
+                handleDiscoveryFailure();
                 return;
             }
 
-            logger.info("Initial CP members: " + activeMembers + ", local: " + getLocalCPMember());
+            logger.info("CP subsystem is initialized with: " + discoveredCPMembers);
             discoveryCompleted.set(true);
             broadcastActiveCPMembers();
             scheduleRaftGroupMembershipManagementTasks();
@@ -947,7 +953,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             }
 
             if (!nodeEngine.getClusterService().isJoined()) {
-                scheduleDiscoverInitialCPMembersTask();
+                scheduleSelf();
                 return true;
             }
 
@@ -961,52 +967,15 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
                             + "Current CP member count: " + members.size());
                 }
 
-                scheduleDiscoverInitialCPMembersTask();
+                scheduleSelf();
                 return true;
             }
             return false;
         }
 
-        private boolean completeDiscoveryIfNotCPMember(List<CPMemberInfo> cpMembers, CPMemberInfo localCPMemberCandidate) {
-            if (!cpMembers.contains(localCPMemberCandidate)) {
-                if (logger.isFineEnabled()) {
-                    logger.fine("I am not an initial CP member! I'll serve as an AP member.");
-                }
-
-                disableDiscovery();
-                return true;
-            }
-
-            return false;
-        }
-
-        private boolean initializeMetadataRaftGroup(CPMemberInfo localCPMemberCandidate, List<CPMemberInfo> discoveredCPMembers) {
-            List<CPMemberInfo> metadataMembers = discoveredCPMembers.subList(0, config.getGroupSize());
-            try {
-                RaftGroupId metadataGroupId = getMetadataGroupId();
-                if (metadataMembers.contains(getLocalCPMember())) {
-                    raftService.createRaftNode(metadataGroupId, metadataMembers);
-                }
-
-                logger.warning("Attempting to initialize the METADATA CP group with " + discoveredCPMembers);
-                if (logger.isFineEnabled()) {
-                    logger.fine("Attempting to initialize the METADATA CP group with " + discoveredCPMembers);
-                }
-
-                RaftOp op = new InitializeMetadataRaftGroupOp(localCPMemberCandidate, discoveredCPMembers,
-                        metadataGroupId.seed());
-                raftService.getInvocationManager().invoke(metadataGroupId, op).get();
-                logger.info("METADATA CP group is created with " + metadataMembers);
-            } catch (Exception e) {
-                logger.severe("Could not create METADATA CP group with initial CP members: " + metadataMembers
-                        + " and METADATA CP group members: " + metadataMembers, e);
-                return false;
-            }
-            return true;
-        }
-
-        private void terminateNode() {
-            ((NodeEngineImpl) nodeEngine).getNode().shutdown(true);
+        private void scheduleSelf() {
+            nodeEngine.getExecutionService()
+                      .schedule(this, DISCOVER_INITIAL_CP_MEMBERS_TASK_DELAY_MILLIS, MILLISECONDS);
         }
 
         private List<CPMemberInfo> getDiscoveredCPMembers(Collection<Member> members) {
@@ -1021,6 +990,47 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
 
             sort(cpMembers, new CPMemberComparator());
             return cpMembers;
+        }
+
+        private boolean completeDiscoveryIfNotCPMember(List<CPMemberInfo> cpMembers, CPMemberInfo localCPMemberCandidate) {
+            if (!cpMembers.contains(localCPMemberCandidate)) {
+                logger.info("I am not a CP member! I'll serve as an AP member.");
+                discoveryCompleted.set(true);
+                return true;
+            }
+
+            return false;
+        }
+
+        private boolean initializeMetadataRaftGroup(CPMemberInfo localCPMemberCandidate, List<CPMemberInfo> discoveredCPMembers) {
+            List<CPMemberInfo> metadataMembers = discoveredCPMembers.subList(0, config.getGroupSize());
+            try {
+                RaftGroupId metadataGroupId = getMetadataGroupId();
+                if (metadataMembers.contains(getLocalCPMember())) {
+                    raftService.createRaftNode(metadataGroupId, metadataMembers);
+                }
+
+                RaftOp op = new InitializeMetadataRaftGroupOp(localCPMemberCandidate, discoveredCPMembers,
+                        metadataGroupId.seed());
+                raftService.getInvocationManager().invoke(metadataGroupId, op).get();
+            } catch (Exception e) {
+                logger.severe("Could not initialize METADATA CP group with CP members: " + metadataMembers, e);
+                return false;
+            }
+            return true;
+        }
+
+        private void handleDiscoveryFailure() {
+            if (terminateOnDiscoveryFailure) {
+                terminateNode();
+            } else {
+                logger.warning("Cancelling CP subsystem discovery...");
+                discoveryCompleted.set(true);
+            }
+        }
+
+        private void terminateNode() {
+            ((NodeEngineImpl) nodeEngine).getNode().shutdown(true);
         }
     }
 
