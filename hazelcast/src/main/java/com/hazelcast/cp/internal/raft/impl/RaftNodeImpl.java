@@ -283,22 +283,23 @@ public class RaftNodeImpl implements RaftNode {
         return status == TERMINATED || status == STEPPED_DOWN;
     }
 
-    public void setStatus(RaftNodeStatus status) {
+    public void setStatus(RaftNodeStatus newStatus) {
         if (this.status == TERMINATED || this.status == STEPPED_DOWN) {
-            throw new IllegalStateException("Cannot set status: " + status + " since it is already " + this.status);
+            throw new IllegalStateException("Cannot set status: " + newStatus + " since already " + this.status);
         }
 
-        this.status = status;
+        RaftNodeStatus prevStatus = this.status;
+        this.status = newStatus;
 
-        if (logger.isFineEnabled()) {
-            if (status == ACTIVE) {
-                logger.fine("Status is set to: " + status);
+        if (prevStatus != newStatus) {
+            if (newStatus == ACTIVE) {
+                logger.info("Status is set to: " + newStatus);
             } else {
-                logger.warning("Status is set to: " + status);
+                logger.warning("Status is set to: " + newStatus);
             }
         }
 
-        raftIntegration.onNodeStatusChange(status);
+        raftIntegration.onNodeStatusChange(newStatus);
     }
 
     /**
