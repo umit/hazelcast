@@ -32,6 +32,7 @@ import java.util.Collection;
 
 import static com.hazelcast.test.SplitBrainTestSupport.blockCommunicationBetween;
 import static com.hazelcast.test.SplitBrainTestSupport.unblockCommunicationBetween;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -69,6 +70,15 @@ public class CPMemberAutoRemoveTest extends HazelcastRaftTestSupport {
         final CPMember cpMember1 = instances[1].getCPSubsystem().getLocalCPMember();
         final CPMember cpMember2 = instances[2].getCPSubsystem().getLocalCPMember();
 
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (HazelcastInstance instance : instances) {
+                    assertEquals(3, getRaftService(instance).getMetadataGroupManager().getActiveMembers().size());
+                }
+            }
+        });
+
         blockCommunicationBetween(instances[1], instances[2]);
         blockCommunicationBetween(instances[0], instances[2]);
 
@@ -86,7 +96,7 @@ public class CPMemberAutoRemoveTest extends HazelcastRaftTestSupport {
                 assertTrue(getRaftService(instances[2]).getMissingMembers().contains(cpMember0));
                 assertTrue(getRaftService(instances[2]).getMissingMembers().contains(cpMember1));
             }
-        }, 20);
+        });
 
         unblockCommunicationBetween(instances[1], instances[2]);
         unblockCommunicationBetween(instances[0], instances[2]);
