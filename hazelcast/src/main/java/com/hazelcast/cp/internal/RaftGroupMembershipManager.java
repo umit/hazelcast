@@ -299,9 +299,9 @@ class RaftGroupMembershipManager {
 
                 @Override
                 public void onFailure(Throwable t) {
-                    long addCommitIndex = getMemberAddCommitIndex(ctx, t);
+                    long addCommitIndex = getMemberAddCommitIndex(changedGroups, ctx, t);
                     if (addCommitIndex != NA_MEMBERS_COMMIT_INDEX) {
-                        removeMember(changedGroups, latch, ctx, addCommitIndex);
+                        onResponse(addCommitIndex);
                     } else {
                         latch.countDown();
                     }
@@ -341,17 +341,12 @@ class RaftGroupMembershipManager {
             return f;
         }
 
-        private long getMemberAddCommitIndex(CPGroupMembershipChangeContext ctx, Throwable t) {
+        private long getMemberAddCommitIndex(Map<CPGroupId, Tuple2<Long, Long>> changedGroups, CPGroupMembershipChangeContext ctx,
+                                             Throwable t) {
             if (t instanceof MismatchingGroupMembersCommitIndexException) {
                 MismatchingGroupMembersCommitIndexException m = (MismatchingGroupMembersCommitIndexException) t;
-                String msg = "MEMBER ADD commit of " + ctx.getMemberToAdd() + " to " + ctx.getGroupId()
-                        + " with members commit index: " + ctx.getMembersCommitIndex() + " failed. Actual group members: "
-                        + m.getMembers() + " with commit index: " + m.getCommitIndex();
-
-                if (m.getMembers().size() != ctx.getMembers().size() + 1) {
-                    logger.severe(msg);
-                    return NA_MEMBERS_COMMIT_INDEX;
-                }
+                String msg = "MEMBER ADD commit of " + ctx + " failed. Actual group members: " + m.getMembers()
+                        + " with commit index: " + m.getCommitIndex();
 
                 // learnt group members must contain the added member and the current members I know
 
@@ -361,10 +356,16 @@ class RaftGroupMembershipManager {
                 }
 
                 for (CPMemberInfo member : ctx.getMembers()) {
-                    if (!m.getMembers().contains(member)) {
+                    if (!member.equals(ctx.getMemberToRemove()) && !m.getMembers().contains(member)) {
                         logger.severe(msg);
                         return NA_MEMBERS_COMMIT_INDEX;
                     }
+                }
+
+                // If the scheduled member-remove is already done, put its result and do not retry it
+                if (ctx.getMemberToRemove() != null && !m.getMembers().contains(ctx.getMemberToRemove())) {
+                    changedGroups.put(ctx.getGroupId(), Tuple2.of(ctx.getMembersCommitIndex(), m.getCommitIndex()));
+                    return NA_MEMBERS_COMMIT_INDEX;
                 }
 
                 return m.getCommitIndex();
@@ -380,8 +381,8 @@ class RaftGroupMembershipManager {
 
             if (t instanceof MismatchingGroupMembersCommitIndexException) {
                 MismatchingGroupMembersCommitIndexException m = (MismatchingGroupMembersCommitIndexException) t;
-                String msg = "MEMBER REMOVE commit of " + removedMember + " to " + ctx.getGroupId()
-                        + " failed. Actual group members: " + m.getMembers() + " with commit index: " + m.getCommitIndex();
+                String msg = "MEMBER REMOVE commit of " + ctx + " failed. Actual group members: " + m.getMembers()
+                        + " with commit index: " + m.getCommitIndex();
 
                 if (m.getMembers().contains(removedMember)) {
                     logger.severe(msg);
