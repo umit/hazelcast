@@ -16,6 +16,8 @@
 
 package com.hazelcast.cp.internal.raft.impl.state;
 
+import static java.lang.Math.min;
+
 /**
  * Mutable state maintained by the leader of the Raft group for each follower.
  * In follower state, three variables are stored:
@@ -30,13 +32,15 @@ package com.hazelcast.cp.internal.raft.impl.state;
  */
 public class FollowerState {
 
+    private static final int MAX_BACKOFF_ROUND = 20;
+
     private long matchIndex;
 
     private long nextIndex;
 
     private int backoffRound;
 
-    private int nextBackoffRound = 1;
+    private int nextBackoffPower;
 
     FollowerState(long matchIndex, long nextIndex) {
         this.matchIndex = matchIndex;
@@ -83,8 +87,19 @@ public class FollowerState {
      * to this follower either until it sends an append response or a backoff timeout occurs.
      */
     public void setAppendRequestBackoff() {
-        backoffRound = nextBackoffRound;
-        nextBackoffRound = 1 << nextBackoffRound;
+        backoffRound = nextBackoffRound();
+        nextBackoffPower++;
+    }
+
+    private int nextBackoffRound() {
+        return min(1 << nextBackoffPower, MAX_BACKOFF_ROUND);
+    }
+
+    /**
+     * Sets the flag for append request backoff to max value.
+     */
+    public void setMaxAppendRequestBackoff() {
+        backoffRound = MAX_BACKOFF_ROUND;
     }
 
     /**
@@ -101,12 +116,12 @@ public class FollowerState {
      */
     public void resetAppendRequestBackoff() {
         backoffRound = 0;
-        nextBackoffRound = 1;
+        nextBackoffPower = 0;
     }
 
     @Override
     public String toString() {
         return "FollowerState{" + "matchIndex=" + matchIndex + ", nextIndex=" + nextIndex + ", backoffRound=" + backoffRound
-                + ", nextBackoffRound=" + nextBackoffRound + '}';
+                + ", nextBackoffRound=" + nextBackoffRound() + '}';
     }
 }

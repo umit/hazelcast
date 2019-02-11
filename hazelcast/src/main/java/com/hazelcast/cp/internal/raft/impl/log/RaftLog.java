@@ -22,8 +22,6 @@ import com.hazelcast.ringbuffer.impl.Ringbuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import static java.util.Collections.reverse;
-
 /**
  * {@code RaftLog} keeps and maintains Raft log entries and snapshot. Entries
  * appended in leader's RaftLog are replicated to all followers in the same
@@ -136,13 +134,15 @@ public class RaftLog {
             throw new IllegalArgumentException("Illegal index: " + entryIndex + ", last log index: " + lastLogOrSnapshotIndex());
         }
 
+        long startSequence = toSequence(entryIndex);
+        assert startSequence >= logs.headSequence() : "Entry index: " + entryIndex + ", Head Seq: " + logs.headSequence();
+
         List<LogEntry> truncated = new ArrayList<LogEntry>();
-        for (long ix = logs.tailSequence(); ix >= toSequence(entryIndex); ix--) {
+        for (long ix = startSequence; ix <= logs.tailSequence(); ix++) {
             truncated.add(logs.read(ix));
         }
-        logs.setTailSequence(toSequence(entryIndex) - 1);
+        logs.setTailSequence(startSequence - 1);
 
-        reverse(truncated);
         return truncated;
     }
 
@@ -207,7 +207,7 @@ public class RaftLog {
                     + lastLogOrSnapshotIndex());
         }
 
-        assert ((int) (toEntryIndex - fromEntryIndex)) >= 0 : "From: " + fromEntryIndex + ", to: " + toEntryIndex;
+        assert ((int) (toEntryIndex - fromEntryIndex)) >= 0 : "Int overflow! From: " + fromEntryIndex + ", to: " + toEntryIndex;
         LogEntry[] entries = new LogEntry[(int) (toEntryIndex - fromEntryIndex + 1)];
         long offset = toSequence(fromEntryIndex);
 

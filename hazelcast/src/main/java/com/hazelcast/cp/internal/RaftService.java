@@ -487,7 +487,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         ClusterService clusterService = nodeEngine.getClusterService();
         for (CPMemberInfo cpMember : activeMembers) {
             if (clusterService.getMember(cpMember.getAddress()) == null) {
-                if (missingMembers.putIfAbsent(cpMember, System.currentTimeMillis()) == null) {
+                if (missingMembers.putIfAbsent(cpMember, Clock.currentTimeMillis()) == null) {
                     logger.warning(cpMember + " is not present in the cluster. It will be auto-removed after "
                             + config.getMissingCPMemberAutoRemovalSeconds() + " seconds.");
                 }

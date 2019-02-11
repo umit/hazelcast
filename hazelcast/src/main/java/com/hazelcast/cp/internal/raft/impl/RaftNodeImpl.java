@@ -458,7 +458,7 @@ public class RaftNodeImpl implements RaftNode {
                 logger.fine("Sending " + installSnapshot + " to " + follower + " since next index: " + nextIndex
                         + " <= snapshot index: " + raftLog.snapshotIndex());
             }
-            followerState.setAppendRequestBackoff();
+            followerState.setMaxAppendRequestBackoff();
             raftIntegration.send(installSnapshot, follower);
             return;
         }
