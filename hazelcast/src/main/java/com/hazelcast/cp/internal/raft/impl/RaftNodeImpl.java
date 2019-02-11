@@ -467,6 +467,9 @@ public class RaftNodeImpl implements RaftNode {
         int prevEntryTerm = 0;
         long prevEntryIndex = 0;
         LogEntry[] entries;
+
+        boolean setAppendRequestBackoff = true;
+
         if (nextIndex > 1) {
             prevEntryIndex = nextIndex - 1;
             LogEntry prevEntry = (raftLog.snapshotIndex() == prevEntryIndex)
@@ -478,6 +481,8 @@ public class RaftNodeImpl implements RaftNode {
             if (matchIndex == 0) {
                 // Until the leader has discovered where it and the follower's logs match,
                 // the leader can send AppendEntries with no entries (like heartbeats) to save bandwidth.
+                // We still need to enable append request backoff here because we do not want to bombard
+                // the follower before we learn its match index
                 entries = new LogEntry[0];
             } else if (nextIndex <= raftLog.lastLogOrSnapshotIndex()) {
                 // Then, once the matchIndex immediately precedes the nextIndex,
@@ -485,28 +490,32 @@ public class RaftNodeImpl implements RaftNode {
                 long end = min(nextIndex + appendRequestMaxEntryCount, raftLog.lastLogOrSnapshotIndex());
                 entries = raftLog.getEntriesBetween(nextIndex, end);
             } else {
+                // The follower has caught up with the leader. Sending an empty append request as a heartbeat...
                 entries = new LogEntry[0];
+                setAppendRequestBackoff = false;
             }
         } else if (nextIndex == 1 && raftLog.lastLogOrSnapshotIndex() > 0) {
+            // Entries will be sent to the follower for the first time...
             long end = min(nextIndex + appendRequestMaxEntryCount, raftLog.lastLogOrSnapshotIndex());
             entries = raftLog.getEntriesBetween(nextIndex, end);
         } else {
+            // There is no entry in the Raft log. Sending an empty append request as a heartbeat...
             entries = new LogEntry[0];
+            setAppendRequestBackoff = false;
         }
 
-        AppendRequest appendRequest = new AppendRequest(getLocalMember(), state.term(), prevEntryTerm, prevEntryIndex,
+        AppendRequest request = new AppendRequest(getLocalMember(), state.term(), prevEntryTerm, prevEntryIndex,
                 state.commitIndex(), entries);
 
         if (logger.isFineEnabled()) {
-            logger.fine("Sending " + appendRequest + " to " + follower + " with next index: " + nextIndex);
+            logger.fine("Sending " + request + " to " + follower + " with next index: " + nextIndex);
         }
-        if (entries.length > 0) {
-            // The append request to be sent is not empty, set the flag on follower.
-            // Next append request will not be sent to this follower before it sends a response.
+
+        if (setAppendRequestBackoff) {
             followerState.setAppendRequestBackoff();
         }
 
-        send(appendRequest, follower);
+        send(request, follower);
     }
 
     /**
