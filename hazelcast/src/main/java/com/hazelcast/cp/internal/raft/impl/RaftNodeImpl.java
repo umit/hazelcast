@@ -451,6 +451,8 @@ public class RaftNodeImpl implements RaftNode {
 
         long nextIndex = followerState.nextIndex();
 
+        // if the first log entry to be sent is put into the snapshot, check if we still keep it in the log
+        // if we still keep that log entry and its previous entry, we don't need to send a snapshot
         if (nextIndex <= raftLog.snapshotIndex()
                 && (!raftLog.containsLogEntry(nextIndex) || (nextIndex > 1 && !raftLog.containsLogEntry(nextIndex - 1)))) {
             InstallSnapshot installSnapshot = new InstallSnapshot(localMember, state.term(), raftLog.snapshot());
@@ -463,11 +465,9 @@ public class RaftNodeImpl implements RaftNode {
             return;
         }
 
-
         int prevEntryTerm = 0;
         long prevEntryIndex = 0;
         LogEntry[] entries;
-
         boolean setAppendRequestBackoff = true;
 
         if (nextIndex > 1) {
