@@ -38,6 +38,7 @@ import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationService;
+import com.hazelcast.spi.exception.RetryableHazelcastException;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.spi.impl.operationservice.impl.RaftInvocationContext;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -535,12 +536,12 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         if (activeMembers.size() == 2) {
             // There are two CP members.
             // If this operation is committed, it means both CP members have appended this operation.
-            // I am not returning a response here, so that `leavingMember` will retry and commit this operation again.
+            // I am returning a retry response, so that leavingMember will retry and commit this operation again.
             // Commit of its retry will ensure that both CP members' activeMember.size() == 1,
             // so that they will complete their shutdown in RaftService.ensureCPMemberRemoved()
             logger.warning(leavingMember + " is directly removed as there are only " + activeMembers.size() + " CP members.");
             removeActiveMember(commitIndex, leavingMember);
-            return false;
+            throw new RetryableHazelcastException();
         } else if (activeMembers.size() == 1) {
             // This is the last CP member. It is not removed from the active CP members list
             // so that it will complete its shutdown in RaftService.ensureCPMemberRemoved()
