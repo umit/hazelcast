@@ -34,6 +34,7 @@ import com.hazelcast.cp.internal.raft.SnapshotAwareService;
 import com.hazelcast.cp.internal.raft.impl.RaftIntegration;
 import com.hazelcast.cp.internal.raft.impl.RaftNode;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
+import com.hazelcast.cp.internal.raft.impl.RaftNodeStatus;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendRequest;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendSuccessResponse;
@@ -431,12 +432,15 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
                 if (remainingTimeNanos <= 0) {
                     return false;
                 }
-            } catch (CannotRemoveCPMemberException e1) {
+            } catch (ExecutionException e) {
+                if (!(e.getCause() instanceof CannotRemoveCPMemberException)) {
+                    throw ExceptionUtil.rethrow(e);
+                }
                 remainingTimeNanos -= (System.nanoTime() - start);
                 if (remainingTimeNanos <= 0) {
-                    throw new IllegalStateException(e1.getMessage());
+                    throw new IllegalStateException(e.getMessage());
                 }
-                logger.fine(e1.getMessage());
+                logger.fine(e.getMessage());
                 try {
                     Thread.sleep(MANAGEMENT_TASK_PERIOD_IN_MILLIS);
                 } catch (InterruptedException e2) {
@@ -702,6 +706,13 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             if (logger.isFineEnabled()) {
                 logger.fine("Local RaftNode[" + groupId + "] is destroyed.");
             }
+        }
+    }
+
+    public void stepDownRaftNode(CPGroupId groupId) {
+        RaftNode node = nodes.get(groupId);
+        if (node != null && node.getStatus() == RaftNodeStatus.STEPPED_DOWN) {
+            nodes.remove(groupId, node);
         }
     }
 

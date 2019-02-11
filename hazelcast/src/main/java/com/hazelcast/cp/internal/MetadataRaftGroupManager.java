@@ -507,7 +507,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         checkIfMetadataRaftGroupInitialized();
 
         if (!activeMembers.contains(leavingMember)) {
-            logger.warning("Not removing " + leavingMember + " since it is not an active CP member");
+            logger.fine("Not removing " + leavingMember + " since it is not an active CP member");
             return true;
         }
 

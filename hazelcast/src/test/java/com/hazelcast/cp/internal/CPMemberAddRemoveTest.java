@@ -930,4 +930,25 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         });
     }
 
+//    @Ignore
+    @Test
+    public void test() throws Exception {
+        final HazelcastInstance[] instances = newInstances(5, 3, 0);
+
+        Future[] futures = new Future[instances.length];
+        for (int i = 0; i < instances.length; i++) {
+            final int ix = i;
+            futures[i] = spawn(new Runnable() {
+                @Override
+                public void run() {
+                    instances[ix].shutdown();
+                }
+            });
+        }
+
+        for (Future future : futures) {
+            future.get(30, TimeUnit.SECONDS);
+        }
+    }
+
 }

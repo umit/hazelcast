@@ -227,9 +227,16 @@ public class RaftAtomicLongBasicTest extends HazelcastRaftTestSupport {
         atomicLong.set(3);
 
         RaftAtomicLongProxy atomicLongProxy = (RaftAtomicLongProxy) atomicLong;
-        long v = atomicLongProxy.localGet(QueryPolicy.ANY_LOCAL);
+        final long v = atomicLongProxy.localGet(QueryPolicy.ANY_LOCAL);
 
-        assertEquals(3, v);
+        // I may not be the leader...
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                assertEquals(3, v);
+            }
+        });
     }
 
     @Test
