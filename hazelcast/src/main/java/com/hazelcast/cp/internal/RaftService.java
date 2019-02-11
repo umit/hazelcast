@@ -404,11 +404,6 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             return true;
         }
 
-        if (metadataGroupManager.getActiveMembers().size() == 1) {
-            logger.warning("I am the last...");
-            return true;
-        }
-
         logger.fine("Triggering remove member procedure for " + localMember);
 
         if (ensureCPMemberRemoved(localMember, unit.toNanos(timeout))) {
@@ -423,6 +418,11 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         while (remainingTimeNanos > 0) {
             long start = System.nanoTime();
             try {
+                if (metadataGroupManager.getActiveMembers().size() == 1) {
+                    logger.warning("I am one of the last 2 CP members...");
+                    return true;
+                }
+
                 Future<Void> future = invokeTriggerRemoveMember(member);
                 future.get(MANAGEMENT_TASK_PERIOD_IN_MILLIS, MILLISECONDS);
                 logger.fine(member + " is marked as being removed.");

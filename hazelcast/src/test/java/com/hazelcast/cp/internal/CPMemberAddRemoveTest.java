@@ -930,12 +930,11 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         });
     }
 
-//    @Ignore
     @Test
-    public void test() throws Exception {
+    public void when_cpMembersShutdownConcurrently_then_theyCompleteTheirShutdown() {
         final HazelcastInstance[] instances = newInstances(5, 3, 0);
 
-        Future[] futures = new Future[instances.length];
+        final Future[] futures = new Future[instances.length];
         for (int i = 0; i < instances.length; i++) {
             final int ix = i;
             futures[i] = spawn(new Runnable() {
@@ -946,9 +945,15 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
             });
         }
 
-        for (Future future : futures) {
-            future.get(30, TimeUnit.SECONDS);
-        }
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() throws Exception {
+                for (Future future : futures) {
+                    assertTrue(future.isDone());
+                    future.get();
+                }
+            }
+        });
     }
 
 }

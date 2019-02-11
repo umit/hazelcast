@@ -532,9 +532,19 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
             throw new CannotRemoveCPMemberException(msg);
         }
 
-        if (activeMembers.size() <= 2) {
-            logger.warning(leavingMember + " is directly removed as there are only " + activeMembers.size() + " CP members");
+        if (activeMembers.size() == 2) {
+            // There are two CP members.
+            // If this operation is committed, it means both CP members have appended this operation.
+            // I am not returning a response here, so that `leavingMember` will retry and commit this operation again.
+            // Commit of its retry will ensure that both CP members' activeMember.size() == 1,
+            // so that they will complete their shutdown in RaftService.ensureCPMemberRemoved()
+            logger.warning(leavingMember + " is directly removed as there are only " + activeMembers.size() + " CP members.");
             removeActiveMember(commitIndex, leavingMember);
+            return false;
+        } else if (activeMembers.size() == 1) {
+            // This is the last CP member. It is not removed from the active CP members list
+            // so that it will complete its shutdown in RaftService.ensureCPMemberRemoved()
+            logger.fine("Not removing the last active CP member: " + leavingMember + " to help it complete its shutdown");
             return true;
         }
 
