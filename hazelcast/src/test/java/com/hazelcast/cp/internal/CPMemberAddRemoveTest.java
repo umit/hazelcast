@@ -956,4 +956,14 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         });
     }
 
+
+    @Test
+    public void when_cpMembersShutdownSequentially_then_theyCompleteTheirShutdown() {
+        final HazelcastInstance[] instances = newInstances(5, 3, 0);
+
+        for (HazelcastInstance instance : instances) {
+            instance.shutdown();
+        }
+    }
+
 }
