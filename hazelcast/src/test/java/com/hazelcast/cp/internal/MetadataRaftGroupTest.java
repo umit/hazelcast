@@ -400,6 +400,8 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
             instances[i] = factory.newHazelcastInstance(config);
         }
 
+        waitUntilCPDiscoveryCompleted(instances);
+
         waitAllForLeaderElection(instances, INITIAL_METADATA_GROUP_ID);
         CPMemberInfo leaderEndpoint = getLeaderMember(getRaftNode(instances[0], getMetadataGroupId(instances[0])));
 
