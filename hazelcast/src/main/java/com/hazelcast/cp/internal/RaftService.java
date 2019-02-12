@@ -682,9 +682,10 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
             return;
         }
 
-        RaftIntegration integration = new NodeEngineRaftIntegration(nodeEngine, groupId);
+        CPMemberInfo localCPMember = getLocalCPMember();
+        RaftIntegration integration = new NodeEngineRaftIntegration(nodeEngine, groupId, localCPMember);
         RaftAlgorithmConfig raftAlgorithmConfig = config.getRaftAlgorithmConfig();
-        RaftNodeImpl node = new RaftNodeImpl(groupId, getLocalCPMember(), (Collection) members, raftAlgorithmConfig, integration);
+        RaftNodeImpl node = new RaftNodeImpl(groupId, localCPMember, (Collection) members, raftAlgorithmConfig, integration);
 
         if (nodes.putIfAbsent(groupId, node) == null) {
             if (destroyedGroupIds.contains(groupId)) {

@@ -841,7 +841,7 @@ public class RaftNodeImpl implements RaftNode {
      *
      * @see RaftAlgorithmConfig#getAppendRequestBackoffTimeoutInMillis()
      */
-    public void scheduleAppendAckResetTask() {
+    private void scheduleAppendAckResetTask() {
         if (appendRequestBackoffResetTaskScheduled) {
             return;
         }
