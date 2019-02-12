@@ -85,7 +85,6 @@ public class ReplicateTask implements Runnable {
         handleRaftGroupCmd(newEntryLogIndex, operation);
 
         raftNode.broadcastAppendRequest();
-        raftNode.scheduleAppendAckResetTask();
     }
 
     private boolean verifyRaftNodeStatus() {

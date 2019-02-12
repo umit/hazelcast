@@ -203,7 +203,7 @@ public class RaftNodeImpl implements RaftNode {
             logger.fine("Starting raft node: " + localMember + " for " + groupId
                     + " with " + state.memberCount() + " members: " + state.members());
         }
-        raftIntegration.execute(new PreVoteTask(this));
+        raftIntegration.execute(new PreVoteTask(this, 0));
 
         scheduleLeaderFailureDetection();
     }
@@ -411,11 +411,7 @@ public class RaftNodeImpl implements RaftNode {
      */
     public void broadcastAppendRequest() {
         for (Endpoint follower : state.remoteMembers()) {
-            try {
-                sendAppendRequest(follower);
-            } catch (Throwable e) {
-                logger.severe(e);
-            }
+            sendAppendRequest(follower);
         }
         updateLastAppendEntriesTimestamp();
     }
@@ -462,6 +458,7 @@ public class RaftNodeImpl implements RaftNode {
                         + " <= snapshot index: " + raftLog.snapshotIndex());
             }
             followerState.setMaxAppendRequestBackoff();
+            scheduleAppendAckResetTask();
             raftIntegration.send(installSnapshot, follower);
             return;
         }
@@ -514,6 +511,7 @@ public class RaftNodeImpl implements RaftNode {
 
         if (setAppendRequestBackoff) {
             followerState.setAppendRequestBackoff();
+            scheduleAppendAckResetTask();
         }
 
         send(request, follower);
@@ -922,7 +920,7 @@ public class RaftNodeImpl implements RaftNode {
 
         private void runPreVoteTask() {
             if (state.preCandidateState() == null) {
-                new PreVoteTask(RaftNodeImpl.this).run();
+                new PreVoteTask(RaftNodeImpl.this, state.term()).run();
             }
         }
     }
