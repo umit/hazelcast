@@ -146,6 +146,10 @@ public class RaftLog {
         return truncated;
     }
 
+    public boolean checkAvailableCapacity(int requestedCapacity) {
+        return (logs.getCapacity() - logs.size()) >= requestedCapacity;
+    }
+
     /**
      * Appends new entries to the Raft log.
      *
@@ -159,9 +163,10 @@ public class RaftLog {
         int lastTerm = lastLogOrSnapshotTerm();
         long lastIndex = lastLogOrSnapshotIndex();
 
-        assert logs.getCapacity() - logs.size() >= newEntries.length
-                : "Not enough capacity! Capacity: " + logs.getCapacity()
-                + ", Size: " + logs.size() + ", New entries: " + newEntries.length;
+        if (!checkAvailableCapacity(newEntries.length)) {
+            throw new IllegalStateException("Not enough capacity! Capacity: " + logs.getCapacity()
+                    + ", Size: " + logs.size() + ", New entries: " + newEntries.length);
+        }
 
         for (LogEntry entry : newEntries) {
             if (entry.term() < lastTerm) {

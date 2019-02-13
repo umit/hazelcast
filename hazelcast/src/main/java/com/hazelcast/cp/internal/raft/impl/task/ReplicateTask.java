@@ -24,6 +24,7 @@ import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeStatus;
 import com.hazelcast.cp.internal.raft.impl.command.ApplyRaftGroupMembersCmd;
 import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
+import com.hazelcast.cp.internal.raft.impl.log.RaftLog;
 import com.hazelcast.cp.internal.raft.impl.state.RaftState;
 import com.hazelcast.cp.internal.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.logging.ILogger;
@@ -78,9 +79,16 @@ public class ReplicateTask implements Runnable {
             logger.fine("Replicating: " + operation + " in term: " + state.term());
         }
 
-        long newEntryLogIndex = state.log().lastLogOrSnapshotIndex() + 1;
+        RaftLog log = state.log();
+
+        if (!log.checkAvailableCapacity(1)) {
+            resultFuture.setResult(new IllegalStateException("Not enough capacity in RaftLog!"));
+            return;
+        }
+
+        long newEntryLogIndex = log.lastLogOrSnapshotIndex() + 1;
         raftNode.registerFuture(newEntryLogIndex, resultFuture);
-        state.log().appendEntries(new LogEntry(state.term(), newEntryLogIndex, operation));
+        log.appendEntries(new LogEntry(state.term(), newEntryLogIndex, operation));
 
         handleRaftGroupCmd(newEntryLogIndex, operation);
 

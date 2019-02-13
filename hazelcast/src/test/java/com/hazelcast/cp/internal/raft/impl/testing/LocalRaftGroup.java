@@ -23,6 +23,7 @@ import com.hazelcast.cp.internal.raft.SnapshotAwareService;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.RaftUtil;
 import com.hazelcast.test.AssertTask;
+import com.hazelcast.util.function.Function;
 import org.junit.Assert;
 
 import java.util.Arrays;
@@ -450,10 +451,18 @@ public class LocalRaftGroup {
     }
 
     /**
-     * Resets all drop rules from endpoint.
+     * Resets all rules from endpoint.
      */
-    public void resetAllDropRulesFrom(Endpoint endpoint) {
-        getIntegration(getIndexOf(endpoint)).resetAllDropRules();
+    public void resetAllRulesFrom(Endpoint endpoint) {
+        getIntegration(getIndexOf(endpoint)).resetAllRules();
+    }
+
+    public void alterMessagesToMember(Endpoint from, Endpoint to, Function<Object, Object> function) {
+        getIntegration(getIndexOf(from)).alterMessagesToEndpoint(to, function);
+    }
+
+    void removeAlterMessageRuleToMember(Endpoint from, Endpoint to) {
+        getIntegration(getIndexOf(from)).removeAlterMessageRuleToEndpoint(to);
     }
 
     public void terminateNode(int index) {

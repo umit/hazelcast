@@ -48,6 +48,7 @@ import com.hazelcast.cp.internal.raft.impl.log.RaftLog;
 import com.hazelcast.cp.internal.raft.impl.log.SnapshotEntry;
 import com.hazelcast.cp.internal.raft.impl.state.FollowerState;
 import com.hazelcast.cp.internal.raft.impl.state.LeaderState;
+import com.hazelcast.cp.internal.raft.impl.state.RaftGroupMembers;
 import com.hazelcast.cp.internal.raft.impl.state.RaftState;
 import com.hazelcast.cp.internal.raft.impl.task.MembershipChangeTask;
 import com.hazelcast.cp.internal.raft.impl.task.PreVoteTask;
@@ -720,8 +721,10 @@ public class RaftNodeImpl implements RaftNode {
             return;
         }
 
-        // We don't support snapshots while there's a membership change or the Raft group is being destroyed...
-        if (status != ACTIVE) {
+        if (isTerminatedOrSteppedDown()) {
+            // If the status is UPDATING_MEMBER_LIST or TERMINATING, it means the status is normally ACTIVE
+            // and there is an appended but not committed RaftGroupCmd.
+            // If the status is TERMINATED or STEPPED_DOWN, then there will not be any new appends.
             return;
         }
 
@@ -729,13 +732,13 @@ public class RaftNodeImpl implements RaftNode {
         Object snapshot = raftIntegration.takeSnapshot(commitIndex);
         if (snapshot instanceof Throwable) {
             Throwable t = (Throwable) snapshot;
-            logger.severe("Could not take snapshot for " + groupId + " commit index: " + commitIndex, t);
+            logger.severe("Could not take snapshot at commit index: " + commitIndex, t);
             return;
         }
 
-        LogEntry committedEntry = log.getLogEntry(commitIndex);
-        SnapshotEntry snapshotEntry = new SnapshotEntry(committedEntry.term(), commitIndex, snapshot,
-                state.membersLogIndex(), state.members());
+        int snapshotTerm = log.getLogEntry(commitIndex).term();
+        RaftGroupMembers members = state.committedGroupMembers();
+        SnapshotEntry snapshotEntry = new SnapshotEntry(snapshotTerm, commitIndex, snapshot, members.index(), members.members());
 
         long minMatchIndex = 0L;
         LeaderState leaderState = state.leaderState();

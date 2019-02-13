@@ -444,7 +444,7 @@ public class MembershipChangeTest extends HazelcastTestSupport {
             }
         });
 
-        group.resetAllDropRulesFrom(leader.getLocalMember());
+        group.resetAllRulesFrom(leader.getLocalMember());
 
         assertTrueEventually(new AssertTask() {
             @Override

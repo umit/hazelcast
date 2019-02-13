@@ -393,7 +393,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
 
         assertEquals(0, getCommitIndex(slowFollower));
 
-        group.resetAllDropRulesFrom(leader.getLocalMember());
+        group.resetAllRulesFrom(leader.getLocalMember());
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -437,7 +437,7 @@ public class LocalRaftTest extends HazelcastTestSupport {
             }
         }, 5);
 
-        group.resetAllDropRulesFrom(leader.getLocalMember());
+        group.resetAllRulesFrom(leader.getLocalMember());
         group.merge();
 
         RaftNodeImpl newLeader = group.waitUntilLeaderElected();

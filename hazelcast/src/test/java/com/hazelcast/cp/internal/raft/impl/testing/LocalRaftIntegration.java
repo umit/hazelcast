@@ -38,10 +38,12 @@ import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.internal.cluster.Versions;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.LoggingServiceImpl;
+import com.hazelcast.util.function.Function;
 import com.hazelcast.version.MemberVersion;
 
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -73,6 +75,7 @@ public class LocalRaftIntegration implements RaftIntegration {
     private final LoggingServiceImpl loggingService;
 
     private final Set<EndpointDropEntry> endpointDropRules = Collections.newSetFromMap(new ConcurrentHashMap<EndpointDropEntry, Boolean>());
+    private final Map<Endpoint, Function<Object, Object>> alterRPCRules = new ConcurrentHashMap<Endpoint, Function<Object, Object>>();
     private final Set<Class> dropAllRules = Collections.newSetFromMap(new ConcurrentHashMap<Class, Boolean>());
 
     LocalRaftIntegration(TestRaftMember localEndpoint, CPGroupId groupId, SnapshotAwareService service,
@@ -158,7 +161,7 @@ public class LocalRaftIntegration implements RaftIntegration {
             return true;
         }
 
-        node.handlePreVoteRequest(request);
+        node.handlePreVoteRequest(alterMessageIfNeeded(request, target));
         return true;
     }
 
@@ -173,7 +176,7 @@ public class LocalRaftIntegration implements RaftIntegration {
             return true;
         }
 
-        node.handlePreVoteResponse(response);
+        node.handlePreVoteResponse(alterMessageIfNeeded(response, target));
         return true;
     }
 
@@ -188,7 +191,7 @@ public class LocalRaftIntegration implements RaftIntegration {
             return true;
         }
 
-        node.handleVoteRequest(request);
+        node.handleVoteRequest(alterMessageIfNeeded(request, target));
         return true;
     }
 
@@ -203,7 +206,7 @@ public class LocalRaftIntegration implements RaftIntegration {
             return true;
         }
 
-        node.handleVoteResponse(response);
+        node.handleVoteResponse(alterMessageIfNeeded(response, target));
         return true;
     }
 
@@ -218,7 +221,7 @@ public class LocalRaftIntegration implements RaftIntegration {
             return true;
         }
 
-        node.handleAppendRequest(request);
+        node.handleAppendRequest(alterMessageIfNeeded(request, target));
         return true;
     }
 
@@ -233,7 +236,7 @@ public class LocalRaftIntegration implements RaftIntegration {
             return true;
         }
 
-        node.handleAppendResponse(response);
+        node.handleAppendResponse(alterMessageIfNeeded(response, target));
         return true;
     }
 
@@ -248,7 +251,7 @@ public class LocalRaftIntegration implements RaftIntegration {
             return true;
         }
 
-        node.handleAppendResponse(response);
+        node.handleAppendResponse(alterMessageIfNeeded(response, target));
         return true;
     }
 
@@ -263,13 +266,25 @@ public class LocalRaftIntegration implements RaftIntegration {
             return true;
         }
 
-        node.handleInstallSnapshot(request);
+        node.handleInstallSnapshot(alterMessageIfNeeded(request, target));
         return true;
     }
 
     private boolean shouldDrop(Object message, Endpoint target) {
         return dropAllRules.contains(message.getClass())
                 || endpointDropRules.contains(new EndpointDropEntry(message.getClass(), target));
+    }
+
+    private <T> T alterMessageIfNeeded(T message, Endpoint endpoint) {
+        Function<Object, Object> alterFunc = alterRPCRules.get(endpoint);
+        if (alterFunc != null) {
+            Object alteredMessage = alterFunc.apply(message);
+            if (alteredMessage != null) {
+                return (T) alteredMessage;
+            }
+        }
+
+        return message;
     }
 
     @Override
@@ -327,9 +342,18 @@ public class LocalRaftIntegration implements RaftIntegration {
         dropAllRules.remove(messageType);
     }
 
-    void resetAllDropRules() {
+    void resetAllRules() {
         dropAllRules.clear();
         endpointDropRules.clear();
+        alterRPCRules.clear();
+    }
+
+    void alterMessagesToEndpoint(Endpoint endpoint, Function<Object, Object> function) {
+        alterRPCRules.put(endpoint, function);
+    }
+
+    void removeAlterMessageRuleToEndpoint(Endpoint endpoint) {
+        alterRPCRules.remove(endpoint);
     }
 
     public <T extends SnapshotAwareService> T getService() {
