@@ -18,6 +18,7 @@ package com.hazelcast.cp.internal.datastructures;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.CPSubsystemManagementService;
 import com.hazelcast.cp.internal.CPMemberInfo;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.util.ExceptionUtil;
@@ -42,10 +43,19 @@ public abstract class AbstractAtomicRegisterSnapshotTest<T> extends HazelcastRaf
     protected abstract T readValue();
 
     @Test
-    public void test() throws Exception {
+    public void snapshot_withGracefulShutdown() throws Exception {
+        test(false);
+    }
+
+    @Test
+    public void snapshot_withTerminate() throws Exception {
+        test(true);
+    }
+
+    private void test(boolean terminate) throws Exception {
         final T value = setAndGetInitialValue();
 
-        Future future = spawn(new RestartCpMemberTask());
+        Future future = spawn(new RestartCpMemberTask(terminate));
 
         while (!future.isDone()) {
             T v = readValue();
@@ -55,20 +65,35 @@ public abstract class AbstractAtomicRegisterSnapshotTest<T> extends HazelcastRaf
         future.get();
     }
 
-    public class RestartCpMemberTask implements Runnable {
+    private class RestartCpMemberTask implements Runnable {
+        private final boolean terminate;
+
+        RestartCpMemberTask(boolean terminate) {
+            this.terminate = terminate;
+        }
+
         @Override
         public void run() {
-            for (int i = 0; i < 5; i++) {
+            for (int i = 0; i < 3; i++) {
                 try {
-                    sleepSeconds(10);
+                    sleepSeconds(5);
                     HazelcastInstance[] instances = factory.getAllHazelcastInstances().toArray(new HazelcastInstance[0]);
                     HazelcastInstance instance = getLeaderInstance(instances, getGroupId());
                     CPMemberInfo cpMember = getRaftService(instance).getLocalCPMember();
                     assertNotNull(cpMember);
-                    instance.getLifecycleService().shutdown();
+
+                    if (terminate) {
+                        instance.getLifecycleService().terminate();
+                    } else {
+                        instance.shutdown();
+                    }
 
                     instance = factory.newHazelcastInstance(cpMember.getAddress(), createConfig(3, 3));
-                    instance.getCPSubsystem().getCPSubsystemManagementService().promoteToCPMember().get();
+                    CPSubsystemManagementService managementService = instance.getCPSubsystem().getCPSubsystemManagementService();
+                    if (terminate) {
+                        managementService.removeCPMember(cpMember.getUuid()).get();
+                    }
+                    managementService.promoteToCPMember().get();
                 } catch (Exception e) {
                     throw ExceptionUtil.rethrow(e);
                 }
