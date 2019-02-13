@@ -430,7 +430,7 @@ public class RaftNodeImpl implements RaftNode {
      * If log entries contains multiple membership change entries, then entries batch is split to send only a single
      * membership change in single append-entries request.
      */
-    @SuppressWarnings({"checkstyle:npathcomplexity", "checkstyle:cyclomaticcomplexity"})
+    @SuppressWarnings({"checkstyle:npathcomplexity", "checkstyle:cyclomaticcomplexity", "checkstyle:methodlength"})
     public void sendAppendRequest(Endpoint follower) {
         if (!raftIntegration.isReachable(follower)) {
             return;
