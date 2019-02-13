@@ -22,7 +22,7 @@ import com.hazelcast.cp.CPGroup.CPGroupStatus;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.exception.CPGroupDestroyedException;
 import com.hazelcast.cp.internal.MembershipChangeContext.CPGroupMembershipChangeContext;
-import com.hazelcast.cp.internal.raft.MembershipChangeType;
+import com.hazelcast.cp.internal.raft.MembershipChangeMode;
 import com.hazelcast.cp.internal.raft.exception.MismatchingGroupMembersCommitIndexException;
 import com.hazelcast.cp.internal.raft.impl.RaftNode;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeStatus;
@@ -283,7 +283,7 @@ class RaftGroupMembershipManager {
                 logger.fine("Adding " + ctx.getMemberToAdd() + " to " + groupId);
 
                 future = invocationManager.changeMembership(groupId, ctx.getMembersCommitIndex(),
-                        ctx.getMemberToAdd(), MembershipChangeType.ADD);
+                        ctx.getMemberToAdd(), MembershipChangeMode.ADD);
             }
 
             future.andThen(new ExecutionCallback<Long>() {
@@ -314,7 +314,7 @@ class RaftGroupMembershipManager {
                                   final CPGroupMembershipChangeContext ctx,
                                   final long currentCommitIndex) {
             ICompletableFuture<Long> future = invocationManager.changeMembership(ctx.getGroupId(), currentCommitIndex,
-                    ctx.getMemberToRemove(), MembershipChangeType.REMOVE);
+                    ctx.getMemberToRemove(), MembershipChangeMode.REMOVE);
             future.andThen(new ExecutionCallback<Long>() {
                 @Override
                 public void onResponse(Long removeCommitIndex) {

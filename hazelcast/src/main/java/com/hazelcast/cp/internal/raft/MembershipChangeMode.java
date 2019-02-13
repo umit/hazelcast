@@ -17,9 +17,9 @@
 package com.hazelcast.cp.internal.raft;
 
 /**
- * Defines type of the membership change.
+ * Defines type of a membership change.
  */
-public enum MembershipChangeType {
+public enum MembershipChangeMode {
 
     /**
      * Denotes that the given member will be added to the Raft group

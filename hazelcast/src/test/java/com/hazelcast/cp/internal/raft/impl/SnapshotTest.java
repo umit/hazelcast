@@ -20,8 +20,8 @@ import com.hazelcast.config.cp.RaftAlgorithmConfig;
 import com.hazelcast.core.Endpoint;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.exception.StaleAppendRequestException;
-import com.hazelcast.cp.internal.raft.MembershipChangeType;
-import com.hazelcast.cp.internal.raft.impl.command.ApplyRaftGroupMembersCmd;
+import com.hazelcast.cp.internal.raft.MembershipChangeMode;
+import com.hazelcast.cp.internal.raft.impl.command.UpdateRaftGroupMembersCmd;
 import com.hazelcast.cp.internal.raft.impl.dataservice.ApplyRaftRunnable;
 import com.hazelcast.cp.internal.raft.impl.dataservice.RaftDataService;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendFailureResponse;
@@ -440,7 +440,7 @@ public class SnapshotTest extends HazelcastTestSupport {
         }
 
         final RaftNodeImpl newRaftNode1 = group.createNewRaftNode();
-        final ICompletableFuture f1 = leader.replicateMembershipChange(newRaftNode1.getLocalMember(), MembershipChangeType.ADD);
+        final ICompletableFuture f1 = leader.replicateMembershipChange(newRaftNode1.getLocalMember(), MembershipChangeMode.ADD);
 
         assertTrueEventually(new AssertTask() {
             @Override
@@ -545,10 +545,10 @@ public class SnapshotTest extends HazelcastTestSupport {
                     AppendRequest request = (AppendRequest) o;
                     LogEntry[] entries = request.entries();
                     if (entries.length > 0) {
-                        if (entries[entries.length - 1].operation() instanceof ApplyRaftGroupMembersCmd) {
+                        if (entries[entries.length - 1].operation() instanceof UpdateRaftGroupMembersCmd) {
                             entries = Arrays.copyOf(entries, entries.length - 1);
                             return new AppendRequest(request.leader(), request.term(), request.prevLogTerm(), request.prevLogIndex(), request.leaderCommitIndex(), entries);
-                        } else if (entries[0].operation() instanceof ApplyRaftGroupMembersCmd) {
+                        } else if (entries[0].operation() instanceof UpdateRaftGroupMembersCmd) {
                             entries = new LogEntry[0];
                             return new AppendRequest(request.leader(), request.term(), request.prevLogTerm(), request.prevLogIndex(), request.leaderCommitIndex(), entries);
                         }
@@ -564,7 +564,7 @@ public class SnapshotTest extends HazelcastTestSupport {
 
         final long lastLogIndex1 = getLastLogOrSnapshotEntry(leader).index();
 
-        leader.replicateMembershipChange(newRaftNode.getLocalMember(), MembershipChangeType.ADD);
+        leader.replicateMembershipChange(newRaftNode.getLocalMember(), MembershipChangeMode.ADD);
 
         // When the membership change entry is appended, the leader's Log will be as following:
         // LOG: [ <46 - 49>, <50>, <51 - 99 (committed)>, <100 - 108 (uncommitted)>, <109 (membership change)> ], SNAPSHOT INDEX: 50, COMMIT INDEX: 99

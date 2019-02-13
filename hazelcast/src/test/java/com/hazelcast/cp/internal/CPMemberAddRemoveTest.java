@@ -30,7 +30,7 @@ import com.hazelcast.cp.internal.datastructures.countdownlatch.RaftCountDownLatc
 import com.hazelcast.cp.internal.datastructures.lock.RaftLockService;
 import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
-import com.hazelcast.cp.internal.raft.impl.command.ApplyRaftGroupMembersCmd;
+import com.hazelcast.cp.internal.raft.impl.command.UpdateRaftGroupMembersCmd;
 import com.hazelcast.cp.internal.raftop.metadata.GetActiveCPMembersOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetMembershipChangeContextOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupOp;
@@ -174,7 +174,7 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() {
-                assertTrue(getLastLogOrSnapshotEntry(groupLeaderRaftNode).operation() instanceof ApplyRaftGroupMembersCmd);
+                assertTrue(getLastLogOrSnapshotEntry(groupLeaderRaftNode).operation() instanceof UpdateRaftGroupMembersCmd);
             }
         });
 

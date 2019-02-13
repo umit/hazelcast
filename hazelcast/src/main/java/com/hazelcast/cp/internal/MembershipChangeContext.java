@@ -17,6 +17,7 @@
 package com.hazelcast.cp.internal;
 
 import com.hazelcast.cp.CPGroupId;
+import com.hazelcast.cp.internal.raft.MembershipChangeMode;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
@@ -41,11 +42,6 @@ import static java.util.Collections.unmodifiableList;
  */
 public class MembershipChangeContext implements IdentifiedDataSerializable {
 
-    public enum MembershipChangeMode {
-        ADD,
-        LEAVE
-    }
-
     private List<Long> membershipChangeCommitIndices;
     private CPMemberInfo member;
     private MembershipChangeMode membershipChangeMode;
@@ -67,7 +63,7 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
     }
 
     CPMemberInfo getLeavingMember() {
-        return membershipChangeMode == MembershipChangeMode.LEAVE ? member : null;
+        return membershipChangeMode == MembershipChangeMode.REMOVE ? member : null;
     }
 
     List<CPGroupMembershipChangeContext> getChanges() {
@@ -106,7 +102,7 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
 
     static MembershipChangeContext memberLeaving(List<Long> membershipChangeCommitIndices, CPMemberInfo member,
                                                  List<CPGroupMembershipChangeContext> changes) {
-        return new MembershipChangeContext(membershipChangeCommitIndices, member, MembershipChangeMode.LEAVE, changes);
+        return new MembershipChangeContext(membershipChangeCommitIndices, member, MembershipChangeMode.REMOVE, changes);
     }
 
     /**

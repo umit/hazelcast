@@ -25,7 +25,7 @@ import com.hazelcast.cp.internal.operation.ChangeRaftGroupMembershipOp;
 import com.hazelcast.cp.internal.operation.DefaultRaftReplicateOp;
 import com.hazelcast.cp.internal.operation.DestroyRaftGroupOp;
 import com.hazelcast.cp.internal.operation.RaftQueryOp;
-import com.hazelcast.cp.internal.raft.MembershipChangeType;
+import com.hazelcast.cp.internal.raft.MembershipChangeMode;
 import com.hazelcast.cp.internal.raft.QueryPolicy;
 import com.hazelcast.cp.internal.raft.impl.util.SimpleCompletableFuture;
 import com.hazelcast.cp.internal.raftop.metadata.CreateRaftGroupOp;
@@ -159,9 +159,9 @@ public class RaftInvocationManager {
     }
 
     <T> InternalCompletableFuture<T> changeMembership(CPGroupId groupId, long membersCommitIndex,
-                                                      CPMemberInfo member, MembershipChangeType changeType) {
+                                                      CPMemberInfo member, MembershipChangeMode membershipChangeMode) {
         checkCPSubsystemEnabled();
-        Operation operation = new ChangeRaftGroupMembershipOp(groupId, membersCommitIndex, member, changeType);
+        Operation operation = new ChangeRaftGroupMembershipOp(groupId, membersCommitIndex, member, membershipChangeMode);
         Invocation invocation = new RaftInvocation(operationService.getInvocationContext(), raftInvocationContext, groupId,
                 operation, invocationMaxRetryCount, invocationRetryPauseMillis, operationCallTimeout);
         return invocation.invoke();

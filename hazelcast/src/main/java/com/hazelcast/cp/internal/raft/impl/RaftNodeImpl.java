@@ -22,11 +22,11 @@ import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.exception.LeaderDemotedException;
 import com.hazelcast.cp.exception.StaleAppendRequestException;
-import com.hazelcast.cp.internal.raft.MembershipChangeType;
+import com.hazelcast.cp.internal.raft.MembershipChangeMode;
 import com.hazelcast.cp.internal.raft.QueryPolicy;
 import com.hazelcast.cp.internal.raft.command.DestroyRaftGroupCmd;
 import com.hazelcast.cp.internal.raft.command.RaftGroupCmd;
-import com.hazelcast.cp.internal.raft.impl.command.ApplyRaftGroupMembersCmd;
+import com.hazelcast.cp.internal.raft.impl.command.UpdateRaftGroupMembersCmd;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendRequest;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendSuccessResponse;
@@ -257,17 +257,17 @@ public class RaftNodeImpl implements RaftNode {
     }
 
     @Override
-    public ICompletableFuture replicateMembershipChange(Endpoint member, MembershipChangeType change) {
+    public ICompletableFuture replicateMembershipChange(Endpoint member, MembershipChangeMode mode) {
         SimpleCompletableFuture resultFuture = raftIntegration.newCompletableFuture();
-        raftIntegration.execute(new MembershipChangeTask(this, resultFuture, member, change));
+        raftIntegration.execute(new MembershipChangeTask(this, resultFuture, member, mode));
         return resultFuture;
     }
 
     @Override
-    public ICompletableFuture replicateMembershipChange(Endpoint member, MembershipChangeType change,
+    public ICompletableFuture replicateMembershipChange(Endpoint member, MembershipChangeMode mode,
                                                         long groupMembersCommitIndex) {
         SimpleCompletableFuture resultFuture = raftIntegration.newCompletableFuture();
-        raftIntegration.execute(new MembershipChangeTask(this, resultFuture, member, change, groupMembersCommitIndex));
+        raftIntegration.execute(new MembershipChangeTask(this, resultFuture, member, mode, groupMembersCommitIndex));
         return resultFuture;
     }
 
@@ -350,7 +350,7 @@ public class RaftNodeImpl implements RaftNode {
             return !(operation instanceof RaftGroupCmd);
         }
 
-        if (operation instanceof ApplyRaftGroupMembersCmd) {
+        if (operation instanceof UpdateRaftGroupMembersCmd) {
             // the leader must have committed an entry in its term to make a membership change
             // https://groups.google.com/forum/#!msg/raft-dev/t4xj6dJTP6E/d2D9LrWRza8J
 
@@ -576,10 +576,10 @@ public class RaftNodeImpl implements RaftNode {
         if (operation instanceof RaftGroupCmd) {
             if (operation instanceof DestroyRaftGroupCmd) {
                 setStatus(TERMINATED);
-            } else if (operation instanceof ApplyRaftGroupMembersCmd) {
+            } else if (operation instanceof UpdateRaftGroupMembersCmd) {
                 if (state.lastGroupMembers().index() < entry.index()) {
                     setStatus(UPDATING_GROUP_MEMBER_LIST);
-                    ApplyRaftGroupMembersCmd op = (ApplyRaftGroupMembersCmd) operation;
+                    UpdateRaftGroupMembersCmd op = (UpdateRaftGroupMembersCmd) operation;
                     updateGroupMembers(entry.index(), op.getMembers());
                 }
 
@@ -587,8 +587,8 @@ public class RaftNodeImpl implements RaftNode {
                 assert state.lastGroupMembers().index() == entry.index();
 
                 state.commitGroupMembers();
-                ApplyRaftGroupMembersCmd cmd = (ApplyRaftGroupMembersCmd) operation;
-                if (cmd.getMember().equals(localMember) && cmd.getChangeType() == MembershipChangeType.REMOVE) {
+                UpdateRaftGroupMembersCmd cmd = (UpdateRaftGroupMembersCmd) operation;
+                if (cmd.getMember().equals(localMember) && cmd.getMode() == MembershipChangeMode.REMOVE) {
                     setStatus(STEPPED_DOWN);
                 } else {
                     setStatus(ACTIVE);

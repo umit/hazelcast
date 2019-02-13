@@ -20,7 +20,7 @@ import com.hazelcast.cp.internal.raft.command.DestroyRaftGroupCmd;
 import com.hazelcast.cp.internal.raft.command.RaftGroupCmd;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeStatus;
-import com.hazelcast.cp.internal.raft.impl.command.ApplyRaftGroupMembersCmd;
+import com.hazelcast.cp.internal.raft.impl.command.UpdateRaftGroupMembersCmd;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendFailureResponse;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendRequest;
 import com.hazelcast.cp.internal.raft.impl.dto.AppendSuccessResponse;
@@ -217,9 +217,9 @@ public class AppendRequestHandlerTask extends RaftNodeStatusAwareTask implements
 
             if (operation instanceof DestroyRaftGroupCmd) {
                 raftNode.setStatus(RaftNodeStatus.TERMINATING);
-            } else if (operation instanceof ApplyRaftGroupMembersCmd) {
+            } else if (operation instanceof UpdateRaftGroupMembersCmd) {
                 raftNode.setStatus(RaftNodeStatus.UPDATING_GROUP_MEMBER_LIST);
-                ApplyRaftGroupMembersCmd op = (ApplyRaftGroupMembersCmd) operation;
+                UpdateRaftGroupMembersCmd op = (UpdateRaftGroupMembersCmd) operation;
                 raftNode.updateGroupMembers(entry.index(), op.getMembers());
             } else {
                 assert false : "Invalid command: " + operation + " in " + raftNode.getGroupId();
@@ -244,7 +244,7 @@ public class AppendRequestHandlerTask extends RaftNodeStatusAwareTask implements
             if (entry.operation() instanceof DestroyRaftGroupCmd) {
                 raftNode.setStatus(RaftNodeStatus.ACTIVE);
                 return;
-            } else if (entry.operation() instanceof ApplyRaftGroupMembersCmd) {
+            } else if (entry.operation() instanceof UpdateRaftGroupMembersCmd) {
                 raftNode.setStatus(RaftNodeStatus.ACTIVE);
                 raftNode.resetGroupMembers();
                 return;
