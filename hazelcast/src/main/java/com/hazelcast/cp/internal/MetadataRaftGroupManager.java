@@ -1053,7 +1053,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
         }
     }
 
-    @SuppressFBWarnings("SE_COMPARATOR_SHOULD_BE_SERIALIZABLE")
+    @SuppressFBWarnings({"SE_COMPARATOR_SHOULD_BE_SERIALIZABLE", "DM_BOXED_PRIMITIVE_FOR_COMPARE"})
     private static class CPGroupIdComparator implements Comparator<CPGroupId> {
         @Override
         public int compare(CPGroupId o1, CPGroupId o2) {
