@@ -803,6 +803,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         return metadataGroupManager.getMetadataGroupId();
     }
 
+    @SuppressWarnings("checkstyle:npathcomplexity")
     public void handleActiveCPMembers(RaftGroupId latestMetadataGroupId, long membersCommitIndex,
                                       Collection<CPMemberInfo> members) {
         if (!metadataGroupManager.isDiscoveryCompleted()) {
@@ -815,11 +816,16 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         checkNotNull(members);
         checkTrue(members.size() > 1, "active members must contain at least 2 members: " + members);
 
-        CPMemberInfo localMember = getLocalCPMember();
-        assert (localMember == null || members.contains(localMember))
-                : "local cp member: " + localMember + " cp members: " + members;
-
         invocationManager.getRaftInvocationContext().setMembers(latestMetadataGroupId.seed(), membersCommitIndex, members);
+
+        CPMemberInfo localMember = getLocalCPMember();
+        if (localMember != null && !members.contains(localMember)) {
+            boolean missingAutoRemovalEnabled = config.getMissingCPMemberAutoRemovalSeconds() > 0;
+            logger.severe("Local " + localMember + " is not part of received active CP members: " + members
+                    + "It seems local member is removed from CP subsystem. "
+                    + "Auto removal of missing members is " + (missingAutoRemovalEnabled ? "enabled." : "disabled."));
+            return;
+        }
 
         RaftGroupId metadataGroupId = getMetadataGroupId();
 
