@@ -29,7 +29,6 @@ import com.hazelcast.core.ISet;
 import com.hazelcast.cp.lock.FencedLock;
 import com.hazelcast.cp.session.CPSession;
 import com.hazelcast.cp.session.CPSessionManagementService;
-import com.hazelcast.spi.annotation.Beta;
 
 /**
  * The CP subsystem is a component of a Hazelcast cluster that builds
@@ -111,17 +110,11 @@ import com.hazelcast.spi.annotation.Beta;
  * on the underlying CP and cannot be re-initialized on the same CP group.
  * For this reason, please make sure that you are completely done with
  * a CP data structure before destroying its proxy.</strong>
- * <p>
- * <i>Note: CP Subsystem API is currently in _beta_ stage.
- * Beta in this case means, it is a new feature and in general ready for
- * production use, but public API's signature and/or behaviour are subject
- * to change in future releases.</i>
  *
  * @see CPSubsystemConfig
  * @see CPMember
  * @see CPSession
  */
-@Beta
 public interface CPSubsystem {
 
     /**
