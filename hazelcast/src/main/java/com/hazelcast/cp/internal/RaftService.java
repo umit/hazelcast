@@ -510,7 +510,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
     }
 
     public CPGroupInfo getCPGroupLocally(CPGroupId groupId) {
-        return metadataGroupManager.getRaftGroup(groupId);
+        return metadataGroupManager.getGroup(groupId);
     }
 
     public MetadataRaftGroupManager getMetadataGroupManager() {
@@ -923,7 +923,7 @@ public class RaftService implements ManagedService, SnapshotAwareService<Metadat
         @Override
         public void run() {
             try {
-                if (!metadataGroupManager.isMetadataGroupLeader() || metadataGroupManager.getMembershipChangeContext() != null) {
+                if (!metadataGroupManager.isMetadataGroupLeader() || metadataGroupManager.getMembershipChangeSchedule() != null) {
                     return;
                 }
 

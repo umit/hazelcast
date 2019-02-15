@@ -33,6 +33,7 @@ import java.io.IOException;
  */
 public class GetRaftGroupOp extends MetadataRaftGroupOp implements IndeterminateOperationStateAware, IdentifiedDataSerializable {
 
+    // Please note that targetGroupId is the Raft group that is being queried and groupId argument is the Metadata Raft group
     private CPGroupId targetGroupId;
 
     public GetRaftGroupOp() {
@@ -42,10 +43,10 @@ public class GetRaftGroupOp extends MetadataRaftGroupOp implements Indeterminate
         this.targetGroupId = targetGroupId;
     }
 
-    // Please note that targetGroupId is the Raft group that is being queried and groupId argument is the Metadata Raft group
     @Override
     public Object run(MetadataRaftGroupManager metadataGroupManager, long commitIndex) {
-        return metadataGroupManager.getRaftGroup(targetGroupId);
+        metadataGroupManager.checkMetadataGroupInitSuccessful();
+        return metadataGroupManager.getGroup(targetGroupId);
     }
 
     @Override

@@ -20,6 +20,7 @@ import com.hazelcast.cp.internal.CPMemberInfo;
 import com.hazelcast.cp.internal.IndeterminateOperationStateAware;
 import com.hazelcast.cp.internal.MetadataRaftGroupManager;
 import com.hazelcast.cp.internal.RaftServiceDataSerializerHook;
+import com.hazelcast.cp.internal.raft.impl.util.PostponedResponse;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
@@ -34,17 +35,17 @@ import java.util.List;
  * the same list. Fails with {@link IllegalArgumentException} if a CP member
  * commits a different list.
  */
-public class InitializeMetadataRaftGroupOp extends MetadataRaftGroupOp implements IndeterminateOperationStateAware,
-                                                                                  IdentifiedDataSerializable {
+public class InitMetadataRaftGroupOp extends MetadataRaftGroupOp implements IndeterminateOperationStateAware,
+                                                                            IdentifiedDataSerializable {
 
     private CPMemberInfo callerCPMember;
     private List<CPMemberInfo> discoveredCPMembers;
     private long groupIdSeed;
 
-    public InitializeMetadataRaftGroupOp() {
+    public InitMetadataRaftGroupOp() {
     }
 
-    public InitializeMetadataRaftGroupOp(CPMemberInfo callerCPMember, List<CPMemberInfo> discoveredCPMembers, long groupIdSeed) {
+    public InitMetadataRaftGroupOp(CPMemberInfo callerCPMember, List<CPMemberInfo> discoveredCPMembers, long groupIdSeed) {
         this.callerCPMember = callerCPMember;
         this.discoveredCPMembers = discoveredCPMembers;
         this.groupIdSeed = groupIdSeed;
@@ -52,8 +53,11 @@ public class InitializeMetadataRaftGroupOp extends MetadataRaftGroupOp implement
 
     @Override
     public Object run(MetadataRaftGroupManager metadataGroupManager, long commitIndex) {
-        metadataGroupManager.initializeMetadataRaftGroup(commitIndex, callerCPMember, discoveredCPMembers, groupIdSeed);
-        return null;
+        if (metadataGroupManager.initMetadataGroup(commitIndex, callerCPMember, discoveredCPMembers, groupIdSeed)) {
+            return null;
+        }
+
+        return PostponedResponse.INSTANCE;
     }
 
     @Override
@@ -68,7 +72,7 @@ public class InitializeMetadataRaftGroupOp extends MetadataRaftGroupOp implement
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.INITIALIZE_METADATA_RAFT_GROUP_OP;
+        return RaftServiceDataSerializerHook.INIT_METADATA_RAFT_GROUP_OP;
     }
 
     @Override

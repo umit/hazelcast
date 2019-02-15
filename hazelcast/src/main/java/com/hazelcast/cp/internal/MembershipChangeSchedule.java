@@ -40,18 +40,18 @@ import static java.util.Collections.unmodifiableList;
  * This class is IMMUTABLE because it can be returned as a response to
  * local queries of {@link RaftGroupMembershipManager}
  */
-public class MembershipChangeContext implements IdentifiedDataSerializable {
+public class MembershipChangeSchedule implements IdentifiedDataSerializable {
 
     private List<Long> membershipChangeCommitIndices;
     private CPMemberInfo member;
     private MembershipChangeMode membershipChangeMode;
-    private final List<CPGroupMembershipChangeContext> changes = new ArrayList<CPGroupMembershipChangeContext>();
+    private final List<CPGroupMembershipChange> changes = new ArrayList<CPGroupMembershipChange>();
 
-    MembershipChangeContext() {
+    MembershipChangeSchedule() {
     }
 
-    private MembershipChangeContext(List<Long> membershipChangeCommitIndices, CPMemberInfo member,
-                                    MembershipChangeMode membershipChangeMode, List<CPGroupMembershipChangeContext> changes) {
+    private MembershipChangeSchedule(List<Long> membershipChangeCommitIndices, CPMemberInfo member,
+                                     MembershipChangeMode membershipChangeMode, List<CPGroupMembershipChange> changes) {
         this.membershipChangeCommitIndices = membershipChangeCommitIndices;
         this.member = member;
         this.membershipChangeMode = membershipChangeMode;
@@ -66,49 +66,49 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
         return membershipChangeMode == MembershipChangeMode.REMOVE ? member : null;
     }
 
-    List<CPGroupMembershipChangeContext> getChanges() {
+    List<CPGroupMembershipChange> getChanges() {
         return unmodifiableList(changes);
     }
 
-    MembershipChangeContext excludeCompletedChanges(Collection<CPGroupId> completedGroupIds) {
+    MembershipChangeSchedule excludeCompletedChanges(Collection<CPGroupId> completedGroupIds) {
         checkNotNull(completedGroupIds);
 
-        List<CPGroupMembershipChangeContext> remainingChanges = new ArrayList<CPGroupMembershipChangeContext>(changes);
-        Iterator<CPGroupMembershipChangeContext> it = remainingChanges.iterator();
+        List<CPGroupMembershipChange> remainingChanges = new ArrayList<CPGroupMembershipChange>(changes);
+        Iterator<CPGroupMembershipChange> it = remainingChanges.iterator();
         while (it.hasNext()) {
-            CPGroupMembershipChangeContext ctx = it.next();
-            if (completedGroupIds.contains(ctx.groupId)) {
+            CPGroupMembershipChange change = it.next();
+            if (completedGroupIds.contains(change.groupId)) {
                 it.remove();
             }
         }
 
-        return new MembershipChangeContext(membershipChangeCommitIndices, member, membershipChangeMode, remainingChanges);
+        return new MembershipChangeSchedule(membershipChangeCommitIndices, member, membershipChangeMode, remainingChanges);
     }
 
     List<Long> getMembershipChangeCommitIndices() {
         return membershipChangeCommitIndices;
     }
 
-    MembershipChangeContext addRetriedCommitIndex(long commitIndex) {
+    MembershipChangeSchedule addRetriedCommitIndex(long commitIndex) {
         List<Long> membershipChangeCommitIndices = new ArrayList<Long>(this.membershipChangeCommitIndices);
         membershipChangeCommitIndices.add(commitIndex);
-        return new MembershipChangeContext(membershipChangeCommitIndices, member, membershipChangeMode, changes);
+        return new MembershipChangeSchedule(membershipChangeCommitIndices, member, membershipChangeMode, changes);
     }
 
-    static MembershipChangeContext memberAdded(List<Long> membershipChangeCommitIndices, CPMemberInfo member,
-                                               List<CPGroupMembershipChangeContext> changes) {
-        return new MembershipChangeContext(membershipChangeCommitIndices, member, MembershipChangeMode.ADD, changes);
+    static MembershipChangeSchedule forJoiningMember(List<Long> membershipChangeCommitIndices, CPMemberInfo member,
+                                                     List<CPGroupMembershipChange> changes) {
+        return new MembershipChangeSchedule(membershipChangeCommitIndices, member, MembershipChangeMode.ADD, changes);
     }
 
-    static MembershipChangeContext memberLeaving(List<Long> membershipChangeCommitIndices, CPMemberInfo member,
-                                                 List<CPGroupMembershipChangeContext> changes) {
-        return new MembershipChangeContext(membershipChangeCommitIndices, member, MembershipChangeMode.REMOVE, changes);
+    static MembershipChangeSchedule forLeavingMember(List<Long> membershipChangeCommitIndices, CPMemberInfo member,
+                                                     List<CPGroupMembershipChange> changes) {
+        return new MembershipChangeSchedule(membershipChangeCommitIndices, member, MembershipChangeMode.REMOVE, changes);
     }
 
     /**
      * Contains a membership change that will be performed on a CP group
      */
-    public static class CPGroupMembershipChangeContext implements IdentifiedDataSerializable {
+    public static class CPGroupMembershipChange implements IdentifiedDataSerializable {
 
         private CPGroupId groupId;
 
@@ -120,11 +120,11 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
 
         private CPMemberInfo memberToRemove;
 
-        CPGroupMembershipChangeContext() {
+        CPGroupMembershipChange() {
         }
 
-        CPGroupMembershipChangeContext(CPGroupId groupId, long membersCommitIndex, Collection<CPMemberInfo> members,
-                                       CPMemberInfo memberToAdd, CPMemberInfo memberToRemove) {
+        CPGroupMembershipChange(CPGroupId groupId, long membersCommitIndex, Collection<CPMemberInfo> members,
+                                CPMemberInfo memberToAdd, CPMemberInfo memberToRemove) {
             this.groupId = groupId;
             this.membersCommitIndex = membersCommitIndex;
             this.members = members;
@@ -183,12 +183,12 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
 
         @Override
         public int getId() {
-            return RaftServiceDataSerializerHook.GROUP_MEMBERSHIP_CHANGE_CTX;
+            return RaftServiceDataSerializerHook.GROUP_MEMBERSHIP_CHANGE;
         }
 
         @Override
         public String toString() {
-            return "CPGroupMembershipChangeContext{" + "groupId=" + groupId + ", membersCommitIndex=" + membersCommitIndex
+            return "CPGroupMembershipChange{" + "groupId=" + groupId + ", membersCommitIndex=" + membersCommitIndex
                     + ", members=" + members + ", memberToAdd=" + memberToAdd + ", memberToRemove=" + memberToRemove + '}';
         }
     }
@@ -200,7 +200,7 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.MEMBERSHIP_CHANGE_CTX;
+        return RaftServiceDataSerializerHook.MEMBERSHIP_CHANGE_SCHEDULE;
     }
 
     @Override
@@ -212,8 +212,8 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
         out.writeObject(member);
         out.writeUTF(membershipChangeMode.name());
         out.writeInt(changes.size());
-        for (CPGroupMembershipChangeContext ctx : changes) {
-            ctx.writeData(out);
+        for (CPGroupMembershipChange change : changes) {
+            out.writeObject(change);
         }
     }
 
@@ -229,15 +229,14 @@ public class MembershipChangeContext implements IdentifiedDataSerializable {
         membershipChangeMode = MembershipChangeMode.valueOf(in.readUTF());
         int groupCount = in.readInt();
         for (int i = 0; i < groupCount; i++) {
-            CPGroupMembershipChangeContext context = new CPGroupMembershipChangeContext();
-            context.readData(in);
-            changes.add(context);
+            CPGroupMembershipChange change = in.readObject();
+            changes.add(change);
         }
     }
 
     @Override
     public String toString() {
-        return "MembershipChangeContext{" + "membershipChangeCommitIndices=" + membershipChangeCommitIndices + ", member="
+        return "MembershipChangeSchedule{" + "membershipChangeCommitIndices=" + membershipChangeCommitIndices + ", member="
                 + member + ", membershipChangeMode=" + membershipChangeMode + ", changes=" + changes + '}';
     }
 }

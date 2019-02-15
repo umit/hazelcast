@@ -16,6 +16,7 @@
 
 package com.hazelcast.cp.internal;
 
+import com.hazelcast.cp.internal.MetadataRaftGroupManager.MetadataRaftGroupInitStatus;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
@@ -35,9 +36,11 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
     private final Collection<CPMemberInfo> members = new ArrayList<CPMemberInfo>();
     private long membersCommitIndex;
     private final Collection<CPGroupInfo> groups = new ArrayList<CPGroupInfo>();
-    private MembershipChangeContext membershipChangeContext;
+    private MembershipChangeSchedule membershipChangeSchedule;
     private List<CPMemberInfo> initialCPMembers;
     private Set<CPMemberInfo> initializedCPMembers = new HashSet<CPMemberInfo>();
+    private MetadataRaftGroupInitStatus initializationStatus;
+    private Set<Long> initializationCommitIndices = new HashSet<Long>();
 
     public void setGroups(Collection<CPGroupInfo> groups) {
         this.groups.addAll(groups);
@@ -63,12 +66,12 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
         return groups;
     }
 
-    public MembershipChangeContext getMembershipChangeContext() {
-        return membershipChangeContext;
+    public MembershipChangeSchedule getMembershipChangeSchedule() {
+        return membershipChangeSchedule;
     }
 
-    public void setMembershipChangeContext(MembershipChangeContext membershipChangeContext) {
-        this.membershipChangeContext = membershipChangeContext;
+    public void setMembershipChangeSchedule(MembershipChangeSchedule membershipChangeSchedule) {
+        this.membershipChangeSchedule = membershipChangeSchedule;
     }
 
     public Set<CPMemberInfo> getInitializedCPMembers() {
@@ -85,6 +88,22 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
 
     public void setInitialCPMembers(List<CPMemberInfo> initialCPMembers) {
         this.initialCPMembers = initialCPMembers;
+    }
+
+    public MetadataRaftGroupInitStatus getInitializationStatus() {
+        return initializationStatus;
+    }
+
+    public void setInitializationStatus(MetadataRaftGroupInitStatus initializationStatus) {
+        this.initializationStatus = initializationStatus;
+    }
+
+    public Set<Long> getInitializationCommitIndices() {
+        return initializationCommitIndices;
+    }
+
+    public void setInitializationCommitIndices(Set<Long> initializationCommitIndices) {
+        this.initializationCommitIndices.addAll(initializationCommitIndices);
     }
 
     @Override
@@ -108,7 +127,7 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
         for (CPGroupInfo group : groups) {
             out.writeObject(group);
         }
-        out.writeObject(membershipChangeContext);
+        out.writeObject(membershipChangeSchedule);
         boolean discoveredInitialCPMembers = initialCPMembers != null;
         out.writeBoolean(discoveredInitialCPMembers);
         if (discoveredInitialCPMembers) {
@@ -120,6 +139,11 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
         out.writeInt(initializedCPMembers.size());
         for (CPMemberInfo member : initializedCPMembers) {
             out.writeObject(member);
+        }
+        out.writeUTF(initializationStatus.name());
+        out.writeInt(initializationCommitIndices.size());
+        for (long commitIndex : initializationCommitIndices) {
+            out.writeLong(commitIndex);
         }
     }
 
@@ -137,7 +161,7 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
             CPGroupInfo group = in.readObject();
             groups.add(group);
         }
-        membershipChangeContext = in.readObject();
+        membershipChangeSchedule = in.readObject();
         boolean discoveredInitialCPMembers = in.readBoolean();
         if (discoveredInitialCPMembers) {
             len = in.readInt();
@@ -152,6 +176,13 @@ public final class MetadataRaftGroupSnapshot implements IdentifiedDataSerializab
         for (int i = 0; i < len; i++) {
             CPMemberInfo member = in.readObject();
             initializedCPMembers.add(member);
+        }
+
+        initializationStatus = MetadataRaftGroupInitStatus.valueOf(in.readUTF());
+        len = in.readInt();
+        for (int i = 0; i < len; i++) {
+            long commitIndex = in.readLong();
+            initializationCommitIndices.add(commitIndex);
         }
     }
 }

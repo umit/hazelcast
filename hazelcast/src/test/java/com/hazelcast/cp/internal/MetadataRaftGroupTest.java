@@ -50,16 +50,24 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import static com.hazelcast.cp.internal.MetadataRaftGroupManager.INITIAL_METADATA_GROUP_ID;
+import static com.hazelcast.cp.internal.MetadataRaftGroupManager.MetadataRaftGroupInitStatus.IN_PROGRESS;
+import static com.hazelcast.cp.internal.MetadataRaftGroupManager.MetadataRaftGroupInitStatus.SUCCESSFUL;
 import static com.hazelcast.cp.internal.raft.QueryPolicy.LEADER_LOCAL;
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getLeaderMember;
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.getSnapshotEntry;
 import static com.hazelcast.cp.internal.raft.impl.RaftUtil.waitUntilLeaderElected;
+import static com.hazelcast.internal.cluster.impl.ClusterDataSerializerHook.FINALIZE_JOIN;
+import static com.hazelcast.internal.cluster.impl.ClusterDataSerializerHook.F_ID;
+import static com.hazelcast.test.PacketFiltersUtil.dropOperationsToAddresses;
+import static com.hazelcast.test.PacketFiltersUtil.resetPacketFiltersFrom;
 import static com.hazelcast.test.SplitBrainTestSupport.blockCommunicationBetween;
 import static com.hazelcast.test.SplitBrainTestSupport.unblockCommunicationBetween;
+import static java.util.Collections.singletonList;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertEquals;
@@ -108,6 +116,82 @@ public class MetadataRaftGroupTest extends HazelcastRaftTestSupport {
                 }
             }
         }, 10);
+    }
+
+    @Test
+    public void when_clusterStartsWithCPNodes_then_CPDiscoveryCompleted()  {
+        final int nodeCount = 3;
+        instances = newInstances(nodeCount);
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (HazelcastInstance instance : instances) {
+                    MetadataRaftGroupManager metadataGroupManager = getRaftService(instance).getMetadataGroupManager();
+                    assertEquals(SUCCESSFUL, metadataGroupManager.getInitializationStatus());
+                    assertEquals(nodeCount, metadataGroupManager.getActiveMembers().size());
+                    assertNotNull(metadataGroupManager.getInitialCPMembers());
+                    assertEquals(nodeCount, metadataGroupManager.getInitialCPMembers().size());
+                    assertTrue(metadataGroupManager.getInitializedCPMembers().isEmpty());
+                    assertTrue(metadataGroupManager.getInitializationCommitIndices().isEmpty());
+                }
+            }
+        });
+    }
+
+    @Test
+    public void when_slaveMissesItsJoinResponse_then_CPDiscoveryCompleted() throws ExecutionException, InterruptedException {
+        final Config config = new Config();
+        config.getCPSubsystemConfig().setCPMemberCount(3);
+
+        final HazelcastInstance master = factory.newHazelcastInstance(config);
+        final HazelcastInstance slave1 = factory.newHazelcastInstance(config);
+
+        final Address slaveAddress2 = factory.nextAddress();
+
+        dropOperationsToAddresses(master, singletonList(slaveAddress2), F_ID, singletonList(FINALIZE_JOIN));
+
+        Future<HazelcastInstance> f = spawn(new Callable<HazelcastInstance>() {
+            @Override
+            public HazelcastInstance call() {
+                return factory.newHazelcastInstance(slaveAddress2, config);
+            }
+        });
+
+        assertClusterSizeEventually(3, master);
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                MetadataRaftGroupManager metadataGroupManager = getRaftService(master).getMetadataGroupManager();
+                assertNotNull(metadataGroupManager.getInitialCPMembers());
+                assertEquals(3, metadataGroupManager.getInitialCPMembers().size());
+                assertEquals(2, metadataGroupManager.getInitializedCPMembers().size());
+            }
+        });
+
+        assertTrueAllTheTime(new AssertTask() {
+            @Override
+            public void run() {
+                MetadataRaftGroupManager metadataGroupManager = getRaftService(master).getMetadataGroupManager();
+                assertEquals(IN_PROGRESS, metadataGroupManager.getInitializationStatus());
+                assertEquals(2, metadataGroupManager.getInitializedCPMembers().size());
+            }
+        }, 10);
+
+        resetPacketFiltersFrom(master);
+
+        final HazelcastInstance slave2 = f.get();
+
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() {
+                for (HazelcastInstance instance : Arrays.asList(master, slave1, slave2)) {
+                    RaftService service = getRaftService(instance);
+                    assertTrue(service.getMetadataGroupManager().isDiscoveryCompleted());
+                }
+            }
+        });
     }
 
     @Test

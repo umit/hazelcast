@@ -47,7 +47,7 @@ public class AddCPMemberOp extends MetadataRaftGroupOp implements IndeterminateO
 
     @Override
     public Object run(MetadataRaftGroupManager metadataGroupManager, long commitIndex) {
-        if (metadataGroupManager.addActiveMember(commitIndex, member)) {
+        if (metadataGroupManager.addMember(commitIndex, member)) {
             return null;
         }
 

@@ -31,12 +31,12 @@ import java.io.IOException;
  * <p/>
  * This operation is committed to the Metadata group.
  */
-public class GetMembershipChangeContextOp extends MetadataRaftGroupOp implements IndeterminateOperationStateAware,
-                                                                                 IdentifiedDataSerializable {
+public class GetMembershipChangeScheduleOp extends MetadataRaftGroupOp implements IndeterminateOperationStateAware,
+                                                                                  IdentifiedDataSerializable {
 
     @Override
     public Object run(MetadataRaftGroupManager metadataGroupManager, long commitIndex) {
-        return metadataGroupManager.getMembershipChangeContext();
+        return metadataGroupManager.getMembershipChangeSchedule();
     }
 
     @Override
@@ -51,7 +51,7 @@ public class GetMembershipChangeContextOp extends MetadataRaftGroupOp implements
 
     @Override
     public int getId() {
-        return RaftServiceDataSerializerHook.GET_MEMBERSHIP_CHANGE_CONTEXT_OP;
+        return RaftServiceDataSerializerHook.GET_MEMBERSHIP_CHANGE_SCHEDULE_OP;
     }
 
     @Override

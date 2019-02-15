@@ -41,6 +41,7 @@ public class GetActiveCPMembersOp extends MetadataRaftGroupOp implements Indeter
     @Override
     public Object run(MetadataRaftGroupManager metadataGroupManager, long commitIndex) {
         // returning array list to be able to serialize response
+        metadataGroupManager.checkMetadataGroupInitSuccessful();
         return new ArrayList<CPMemberInfo>(metadataGroupManager.getActiveMembers());
     }
 

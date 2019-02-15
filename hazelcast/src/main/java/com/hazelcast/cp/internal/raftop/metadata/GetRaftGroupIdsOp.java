@@ -38,6 +38,7 @@ public class GetRaftGroupIdsOp extends MetadataRaftGroupOp implements Indetermin
 
     @Override
     public Object run(MetadataRaftGroupManager metadataGroupManager, long commitIndex) {
+        metadataGroupManager.checkMetadataGroupInitSuccessful();
         return metadataGroupManager.getGroupIds();
     }
 

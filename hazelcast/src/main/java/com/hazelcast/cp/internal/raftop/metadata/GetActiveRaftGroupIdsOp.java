@@ -38,6 +38,7 @@ public class GetActiveRaftGroupIdsOp extends MetadataRaftGroupOp implements Inde
 
     @Override
     public Object run(MetadataRaftGroupManager metadataGroupManager, long commitIndex) {
+        metadataGroupManager.checkMetadataGroupInitSuccessful();
         return metadataGroupManager.getActiveGroupIds();
     }
 

@@ -32,7 +32,7 @@ import com.hazelcast.cp.internal.datastructures.semaphore.RaftSemaphoreService;
 import com.hazelcast.cp.internal.raft.impl.RaftNodeImpl;
 import com.hazelcast.cp.internal.raft.impl.command.UpdateRaftGroupMembersCmd;
 import com.hazelcast.cp.internal.raftop.metadata.GetActiveCPMembersOp;
-import com.hazelcast.cp.internal.raftop.metadata.GetMembershipChangeContextOp;
+import com.hazelcast.cp.internal.raftop.metadata.GetMembershipChangeScheduleOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupOp;
 import com.hazelcast.cp.internal.session.ProxySessionManagerService;
 import com.hazelcast.cp.lock.FencedLock;
@@ -184,9 +184,9 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         f.get();
 
-        MembershipChangeContext ctx = invocationManager.<MembershipChangeContext>query(getMetadataGroupId(runningInstance),
-                new GetMembershipChangeContextOp(), LEADER_LOCAL).get();
-        assertNull(ctx);
+        MembershipChangeSchedule schedule = invocationManager.<MembershipChangeSchedule>query(getMetadataGroupId(runningInstance),
+                new GetMembershipChangeScheduleOp(), LEADER_LOCAL).get();
+        assertNull(schedule);
     }
 
     @Test
@@ -202,9 +202,9 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         master.getCPSubsystem().getCPSubsystemManagementService().removeCPMember(promotedMember.getUuid()).get();
 
-        MembershipChangeContext ctx = getRaftInvocationManager(master).<MembershipChangeContext>query(getMetadataGroupId(master),
-                new GetMembershipChangeContextOp(), LEADER_LOCAL).get();
-        assertNull(ctx);
+        MembershipChangeSchedule schedule = getRaftInvocationManager(master).<MembershipChangeSchedule>query(getMetadataGroupId(master),
+                new GetMembershipChangeScheduleOp(), LEADER_LOCAL).get();
+        assertNull(schedule);
     }
 
     @Test
@@ -217,9 +217,9 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         RaftInvocationManager invocationManager = getRaftInvocationManager(instances[1]);
         CPGroupId metadataGroupId = getMetadataGroupId(instances[1]);
-        MembershipChangeContext ctx = invocationManager.<MembershipChangeContext>query(metadataGroupId,
-                new GetMembershipChangeContextOp(), LEADER_LOCAL).get();
-        assertNull(ctx);
+        MembershipChangeSchedule schedule = invocationManager.<MembershipChangeSchedule>query(metadataGroupId,
+                new GetMembershipChangeScheduleOp(), LEADER_LOCAL).get();
+        assertNull(schedule);
         CPGroupInfo group = invocationManager.<CPGroupInfo>invoke(metadataGroupId, new GetRaftGroupOp(metadataGroupId)).join();
         assertEquals(2, group.memberCount());
         for (CPMember member : group.members()) {
@@ -237,9 +237,9 @@ public class CPMemberAddRemoveTest extends HazelcastRaftTestSupport {
 
         promoted.getLifecycleService().shutdown();
 
-        MembershipChangeContext ctx = getRaftInvocationManager(master).<MembershipChangeContext>query(getMetadataGroupId(master),
-                new GetMembershipChangeContextOp(), LEADER_LOCAL).get();
-        assertNull(ctx);
+        MembershipChangeSchedule schedule = getRaftInvocationManager(master).<MembershipChangeSchedule>query(getMetadataGroupId(master),
+                new GetMembershipChangeScheduleOp(), LEADER_LOCAL).get();
+        assertNull(schedule);
     }
 
     @Test

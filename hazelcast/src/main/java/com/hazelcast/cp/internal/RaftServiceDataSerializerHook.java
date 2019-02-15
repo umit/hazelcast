@@ -16,7 +16,7 @@
 
 package com.hazelcast.cp.internal;
 
-import com.hazelcast.cp.internal.MembershipChangeContext.CPGroupMembershipChangeContext;
+import com.hazelcast.cp.internal.MembershipChangeSchedule.CPGroupMembershipChange;
 import com.hazelcast.cp.internal.operation.ChangeRaftGroupMembershipOp;
 import com.hazelcast.cp.internal.operation.DefaultRaftReplicateOp;
 import com.hazelcast.cp.internal.operation.DestroyRaftGroupOp;
@@ -35,7 +35,7 @@ import com.hazelcast.cp.internal.raftop.metadata.AddCPMemberOp;
 import com.hazelcast.cp.internal.raftop.metadata.CompleteDestroyRaftGroupsOp;
 import com.hazelcast.cp.internal.raftop.metadata.CompleteRaftGroupMembershipChangesOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetActiveRaftGroupIdsOp;
-import com.hazelcast.cp.internal.raftop.metadata.InitializeMetadataRaftGroupOp;
+import com.hazelcast.cp.internal.raftop.metadata.InitMetadataRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.CreateRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.CreateRaftNodeOp;
 import com.hazelcast.cp.internal.raftop.metadata.DestroyRaftNodesOp;
@@ -44,7 +44,7 @@ import com.hazelcast.cp.internal.raftop.metadata.GetActiveCPMembersOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetActiveRaftGroupByNameOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetDestroyingRaftGroupIdsOp;
 import com.hazelcast.cp.internal.raftop.GetInitialRaftGroupMembersIfCurrentGroupMemberOp;
-import com.hazelcast.cp.internal.raftop.metadata.GetMembershipChangeContextOp;
+import com.hazelcast.cp.internal.raftop.metadata.GetMembershipChangeScheduleOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupIdsOp;
 import com.hazelcast.cp.internal.raftop.metadata.GetRaftGroupOp;
 import com.hazelcast.cp.internal.raftop.metadata.RaftServicePreJoinOp;
@@ -83,12 +83,12 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int REMOVE_CP_MEMBER_OP = 16;
     public static final int COMPLETE_RAFT_GROUP_MEMBERSHIP_CHANGES_OP = 17;
     public static final int MEMBERSHIP_CHANGE_REPLICATE_OP = 18;
-    public static final int MEMBERSHIP_CHANGE_CTX = 19;
+    public static final int MEMBERSHIP_CHANGE_SCHEDULE = 19;
     public static final int DEFAULT_RAFT_GROUP_QUERY_OP = 20;
     public static final int DESTROY_RAFT_NODES_OP = 21;
     public static final int GET_ACTIVE_CP_MEMBERS_OP = 22;
     public static final int GET_DESTROYING_RAFT_GROUP_IDS_OP = 23;
-    public static final int GET_MEMBERSHIP_CHANGE_CONTEXT_OP = 24;
+    public static final int GET_MEMBERSHIP_CHANGE_SCHEDULE_OP = 24;
     public static final int GET_RAFT_GROUP_OP = 25;
     public static final int GET_ACTIVE_RAFT_GROUP_BY_NAME_OP = 26;
     public static final int CREATE_RAFT_NODE_OP = 27;
@@ -98,14 +98,14 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
     public static final int CP_MEMBER = 31;
     public static final int PUBLISH_ACTIVE_CP_MEMBERS_OP = 32;
     public static final int ADD_CP_MEMBER_OP = 33;
-    public static final int INITIALIZE_METADATA_RAFT_GROUP_OP = 34;
+    public static final int INIT_METADATA_RAFT_GROUP_OP = 34;
     public static final int FORCE_DESTROY_RAFT_GROUP_OP = 35;
     public static final int GET_INITIAL_RAFT_GROUP_MEMBERS_IF_CURRENT_GROUP_MEMBER_OP = 36;
     public static final int GET_RAFT_GROUP_IDS_OP = 37;
     public static final int GET_ACTIVE_RAFT_GROUP_IDS_OP = 38;
     public static final int RAFT_PRE_JOIN_OP = 39;
     public static final int RESTART_CP_MEMBER_OP = 40;
-    public static final int GROUP_MEMBERSHIP_CHANGE_CTX = 41;
+    public static final int GROUP_MEMBERSHIP_CHANGE = 41;
 
     @Override
     public int getFactoryId() {
@@ -154,8 +154,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new CompleteRaftGroupMembershipChangesOp();
                     case MEMBERSHIP_CHANGE_REPLICATE_OP:
                         return new ChangeRaftGroupMembershipOp();
-                    case MEMBERSHIP_CHANGE_CTX:
-                        return new MembershipChangeContext();
+                    case MEMBERSHIP_CHANGE_SCHEDULE:
+                        return new MembershipChangeSchedule();
                     case DEFAULT_RAFT_GROUP_QUERY_OP:
                         return new RaftQueryOp();
                     case DESTROY_RAFT_NODES_OP:
@@ -164,8 +164,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new GetActiveCPMembersOp();
                     case GET_DESTROYING_RAFT_GROUP_IDS_OP:
                         return new GetDestroyingRaftGroupIdsOp();
-                    case GET_MEMBERSHIP_CHANGE_CONTEXT_OP:
-                        return new GetMembershipChangeContextOp();
+                    case GET_MEMBERSHIP_CHANGE_SCHEDULE_OP:
+                        return new GetMembershipChangeScheduleOp();
                     case GET_RAFT_GROUP_OP:
                         return new GetRaftGroupOp();
                     case GET_ACTIVE_RAFT_GROUP_BY_NAME_OP:
@@ -184,8 +184,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new PublishActiveCPMembersOp();
                     case ADD_CP_MEMBER_OP:
                         return new AddCPMemberOp();
-                    case INITIALIZE_METADATA_RAFT_GROUP_OP:
-                        return new InitializeMetadataRaftGroupOp();
+                    case INIT_METADATA_RAFT_GROUP_OP:
+                        return new InitMetadataRaftGroupOp();
                     case FORCE_DESTROY_RAFT_GROUP_OP:
                         return new ForceDestroyRaftGroupOp();
                     case GET_INITIAL_RAFT_GROUP_MEMBERS_IF_CURRENT_GROUP_MEMBER_OP:
@@ -198,8 +198,8 @@ public final class RaftServiceDataSerializerHook implements DataSerializerHook {
                         return new RaftServicePreJoinOp();
                     case RESTART_CP_MEMBER_OP:
                         return new RestartCPMemberOp();
-                    case GROUP_MEMBERSHIP_CHANGE_CTX:
-                        return new CPGroupMembershipChangeContext();
+                    case GROUP_MEMBERSHIP_CHANGE:
+                        return new CPGroupMembershipChange();
                     default:
                         throw new IllegalArgumentException("Undefined type: " + typeId);
                 }

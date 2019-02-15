@@ -21,10 +21,10 @@ import com.hazelcast.spi.exception.RetryableException;
 
 /**
  * Thrown when all CP members have not committed their CP member list
- * and initialization of the Metadata Raft group is not done yet.
+ * and initialization of the Metadata Raft group is not completed yet.
  * Handled and retried internally.
  */
-public class MetadataRaftGroupNotInitializedException extends HazelcastException implements RetryableException {
+public class MetadataRaftGroupInitInProgressException extends HazelcastException implements RetryableException {
     private static final long serialVersionUID = -587586143908312910L;
 
 }

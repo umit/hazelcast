@@ -42,7 +42,8 @@ public class GetActiveRaftGroupByNameOp extends MetadataRaftGroupOp implements I
 
     @Override
     public Object run(MetadataRaftGroupManager metadataGroupManager, long commitIndex) throws Exception {
-        return metadataGroupManager.getActiveRaftGroup(groupName);
+        metadataGroupManager.checkMetadataGroupInitSuccessful();
+        return metadataGroupManager.getActiveGroup(groupName);
     }
 
     @Override

@@ -53,11 +53,11 @@ public final class PacketFiltersUtil {
     }
 
     public static void delayOperationsBetween(HazelcastInstance from, HazelcastInstance to, int factory, List<Integer> opTypes) {
-        filterOperationsBetween(from, singleton(to), factory, opTypes, PacketFilter.Action.DELAY);
+        filterOperationsBetween(from, getAddresses(singleton(to)), factory, opTypes, PacketFilter.Action.DELAY);
     }
 
     public static void delayOperationsBetween(HazelcastInstance from, Collection<HazelcastInstance> to, int factory, List<Integer> opTypes) {
-        filterOperationsBetween(from, to, factory, opTypes, PacketFilter.Action.DELAY);
+        filterOperationsBetween(from, getAddresses(to), factory, opTypes, PacketFilter.Action.DELAY);
     }
 
     public static void dropOperationsFrom(HazelcastInstance instance, int factory, List<Integer> opTypes) {
@@ -65,11 +65,15 @@ public final class PacketFiltersUtil {
     }
 
     public static void dropOperationsBetween(HazelcastInstance from, HazelcastInstance to, int factory, List<Integer> opTypes) {
-        filterOperationsBetween(from, singleton(to), factory, opTypes, PacketFilter.Action.DROP);
+        filterOperationsBetween(from, getAddresses(singleton(to)), factory, opTypes, PacketFilter.Action.DROP);
     }
 
     public static void dropOperationsBetween(HazelcastInstance from, Collection<HazelcastInstance> to, int factory, List<Integer> opTypes) {
-        filterOperationsBetween(from, to, factory, opTypes, PacketFilter.Action.DROP);
+        filterOperationsBetween(from, getAddresses(to), factory, opTypes, PacketFilter.Action.DROP);
+    }
+
+    public static void dropOperationsToAddresses(HazelcastInstance instance, Collection<Address> addresses, int factory, List<Integer> opTypes) {
+        filterOperationsBetween(instance, addresses, factory, opTypes, PacketFilter.Action.DROP);
     }
 
     public static void rejectOperationsFrom(HazelcastInstance instance, int factory, List<Integer> opTypes) {
@@ -77,11 +81,11 @@ public final class PacketFiltersUtil {
     }
 
     public static void rejectOperationsBetween(HazelcastInstance from, HazelcastInstance to, int factory, List<Integer> opTypes) {
-        filterOperationsBetween(from, singleton(to), factory, opTypes, PacketFilter.Action.REJECT);
+        filterOperationsBetween(from, getAddresses(singleton(to)), factory, opTypes, PacketFilter.Action.REJECT);
     }
 
     public static void rejectOperationsBetween(HazelcastInstance from, Collection<HazelcastInstance> to, int factory, List<Integer> opTypes) {
-        filterOperationsBetween(from, to, factory, opTypes, PacketFilter.Action.REJECT);
+        filterOperationsBetween(from, getAddresses(to), factory, opTypes, PacketFilter.Action.REJECT);
     }
 
     private static void filterOperationsFrom(HazelcastInstance instance, int factory, List<Integer> opTypes,
@@ -92,12 +96,11 @@ public final class PacketFiltersUtil {
         cm.setPacketFilter(packetFilter);
     }
 
-    private static void filterOperationsBetween(HazelcastInstance from, Collection<HazelcastInstance> to, int factory,
-            List<Integer> opTypes, PacketFilter.Action action) {
+    private static void filterOperationsBetween(HazelcastInstance from, Collection<Address> addresses, int factory, List<Integer> opTypes,
+                                                PacketFilter.Action action) {
         Node node = getNode(from);
         FirewallingConnectionManager cm = (FirewallingConnectionManager) node.getConnectionManager();
-        Collection<Address> blacklist = getAddresses(to);
-        PacketFilter packetFilter = new EndpointAwarePacketFilter(node.getSerializationService(), blacklist, factory,
+        PacketFilter packetFilter = new EndpointAwarePacketFilter(node.getSerializationService(), addresses, factory,
                 opTypes, action);
         cm.setPacketFilter(packetFilter);
     }
