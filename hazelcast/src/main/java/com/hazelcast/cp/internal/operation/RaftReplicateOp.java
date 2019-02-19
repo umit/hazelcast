@@ -69,11 +69,7 @@ public abstract class RaftReplicateOp extends Operation implements IdentifiedDat
             return;
         }
 
-        ICompletableFuture future = replicate(raftNode);
-        if (future == null) {
-            return;
-        }
-        future.andThen(this);
+        replicate(raftNode).andThen(this);
     }
 
     ICompletableFuture replicate(RaftNode raftNode) {
