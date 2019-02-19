@@ -41,6 +41,7 @@ import com.hazelcast.spi.OperationService;
 import com.hazelcast.spi.exception.RetryableHazelcastException;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.spi.impl.operationservice.impl.RaftInvocationContext;
+import com.hazelcast.util.Clock;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.util.ArrayList;
@@ -91,6 +92,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
     }
 
     private static final long DISCOVER_INITIAL_CP_MEMBERS_TASK_DELAY_MILLIS = 1000;
+    private static final long DISCOVER_INITIAL_CP_MEMBERS_TASK_LOGGING_DELAY_MILLIS = 5000;
     private static final long BROADCAST_ACTIVE_CP_MEMBERS_TASK_PERIOD_SECONDS = 10;
 
     private final NodeEngine nodeEngine;
@@ -991,6 +993,7 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
 
         private Collection<Member> latestMembers = Collections.emptySet();
         private final boolean terminateOnDiscoveryFailure;
+        private long lastLoggingTime;
 
         DiscoverInitialCPMembersTask(boolean terminateOnDiscoveryFailure) {
             this.terminateOnDiscoveryFailure = terminateOnDiscoveryFailure;
@@ -1062,9 +1065,11 @@ public class MetadataRaftGroupManager implements SnapshotAwareService<MetadataRa
 
         private boolean rescheduleIfCPMemberCountNotSatisfied(Collection<Member> members) {
             if (members.size() < config.getCPMemberCount()) {
-                if (logger.isFineEnabled()) {
-                    logger.fine("Waiting for " + config.getCPMemberCount() + " CP members to join the cluster. "
-                            + "Current CP member count: " + members.size());
+                long now = Clock.currentTimeMillis();
+                if (now - lastLoggingTime >= DISCOVER_INITIAL_CP_MEMBERS_TASK_LOGGING_DELAY_MILLIS) {
+                    lastLoggingTime = now;
+                    logger.info("CP Subsystem is waiting for " + config.getCPMemberCount() + " members to join the cluster. "
+                            + "Current member count: " + members.size());
                 }
 
                 scheduleSelf();
