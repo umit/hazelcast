@@ -19,6 +19,7 @@ package com.hazelcast.cp.internal.datastructures.atomicref;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.core.IndeterminateOperationStateException;
+import com.hazelcast.core.OperationTimeoutException;
 import com.hazelcast.cp.internal.RaftSplitBrainTestSupport;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -93,6 +94,8 @@ public class RaftAtomicRefSplitBrainTest extends RaftSplitBrainTestSupport {
                         increments.incrementAndGet();
                     }
                 } catch (IndeterminateOperationStateException e) {
+                    indeterminate.incrementAndGet();
+                } catch (OperationTimeoutException e) {
                     indeterminate.incrementAndGet();
                 }
             }
