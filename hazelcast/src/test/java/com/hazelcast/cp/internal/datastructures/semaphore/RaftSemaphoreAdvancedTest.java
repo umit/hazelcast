@@ -581,8 +581,11 @@ public class RaftSemaphoreAdvancedTest extends HazelcastRaftTestSupport {
             @Override
             public void run() {
                 RaftSemaphoreService service = getNodeEngineImpl(semaphoreInstance).getService(RaftSemaphoreService.SERVICE_NAME);
-                RaftSemaphore raftSemaphore = service.getRegistryOrNull(semaphore.getGroupId()).getResourceOrNull(objectName);
-                assertFalse(raftSemaphore.getWaitKeys().isEmpty());
+                RaftSemaphoreRegistry registry = service.getRegistryOrNull(semaphore.getGroupId());
+                assertNotNull(registry);
+                RaftSemaphore semaphore = registry.getResourceOrNull(objectName);
+                assertNotNull(semaphore);
+                assertFalse(semaphore.getWaitKeys().isEmpty());
             }
         });
 
