@@ -21,7 +21,7 @@ import com.hazelcast.cp.CPGroupId;
 import com.hazelcast.cp.exception.CPGroupDestroyedException;
 import com.hazelcast.cp.internal.raftop.metadata.TriggerDestroyRaftGroupOp;
 import com.hazelcast.test.AssertTask;
-import com.hazelcast.test.HazelcastSerialClassRunner;
+import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Test;
@@ -32,7 +32,7 @@ import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.fail;
 
-@RunWith(HazelcastSerialClassRunner.class)
+@RunWith(HazelcastParallelClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
 public class RaftInvocationManagerTest extends HazelcastRaftTestSupport {
 

@@ -19,10 +19,10 @@ package com.hazelcast.cp.internal.datastructures.lock;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.cp.FencedLockConfig;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.cp.lock.FencedLock;
 import com.hazelcast.cp.lock.exception.LockAcquireLimitExceededException;
-import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
-import com.hazelcast.test.HazelcastSerialClassRunner;
+import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import com.hazelcast.util.RandomPicker;
@@ -43,7 +43,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-@RunWith(HazelcastSerialClassRunner.class)
+@RunWith(HazelcastParallelClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
 public class NonReentrantFencedLockTest extends HazelcastRaftTestSupport {
 

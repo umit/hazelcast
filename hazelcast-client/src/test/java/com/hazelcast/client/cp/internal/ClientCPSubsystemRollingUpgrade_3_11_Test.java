@@ -21,7 +21,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.cp.CPSubsystem;
 import com.hazelcast.cp.internal.HazelcastRaftTestSupport;
 import com.hazelcast.internal.cluster.Versions;
-import com.hazelcast.test.HazelcastSerialClassRunner;
+import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.OverridePropertyRule;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -36,7 +36,7 @@ import static com.hazelcast.instance.BuildInfoProvider.HAZELCAST_INTERNAL_OVERRI
 import static com.hazelcast.test.OverridePropertyRule.set;
 
 // RU_COMPAT_3_11
-@RunWith(HazelcastSerialClassRunner.class)
+@RunWith(HazelcastParallelClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
 public class ClientCPSubsystemRollingUpgrade_3_11_Test extends HazelcastRaftTestSupport {
 
