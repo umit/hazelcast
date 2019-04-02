@@ -20,6 +20,7 @@ import com.hazelcast.test.ChangeLoggingRule;
 import com.hazelcast.test.HazelcastParametersRunnerFactory;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
+import com.hazelcast.test.annotation.Repeat;
 import org.junit.ClassRule;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -31,6 +32,7 @@ import java.util.Collection;
 @RunWith(Parameterized.class)
 @Parameterized.UseParametersRunnerFactory(HazelcastParametersRunnerFactory.class)
 @Category({QuickTest.class, ParallelTest.class})
+@Repeat(100)
 public class GracefulShutdownCorrectnessTest extends AbstractGracefulShutdownCorrectnessTest {
 
     @ClassRule
@@ -39,9 +41,10 @@ public class GracefulShutdownCorrectnessTest extends AbstractGracefulShutdownCor
     @Parameterized.Parameters(name = "backups:{0},nodes:{1},shutdown:{2}")
     public static Collection<Object[]> parameters() {
         return Arrays.asList(new Object[][]{
-                {0, 2, 1},
-                {1, 2, 1},
-                {2, 3, 1},
+//                {0, 2, 1},
+//                {1, 2, 1},
+//                {2, 3, 1},
+                  {0, 6, 3},
         });
     }
 }

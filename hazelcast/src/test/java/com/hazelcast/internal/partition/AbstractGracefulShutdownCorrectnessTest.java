@@ -46,7 +46,7 @@ public abstract class AbstractGracefulShutdownCorrectnessTest extends PartitionC
     @Parameterized.Parameter(2)
     public int shutdownNodeCount;
 
-    @Test(timeout = 6000 * 10 * 10)
+//    @Test(timeout = 6000 * 10 * 10)
     public void testPartitionData_whenNodesShutdown() throws InterruptedException {
         Config config = getConfig(true, false);
 
@@ -62,7 +62,7 @@ public abstract class AbstractGracefulShutdownCorrectnessTest extends PartitionC
         assertSizeAndData();
     }
 
-    @Test(timeout = 6000 * 10 * 10)
+//    @Test(timeout = 6000 * 10 * 10)
     public void testPartitionData_whenNodesStartedShutdown() throws InterruptedException {
         Config config = getConfig(true, false);
 
@@ -110,7 +110,7 @@ public abstract class AbstractGracefulShutdownCorrectnessTest extends PartitionC
         }
     }
 
-    @Test(timeout = 6000 * 10 * 10)
+//    @Test(timeout = 6000 * 10 * 10)
     public void testPartitionData_whenNodesStartedShutdown_whileOperationsOngoing() throws InterruptedException {
         final Config config = getConfig(true, false);
 
