@@ -6,16 +6,16 @@ import java.nio.ByteBuffer;
 
 public final class RESPReply implements OutboundFrame {
 
-    public static final RESPReply OK = new RESPReply("+OK\r\n".getBytes());
+    public static final byte[] OK_RESPONSE = "+OK\r\n".getBytes();
 
-    public static final RESPReply NULL = new RESPReply("*-1\r\n".getBytes());
+    public static final byte[] NULL_RESPONSE = "$-1\r\n".getBytes();
 
     public static RESPReply ok() {
-        return OK;
+        return new RESPReply(OK_RESPONSE);
     }
 
     public static RESPReply nil() {
-        return NULL;
+        return new RESPReply(NULL_RESPONSE);
     }
 
     public static RESPReply integer(int i) {
